@@ -32,6 +32,13 @@ export type Manifest = {
     title: string;
     renderer: RendererKind;
     capability: string;
+    kind?: string;
+    description?: string;
+    columns?: Array<{ id: string; label: string; format?: string }>;
+    actions?: Array<{ id: string; label: string; authorization: string }>;
+    filters?: Array<{ id: string; label: string; type: string }>;
+    detail?: string;
+    idField?: string;
   }>;
 };
 /** Stable, server-declared renderer kinds. The browser maps these to owned UI renderers. */
@@ -67,71 +74,6 @@ export function normalizeRenderer(kind: string): Renderer {
   return rendererMap[kind as RendererKind] ?? "record-list";
 }
 
-export const fallbackServices: Service[] = [
-  {
-    id: "analytics",
-    name: "Local Trino",
-    adapter: "trino",
-    category: "Query engine",
-    endpoint: "trino:8080",
-    health: "healthy",
-    latencyMs: 12,
-    managedBy: "configuration",
-    capabilities: ["query", "schema-browser", "table-browser"],
-  },
-  {
-    id: "events",
-    name: "Kafka",
-    adapter: "kafka",
-    category: "Streaming",
-    endpoint: "kafka:9092",
-    health: "healthy",
-    detail: "3 brokers",
-    managedBy: "configuration",
-    capabilities: ["topic-browser", "message-browser", "consumer-groups"],
-  },
-  {
-    id: "storage",
-    name: "MinIO",
-    adapter: "s3",
-    category: "Object storage",
-    endpoint: "minio:9000",
-    health: "healthy",
-    managedBy: "configuration",
-    capabilities: ["object-browser"],
-  },
-];
-export const fallbackAdapters: Adapter[] = [
-  {
-    id: "trino",
-    name: "Trino",
-    category: "Query engine",
-    description: "Query catalogs, schemas and tables.",
-    fields: [
-      { key: "host", label: "Host", placeholder: "trino" },
-      { key: "port", label: "Port", type: "number", placeholder: "8080" },
-      { key: "username", label: "Username", placeholder: "dsui" },
-    ],
-  },
-  {
-    id: "kafka",
-    name: "Kafka",
-    category: "Streaming",
-    description: "Inspect topics, records and consumer groups.",
-    fields: [{ key: "brokers", label: "Brokers", placeholder: "kafka:9092" }],
-  },
-  {
-    id: "s3",
-    name: "S3 / MinIO",
-    category: "Object storage",
-    description: "Browse buckets and objects.",
-    fields: [
-      { key: "endpoint", label: "Endpoint", placeholder: "http://minio:9000" },
-      { key: "accessKeyId", label: "Access key ID" },
-      { key: "secretAccessKey", label: "Secret access key", type: "password" },
-    ],
-  },
-];
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -141,7 +83,6 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
-const demoFallbackEnabled = import.meta.env.DEV;
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -165,40 +106,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 export async function getServices() {
-  try {
-    const r = await request<Service[] | { data: Service[] }>("/services");
-    return Array.isArray(r) ? r : r.data;
-  } catch (error) {
-    if (demoFallbackEnabled) return fallbackServices;
-    throw error;
-  }
+  const r = await request<Service[] | { data: Service[] }>("/services");
+  return Array.isArray(r) ? r : r.data;
 }
 export async function getAdapters() {
-  try {
-    const r = await request<Adapter[] | { data: Adapter[] }>("/adapters");
-    return Array.isArray(r) ? r : r.data;
-  } catch (error) {
-    if (demoFallbackEnabled) return fallbackAdapters;
-    throw error;
-  }
+  const r = await request<Adapter[] | { data: Adapter[] }>("/adapters");
+  return Array.isArray(r) ? r : r.data;
 }
 export async function getManifest(id: string): Promise<Manifest> {
-  try {
-    return await request<Manifest>(`/services/${id}/manifest`);
-  } catch (error) {
-    if (!demoFallbackEnabled) throw error;
-    const service = fallbackServices.find((x) => x.id === id);
-    return {
-      views: (service?.capabilities ?? []).map((capability) => ({
-        id: capability,
-        title: titleFor(capability),
-        capability,
-        renderer: (capability === "query"
-          ? "query"
-          : capability) as RendererKind,
-      })),
-    };
-  }
+  return request<Manifest>(`/services/${id}/manifest`);
 }
 export async function createService(input: unknown) {
   return request<Service>("/services", {
@@ -217,10 +133,16 @@ export async function runOperation(
   capability: string,
   input: unknown,
 ) {
-  return request<{ data: unknown; nextCursor?: string; warnings?: string[] }>(
-    `/services/${serviceId}/capabilities/${capability}`,
-    { method: "POST", body: JSON.stringify(input) },
-  );
+  return request<{
+    data: unknown;
+    nextCursor?: string;
+    warnings?: string[];
+    columns?: string[];
+    folders?: string[];
+  }>(`/services/${serviceId}/capabilities/${capability}`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 export async function login(input: { email: string; password: string }) {
   return request<{ id: string; email: string; role: string }>("/auth/login", {

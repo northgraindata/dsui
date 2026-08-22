@@ -5,18 +5,6 @@ export {
   publicAdapter,
 } from "./adapters";
 export {
-  communityAdapterEntries,
-  isCommunityAdapterSource,
-} from "./config";
-export {
-  type AdapterFetch,
-  assertSafeAdapterUrl,
-  type ExternalAdapterManagerOptions,
-  ExternalAdapterManager,
-  externalAdapterDefinition,
-  type InstalledExternalAdapter,
-} from "./external-adapters";
-export {
   type CreateRuntimeOptions,
   createRuntime,
   type PublicService,
@@ -31,10 +19,20 @@ export {
 export {
   ConfigError,
   type ConfiguredService,
+  communityAdapterEntries,
   configSchema,
   type DsuiConfig,
   interpolateEnvironment,
+  isCommunityAdapterSource,
   loadConfig,
 } from "./config";
 export { ConnectionCipher, type EncryptedValue } from "./crypto";
 export { DsuiDatabase } from "./database";
+export {
+  type AdapterFetch,
+  assertSafeAdapterUrl,
+  ExternalAdapterManager,
+  type ExternalAdapterManagerOptions,
+  externalAdapterDefinition,
+  type InstalledExternalAdapter,
+} from "./external-adapters";

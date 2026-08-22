@@ -1,8 +1,11 @@
-import { kafkaAdapter } from "@dsui/adapter-kafka";
-import { s3Adapter } from "@dsui/adapter-s3";
-import type { AdapterDefinition } from "@dsui/adapter-sdk";
-import { trinoAdapter } from "@dsui/adapter-trino";
-import type { AdapterMetadata } from "@dsui/core";
+import { clickhouseAdapter } from "@northgraindata/dsui-adapter-clickhouse";
+import { flinkAdapter } from "@northgraindata/dsui-adapter-flink";
+import { kafkaAdapter } from "@northgraindata/dsui-adapter-kafka";
+import { s3Adapter } from "@northgraindata/dsui-adapter-s3";
+import type { AdapterDefinition } from "@northgraindata/dsui-adapter-sdk";
+import { sparkAdapter } from "@northgraindata/dsui-adapter-spark";
+import { trinoAdapter } from "@northgraindata/dsui-adapter-trino";
+import type { AdapterMetadata } from "@northgraindata/dsui-core";
 
 export type RegisteredAdapter = AdapterDefinition;
 
@@ -12,8 +15,11 @@ export class AdapterRegistry {
   constructor(
     adapters: readonly RegisteredAdapter[] = [
       trinoAdapter,
+      clickhouseAdapter,
       kafkaAdapter,
       s3Adapter,
+      flinkAdapter,
+      sparkAdapter,
     ],
   ) {
     for (const adapter of adapters) this.register(adapter);
@@ -77,11 +83,15 @@ export function endpointFor(
 ): string {
   if (adapterId === "trino")
     return `${String(connection.host ?? "")}:${String(connection.port ?? 8080)}`;
+  if (adapterId === "clickhouse")
+    return `${String(connection.host ?? "")}:${String(connection.port ?? 8123)}`;
   if (adapterId === "kafka")
     return Array.isArray(connection.brokers)
       ? connection.brokers.join(", ")
       : String(connection.brokers ?? "");
   if (adapterId === "s3") return String(connection.endpoint ?? "");
+  if (adapterId === "flink") return String(connection.url ?? "");
+  if (adapterId === "spark") return String(connection.url ?? "");
   return "configured";
 }
 

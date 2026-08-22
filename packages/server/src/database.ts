@@ -1,7 +1,7 @@
-import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { EncryptedValue } from "./crypto";
+import { Database } from "./sqlite-driver";
 
 export type UiServiceRow = {
   id: string;
@@ -109,7 +109,9 @@ export class DsuiDatabase {
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
     this.sqlite = new Database(path, { create: true });
-    this.sqlite.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+    this.sqlite.exec(
+      "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;",
+    );
     this.sqlite.exec(
       "CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);",
     );

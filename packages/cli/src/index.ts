@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { join } from "node:path";
-import { createRuntime, loadConfig } from "@dsui/server";
+import { createRuntime, loadConfig } from "@northgraindata/dsui-server";
 
 const VERSION = "0.1.0";
 
@@ -129,7 +129,7 @@ export async function run(argv = process.argv.slice(2)): Promise<number> {
   const server = Bun.serve({
     fetch: runtime.app.fetch,
     hostname: process.env.DSUI_HOST ?? "0.0.0.0",
-    port: Number(process.env.DSUI_PORT ?? 8787),
+    port: Number(process.env.DSUI_PORT ?? 4192),
   });
   console.log(`dsui listening on http://${server.hostname}:${server.port}`);
   return await new Promise<number>(() => undefined);

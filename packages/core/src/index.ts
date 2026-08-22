@@ -1,5 +1,10 @@
 /** Browser-safe contracts shared by dsui's server and application. */
-export const BUILTIN_ADAPTER_IDS = ["trino", "kafka", "s3"] as const;
+export const BUILTIN_ADAPTER_IDS = [
+  "trino",
+  "clickhouse",
+  "kafka",
+  "s3",
+] as const;
 export type BuiltinAdapterId = (typeof BUILTIN_ADAPTER_IDS)[number];
 
 export type ServiceHealth = "healthy" | "warning" | "unavailable" | "unknown";
@@ -57,6 +62,10 @@ export interface CapabilityView {
     authorization: AuthorizationClass;
   }[];
   dialect?: string;
+  /** For list renderers: capability id invoked with the selected row's id. */
+  detail?: string;
+  /** Field of a list row passed to the `detail` capability (default "id"). */
+  idField?: string;
 }
 
 export interface CapabilityDeclaration {

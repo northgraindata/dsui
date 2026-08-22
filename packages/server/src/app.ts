@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { extname, join, resolve as resolveScript } from "node:path";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
@@ -153,17 +154,23 @@ function operationResponse(result: unknown): {
   data: unknown;
   nextCursor?: string;
   warnings?: string[];
+  columns?: string[];
+  folders?: string[];
 } {
   if (result && typeof result === "object" && "items" in result) {
     const page = result as {
       items: unknown;
       nextCursor?: string;
       warnings?: string[];
+      columns?: string[];
+      folders?: string[];
     };
     return {
       data: page.items,
       ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
       ...(page.warnings ? { warnings: page.warnings } : {}),
+      ...(page.columns ? { columns: page.columns } : {}),
+      ...(page.folders ? { folders: page.folders } : {}),
     };
   }
   return { data: result };
@@ -215,7 +222,13 @@ function exactOrigins(values: string[]): string[] {
 }
 
 export function createRuntime(options: CreateRuntimeOptions = {}) {
-  const dataDir = options.dataDir ?? process.env.DSUI_DATA_DIR ?? "/data";
+  const dataDir =
+    options.dataDir ??
+    process.env.DSUI_DATA_DIR ??
+    join(
+      process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"),
+      "dsui",
+    );
   const databasePath = options.databasePath ?? join(dataDir, "dsui.sqlite");
   const configPath =
     options.configPath ??
@@ -643,6 +656,17 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             capability.view.kind === "query"
               ? "query-workbench"
               : capability.view.kind,
+          kind: capability.view.kind,
+          description: capability.view.description,
+          columns: (capability.view.columns ?? []).map((column) => ({
+            id: column.id,
+            label: column.label,
+            format: column.format,
+          })),
+          actions: capability.view.actions ?? [],
+          filters: capability.view.filters ?? [],
+          detail: capability.view.detail,
+          idField: capability.view.idField,
         })),
       });
     } catch (error) {
