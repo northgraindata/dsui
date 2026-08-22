@@ -1,9 +1,17 @@
 {
-  "name": "@dsui/adapter-kafka",
+  "name": "@northgraindata/dsui-adapter-kafka",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "test": "bun test", "typecheck": "tsc --noEmit" },
-  "dependencies": { "@dsui/adapter-sdk": "workspace:*", "kafkajs": "2.2.4" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "kafkajs": "2.2.4"
+  }
 }
