@@ -14,11 +14,11 @@ WORKDIR /app
 COPY --from=build --chown=65532:65532 /out/dsui /usr/local/bin/dsui
 COPY --from=build --chown=65532:65532 /src/apps/web/dist /app/web
 
-ENV DSUI_HOST=0.0.0.0 \
-    DSUI_PORT=3000 \
+ENV     DSUI_HOST=0.0.0.0 \
+    DSUI_PORT=4192 \
     DSUI_DATA_DIR=/data \
     DSUI_WEB_ROOT=/app/web
-EXPOSE 3000
+EXPOSE 4192
 VOLUME ["/data"]
 USER 65532:65532
 ENTRYPOINT ["/usr/local/bin/dsui"]

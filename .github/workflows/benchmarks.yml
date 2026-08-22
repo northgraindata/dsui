@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - Dockerfile
-      - Dockerfile.site
       - apps/web/**
       - packages/cli/**
       - packages/server/**

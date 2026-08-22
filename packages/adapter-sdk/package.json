@@ -1,8 +1,13 @@
 {
-  "name": "@dsui/adapter-sdk",
+  "name": "@northgraindata/dsui-adapter-sdk",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@dsui/core": "workspace:*", "zod": "^3.24.2" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-core": "workspace:*",
+    "zod": "^3.24.2"
+  }
 }

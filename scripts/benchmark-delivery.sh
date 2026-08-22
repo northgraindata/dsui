@@ -8,10 +8,10 @@ docker build --tag "$image" .
 image_bytes="$(docker image inspect "$image" --format '{{.Size}}')"
 web_bundle_bytes="$(find apps/web/dist -type f -printf '%s\n' | awk '{sum += $1} END {print sum + 0}')"
 started_ns="$(date +%s%N)"
-container_id="$(docker run -d -p 127.0.0.1::3000 "$image")"
+container_id="$(docker run -d -p 127.0.0.1::4192 "$image")"
 cleanup() { docker rm -f "$container_id" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
-port="$(docker port "$container_id" 3000/tcp | sed 's/.*://')"
+port="$(docker port "$container_id" 4192/tcp | sed 's/.*://')"
 
 for _ in $(seq 1 60); do
   if curl --fail --silent "http://127.0.0.1:${port}/" >/dev/null; then

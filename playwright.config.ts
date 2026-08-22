@@ -14,21 +14,22 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "bun run --filter @dsui/web dev -- --host 127.0.0.1 --port 4173",
+      command:
+        "bun run --filter @northgraindata/dsui-web dev -- --host 127.0.0.1 --port 4173",
       url: "http://127.0.0.1:4173",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
     {
       command:
-        "bun run --filter @dsui/site build && bun scripts/serve-static.ts apps/site/dist 4321",
+        "bun run --filter @northgraindata/dsui-site build && bun scripts/serve-static.ts apps/site/dist 4321",
       url: "http://127.0.0.1:4321",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
     {
       command:
-        "bun run --filter @dsui/docs build && bun scripts/serve-static.ts apps/docs/dist 4322 /docs",
+        "bun run --filter @northgraindata/dsui-docs build && bun scripts/serve-static.ts apps/docs/dist 4322 /docs",
       url: "http://127.0.0.1:4322/docs/",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,

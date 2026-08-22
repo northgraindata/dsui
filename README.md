@@ -19,11 +19,11 @@ dsui is an open-source, local-first interface for inspecting Trino, Kafka, S3, M
 ## Quickstart
 
 ```bash
-docker run --rm -p 3000:3000 -v dsui-data:/data \
+docker run --rm -p 4192:4192 -v dsui-data:/data \
   ghcr.io/northgraindata/dsui:latest
 ```
 
-Open `http://localhost:3000` and add a service, or mount a declarative `dsui.yaml`. The complete demo is in [`examples/data-stack`](examples/data-stack).
+Open `http://localhost:4192` and add a service, or mount a declarative `dsui.yaml`. The complete demo is in [`examples/data-stack`](examples/data-stack).
 
 ```bash
 docker compose -f examples/data-stack/compose.yaml up --build
@@ -41,7 +41,7 @@ It is not a data platform, orchestrator, observability suite, catalog, SaaS cont
 | --- | --- | --- |
 | Trino | Queries, catalogs, schemas, tables | Available |
 | Kafka | Topics, messages, offsets, consumer groups | Available |
-| S3 / MinIO | Buckets, objects, metadata, downloads | Available |
+| S3 | Buckets, objects, metadata, downloads | Available |
 | PostgreSQL | Tables, schemas, queries | Planned |
 | Flink | Jobs and service information | Planned |
 
@@ -56,7 +56,7 @@ services:
   dsui:
     image: ghcr.io/northgraindata/dsui:latest
     ports:
-      - "3000:3000"
+      - "4192:4192"
     volumes:
       - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
       - dsui-data:/data
