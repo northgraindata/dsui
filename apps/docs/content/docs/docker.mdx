@@ -5,10 +5,10 @@ description: Run the non-root dsui container with persistent local storage.
 
 ## Image
 
-The multi-architecture image is published at `ghcr.io/northgraindata/dsui`. It listens on port `3000`, runs without root privileges, and requires only `/data` to be writable.
+The multi-architecture image is published at `ghcr.io/northgraindata/dsui`. It listens on port `4192`, runs without root privileges, and requires only `/data` to be writable.
 
 ```bash
-docker run --read-only --tmpfs /tmp -p 3000:3000 \
+docker run --read-only --tmpfs /tmp -p 4192:4192 \
   -v dsui-data:/data ghcr.io/northgraindata/dsui:latest
 ```
 

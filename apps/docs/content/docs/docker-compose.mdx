@@ -7,7 +7,7 @@ description: Add dsui to an existing Compose data stack.
 services:
   dsui:
     image: ghcr.io/northgraindata/dsui:latest
-    ports: ["3000:3000"]
+    ports: ["4192:4192"]
     volumes:
       - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
       - dsui-data:/data

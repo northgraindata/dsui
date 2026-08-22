@@ -11,21 +11,35 @@
   --animate-marquee: marquee-scroll 30s linear infinite;
 
   @keyframes marquee-scroll {
-    to { transform: translateX(-50%); }
+    to {
+      transform: translateX(-50%);
+    }
   }
 }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
 /* shared page shell with vertical column guides */
 .shell {
   width: min(1440px, calc(100% - 48px));
   margin-inline: auto;
-  background-image: repeating-linear-gradient(90deg, transparent 0, transparent calc(25% - 1px), rgba(18,19,20,.1) 25%);
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(25% - 1px),
+    rgba(18, 19, 20, 0.1) 25%
+  );
 }
 @media (max-width: 800px) {
-  .shell { width: calc(100% - 24px); background-image: none; }
+  .shell {
+    width: calc(100% - 24px);
+    background-image: none;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-marquee { animation: none; }
+  .animate-marquee {
+    animation: none;
+  }
 }

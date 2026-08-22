@@ -1,0 +1,35 @@
+---
+title: ClickHouse
+description: Configure ClickHouse queries, databases, tables, columns, and authentication.
+---
+
+## Connection
+
+```yaml
+services:
+  - id: olap
+    adapter: clickhouse
+    connection:
+      host: clickhouse
+      port: 8123
+      username: default
+      database: default
+```
+
+## Capabilities
+
+Query workbench, databases, tables, columns, metrics, and running queries.
+
+Queries run against the HTTP interface and are capped at 2000 rows via `max_result_rows` (with `result_overflow_mode='break'`), surfaced as a truncation warning rather than buffered server-side.
+
+## Authentication
+
+HTTP Basic auth (username/password) is supported. Persisted passwords are encrypted. The default user is `default` with no password in development images.
+
+## Limitations
+
+Distributed/cluster administration and session settings are outside v0.1.
+
+## Troubleshooting
+
+Confirm the HTTP port (8123) is reachable from the dsui process and that the configured user can read `system` tables.

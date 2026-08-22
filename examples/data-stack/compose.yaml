@@ -5,7 +5,7 @@ services:
     build:
       context: ../..
     ports:
-      - "3000:3000"
+      - "4192:4192"
     environment:
       DSUI_CONFIG: /etc/dsui/dsui.yaml
       DSUI_MASTER_KEY: ZHN1aS1kZW1vLW1hc3Rlci1rZXktMzItYnl0ZXMhISE=
@@ -16,6 +16,8 @@ services:
       - dsui-data:/data
     depends_on:
       trino:
+        condition: service_healthy
+      clickhouse:
         condition: service_healthy
       kafka:
         condition: service_healthy
@@ -31,6 +33,24 @@ services:
     image: trinodb/trino:479
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/v1/info"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+    ports:
+      - "8123:8123"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
       interval: 5s
       timeout: 3s
       retries: 20
