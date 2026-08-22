@@ -1,0 +1,31 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f2f0ea;
+  --color-ink: #121314;
+  --color-muted: #656764;
+  --color-line: #cfcec8;
+  --color-accent: #536edb;
+  --font-mono: "JetBrains Mono", monospace;
+  --animate-marquee: marquee-scroll 30s linear infinite;
+
+  @keyframes marquee-scroll {
+    to { transform: translateX(-50%); }
+  }
+}
+
+html { scroll-behavior: smooth; }
+
+/* shared page shell with vertical column guides */
+.shell {
+  width: min(1440px, calc(100% - 48px));
+  margin-inline: auto;
+  background-image: repeating-linear-gradient(90deg, transparent 0, transparent calc(25% - 1px), rgba(18,19,20,.1) 25%);
+}
+@media (max-width: 800px) {
+  .shell { width: calc(100% - 24px); background-image: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
+}

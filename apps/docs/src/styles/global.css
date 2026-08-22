@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+:root { --color-fd-background: #0a0c0f; --color-fd-foreground: #f4f6f8; --color-fd-primary: #6b8aff; --color-fd-muted: #11151a; --color-fd-border: #222932; }
+html { scrollbar-gutter: stable; background: #0a0c0f; } body { font-family: Inter, system-ui, sans-serif; } code { font-family: "JetBrains Mono", monospace; }.nav-subtitle { margin-left: .65rem; color: #68727f; font-size: .7rem; font-weight: 400; text-transform: uppercase; letter-spacing: .12em; }

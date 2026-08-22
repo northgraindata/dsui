@@ -1,0 +1,21 @@
+---
+title: Docker Compose
+description: Add dsui to an existing Compose data stack.
+---
+
+```yaml
+services:
+  dsui:
+    image: ghcr.io/northgraindata/dsui:latest
+    ports: ["3000:3000"]
+    volumes:
+      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
+      - dsui-data:/data
+    environment:
+      DSUI_MASTER_KEY: ${DSUI_MASTER_KEY}
+
+volumes:
+  dsui-data:
+```
+
+Service hostnames must be reachable from the dsui container; use Compose service names rather than `localhost`.

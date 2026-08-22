@@ -1,0 +1,30 @@
+---
+title: Configuration
+description: Configure services, authentication, storage, and community adapters through dsui.yaml.
+---
+
+## Services
+
+```yaml
+services:
+  - id: analytics
+    adapter: trino
+    name: Local Trino
+    connection:
+      host: trino
+      port: 8080
+      username: dsui
+```
+
+`${ENV_NAME}` interpolation is supported. Missing variables are errors. Resolved values are never returned to the browser or logged. Configuration-managed services are read-only in the UI.
+
+## Runtime
+
+| Variable | Purpose |
+| --- | --- |
+| `DSUI_CONFIG` | Configuration path |
+| `DSUI_DATA_DIR` | SQLite and adapter store, default `/data` |
+| `DSUI_MASTER_KEY` | Base64 encryption key for persisted secrets |
+| `DSUI_HOST` | Bind address |
+| `DSUI_PORT` | HTTP port, default `3000` |
+| `DSUI_AUTH_MODE` | `none`, `local`, or `enterprise` |

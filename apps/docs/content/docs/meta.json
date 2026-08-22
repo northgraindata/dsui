@@ -1,0 +1,4 @@
+{
+  "title": "dsui documentation",
+  "pages": ["index", "getting-started", "docker", "docker-compose", "configuration", "adapters", "trino", "kafka", "s3-minio", "adapter-sdk", "architecture", "cli", "security", "contributing"]
+}

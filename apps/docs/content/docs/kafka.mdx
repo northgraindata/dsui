@@ -1,0 +1,31 @@
+---
+title: Kafka
+description: Configure Kafka topics, messages, partitions, offsets, and consumer groups.
+---
+
+## Connection
+
+```yaml
+services:
+  - id: events
+    adapter: kafka
+    connection:
+      brokers: ["kafka:9092"]
+      clientId: dsui
+```
+
+## Capabilities
+
+Topics, partitions, bounded message reads, offsets, and consumer groups.
+
+## Authentication
+
+Plaintext, TLS, and SASL credentials can be declared server-side. Secret values are redacted.
+
+## Limitations
+
+dsui does not run a permanent consumer or provide stream processing.
+
+## Troubleshooting
+
+Use broker addresses advertised to the dsui network. Container clients usually cannot use host-only advertised listeners.

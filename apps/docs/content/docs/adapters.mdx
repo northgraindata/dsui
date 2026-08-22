@@ -1,0 +1,16 @@
+---
+title: Adapters
+description: How dsui translates different data services into one safe, consistent interface.
+---
+
+## Available
+
+Trino, Kafka, and S3/MinIO are built in. PostgreSQL and Flink are planned.
+
+## Model
+
+An adapter declares metadata, connection fields, secret paths, health, operations, capabilities, and declarative views. dsui owns all browser UI. Adapters cannot ship React, HTML, CSS, or browser JavaScript.
+
+## Community packages
+
+Community adapters are trusted server code. Production sources must be immutable and integrity-pinned. See [Adapter SDK](/docs/adapter-sdk) for package and GitHub examples.

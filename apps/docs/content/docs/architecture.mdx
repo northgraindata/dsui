@@ -1,0 +1,13 @@
+---
+title: Architecture
+description: Runtime boundaries, data flow, persistence, and adapter isolation.
+---
+
+```text
+Browser → Hono/Bun → built-in adapter → data service
+                   ↘ adapter host → community adapter → data service
+```
+
+The browser receives sanitized manifests and data, never infrastructure credentials. SQLite stores local configuration and encrypted secrets. YAML remains the declarative source of truth for configuration-managed services.
+
+Community adapter subprocesses provide crash and credential-boundary containment, not a complete OS sandbox.

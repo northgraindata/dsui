@@ -1,0 +1,33 @@
+---
+title: Trino
+description: Configure Trino queries, catalogs, schemas, tables, and authentication.
+---
+
+## Connection
+
+```yaml
+services:
+  - id: analytics
+    adapter: trino
+    connection:
+      host: trino
+      port: 8080
+      username: dsui
+      ssl: false
+```
+
+## Capabilities
+
+Query workbench, catalogs, schemas, tables, columns, and bounded previews.
+
+## Authentication
+
+Basic username/password and externally terminated TLS are supported initially. Persisted passwords are encrypted.
+
+## Limitations
+
+Vendor-specific session controls and full query administration are outside v0.1.
+
+## Troubleshooting
+
+Confirm the coordinator URL is reachable from the dsui process and that the configured user can access `system.jdbc` metadata.

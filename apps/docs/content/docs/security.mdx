@@ -1,0 +1,10 @@
+---
+title: Security
+description: Credential handling, authentication, adapter trust, and vulnerability reporting.
+---
+
+Infrastructure credentials remain server-side. UI-managed secrets are encrypted at rest; declarative secrets are resolved in memory and redacted from output.
+
+Community adapters are administrator-approved third-party server code. Integrity proves which bytes were installed, not that those bytes are safe. Prefer reviewed source, provenance, minimal network access, non-root containers, read-only filesystems, and no Docker socket.
+
+Report vulnerabilities privately according to the repository `SECURITY.md`. Do not open public issues for undisclosed vulnerabilities.

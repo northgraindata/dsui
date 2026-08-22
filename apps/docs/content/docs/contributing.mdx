@@ -1,0 +1,13 @@
+---
+title: Contributing
+description: Set up the repository and submit focused, verified changes.
+---
+
+```bash
+bun install --frozen-lockfile
+bun run check
+bun run test
+bun run build
+```
+
+Keep dependencies light, add tests with behavioral changes, and update documentation for public interfaces. Significant adapter contract changes must be tested against Trino, Kafka, and S3.

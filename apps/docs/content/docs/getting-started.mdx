@@ -1,0 +1,21 @@
+---
+title: Getting Started
+description: Start dsui locally and connect your first data service.
+---
+
+## Docker
+
+```bash
+docker run --rm -p 3000:3000 -v dsui-data:/data ghcr.io/northgraindata/dsui:latest
+```
+
+Open `http://localhost:3000`, choose **Add service**, select an adapter, enter the connection values, and test before saving.
+
+## From source
+
+```bash
+bun install --frozen-lockfile
+bun run dev
+```
+
+Use Bun 1.3 or newer. Configuration-managed connections are loaded from `DSUI_CONFIG` or `/etc/dsui/dsui.yaml`.

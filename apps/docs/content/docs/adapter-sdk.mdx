@@ -1,0 +1,65 @@
+---
+title: Adapter SDK
+description: Build, test, customize, and publish an unofficial dsui adapter.
+---
+
+The pre-1.0 SDK is experimental. Compatibility is checked before any adapter is activated.
+
+## Start from the template
+
+Use `templates/adapter` or the `northgraindata/dsui-adapter-template` repository. Implement connection validation, health, and operations, then declare views with core renderer descriptors.
+
+```ts
+export default defineAdapter({
+  id: "polaris",
+  displayName: "Polaris",
+  connectionSchema,
+  secretPaths: ["credential"],
+  capabilities: [
+    recordListCapability({ id: "catalogs", label: "Catalogs" }),
+    jobBrowserCapability({ id: "jobs", label: "Maintenance jobs" }),
+  ],
+});
+```
+
+Trino can expose a query workbench and schema tree while Polaris exposes catalog records and jobs. Both use dsui-owned navigation, tables, forms, states, and accessibility.
+
+## Declarative UI boundaries
+
+Descriptors may define labels, columns, filters, fields, pagination, actions, and safe formatters. Adding a new renderer kind requires a dsui core contribution. Adapter React, HTML, CSS, SVG, URLs, and browser JavaScript are rejected.
+
+## Package manifest
+
+Ship `dsui.adapter.json`, `dist/adapter.mjs`, a license, and notices. The ESM file must contain all dependencies and may not use native addons or code splitting.
+
+## npm installation
+
+```yaml
+adapters:
+  polaris:
+    source: npm
+    package: "@github_name/github_adapter"
+    version: "1.2.3"
+    integrity: "sha512-..."
+```
+
+## GitHub installation
+
+```yaml
+adapters:
+  polaris:
+    source: git
+    repository: "git+https://github.com/user/adapter-repo.git"
+    commit: "0123456789abcdef0123456789abcdef01234567"
+    integrity: "sha512-..."
+```
+
+Git repositories must commit the same prebuilt bundle. dsui never clones, installs dependencies, or runs package scripts.
+
+## Test and publish
+
+Run the `@dsui/adapter-test` contract suite, publish from CI with npm provenance, disclose network access and authentication, and provide a security contact. Use `dsui doctor --resolve-adapter` to obtain reviewable configuration and integrity.
+
+## Troubleshooting
+
+Compatibility, schema, integrity, timeout, and host-process failures appear in `dsui doctor --check-adapters` without printing connection secrets.

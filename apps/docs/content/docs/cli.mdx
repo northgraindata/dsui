@@ -1,0 +1,15 @@
+---
+title: CLI
+description: Start dsui and diagnose local configuration with the deliberately small CLI.
+---
+
+```text
+dsui
+dsui start
+dsui version
+dsui doctor
+dsui doctor --check-adapters
+dsui doctor --resolve-adapter npm:@scope/package@1.2.3
+```
+
+Connections belong in the UI or `dsui.yaml`; there are no `add`, `connect`, or `configure` commands.
