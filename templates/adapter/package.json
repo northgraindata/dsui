@@ -1,0 +1,15 @@
+{
+  "name": "@your-org/dsui-adapter-example",
+  "version": "0.1.0",
+  "type": "module",
+  "files": ["dist", "dsui.adapter.json", "LICENSE", "THIRD_PARTY_NOTICES.md"],
+  "exports": { ".": "./dist/adapter.mjs" },
+  "scripts": {
+    "build": "bun build src/adapter.ts --target=bun --format=esm --outfile dist/adapter.mjs",
+    "test": "bun test",
+    "pack:check": "bun run build && npm pack --dry-run"
+  },
+  "dependencies": { "@dsui/adapter-sdk": "^0.1.0" },
+  "peerDependencies": { "@dsui/adapter-sdk": "^0.1.0" },
+  "publishConfig": { "access": "public", "provenance": true }
+}

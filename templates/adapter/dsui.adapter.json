@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "example-service",
+  "name": "Example Service",
+  "version": "0.1.0",
+  "sdkVersion": "0.1.0",
+  "entry": "./dist/adapter.mjs",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/your-org/dsui-adapter-example",
+  "capabilities": ["service-info", "resources"],
+  "bundle": {
+    "bytes": 0,
+    "sha256": "REPLACE_WITH_SHA256_OF_dist/adapter.mjs"
+  },
+  "sbom": "./sbom.spdx.json"
+}

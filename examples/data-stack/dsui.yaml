@@ -1,0 +1,35 @@
+services:
+  # Adapter presentation overrides (all optional, keyed by adapter id):
+  #
+  # adapters:
+  #   trino:
+  #     name: Trino
+  #     category: Query engine
+  #     description: Browse metadata and execute Trino SQL.
+  #     logo: ./logos/trino.svg # relative to this file, absolute path, or https URL
+  #
+  - id: analytics
+    adapter: trino
+    name: Local Trino
+    connection:
+      host: trino
+      port: 8080
+      username: dsui
+
+  - id: events
+    adapter: kafka
+    name: Local Kafka
+    connection:
+      brokers:
+        - kafka:9092
+      clientId: dsui-demo
+
+  - id: storage
+    adapter: s3
+    name: Local MinIO
+    connection:
+      endpoint: http://minio:9000
+      region: us-east-1
+      forcePathStyle: true
+      accessKeyId: ${MINIO_ACCESS_KEY}
+      secretAccessKey: ${MINIO_SECRET_KEY}
