@@ -1,0 +1,10 @@
+.git
+.github
+.turbo
+**/node_modules
+**/dist
+**/.astro
+assets/generated/*.png
+assets/references
+image.png
+*.log

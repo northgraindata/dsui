@@ -1,0 +1,181 @@
+---
+import Base from "../layouts/Base.astro";
+
+const services = [
+  ["Trino", "Query engine", "trino:8080", "Healthy"],
+  ["Kafka", "Streaming", "kafka:9092", "Healthy"],
+  ["MinIO", "Object storage", "minio:9000", "Healthy"],
+];
+
+const adapters = [
+  ["trino", "Trino"],
+  ["apachekafka", "Kafka"],
+  ["minio", "MinIO"],
+  ["postgresql", "PostgreSQL"],
+  ["apacheflink", "Flink"],
+];
+
+const eyebrow = "font-mono font-medium text-[10px]/[1.2] tracking-[0.16em]";
+const btn =
+  "inline-flex items-center justify-between gap-8 min-w-[150px] border border-[#272927] px-4 py-[13px] text-[13px] transition-colors hover:bg-accent hover:border-accent hover:text-white";
+const navLink = "transition-colors hover:text-accent";
+
+const loop = [...adapters, ...adapters, ...adapters, ...adapters];
+---
+
+<Base>
+  <header class="shell min-h-[92px] border-x border-line flex items-center justify-between px-8 max-[800px]:px-[18px]">
+    <a href="/" aria-label="dsui home" class="inline-flex items-baseline gap-3 text-[27px] font-semibold tracking-[-0.05em]">
+      dsui<span class="text-[10px] text-muted tracking-[0.08em] uppercase font-medium">by Northgrain Data</span>
+    </a>
+    <nav aria-label="Primary" class="flex gap-[34px] text-[13px]">
+      <a href="#adapters" class={navLink}>Adapters</a>
+      <a href="/docs/" class={navLink}>Documentation</a>
+      <a href="https://github.com/northgraindata/dsui" class={navLink}>GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="shell relative border border-line pt-9 overflow-hidden">
+      <div class={`${eyebrow} px-8 text-[#555a58]`}>DATA STACK UI <span class="text-[#9a9c98]">／ OPEN SOURCE</span></div>
+      <div class="w-[62%] max-[800px]:w-full px-8 pt-[72px] max-[800px]:pt-[60px] relative z-[2]">
+        <h1 class="m-0 font-medium tracking-[-0.055em] leading-[0.98] text-[clamp(56px,7vw,112px)]">One UI for your<br />entire data stack.</h1>
+        <p class="w-[min(580px,90%)] text-lg max-[800px]:text-base text-[#4f524f] my-8">Stop running another interface for every service. Connect Trino, Kafka, S3 and the rest of your stack through one lightweight developer interface.</p>
+        <div class="flex gap-2">
+          <a class={`${btn} primary bg-ink text-white`} href="/docs/getting-started/">Get started <span>↗</span></a>
+          <a class={btn} href="https://github.com/northgraindata/dsui">GitHub <span>↗</span></a>
+        </div>
+      </div>
+      <div class="-mt-[35px] max-[800px]:mt-7 relative z-[1] max-[800px]:w-[150%] max-[800px]:-translate-x-1/4">
+        <img src="/assets/dsui-infrastructure-hero.webp" alt="Engraved technical landscape of interconnected data infrastructure converging on one console" width="1864" height="845" fetchpriority="high" class="block w-full h-auto mix-blend-multiply" />
+      </div>
+    </section>
+
+    <section class="shell grid grid-cols-[25%_75%] max-[800px]:grid-cols-1 gap-9 max-[800px]:gap-9 py-[110px] max-[800px]:py-[70px] px-8 max-[800px]:px-[18px] border-x border-t border-line">
+      <p class={`${eyebrow} text-[#555a58]`}>01 / PRODUCT</p>
+      <div>
+        <h2 class="m-0 font-medium tracking-[-0.055em] leading-[0.98] text-[clamp(40px,5vw,72px)]">Your stack is already complex.<br />Its interface shouldn’t be.</h2>
+        <p class="max-w-[700px] text-xl text-muted">dsui connects to the services you already run. No control plane, no extra database, and no account required for local mode.</p>
+      </div>
+    </section>
+
+    <section class="shell border-x border-line px-8 pb-[120px] max-[800px]:px-2.5 max-[800px]:pb-[70px]">
+      <div aria-label="dsui product dashboard preview" class="max-w-[1160px] mx-auto bg-[#0d1014] text-[#f4f6f8] border border-[#303945] shadow-[0_28px_80px_rgba(0,0,0,.18)] rounded-lg overflow-hidden">
+        <div class="h-[42px] grid grid-cols-3 items-center px-3.5 border-b border-[#222932] text-[11px]"><span>dsui</span><span class="text-center text-[#68727f]">localhost:3000</span><span class="text-right text-[#a1a9b4]">⌘ K</span></div>
+        <div class="grid grid-cols-[190px_1fr] max-[800px]:grid-cols-1 min-h-[410px]">
+          <aside class="bg-[#0a0c0f] py-6 px-3 border-r border-[#222932] flex flex-col gap-1 text-xs max-[800px]:hidden">
+            <strong class="text-[9px] tracking-[0.12em] text-[#68727f] px-[9px] pb-3">STACK</strong>
+            <a class="py-2 px-[9px] flex justify-between rounded text-white bg-[#151a20]" href="#">Services <b>3</b></a>
+            <a class="py-2 px-[9px] flex justify-between rounded text-[#a1a9b4]" href="#">Settings</a>
+            <small class="my-auto mx-[9px] text-[#68727f]">v0.1.0</small>
+          </aside>
+          <div class="p-[34px] max-[800px]:p-[18px]">
+            <div class="flex justify-between items-center pb-6"><div><small class="text-[9px] font-mono tracking-[0.14em] text-[#68727f]">DATA STACK</small><h3 class="mt-1 mb-0 text-[21px]">Connected services</h3></div><button class="text-white bg-[#6b8aff] border-0 px-3 py-[9px] rounded">＋ Add service</button></div>
+            {services.map(([name, type, host, status]) => (
+              <div class="grid grid-cols-[34px_1.2fr_1.4fr_1fr_12px] max-[800px]:grid-cols-[30px_1fr_auto] gap-3.5 items-center border-t border-[#222932] last:border-b min-h-[76px] text-xs">
+                <span class="size-7 grid place-items-center border border-[#303945] rounded font-mono font-medium text-[11px]">{name.slice(0, 1)}</span>
+                <div><strong>{name}</strong><small class="block text-[#68727f] mt-[3px]">{type}</small></div>
+                <code class="font-mono text-[#a1a9b4] text-[11px] max-[800px]:hidden">{host}</code>
+                <span class="text-[#5cc98a]"><i class="inline-block size-1.5 bg-current rounded-full mr-[7px]"></i>{status}</span>
+                <span class="max-[800px]:hidden">›</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="lightweight" class="shell grid grid-cols-[25%_37.5%_37.5%] max-[800px]:grid-cols-1 py-[110px] max-[800px]:py-[70px] px-8 max-[800px]:px-[18px] border-x border-t border-line">
+      <p class={`${eyebrow} text-[#555a58]`}>02 / WEIGHT</p>
+      <div><h2 class="m-0 font-medium tracking-[-0.055em] leading-[0.98] text-[clamp(40px,5vw,72px)]">Small by design.</h2><p class="max-w-[460px] text-muted">Resource usage is part of the product contract. Every dependency has to earn its place.</p></div>
+      <div class="border-l border-line pl-8 max-[800px]:border-l-0 max-[800px]:pl-0 flex flex-col text-[22px]"><span>No PostgreSQL.</span><span>No Redis.</span><span>No control plane.</span><span>No account.</span><strong class="mt-3.5">Just dsui.</strong></div>
+      <div class="col-span-2 max-[800px]:col-span-1 mt-[90px] max-[800px]:mt-[30px] grid grid-cols-4 max-[800px]:grid-cols-2 border-y border-line">
+        {["IDLE MEMORY", "IMAGE SIZE", "COLD START", "FRONTEND"].map((label) => (
+          <div class="min-h-[110px] px-4 py-[22px] border-r border-line"><small class="block text-[9px] font-mono tracking-[0.12em] text-muted">{label}</small><strong class="block mt-7 text-[13px] font-medium">Measured in CI</strong></div>
+        ))}
+      </div>
+    </section>
+
+    <section class="shell grid grid-cols-[25%_75%] max-[800px]:grid-cols-1 py-[110px] max-[800px]:py-[70px] px-8 max-[800px]:px-[18px] border-x border-t border-line">
+      <p class={`${eyebrow} text-[#555a58]`}>03 / ONE INTERFACE</p>
+      <div class="grid grid-cols-[1fr_80px] border border-line">
+        <div class="p-7"><small class="text-[9px] font-mono tracking-[0.14em]">BEFORE</small>
+          {["Kafka ＋ Kafka UI", "Trino ＋ Trino UI", "MinIO ＋ MinIO Console", "Postgres ＋ pgAdmin"].map((row) => (
+            <p class="flex justify-between border-t border-line pt-[11px]">{row.split("＋")[0]}<i class="text-[#a2a39f] not-italic">＋</i>{row.split("＋")[1]}</p>
+          ))}
+        </div>
+        <div class="border-x border-line grid place-items-center text-[28px]">→</div>
+        <div class="p-7"><small class="text-[9px] font-mono tracking-[0.14em]">WITH DSUI</small>
+          {["Kafka", "Trino", "MinIO", "Postgres"].map((svc) => (
+            <p class="flex justify-between border-t border-line pt-[11px]">{svc}</p>
+          ))}
+          <strong class="block mt-5 text-accent text-[26px]">dsui</strong>
+        </div>
+      </div>
+    </section>
+
+    <section id="adapters" class="shell grid grid-cols-[25%_75%] max-[800px]:grid-cols-1 py-[110px] max-[800px]:py-[70px] px-8 max-[800px]:px-[18px] border-x border-t border-line">
+      <p class={`${eyebrow} text-[#555a58]`}>04 / ADAPTERS</p>
+      <div class="grid grid-cols-2 max-[800px]:grid-cols-1 gap-12">
+        <h2 class="m-0 font-medium tracking-[-0.055em] leading-[0.98] text-[clamp(40px,5vw,72px)]">Different systems.<br />One common interface.</h2>
+        <p class="text-muted max-w-[500px]">Adapters translate service-specific functionality into compact, consistent dsui workflows. Community adapters are installable server modules with validated declarative UI.</p>
+      </div>
+      <div aria-label="Adapter logos" class="group col-span-full mt-20 max-[800px]:mt-10 overflow-hidden border-y border-line">
+        <div class="flex w-max animate-marquee group-hover:[animation-play-state:paused]">
+          {loop.map(([slug, name], index) => (
+            <span aria-hidden={index >= adapters.length * 2} class="inline-flex items-center gap-4 max-[800px]:gap-3 px-[52px] max-[800px]:px-[30px] py-[30px] max-[800px]:py-5 border-r border-line text-[15px] max-[800px]:text-[13px] whitespace-nowrap text-muted hover:text-ink transition-colors">
+              <img src={`/assets/logos/${slug}.svg`} alt={name} title={name} loading="lazy" class="h-[34px] max-[800px]:h-[26px] w-auto fill-current opacity-80 hover:opacity-100 transition-opacity" />
+              {name}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="shell grid grid-cols-[25%_32%_43%] max-[800px]:grid-cols-1 py-[110px] max-[800px]:py-[70px] px-8 max-[800px]:px-[18px] border-x border-t border-line">
+      <p class={`${eyebrow} text-[#555a58]`}>05 / COMPOSE</p>
+      <div><h2 class="m-0 font-medium tracking-[-0.055em] leading-[0.98] text-[clamp(40px,5vw,72px)]">Drop it into your stack.</h2><p class="text-muted max-w-[500px]">Docker Compose is a first-class installation method. Mount one configuration file and keep credentials server-side.</p></div>
+      <pre class="m-0 bg-[#11151a] text-[#a1a9b4] p-7 rounded-md overflow-x-auto text-[13px] leading-[1.8] font-mono max-[800px]:text-[11px]"><code><span class="text-[#6b8aff]">services:</span>
+  dsui:
+    image: ghcr.io/northgraindata/dsui
+    ports:
+      - <b class="text-[#5cc98a] font-normal">"3000:3000"</b>
+    volumes:
+      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro</code></pre>
+    </section>
+
+    <section class="shell grid grid-cols-[25%_75%] max-[800px]:grid-cols-1 py-[130px] max-[800px]:py-[70px] px-8 max-[800px]:px-[18px] border-x border-t border-line">
+      <p class={`${eyebrow} text-[#555a58]`}>06 / START</p>
+      <div><h2 class="m-0 font-medium tracking-[-0.055em] leading-[0.98] text-[clamp(40px,5vw,72px)]">Your stack already has<br />enough services.</h2>
+        <div class="flex gap-2 mt-9"><a class={`${btn} bg-ink text-white`} href="/docs/getting-started/">Get started <span>↗</span></a><a class={btn} href="https://github.com/northgraindata/dsui">GitHub <span>↗</span></a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell relative border border-line overflow-hidden">
+    <div class="relative z-[1] grid grid-cols-4 max-[800px]:grid-cols-2 min-h-[310px]">
+      <div class="py-10 px-8 border-r border-line flex flex-col items-start gap-[13px] text-[13px] max-[800px]:border-b">
+        <a href="/" class="text-[27px] font-semibold tracking-[-0.05em]">dsui</a>
+        <p class="text-muted">Data Stack UI<br />One lightweight interface for your data stack.</p>
+        <small class="text-muted inline-flex items-center">
+          Made with <span aria-hidden="true" class="text-accent mx-[3px]">♥</span> by
+          <a href="https://northgraindata.com" class="group/credit inline-flex items-center gap-1.5 transition-colors hover:text-accent">
+            <img src="/assets/northgrain-mark.svg" alt="Northgrain Data logo" width="13" height="14" class="w-[13px] h-auto transition-transform group-hover/credit:scale-115 group-hover/credit:-rotate-4" />
+            Northgrain Data
+          </a>.
+        </small>
+      </div>
+      {([
+        ["Product", [["Overview", "#"], ["Adapters", "#adapters"], ["Roadmap", "https://github.com/northgraindata/dsui/blob/main/CHANGELOG.md"]]],
+        ["Resources", [["Documentation", "/docs/"], ["GitHub", "https://github.com/northgraindata/dsui"], ["Releases", "https://github.com/northgraindata/dsui/releases"]]],
+        ["Project", [["Contributing", "https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md"], ["Security", "https://github.com/northgraindata/dsui/blob/main/SECURITY.md"], ["License", "https://github.com/northgraindata/dsui/blob/main/LICENSE"]]],
+      ] as const).map(([heading, links]) => (
+        <div class="py-10 px-8 border-r border-line last:border-r-0 flex flex-col items-start gap-[13px] text-[13px] max-[800px]:border-b [&>a]:transition-colors [&>a]:hover:text-accent [&>strong]:mb-3 [&>a]:text-inherit">
+          <strong>{heading}</strong>
+          {links.map(([label, href]) => <a href={href}>{label}</a>)}
+        </div>
+      ))}
+    </div>
+    <img class="block w-full max-[800px]:w-[160%] max-[800px]:translate-x-[30%] max-[800px]:mt-0 mix-blend-multiply -mt-[170px]" src="/assets/dsui-infrastructure-footer.webp" alt="Graphite architectural landscape of interconnected data infrastructure" width="1942" height="809" loading="lazy" />
+  </footer>
+</Base>

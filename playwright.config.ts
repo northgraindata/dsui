@@ -1,0 +1,37 @@
+import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  forbidOnly: Boolean(process.env.CI),
+  retries: process.env.CI ? 2 : 0,
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  use: {
+    baseURL: "http://127.0.0.1:4173",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+  },
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  webServer: [
+    {
+      command: "bun run --filter @dsui/web dev -- --host 127.0.0.1 --port 4173",
+      url: "http://127.0.0.1:4173",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command:
+        "bun run --filter @dsui/site build && bun scripts/serve-static.ts apps/site/dist 4321",
+      url: "http://127.0.0.1:4321",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command:
+        "bun run --filter @dsui/docs build && bun scripts/serve-static.ts apps/docs/dist 4322 /docs",
+      url: "http://127.0.0.1:4322/docs/",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+  ],
+});

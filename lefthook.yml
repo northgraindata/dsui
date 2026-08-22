@@ -1,0 +1,8 @@
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{js,jsx,ts,tsx,json,yml,yaml}"
+      run: bunx biome check --write {staged_files}
+    typecheck:
+      run: bun run typecheck
