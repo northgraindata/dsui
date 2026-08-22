@@ -1,0 +1,6 @@
+* @northgraindata/maintainers
+
+/.github/ @northgraindata/maintainers
+/packages/core/ @northgraindata/maintainers
+/packages/adapter-sdk/ @northgraindata/maintainers
+/packages/server/ @northgraindata/maintainers
