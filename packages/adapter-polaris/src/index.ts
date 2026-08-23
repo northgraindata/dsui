@@ -9,6 +9,7 @@ const connectionSchema = z.object({
   catalog: z.string().min(1),
   clientId: z.string().optional(),
   clientSecret: z.string().optional(),
+  scope: z.string().optional(),
   token: z.string().optional(),
 });
 
@@ -43,6 +44,12 @@ export const polarisAdapter = defineAdapter({
       label: "Client secret",
       type: "password",
       secret: true,
+    },
+    {
+      id: "scope",
+      label: "OAuth scope",
+      type: "text",
+      placeholder: "PRINCIPAL_ROLE:ALL",
     },
     { id: "token", label: "Bearer token", type: "password", secret: true },
   ],
@@ -123,8 +130,14 @@ export const polarisAdapter = defineAdapter({
         return cachedToken;
       }
       if (connection.clientId && connection.clientSecret) {
-        const url = `${trimSlash(connection.baseUrl)}/api/oauth/tokens`;
-        const body = new URLSearchParams({ grant_type: "client_credentials" });
+        const url = `${trimSlash(connection.baseUrl)}/api/catalog/v1/oauth/tokens`;
+        const scope = connection.scope ?? "PRINCIPAL_ROLE:ALL";
+        const body = new URLSearchParams({
+          grant_type: "client_credentials",
+          client_id: connection.clientId,
+          client_secret: connection.clientSecret,
+          scope,
+        });
         const response = await request(url, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
