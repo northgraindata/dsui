@@ -17,6 +17,8 @@
     "@northgraindata/dsui-adapter-flink": "workspace:*",
     "@northgraindata/dsui-adapter-kafka": "workspace:*",
     "@northgraindata/dsui-adapter-clickhouse": "workspace:*",
+    "@northgraindata/dsui-adapter-docker": "workspace:*",
+    "@northgraindata/dsui-adapter-polaris": "workspace:*",
     "@northgraindata/dsui-adapter-spark": "workspace:*",
     "@northgraindata/dsui-adapter-s3": "workspace:*",
     "@northgraindata/dsui-adapter-sdk": "workspace:*",

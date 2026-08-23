@@ -1,0 +1,39 @@
+---
+title: Apache Polaris
+description: Configure Apache Polaris catalog browsing, namespaces, tables, and views.
+---
+
+## Connection
+
+```yaml
+services:
+  - id: lakehouse
+    adapter: polaris
+    connection:
+      baseUrl: http://polaris:8181
+      catalog: default
+      clientId: dsui
+      clientSecret: ${POLARIS_CLIENT_SECRET}
+```
+
+## Capabilities
+
+Browse catalogs, namespaces, tables, and views through the Polaris REST and
+Iceberg REST catalog APIs. The adapter lists every namespace in the configured
+catalog and walks each one to enumerate tables and views (capped at 1000 rows).
+
+## Authentication
+
+OAuth2 client credentials (`clientId`/`clientSecret`) against
+`/api/oauth/tokens`, or a static bearer `token`. Persisted secrets are
+encrypted.
+
+## Limitations
+
+Catalog creation, principal/grant management, and table DDL are outside v0.1.
+Listing catalogs requires management-API privileges on the principal.
+
+## Troubleshooting
+
+Confirm the server URL is reachable from the dsui process and that the
+configured principal can read the target catalog's namespaces.

@@ -2,8 +2,12 @@
 export const BUILTIN_ADAPTER_IDS = [
   "trino",
   "clickhouse",
+  "polaris",
   "kafka",
   "s3",
+  "flink",
+  "spark",
+  "docker",
 ] as const;
 export type BuiltinAdapterId = (typeof BUILTIN_ADAPTER_IDS)[number];
 
@@ -27,6 +31,7 @@ export const CAPABILITY_KINDS = [
   "object-browser",
   "job-browser",
   "key-value-browser",
+  "log-stream",
 ] as const;
 export type CapabilityKind = (typeof CAPABILITY_KINDS)[number];
 

@@ -9,6 +9,7 @@
     "adapters",
     "trino",
     "clickhouse",
+    "polaris",
     "kafka",
     "s3-minio",
     "adapter-sdk",

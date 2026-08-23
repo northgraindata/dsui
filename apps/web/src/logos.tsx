@@ -74,6 +74,22 @@ export function ClickHouseMark({ size }: { size?: number }) {
   );
 }
 
+export function PolarisMark({ size }: { size?: number }) {
+  return (
+    <Mark title="Apache Polaris" size={size}>
+      <path d="M12 2 14 10 22 12 14 14 12 22 10 14 2 12 10 10Z" />
+    </Mark>
+  );
+}
+
+export function DockerMark({ size }: { size?: number }) {
+  return (
+    <Mark title="Docker" size={size}>
+      <path d="M3 8.2h18v3H3zM3 12.1h18v3H3zM3 16h18v2.8H3zM3 8.2h3.5v10.6H3zM9.25 8.2h3.5v10.6H9.25zM15 8.2h3.5v10.6H15z" />
+    </Mark>
+  );
+}
+
 export function BrandGlyph({
   adapter,
   size = 18,
@@ -87,5 +103,7 @@ export function BrandGlyph({
   if (adapter === "flink") return <FlinkMark size={size} />;
   if (adapter === "spark") return <SparkMark size={size} />;
   if (adapter === "clickhouse") return <ClickHouseMark size={size} />;
+  if (adapter === "polaris") return <PolarisMark size={size} />;
+  if (adapter === "docker") return <DockerMark size={size} />;
   return null;
 }

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import clickhouse from "../packages/adapter-clickhouse/src/index";
 import kafka from "../packages/adapter-kafka/src/index";
+import polaris from "../packages/adapter-polaris/src/index";
 import s3 from "../packages/adapter-s3/src/index";
 import { checkAdapter } from "../packages/adapter-test/src/index";
 import trino from "../packages/adapter-trino/src/index";
@@ -12,6 +13,10 @@ const adapters = [
   {
     adapter: clickhouse,
     connection: { host: "localhost", username: "default" },
+  },
+  {
+    adapter: polaris,
+    connection: { baseUrl: "http://localhost:8181", catalog: "default" },
   },
 ];
 
