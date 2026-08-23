@@ -37,7 +37,9 @@ const connectionSchema = z.object({
   username: z.string().optional(),
   password: z.string().optional(),
 });
-const jobInput = z.object({ jobId: z.string().min(1) });
+const jobInput = z
+  .object({ id: z.string().optional(), jobId: z.string().optional() })
+  .refine((value) => Boolean(value.id ?? value.jobId), "Job id is required");
 const pageInput = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
@@ -178,8 +180,11 @@ export const flinkAdapter = defineAdapter({
           }));
         if (operationId === "jobs") {
           const { limit } = pageInput.parse(input);
-          const jobs = await flinkGet<JobSummary[]>("/jobs/overview");
-          const items = jobs.slice(0, limit).map((job) => ({
+          const overview = await flinkGet<{ jobs: JobSummary[] }>(
+            "/jobs/overview",
+          );
+          const all = overview.jobs ?? [];
+          const items = all.slice(0, limit).map((job) => ({
             id: job.jid,
             name: job.name,
             state: job.state,
@@ -188,17 +193,24 @@ export const flinkAdapter = defineAdapter({
           }));
           return {
             items,
-            nextCursor: jobs.length > items.length ? "unsupported" : undefined,
+            nextCursor: all.length > items.length ? "unsupported" : undefined,
           };
         }
         if (operationId === "job-detail") {
-          const { jobId } = jobInput.parse(input);
-          const detail = await flinkGet<JobDetail>(`/jobs/${jobId}`);
+          const { id, jobId } = jobInput.parse(input);
+          const resolved = id ?? jobId;
+          if (!resolved) throw new Error("Job id is required");
+          const detail = await flinkGet<JobDetail>(`/jobs/${resolved}`);
           const items = (detail.vertices ?? []).map((vertex) => ({
             name: vertex.name,
             status: vertex.status,
             parallelism: vertex.parallelism ?? 0,
-            tasksTotal: vertex.tasks?.total ?? 0,
+            tasksTotal: vertex.tasks
+              ? Object.values(vertex.tasks).reduce<number>(
+                  (sum, count) => sum + (count ?? 0),
+                  0,
+                )
+              : 0,
             tasksRunning: vertex.tasks?.RUNNING ?? 0,
             tasksFinished: vertex.tasks?.FINISHED ?? 0,
           }));

@@ -202,7 +202,7 @@ export const trinoAdapter = defineAdapter({
         }
         if (operationId === "schemas")
           return select(
-            "SELECT catalog_name AS catalog, schema_name AS schema FROM system.metadata.schemas ORDER BY 1, 2",
+            "SELECT catalog_name AS catalog, schema_name AS schema FROM information_schema.schemata ORDER BY 1, 2",
           );
         if (operationId === "tables")
           return select(
@@ -253,7 +253,7 @@ export const trinoAdapter = defineAdapter({
         }
         if (operationId === "running-queries") {
           const page = await runStatement(
-            "SELECT query_id, state, user, query, created, elapsed FROM system.runtime.queries WHERE state = 'RUNNING' ORDER BY created DESC",
+            "SELECT query_id, state, user, query, created FROM system.runtime.queries WHERE state = 'RUNNING' ORDER BY created DESC",
           );
           if (page.error)
             throw new Error(page.error.message ?? "Trino query failed");
