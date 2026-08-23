@@ -1,10 +1,31 @@
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import {
   ADAPTER_SDK_VERSION,
   defineAdapter,
   z,
 } from "@northgraindata/dsui-adapter-sdk";
 import { Kafka, logLevel, type SASLOptions } from "kafkajs";
+import { lz4Decompress } from "./lz4";
+
+// The bundled kafkajs build disables the LZ4/Snappy/ZSTD codecs (they throw
+// "not implemented"), so we inject a pure-JS LZ4 decompressor into kafkajs'
+// shared compression registry. This lets the consumer read LZ4-compressed
+// topics (common with Kafka defaults) instead of crashing on the first batch.
+try {
+  const require = createRequire(import.meta.url);
+  const compression = require("kafkajs/src/protocol/message/compression");
+  compression.Codecs[compression.Types.LZ4] = () => ({
+    async compress(): Promise<Buffer> {
+      throw new Error("LZ4 compression is not supported by dsui");
+    },
+    async decompress(buffer: Buffer): Promise<Buffer> {
+      return Buffer.from(lz4Decompress(buffer));
+    },
+  });
+} catch {
+  // If kafkajs' internals change, leave the codec as-is rather than breaking load.
+}
 
 const connectionSchema = z
   .object({
