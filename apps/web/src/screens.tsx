@@ -659,6 +659,92 @@ export function ServiceView() {
   return <ServiceScreen serviceId={serviceId} viewId={viewId} />;
 }
 
+type DockerLogLine = {
+  seq: number;
+  timestamp: string;
+  stream: string;
+  line: string;
+};
+
+function LogStream({ service }: { service: Service }) {
+  const { data, error } = usePolling(service.id, "logs", 2000);
+  const seen = useRef<Set<string>>(new Set());
+  const counter = useRef(0);
+  const [lines, setLines] = useState<DockerLogLine[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stick = useRef(true);
+
+  useEffect(() => {
+    if (!Array.isArray(data)) return;
+    setLines((prev) => {
+      const next = [...prev];
+      for (const row of data as {
+        timestamp: string;
+        stream: string;
+        line: string;
+      }[]) {
+        const key = `${row.timestamp}::${row.stream}::${row.line}`;
+        if (seen.current.has(key)) continue;
+        seen.current.add(key);
+        next.push({ seq: counter.current++, ...row });
+      }
+      return next.length > 4000 ? next.slice(next.length - 4000) : next;
+    });
+  }, [data]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && stick.current && lines.length >= 0)
+      el.scrollTop = el.scrollHeight;
+  }, [lines]);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  };
+
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-primary">Logs</h2>
+        <span className="text-xs text-secondary">{lines.length} lines</span>
+      </div>
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-surface-raised p-3 font-mono text-xs leading-relaxed"
+      >
+        {error ? (
+          <div className="text-danger">{error}</div>
+        ) : lines.length === 0 ? (
+          <div className="text-secondary">Waiting for logs…</div>
+        ) : (
+          lines.map((l) => (
+            <div
+              key={l.seq}
+              className="flex gap-2 whitespace-pre-wrap break-all"
+            >
+              <span className="shrink-0 text-secondary">
+                {l.timestamp ? l.timestamp.slice(11, 23) : ""}
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 uppercase",
+                  l.stream === "stderr" ? "text-danger" : "text-accent",
+                )}
+              >
+                {l.stream === "stderr" ? "err" : "out"}
+              </span>
+              <span className="text-primary">{l.line}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Primary-screen renderers keyed by the server-declared `renderer` kind.
  * Adapters opt into these purely through their `view.kind` declaration; no
@@ -678,6 +764,7 @@ const SCREEN_REGISTRY: Record<
   "job-browser": ({ service, view, views }) => (
     <JobBrowser service={service} view={view} views={views} />
   ),
+  "log-stream": ({ service }) => <LogStream service={service} />,
 };
 function ServiceScreen({
   serviceId,

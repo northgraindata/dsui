@@ -54,6 +54,7 @@ export type RendererKind =
   | "record-list"
   | "record-detail"
   | "action-form"
+  | "log-stream"
   | "service-info";
 export type Renderer = "query-workbench" | Exclude<RendererKind, "query">;
 export const rendererMap: Record<RendererKind, Renderer> = {
@@ -65,6 +66,7 @@ export const rendererMap: Record<RendererKind, Renderer> = {
   "consumer-groups": "consumer-groups",
   "object-browser": "object-browser",
   "job-browser": "job-browser",
+  "log-stream": "log-stream",
   "record-list": "record-list",
   "record-detail": "record-detail",
   "action-form": "action-form",
@@ -171,6 +173,7 @@ export function titleFor(id: string) {
         "consumer-groups": "Consumer groups",
         "object-browser": "Objects",
         "job-browser": "Jobs",
+        "log-stream": "Logs",
       } as Record<string, string>
     )[id] ?? id.replaceAll("-", " ")
   );

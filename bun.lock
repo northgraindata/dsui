@@ -74,6 +74,13 @@
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
       },
     },
+    "packages/adapter-docker": {
+      "name": "@northgraindata/dsui-adapter-docker",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
     "packages/adapter-flink": {
       "name": "@northgraindata/dsui-adapter-flink",
       "version": "0.0.0",
@@ -87,6 +94,13 @@
       "dependencies": {
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "kafkajs": "2.2.4",
+      },
+    },
+    "packages/adapter-polaris": {
+      "name": "@northgraindata/dsui-adapter-polaris",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
       },
     },
     "packages/adapter-s3": {
@@ -151,8 +165,10 @@
       "dependencies": {
         "@better-auth/sso": "1.7.1",
         "@northgraindata/dsui-adapter-clickhouse": "workspace:*",
+        "@northgraindata/dsui-adapter-docker": "workspace:*",
         "@northgraindata/dsui-adapter-flink": "workspace:*",
         "@northgraindata/dsui-adapter-kafka": "workspace:*",
+        "@northgraindata/dsui-adapter-polaris": "workspace:*",
         "@northgraindata/dsui-adapter-s3": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-adapter-spark": "workspace:*",
@@ -541,9 +557,13 @@
 
     "@northgraindata/dsui-adapter-clickhouse": ["@northgraindata/dsui-adapter-clickhouse@workspace:packages/adapter-clickhouse"],
 
+    "@northgraindata/dsui-adapter-docker": ["@northgraindata/dsui-adapter-docker@workspace:packages/adapter-docker"],
+
     "@northgraindata/dsui-adapter-flink": ["@northgraindata/dsui-adapter-flink@workspace:packages/adapter-flink"],
 
     "@northgraindata/dsui-adapter-kafka": ["@northgraindata/dsui-adapter-kafka@workspace:packages/adapter-kafka"],
+
+    "@northgraindata/dsui-adapter-polaris": ["@northgraindata/dsui-adapter-polaris@workspace:packages/adapter-polaris"],
 
     "@northgraindata/dsui-adapter-s3": ["@northgraindata/dsui-adapter-s3@workspace:packages/adapter-s3"],
 
