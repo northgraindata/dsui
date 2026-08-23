@@ -34,6 +34,6 @@ Use `bun run test:e2e` for browser-facing changes. Adapter changes must run the 
 
 ## Pull requests
 
-Explain the user-visible behavior, validation performed, dependency/resource impact, and security implications. Include screenshots for visible UI changes. Generated artwork must include its generation prompt and reference role in `assets/generated/README.md`.
+Explain the user-visible behavior, validation performed, dependency/resource impact, and security implications. Include screenshots for visible UI changes.
 
 By participating, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
