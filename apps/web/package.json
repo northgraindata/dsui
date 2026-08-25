@@ -12,13 +12,14 @@
   },
   "dependencies": {
     "@northgraindata/dsui-ui": "workspace:*",
-    "@tanstack/react-router": "^1.132.0",
     "@tailwindcss/vite": "^4.1.13",
+    "@tanstack/react-router": "^1.132.0",
     "@vitejs/plugin-react": "^5.0.2",
-    "vite": "^7.1.7",
-    "tailwindcss": "^4.1.13",
+    "motion": "^13.1.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.7"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
