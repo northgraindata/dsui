@@ -9,7 +9,9 @@ import {
   Dashboard,
   Login,
   ServiceDetail,
+  Services,
   ServiceView,
+  Settings,
   Setup,
 } from "./screens";
 
@@ -18,6 +20,16 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: Dashboard,
+});
+const servicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/services",
+  component: Services,
+});
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: Settings,
 });
 const addRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -46,6 +58,8 @@ const setupRoute = createRoute({
 });
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  servicesRoute,
+  settingsRoute,
   addRoute,
   detailRoute,
   viewRoute,
