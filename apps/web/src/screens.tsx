@@ -16,8 +16,8 @@ import {
 import {
   type FormEvent,
   Fragment,
+  type MouseEvent,
   type ReactElement,
-  type ReactNode,
   useEffect,
   useRef,
   useState,
@@ -38,69 +38,26 @@ import {
   testService,
   titleFor,
 } from "./api";
-import { BrandGlyph } from "./logos";
+import { AuthFrame, authCardInput } from "./components/AuthFrame";
+import { CornerReveal } from "./components/CornerReveal";
+import { Icon } from "./components/Icon";
+import {
+  EmptyState,
+  PageHeading,
+  pageClass,
+  UnavailableState,
+} from "./components/Page";
+import { ServiceMark } from "./components/ServiceMark";
+import { ServiceRow } from "./components/ServiceRow";
+import ScrambleHover from "./components/scramble-hover";
+import { Wordmark } from "./components/Wordmark";
+import { usePolling } from "./hooks/usePolling";
 
 const nav = [
   { icon: "grid", label: "Stack", to: "/" },
-  { icon: "plug", label: "Services", to: "/" },
-  { icon: "gear", label: "Settings", to: "/" },
+  { icon: "plug", label: "Services", to: "/services" },
+  { icon: "gear", label: "Settings", to: "/settings" },
 ];
-function Icon({ name, size = 16 }: { name: string; size?: number }) {
-  const paths: Record<string, ReactNode> = {
-    grid: (
-      <>
-        <rect x="3" y="3" width="7" height="7" />
-        <rect x="14" y="3" width="7" height="7" />
-        <rect x="3" y="14" width="7" height="7" />
-        <rect x="14" y="14" width="7" height="7" />
-      </>
-    ),
-    plug: <path d="M9 7v6m6-6v6M7 13h10v2a5 5 0 0 1-10 0v-2Zm5 7v2" />,
-    gear: (
-      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0-12.5v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.05 16.95l-1.41 1.41m12.72 0-1.42-1.41M7.05 7.05 5.64 5.64" />
-    ),
-    plus: <path d="M12 5v14M5 12h14" />,
-    search: (
-      <>
-        <circle cx="10.8" cy="10.8" r="6.8" />
-        <path d="m16 16 4 4" />
-      </>
-    ),
-    command: <path d="M18 8a6 6 0 1 0 0 8M6 8a6 6 0 1 1 0 8" />,
-    chevron: <path d="m9 18 6-6-6-6" />,
-    terminal: (
-      <>
-        <path d="m5 7 4 5-4 5M12 17h7" />
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-      </>
-    ),
-    database: (
-      <>
-        <ellipse cx="12" cy="5" rx="7" ry="3" />
-        <path d="M5 5v7c0 1.66 3.13 3 7 3s7-1.34 7-3V5m-14 7v7c0 1.66 3.13 3 7 3s7-1.34 7-3v-7" />
-      </>
-    ),
-    folder: (
-      <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11Z" />
-    ),
-  };
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths[name] ?? paths.grid}
-    </svg>
-  );
-}
-
 function useShortcut(key: string, fn: () => void) {
   useEffect(() => {
     const h = (event: KeyboardEvent) => {
@@ -114,27 +71,15 @@ function useShortcut(key: string, fn: () => void) {
   }, [key, fn]);
 }
 
-export function Wordmark({ className }: { className?: string }) {
-  return (
-    <Link
-      to="/"
-      className={cn(
-        "mx-2.5 mb-8 inline-flex items-baseline text-[19px] font-bold tracking-tight text-primary no-underline",
-        className,
-      )}
-      aria-label="dsui home"
-    >
-      <span className="text-accent">ds</span>ui
-      <span className="wordmark-cursor text-accent">_</span>
-    </Link>
-  );
-}
-
 const navLink =
-  "flex h-8 items-center gap-2.5 px-2.5 text-[12px] no-underline transition-colors hover:bg-surface-hover hover:text-primary";
+  "group relative flex h-8 items-center gap-2.5 px-2.5 text-[12px] no-underline transition-colors hover:bg-surface-hover hover:text-primary";
 
 export function AppShell() {
   const [command, setCommand] = useState(false);
+  const [addServiceHovered, setAddServiceHovered] = useState(false);
+  const [contentVisible, setContentVisible] = useState(true);
+  const navigationTimer = useRef<number | undefined>(undefined);
+  const navigate = useNavigate();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -142,19 +87,56 @@ export function AppShell() {
   useShortcut("k", () => {
     if (!isAuthPage) setCommand(true);
   });
+  useEffect(() => {
+    if (!pathname) return;
+    let secondFrame: number | undefined;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => setContentVisible(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [pathname]);
+  useEffect(() => () => window.clearTimeout(navigationTimer.current), []);
+  const transitionTo = (event: MouseEvent<HTMLAnchorElement>, to: string) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      to === pathname
+    )
+      return;
+
+    event.preventDefault();
+    window.clearTimeout(navigationTimer.current);
+    setContentVisible(false);
+    navigationTimer.current = window.setTimeout(() => {
+      navigate({ to: to as never });
+    }, 250);
+  };
   if (isAuthPage) return <Outlet />;
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-[216px_minmax(0,1fr)]">
       <aside className="sticky top-0 flex h-screen flex-col border-r border-border bg-canvas px-3 py-5">
         <Wordmark />
-        <nav className="grid gap-px">
+        <nav className="grid gap-3">
           {nav.map((item) => (
             <Link
               key={item.label}
               to={item.to}
+              onClick={(event) => transitionTo(event, item.to)}
               className={cn(navLink, "text-muted")}
-              activeProps={{ className: cn(navLink, "text-primary") }}
+              activeProps={{
+                className: cn(
+                  navLink,
+                  "text-primary [&_.nav-corner]:translate-x-0 [&_.nav-corner]:translate-y-0 [&_.nav-corner]:opacity-100",
+                ),
+              }}
             >
+              <CornerReveal className="nav-corner border-accent" />
               <Icon name={item.icon} /> <span>{item.label}</span>
             </Link>
           ))}
@@ -162,7 +144,7 @@ export function AppShell() {
         <div className="mt-auto grid gap-3">
           <button
             type="button"
-            className="flex h-8 items-center gap-2 border border-border-strong bg-transparent px-2.5 text-[11px] text-secondary transition-colors hover:border-muted hover:text-primary"
+            className="hidden"
             onClick={() => setCommand(true)}
           >
             <Icon name="command" /> Command{" "}
@@ -186,58 +168,56 @@ export function AppShell() {
         </div>
       </aside>
       <main className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-10 flex h-12 items-center gap-4 border-b border-border bg-canvas/90 px-5 backdrop-blur">
+        <header className="sticky top-0 z-10 flex h-15 items-center justify-between gap-4 overflow-visible border-b border-border bg-canvas/90 px-5 backdrop-blur">
           <button
             type="button"
-            className="text-secondary transition-colors hover:text-primary"
+            className="flex h-8 items-center gap-2 border border-border-strong bg-transparent px-2.5 text-[11px] text-secondary transition-colors hover:border-muted hover:text-primary"
             onClick={() => setCommand(true)}
-            aria-label="Open command palette"
           >
-            <Icon name="command" />
+            <Icon name="command" /> Command
+            <kbd className="ml-auto border border-border bg-background px-1 py-0.5 font-mono text-[10px] text-muted">
+              ⌘ K
+            </kbd>
           </button>
-          <div className="ml-auto flex items-center gap-2 font-mono text-[11px] text-secondary">
-            <span className="size-1.5 animate-pulse bg-healthy" /> Local
-            workspace
+          <div className="group relative shrink-0 overflow-visible">
+            <CornerReveal className="border-accent" placement="outside" />
+            <Button
+              asChild
+              size="small"
+              variant="secondary"
+              className="!border-transparent !bg-transparent !text-accent hover:!border-transparent hover:!bg-transparent hover:!text-accent"
+            >
+              <Link
+                to="/services/new"
+                aria-label="Add service"
+                onPointerEnter={(event) => {
+                  if (event.pointerType === "mouse") setAddServiceHovered(true);
+                }}
+                onPointerLeave={() => setAddServiceHovered(false)}
+              >
+                <Icon name="plus" />
+                <ScrambleHover
+                  text="Add service"
+                  active={addServiceHovered}
+                  scrambleSpeed={25}
+                  maxIterations={8}
+                />
+              </Link>
+            </Button>
           </div>
-          <Button asChild size="small">
-            <Link to="/services/new">
-              <Icon name="plus" /> Add service
-            </Link>
-          </Button>
         </header>
-        <Outlet />
+        <div
+          className={cn(
+            "flex flex-1 flex-col transition-[opacity,scale] duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:duration-150",
+            contentVisible
+              ? "opacity-100 scale-100"
+              : "pointer-events-none opacity-0 scale-[0.985]",
+          )}
+        >
+          <Outlet />
+        </div>
       </main>
       {command && <CommandPalette close={() => setCommand(false)} />}
-    </div>
-  );
-}
-
-const pageClass =
-  "mx-auto w-full max-w-5xl flex-1 px-6 py-6 [&_code]:font-mono";
-
-export function PageHeading({
-  eyebrow,
-  title,
-  detail,
-  aside,
-}: {
-  eyebrow: string;
-  title: string;
-  detail?: string;
-  aside?: ReactNode;
-}) {
-  return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-6">
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-          {eyebrow}
-        </p>
-        <h1 className="mt-1 text-[17px] font-semibold text-primary">{title}</h1>
-        {detail && (
-          <p className="mt-1 max-w-xl text-[12px] text-secondary">{detail}</p>
-        )}
-      </div>
-      {aside}
     </div>
   );
 }
@@ -336,7 +316,6 @@ export function Dashboard() {
   return (
     <div className={pageClass}>
       <PageHeading
-        eyebrow="Data stack"
         title="Connected services"
         detail="Health and access for your local data stack."
         aside={
@@ -385,87 +364,30 @@ export function Dashboard() {
   );
 }
 
-function ServiceMark({
-  adapter,
-  logo,
-  size = 26,
-}: {
-  adapter: string;
-  logo?: string;
-  size?: number;
-}) {
-  const [failed, setFailed] = useState(false);
-  const classes =
-    "relative flex shrink-0 items-center justify-center border border-border bg-surface-raised text-secondary";
-  const style = { width: size, height: size };
-  if (logo && !failed)
-    return (
-      <span className={classes} style={style}>
-        <img
-          src={logo}
-          alt=""
-          width={size - 8}
-          height={size - 8}
-          loading="lazy"
-          className="object-contain p-1"
-          onError={() => setFailed(true)}
-        />
-      </span>
-    );
-  const glyph = <BrandGlyph adapter={adapter} size={size - 8} />;
-  if (glyph)
-    return (
-      <span className={cn(classes, "text-accent")} style={style}>
-        {glyph}
-      </span>
-    );
-  return (
-    <span
-      className={cn(classes, "font-mono text-[9.5px] font-semibold")}
-      style={style}
-    >
-      {adapter.slice(0, 2).toUpperCase()}
-    </span>
-  );
+export function Services() {
+  return <Dashboard />;
 }
 
-const rowGrid =
-  "grid grid-cols-[minmax(0,1fr)_140px_190px_16px] items-center gap-3";
-
-function ServiceRow({ service }: { service: Service }) {
+export function Settings() {
   return (
-    <Link
-      to="/services/$serviceId"
-      params={{ serviceId: service.id }}
-      className={cn(
-        rowGrid,
-        "group px-4 py-2.5 no-underline transition-colors hover:bg-surface-hover",
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <ServiceMark adapter={service.adapter} logo={service.logo} />
-        <div className="min-w-0 leading-tight">
-          <b className="block truncate text-[12.5px] font-medium text-primary">
-            {service.name}
-          </b>
-          <code className="block truncate font-mono text-[11px] text-muted">
-            {service.endpoint}
-          </code>
+    <div className={cn(pageClass, "max-w-xl")}>
+      <PageHeading
+        title="Settings"
+        detail="Configuration for this local dsui workspace."
+      />
+      <Surface className="grid gap-3 p-5">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+            Installation
+          </p>
+          <p className="mt-1 text-[12px] text-primary">Local workspace</p>
         </div>
-      </div>
-      <span className="truncate text-[11.5px] text-secondary">
-        {service.category}
-      </span>
-      <div className="min-w-0">
-        <Status state={service.health} label={service.health} />
-        <small className="mt-0.5 block truncate font-mono text-[10.5px] text-muted">
-          {service.latencyMs
-            ? `${service.latencyMs}ms`
-            : (service.detail ?? "")}
-        </small>
-      </div>
-      <Icon name="chevron" />
-    </Link>
+        <p className="text-[11.5px] text-secondary">
+          Services defined in <code>dsui.yaml</code> are managed by
+          configuration and are read-only here.
+        </p>
+      </Surface>
+    </div>
   );
 }
 
@@ -538,7 +460,6 @@ export function AddService() {
         ← Back to services
       </Link>
       <PageHeading
-        eyebrow="Add service"
         title={selected ? `Connect ${selected.name}` : "Choose an adapter"}
         detail={
           selected
@@ -1021,9 +942,9 @@ function RecordsView({
         />
       ) : (
         <Surface className="grid gap-2.5 p-5">
-          <span className="loading-line" />
-          <span className="loading-line short" />
-          <span className="loading-line" />
+          <span className="h-2.5 animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
+          <span className="h-2.5 w-[62%] animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
+          <span className="h-2.5 animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
         </Surface>
       )}
       <p className="font-mono text-[10.5px] text-muted">
@@ -1125,42 +1046,6 @@ function ResultTable({
     </Surface>
   );
 }
-function usePolling(
-  serviceId: string,
-  capability: string,
-  intervalMs: number,
-  enabled = true,
-): { data?: unknown; columns?: string[]; error?: string } {
-  const [state, setState] = useState<{
-    data?: unknown;
-    columns?: string[];
-    error?: string;
-  }>({});
-  useEffect(() => {
-    if (!enabled) return;
-    let active = true;
-    const load = () =>
-      runOperation(serviceId, capability, {})
-        .then((res) => {
-          if (active) setState({ data: res.data, columns: res.columns });
-        })
-        .catch(
-          (e) =>
-            active &&
-            setState({
-              error: e instanceof Error ? e.message : "Failed to load",
-            }),
-        );
-    load();
-    const timer = setInterval(load, intervalMs);
-    return () => {
-      active = false;
-      clearInterval(timer);
-    };
-  }, [serviceId, capability, intervalMs, enabled]);
-  return state;
-}
-
 function ObjectExplorer({
   service,
   onPick,
@@ -1278,8 +1163,8 @@ function ObjectExplorer({
           <p className="px-2 py-3 text-[11px] text-unavailable">{error}</p>
         ) : loading ? (
           <div className="space-y-1.5 px-2 py-3">
-            <span className="loading-line" />
-            <span className="loading-line short" />
+            <span className="h-2.5 animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
+            <span className="h-2.5 w-[62%] animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
           </div>
         ) : filtered.length === 0 ? (
           <p className="px-2 py-3 text-[11px] text-muted">No objects.</p>
@@ -2403,73 +2288,6 @@ function JobBrowser({
   );
 }
 
-function EmptyState({ title, detail }: { title: string; detail: string }) {
-  return (
-    <div className="grid place-items-center gap-1.5 border border-dashed border-border bg-surface/50 px-6 py-12 text-center">
-      <span className="text-muted">
-        <Icon name="database" size={24} />
-      </span>
-      <h2 className="m-0 text-[13.5px] font-medium text-primary">{title}</h2>
-      <p className="m-0 max-w-md text-[11.5px] text-secondary">{detail}</p>
-    </div>
-  );
-}
-function UnavailableState({ detail }: { detail: string }) {
-  return (
-    <div
-      className="grid place-items-center gap-2 border border-unavailable/40 bg-unavailable/[0.06] px-6 py-12 text-center"
-      role="alert"
-    >
-      <Status state="unavailable" label="API unavailable" />
-      <h2 className="m-0 text-[14px] font-semibold text-primary">
-        dsui could not load this data
-      </h2>
-      <p className="m-0 max-w-md break-words font-mono text-[11px] text-secondary">
-        {detail}
-      </p>
-      <Button
-        variant="secondary"
-        size="small"
-        onClick={() => window.location.reload()}
-      >
-        Retry
-      </Button>
-    </div>
-  );
-}
-
-const authCardInput =
-  "grid gap-4 border-t border-dashed border-border px-5 py-4";
-
-function AuthFrame({
-  title,
-  copy,
-  children,
-}: {
-  title: string;
-  copy: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="grid min-h-screen place-items-center bg-background px-4 py-10">
-      <div className="w-full max-w-sm">
-        <Wordmark className="justify-center" />
-        <Surface>
-          <div className="grid gap-1.5 p-5">
-            <p className="m-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-              Data Stack UI
-            </p>
-            <h1 className="m-0 text-[16px] font-semibold text-primary">
-              {title}
-            </h1>
-            <p className="m-0 text-[12px] text-secondary">{copy}</p>
-          </div>
-          {children}
-        </Surface>
-      </div>
-    </div>
-  );
-}
 export function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
