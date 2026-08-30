@@ -18,6 +18,7 @@ import {
   Fragment,
   type MouseEvent,
   type ReactElement,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -79,6 +80,8 @@ export function AppShell() {
   const [addServiceHovered, setAddServiceHovered] = useState(false);
   const [contentVisible, setContentVisible] = useState(true);
   const navigationTimer = useRef<number | undefined>(undefined);
+  const navigationFrame = useRef<number | undefined>(undefined);
+  const navigationSecondFrame = useRef<number | undefined>(undefined);
   const navigate = useNavigate();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -87,18 +90,16 @@ export function AppShell() {
   useShortcut("k", () => {
     if (!isAuthPage) setCommand(true);
   });
-  useEffect(() => {
-    if (!pathname) return;
-    let secondFrame: number | undefined;
-    const firstFrame = window.requestAnimationFrame(() => {
-      secondFrame = window.requestAnimationFrame(() => setContentVisible(true));
-    });
-    return () => {
-      window.cancelAnimationFrame(firstFrame);
-      if (secondFrame) window.cancelAnimationFrame(secondFrame);
-    };
-  }, [pathname]);
-  useEffect(() => () => window.clearTimeout(navigationTimer.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(navigationTimer.current);
+      if (navigationFrame.current)
+        window.cancelAnimationFrame(navigationFrame.current);
+      if (navigationSecondFrame.current)
+        window.cancelAnimationFrame(navigationSecondFrame.current);
+    },
+    [],
+  );
   const transitionTo = (event: MouseEvent<HTMLAnchorElement>, to: string) => {
     if (
       event.button !== 0 ||
@@ -112,10 +113,19 @@ export function AppShell() {
 
     event.preventDefault();
     window.clearTimeout(navigationTimer.current);
+    if (navigationFrame.current)
+      window.cancelAnimationFrame(navigationFrame.current);
+    if (navigationSecondFrame.current)
+      window.cancelAnimationFrame(navigationSecondFrame.current);
     setContentVisible(false);
     navigationTimer.current = window.setTimeout(() => {
       navigate({ to: to as never });
-    }, 250);
+      navigationFrame.current = window.requestAnimationFrame(() => {
+        navigationSecondFrame.current = window.requestAnimationFrame(() => {
+          setContentVisible(true);
+        });
+      });
+    }, 220);
   };
   if (isAuthPage) return <Outlet />;
   return (
@@ -169,16 +179,21 @@ export function AppShell() {
       </aside>
       <main className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-10 flex h-15 items-center justify-between gap-4 overflow-visible border-b border-border bg-canvas/90 px-5 backdrop-blur">
-          <button
-            type="button"
-            className="flex h-8 items-center gap-2 border border-border-strong bg-transparent px-2.5 text-[11px] text-secondary transition-colors hover:border-muted hover:text-primary"
-            onClick={() => setCommand(true)}
-          >
-            <Icon name="command" /> Command
-            <kbd className="ml-auto border border-border bg-background px-1 py-0.5 font-mono text-[10px] text-muted">
-              ⌘ K
-            </kbd>
-          </button>
+          <div className="group relative overflow-visible">
+            <CornerReveal className="border-accent" placement="outside" />
+            <Button
+              type="button"
+              variant="secondary"
+              size="small"
+              className="gap-2 !border-transparent !bg-transparent font-normal text-secondary hover:!border-transparent hover:!bg-transparent hover:!text-primary"
+              onClick={() => setCommand(true)}
+            >
+              <Icon name="command" /> Command
+              <kbd className="ml-auto border border-border bg-background px-1 py-0.5 font-mono text-[10px] text-muted">
+                ⌘ K
+              </kbd>
+            </Button>
+          </div>
           <div className="group relative shrink-0 overflow-visible">
             <CornerReveal className="border-accent" placement="outside" />
             <Button
@@ -190,6 +205,7 @@ export function AppShell() {
               <Link
                 to="/services/new"
                 aria-label="Add service"
+                onClick={(event) => transitionTo(event, "/services/new")}
                 onPointerEnter={(event) => {
                   if (event.pointerType === "mouse") setAddServiceHovered(true);
                 }}
@@ -228,29 +244,61 @@ const paletteRow =
 function CommandPalette({ close }: { close: () => void }) {
   const navigate = useNavigate();
   const [services, setServices] = useState<Service[]>([]);
+  const [entered, setEntered] = useState(false);
+  const closeTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    let secondFrame: number | undefined;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    };
+  }, []);
+
+  const requestClose = useCallback(
+    (after?: () => void) => {
+      if (closeTimer.current) return;
+      setEntered(false);
+      closeTimer.current = window.setTimeout(() => {
+        close();
+        after?.();
+      }, 260);
+    },
+    [close],
+  );
+
   const go = (to: string) => {
-    close();
-    navigate({ to: to as never });
+    requestClose(() => navigate({ to: to as never }));
   };
   useEffect(() => {
     getServices()
       .then(setServices)
       .catch(() => setServices([]));
     const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") requestClose();
     };
     addEventListener("keydown", h);
     return () => removeEventListener("keydown", h);
-  }, [close]);
+  }, [requestClose]);
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop dismisses on outside press; the dialog itself carries the semantic role
     <div
-      className="fixed inset-0 z-50 bg-canvas/80 backdrop-blur-[2px]"
+      className={cn(
+        "command-palette__backdrop fixed inset-0 z-50 bg-canvas/80 backdrop-blur-[2px]",
+      )}
+      data-entered={entered}
       role="presentation"
-      onMouseDown={close}
+      onMouseDown={() => requestClose()}
     >
       <div
-        className="mx-auto mt-[15vh] w-full max-w-md border border-border-strong bg-surface-raised shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
+        className={cn(
+          "command-palette__panel mx-auto mt-[15vh] w-full max-w-md border border-border-strong bg-surface-raised ring-1 ring-accent/10",
+        )}
+        data-entered={entered}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
@@ -334,11 +382,11 @@ export function Dashboard() {
       {error ? (
         <UnavailableState detail={error} />
       ) : (
-        <Surface className="divide-y divide-border overflow-hidden">
-          <div className="grid grid-cols-[minmax(0,1fr)_140px_190px_16px] items-center gap-3 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+        <div className="overflow-hidden border-y border-border bg-surface">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-surface-raised px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted md:grid-cols-[minmax(0,1fr)_130px_170px_16px] md:gap-4">
             <span>Service</span>
-            <span>Type</span>
-            <span>Status</span>
+            <span className="hidden md:block">Type</span>
+            <span className="hidden md:block">Status</span>
             <span />
           </div>
           {loading ? (
@@ -354,7 +402,7 @@ export function Dashboard() {
               No services connected yet.
             </div>
           )}
-        </Surface>
+        </div>
       )}
       <p className="mt-4 font-mono text-[10.5px] text-muted">
         Services loaded from <code>dsui.yaml</code> are managed by configuration
@@ -395,10 +443,14 @@ export function AddService() {
   const nav = useNavigate();
   const [adapters, setAdapters] = useState<Adapter[]>([]);
   const [selected, setSelected] = useState<Adapter | null>(null);
+  const [adapterViewVisible, setAdapterViewVisible] = useState(true);
+  const [leaving, setLeaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const adapterTransitionTimer = useRef<number | undefined>(undefined);
+  const leaveTimer = useRef<number | undefined>(undefined);
   useEffect(() => {
     getAdapters()
       .then(setAdapters)
@@ -410,6 +462,31 @@ export function AddService() {
   }, []);
   const update = (key: string, value: string) =>
     setValues((x) => ({ ...x, [key]: value }));
+  const selectAdapter = (adapter: Adapter) => {
+    window.clearTimeout(adapterTransitionTimer.current);
+    setAdapterViewVisible(false);
+    adapterTransitionTimer.current = window.setTimeout(() => {
+      setSelected(adapter);
+      setValues({ name: adapter.name });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setAdapterViewVisible(true));
+      });
+    }, 220);
+  };
+  useEffect(
+    () => () => {
+      window.clearTimeout(adapterTransitionTimer.current);
+      window.clearTimeout(leaveTimer.current);
+    },
+    [],
+  );
+  const backToServices = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
+      return;
+    event.preventDefault();
+    setLeaving(true);
+    leaveTimer.current = window.setTimeout(() => nav({ to: "/" }), 220);
+  };
   const input = selected
     ? {
         adapter: selected.id,
@@ -452,106 +529,165 @@ export function AddService() {
     }
   }
   return (
-    <div className={cn(pageClass, "max-w-xl")}>
+    <div
+      className={cn(
+        pageClass,
+        "transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:duration-150",
+        selected ? "max-w-3xl" : "max-w-6xl",
+        leaving
+          ? "pointer-events-none -translate-y-1 scale-[0.99] opacity-0"
+          : "translate-y-0 scale-100 opacity-100",
+      )}
+    >
       <Link
         to="/"
         className="mb-4 inline-block font-mono text-[11px] text-secondary no-underline hover:text-primary"
+        onClick={backToServices}
       >
         ← Back to services
       </Link>
-      <PageHeading
-        title={selected ? `Connect ${selected.name}` : "Choose an adapter"}
-        detail={
-          selected
-            ? selected.description
-            : "Select the service you want dsui to connect to."
-        }
-      />
-      {loadError ? (
-        <UnavailableState detail={loadError} />
-      ) : !selected ? (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {adapters.map((adapter) => (
-            <button
-              type="button"
-              key={adapter.id}
-              className="group relative flex flex-col gap-2 border border-border bg-surface p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover"
-              onClick={() => {
-                setSelected(adapter);
-                setValues({ name: adapter.name });
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <ServiceMark adapter={adapter.id} logo={adapter.logo} />
-                <div className="leading-tight">
-                  <b className="block text-[13px] font-medium text-primary">
-                    {adapter.name}
-                  </b>
-                  <span className="font-mono text-[10.5px] text-muted">
-                    {adapter.category}
+      <div
+        className={cn(
+          "transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:duration-150",
+          adapterViewVisible
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-1 opacity-0",
+        )}
+      >
+        <PageHeading
+          title={selected ? `Connect ${selected.name}` : "Choose an adapter"}
+          detail={
+            selected
+              ? selected.description
+              : "Select the service you want dsui to connect to."
+          }
+        />
+        {loadError ? (
+          <UnavailableState detail={loadError} />
+        ) : !selected ? (
+          <div className="grid gap-px border-y border-border bg-border sm:grid-cols-2 xl:grid-cols-3">
+            {adapters.map((adapter) => (
+              <button
+                type="button"
+                key={adapter.id}
+                className="group relative grid min-h-44 content-between bg-surface p-4 text-left transition-colors hover:bg-surface-hover focus-visible:z-10 focus-visible:outline-accent"
+                onClick={() => selectAdapter(adapter)}
+              >
+                <CornerReveal className="border-accent" />
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <ServiceMark
+                      adapter={adapter.id}
+                      logo={adapter.logo}
+                      size={30}
+                      variant="bare"
+                    />
+                    <div>
+                      <b className="block text-[13px] font-medium text-primary">
+                        {adapter.name}
+                      </b>
+                      <span className="mt-1 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted">
+                        {adapter.category}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-muted transition-colors group-hover:text-accent">
+                    <Icon name="chevron" />
                   </span>
                 </div>
-                <span className="ml-auto text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent">
-                  <Icon name="chevron" />
-                </span>
+                <div className="mt-5 border-t border-border pt-3">
+                  <p className="m-0 max-w-sm text-[11px] leading-relaxed text-secondary">
+                    {adapter.description}
+                  </p>
+                  <span className="mt-3 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted transition-colors group-hover:text-accent">
+                    Select adapter →
+                  </span>
+                </div>
+              </button>
+            ))}
+            <div className="relative grid min-h-44 content-between bg-canvas p-4">
+              <span className="pointer-events-none absolute inset-y-0 left-0 w-px bg-border-strong" />
+              <span className="font-mono text-[20px] leading-none text-muted">
+                &gt;<span className="animate-blink text-accent">_</span>
+              </span>
+              <div className="mt-5 border-t border-dashed border-border pt-3">
+                <b className="block text-[13px] font-medium text-secondary">
+                  More coming soon
+                </b>
+                <p className="mt-2 mb-0 text-[11px] leading-relaxed text-secondary">
+                  More data stack adapters are being prepared.
+                </p>
               </div>
-              <p className="m-0 text-[11.5px] leading-relaxed text-secondary">
-                {adapter.description}
-              </p>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <form onSubmit={save}>
-          <Surface>
-            <div className="grid gap-4 p-5">
-              <Field label="Service name" hint="Shown in your service list.">
-                <Input
-                  value={values.name ?? ""}
-                  onChange={(e) => update("name", e.target.value)}
-                  required
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={save}>
+            <div className="overflow-hidden border-y border-border bg-surface">
+              <div className="flex items-center gap-4 border-b border-border bg-surface-raised px-5 py-4">
+                <ServiceMark
+                  adapter={selected.id}
+                  logo={selected.logo}
+                  size={34}
+                  variant="bare"
                 />
-              </Field>
-              {selected.fields.map((field) => (
-                <Field key={field.key} label={field.label}>
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
+                    {selected.category}
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium text-primary">
+                    {selected.name}
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-4 p-5 sm:grid-cols-2">
+                <Field label="Service name" hint="Shown in your service list.">
                   <Input
-                    type={field.type ?? "text"}
-                    value={values[field.key] ?? ""}
-                    placeholder={field.placeholder}
-                    onChange={(e) => update(field.key, e.target.value)}
-                    required={field.required ?? true}
+                    value={values.name ?? ""}
+                    onChange={(e) => update("name", e.target.value)}
+                    required
                   />
                 </Field>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-dashed border-border px-5 py-4">
-              {message && (
-                <span
-                  className={cn(
-                    "mr-auto font-mono text-[11px]",
-                    message.startsWith("Connection healthy")
-                      ? "text-healthy"
-                      : "text-unavailable",
-                  )}
+                {selected.fields.map((field) => (
+                  <Field key={field.key} label={field.label}>
+                    <Input
+                      type={field.type ?? "text"}
+                      value={values[field.key] ?? ""}
+                      placeholder={field.placeholder}
+                      onChange={(e) => update(field.key, e.target.value)}
+                      required={field.required ?? true}
+                    />
+                  </Field>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-dashed border-border px-5 py-4">
+                {message && (
+                  <span
+                    className={cn(
+                      "mr-auto font-mono text-[11px]",
+                      message.startsWith("Connection healthy")
+                        ? "text-healthy"
+                        : "text-unavailable",
+                    )}
+                  >
+                    {message}
+                  </span>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={test}
+                  disabled={busy}
                 >
-                  {message}
-                </span>
-              )}
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={test}
-                disabled={busy}
-              >
-                Test connection
-              </Button>
-              <Button type="submit" disabled={busy}>
-                Save service
-              </Button>
+                  Test connection
+                </Button>
+                <Button type="submit" disabled={busy}>
+                  Save service
+                </Button>
+              </div>
             </div>
-          </Surface>
-        </form>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }
@@ -942,9 +1078,9 @@ function RecordsView({
         />
       ) : (
         <Surface className="grid gap-2.5 p-5">
-          <span className="h-2.5 animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
-          <span className="h-2.5 w-[62%] animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
-          <span className="h-2.5 animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
+          <span className="h-2.5 animate-pulse bg-surface-hover motion-reduce:animate-none" />
+          <span className="h-2.5 w-[62%] animate-pulse bg-surface-hover motion-reduce:animate-none" />
+          <span className="h-2.5 animate-pulse bg-surface-hover motion-reduce:animate-none" />
         </Surface>
       )}
       <p className="font-mono text-[10.5px] text-muted">
@@ -994,22 +1130,22 @@ function ResultTable({
   columns?: string[];
 }) {
   return (
-    <Surface className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+    <div className="overflow-hidden border-y border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border bg-surface-raised px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
         <span>Result</span>
         <span>{rows.length} rows</span>
       </div>
       {rows.length || columns ? (
         <div className="max-h-[460px] overflow-auto">
-          <table className="w-full border-collapse font-mono text-[11.5px]">
+          <table className="w-full border-collapse font-mono text-[11px]">
             {columns?.length ? (
-              <thead className="sticky top-0 z-10 bg-canvas">
-                <tr className="border-b border-border">
+              <thead className="sticky top-0 z-10 bg-surface-raised">
+                <tr className="border-b border-border text-[10px] uppercase tracking-[0.08em]">
                   {columns.map((col, j) => (
                     <th
                       // biome-ignore lint/suspicious/noArrayIndexKey: columns are positional result metadata
                       key={j}
-                      className="border-b border-border px-3 py-2 text-left font-semibold text-secondary"
+                      className="border-b border-border px-3 py-2.5 text-left font-medium text-muted"
                     >
                       {col}
                     </th>
@@ -1022,13 +1158,13 @@ function ResultTable({
                 <tr
                   // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional result data without stable ids
                   key={i}
-                  className="border-b border-border/60 last:border-b-0 hover:bg-surface-hover/60"
+                  className="border-b border-border/60 last:border-b-0 hover:bg-surface-hover"
                 >
                   {row.map((cell, j) => (
                     <td
                       // biome-ignore lint/suspicious/noArrayIndexKey: cells are positional result data without stable ids
                       key={j}
-                      className="max-w-[320px] truncate whitespace-pre px-3 py-1.5 align-top text-secondary"
+                      className="max-w-[320px] truncate whitespace-pre px-3 py-2 align-top text-secondary"
                     >
                       {String(cell)}
                     </td>
@@ -1043,7 +1179,7 @@ function ResultTable({
           No records returned.
         </div>
       )}
-    </Surface>
+    </div>
   );
 }
 function ObjectExplorer({
@@ -1163,8 +1299,8 @@ function ObjectExplorer({
           <p className="px-2 py-3 text-[11px] text-unavailable">{error}</p>
         ) : loading ? (
           <div className="space-y-1.5 px-2 py-3">
-            <span className="h-2.5 animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
-            <span className="h-2.5 w-[62%] animate-shimmer bg-[linear-gradient(90deg,var(--color-surface-raised),var(--color-surface-hover),var(--color-surface-raised))] bg-[length:200%_100%]" />
+            <span className="h-2.5 animate-pulse bg-surface-hover motion-reduce:animate-none" />
+            <span className="h-2.5 w-[62%] animate-pulse bg-surface-hover motion-reduce:animate-none" />
           </div>
         ) : filtered.length === 0 ? (
           <p className="px-2 py-3 text-[11px] text-muted">No objects.</p>
