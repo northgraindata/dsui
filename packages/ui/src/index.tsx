@@ -28,15 +28,15 @@ export function Button({
   return (
     <Component
       className={cn(
-        "inline-flex min-h-8 items-center justify-center gap-[7px] border border-transparent px-3 text-[12px] font-medium leading-none no-underline transition-colors duration-150",
+        "inline-flex min-h-8 items-center justify-center gap-[7px] border border-transparent px-3 text-[12px] font-medium leading-none no-underline transition-[background-color,border-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent active:translate-y-px disabled:pointer-events-none disabled:opacity-45",
         {
-          "bg-accent font-semibold text-[#0a1206] hover:bg-[#a5eb90]":
+          "bg-accent font-semibold text-accent-foreground hover:bg-accent-hover":
             variant === "default",
-          "border-border-strong bg-transparent text-primary hover:border-muted hover:bg-surface-hover":
+          "border-border-strong bg-transparent text-primary hover:border-accent-dim hover:bg-surface-hover":
             variant === "secondary",
           "bg-transparent text-secondary before:content-['[_'] before:opacity-45 after:content-['_]'] after:opacity-45 hover:text-accent hover:before:opacity-100 hover:after:opacity-100":
             variant === "ghost",
-          "border-unavailable/35 bg-unavailable/[0.08] text-[#ff8f88]":
+          "border-unavailable/45 bg-unavailable/10 text-danger-foreground hover:border-unavailable hover:bg-unavailable/15":
             variant === "danger",
           "min-h-[26px] px-[9px] text-[11px]": size === "small",
           "w-8 px-0": size === "icon",
@@ -55,7 +55,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "min-h-[34px] w-full border border-border-strong bg-canvas px-2.5 text-primary outline-none placeholder:text-muted hover:border-muted focus:border-accent",
+        "min-h-[34px] w-full border border-border-strong bg-background px-2.5 text-primary outline-none placeholder:text-muted transition-colors hover:border-accent-dim focus:border-accent focus:ring-1 focus:ring-accent/25",
         className,
       )}
       {...props}
@@ -131,8 +131,8 @@ export function DialogContent({
 }: PropsWithChildren<{ title: string; description?: string }>) {
   return (
     <Dialog.Portal>
-      <Dialog.Overlay className="fixed inset-0 z-50 bg-[#040603]/[0.78]" />
-      <Dialog.Content className="fixed top-1/2 left-1/2 z-[51] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 border border-border-strong bg-surface-raised p-5 shadow-[0_16px_48px_rgba(0,0,0,0.55)]">
+      <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/85" />
+      <Dialog.Content className="fixed top-1/2 left-1/2 z-[51] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 border border-border-strong bg-surface-raised p-5 ring-1 ring-accent/10">
         <div className="mb-[18px] flex justify-between gap-5 border-b border-dashed border-border pb-[14px] [&_h2]:m-0 [&_h2]:text-[15px] [&_p]:mt-[5px] [&_p]:mb-0 [&_p]:text-[12px] [&_p]:text-secondary">
           <div>
             <Dialog.Title>{title}</Dialog.Title>
