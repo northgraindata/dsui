@@ -3,22 +3,26 @@
 
 @theme {
   /* Terminal phosphor theme — warm neutrals, green accent, zero blue. */
-  --color-canvas: #0a0b09;
-  --color-background: #0d0f0c;
-  --color-surface: #111410;
-  --color-surface-raised: #161a13;
-  --color-surface-hover: #1b2017;
-  --color-border: #23281e;
-  --color-border-strong: #343b2c;
-  --color-primary: #e6ead8;
-  --color-secondary: #9aa28f;
-  --color-muted: #666e5c;
-  --color-accent: #8ee075;
-  --color-accent-dim: #5da84c;
-  --color-healthy: #56d364;
-  --color-warning: #d29922;
-  --color-unavailable: #f85149;
-  --color-unknown: #79806d;
+  --color-canvas: #080a07;
+  --color-background: #0c0f0b;
+  --color-surface: #11150f;
+  --color-surface-raised: #151b13;
+  --color-surface-hover: #1c2418;
+  --color-border: #293325;
+  --color-border-strong: #44523d;
+  --color-primary: #f0f5e8;
+  --color-secondary: #b2bda8;
+  --color-muted: #788272;
+  --color-accent: #a3e635;
+  --color-accent-hover: #bef264;
+  --color-accent-foreground: #111b08;
+  --color-accent-dim: #6fae26;
+  --color-healthy: #86efac;
+  --color-warning: #facc15;
+  --color-unavailable: #fb7185;
+  --color-danger-foreground: #fecdd3;
+  --color-unknown: #94a38a;
+  --color-overlay: #040603;
   --font-ui:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-mono:
@@ -27,16 +31,10 @@
 
 @theme {
   --animate-blink: blink 1.2s steps(2, start) infinite;
-  --animate-shimmer: shimmer 1.4s ease-in-out infinite;
 
   @keyframes blink {
     to {
       visibility: hidden;
-    }
-  }
-  @keyframes shimmer {
-    to {
-      background-position: -200% 0;
     }
   }
 }
@@ -71,11 +69,43 @@
     color: var(--color-canvas);
   }
   :focus-visible {
-    outline: 1px dashed var(--color-accent);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
   }
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border-strong) transparent;
+  }
+}
+
+@layer components {
+  .command-palette__backdrop {
+    opacity: 0;
+    transition: opacity 200ms ease-out;
+  }
+
+  .command-palette__backdrop[data-entered="true"] {
+    opacity: 1;
+  }
+
+  .command-palette__panel {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+    transition:
+      opacity 260ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 260ms cubic-bezier(0.23, 1, 0.32, 1);
+    will-change: opacity, transform;
+  }
+
+  .command-palette__panel[data-entered="true"] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .command-palette__backdrop,
+    .command-palette__panel {
+      transition: none;
+    }
   }
 }
