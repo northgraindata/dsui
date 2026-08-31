@@ -8,6 +8,15 @@ export const BUILTIN_ADAPTER_IDS = [
   "flink",
   "spark",
   "docker",
+  "snowflake",
+  "bigquery",
+  "airflow",
+  "redshift",
+  "postgres",
+  "databricks",
+  "dagster",
+  "dbt-cloud",
+  "mock",
 ] as const;
 export type BuiltinAdapterId = (typeof BUILTIN_ADAPTER_IDS)[number];
 
@@ -32,6 +41,9 @@ export const CAPABILITY_KINDS = [
   "job-browser",
   "key-value-browser",
   "log-stream",
+  "record-list",
+  "record-detail",
+  "action-form",
 ] as const;
 export type CapabilityKind = (typeof CAPABILITY_KINDS)[number];
 
