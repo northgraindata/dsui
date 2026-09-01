@@ -40,10 +40,30 @@ It is not a data platform, orchestrator, observability suite, catalog, SaaS cont
 | Adapter | Workflows | Status |
 | --- | --- | --- |
 | Trino | Queries, catalogs, schemas, tables | Available |
-| Kafka | Topics, messages, offsets, consumer groups | Available |
+| Kafka | Brokers, topics, messages, groups, ACLs, schemas, Kafka Connect | Available |
 | S3 | Buckets, objects, metadata, downloads | Available |
-| PostgreSQL | Tables, schemas, queries | Planned |
-| Flink | Jobs and service information | Planned |
+| PostgreSQL / Redshift | SQL, objects, activity, locks, workload | Available |
+| Snowflake / BigQuery / Databricks | SQL, metadata, warehouses, jobs | Available |
+| Apache Airflow / Dagster | DAGs/jobs, runs, tasks/assets, operations | Available |
+| Mock Service | Emulate any adapter with mutable presets and simulated state | Available |
+| dbt Cloud | Administrative API v2 resources, runs, artifacts | Available |
+| ClickHouse / Polaris / Flink / Spark / Docker | Service-specific inspection and operations | Available |
+
+Choose **Mock Service**, select Snowflake, Airflow, dbt Cloud, Kafka, or any
+other supported service type, then choose a data preset and simulated health.
+The resulting service uses the selected adapter's logo, screens, and
+capabilities without requiring an external connection.
+
+```yaml
+services:
+  - id: snowflake-mock
+    adapter: mock
+    name: Snowflake playground
+    connection:
+      serviceType: snowflake
+      preset: realistic
+      health: healthy
+```
 
 ## Lightweight by design
 

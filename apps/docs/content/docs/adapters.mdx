@@ -5,7 +5,41 @@ description: How dsui translates different data services into one safe, consiste
 
 ## Available
 
-Trino, ClickHouse, Apache Polaris, Kafka, S3/MinIO, Flink, and Spark are built in.
+The built-in adapters are Trino, ClickHouse, Apache Polaris, Kafka, S3/MinIO,
+Flink, Spark, Docker, Snowflake, BigQuery, Apache Airflow, Redshift, PostgreSQL,
+Databricks, Dagster, and dbt Cloud.
+
+Mock Service requires no external service or credentials. Its connection form
+contains only a service type, preset, simulated health, and optional latency.
+Selecting Snowflake, Airflow, dbt Cloud, Kafka, or another supported type makes
+the saved service use that adapter's logo, manifest, screens, and actions while
+execution is routed to mutable local fixtures.
+
+```yaml
+services:
+  - id: snowflake-mock
+    adapter: mock
+    name: Snowflake playground
+    connection:
+      serviceType: snowflake
+      preset: realistic
+      health: healthy
+```
+
+The realistic preset contains populated resources, empty starts clean, and
+incident seeds failed/running work plus a warning event. Mock state lasts until
+the dsui server restarts. SQL writes mutate data and declared adapter actions
+produce local audit events. Including `error` or `fail` in mock SQL deliberately
+exercises the error state.
+
+Kafka includes cluster and broker inspection, topic and partition management,
+bounded message browsing and production, consumer groups and offsets, ACLs,
+Confluent-compatible Schema Registry, and Kafka Connect. Apache Airflow
+automatically negotiates the stable v1 API used by Airflow 2 or the stable v2
+API used by Airflow 3, with a safe version-relative operation covering every
+public endpoint. dbt Cloud covers all Administrative API v2 resource groups
+and exposes a constrained account-scoped API operation for endpoints added
+within v2.
 
 ## Model
 
