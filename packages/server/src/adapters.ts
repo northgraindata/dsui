@@ -1,10 +1,19 @@
+import { airflowAdapter } from "@northgraindata/dsui-adapter-airflow";
+import { bigqueryAdapter } from "@northgraindata/dsui-adapter-bigquery";
 import { clickhouseAdapter } from "@northgraindata/dsui-adapter-clickhouse";
+import { dagsterAdapter } from "@northgraindata/dsui-adapter-dagster";
+import { databricksAdapter } from "@northgraindata/dsui-adapter-databricks";
+import { dbtCloudAdapter } from "@northgraindata/dsui-adapter-dbt-cloud";
 import { dockerAdapter } from "@northgraindata/dsui-adapter-docker";
 import { flinkAdapter } from "@northgraindata/dsui-adapter-flink";
 import { kafkaAdapter } from "@northgraindata/dsui-adapter-kafka";
+import { mockAdapter } from "@northgraindata/dsui-adapter-mock";
 import { polarisAdapter } from "@northgraindata/dsui-adapter-polaris";
+import { postgresAdapter } from "@northgraindata/dsui-adapter-postgres";
+import { redshiftAdapter } from "@northgraindata/dsui-adapter-redshift";
 import { s3Adapter } from "@northgraindata/dsui-adapter-s3";
 import type { AdapterDefinition } from "@northgraindata/dsui-adapter-sdk";
+import { snowflakeAdapter } from "@northgraindata/dsui-adapter-snowflake";
 import { sparkAdapter } from "@northgraindata/dsui-adapter-spark";
 import { trinoAdapter } from "@northgraindata/dsui-adapter-trino";
 import type { AdapterMetadata } from "@northgraindata/dsui-core";
@@ -24,6 +33,15 @@ export class AdapterRegistry {
       flinkAdapter,
       sparkAdapter,
       dockerAdapter,
+      snowflakeAdapter,
+      bigqueryAdapter,
+      airflowAdapter,
+      redshiftAdapter,
+      postgresAdapter,
+      databricksAdapter,
+      dagsterAdapter,
+      dbtCloudAdapter,
+      mockAdapter,
     ],
   ) {
     for (const adapter of adapters) this.register(adapter);
@@ -77,6 +95,7 @@ export function publicAdapter(adapter: RegisteredAdapter) {
       type: field.type === "url" ? "text" : field.type,
       placeholder: field.placeholder,
       required: field.required,
+      options: field.options,
     })),
   };
 }
@@ -98,6 +117,22 @@ export function endpointFor(
   if (adapterId === "flink") return String(connection.url ?? "");
   if (adapterId === "spark") return String(connection.url ?? "");
   if (adapterId === "docker") return String(connection.container ?? "");
+  if (adapterId === "snowflake")
+    return String(
+      connection.host ??
+        `${String(connection.accountIdentifier ?? "")}.snowflakecomputing.com`,
+    );
+  if (adapterId === "bigquery") return String(connection.projectId ?? "");
+  if (adapterId === "airflow") return String(connection.baseUrl ?? "");
+  if (adapterId === "redshift" || adapterId === "postgres")
+    return `${String(connection.host ?? "")}:${String(
+      connection.port ?? (adapterId === "redshift" ? 5439 : 5432),
+    )}`;
+  if (adapterId === "databricks") return String(connection.workspaceUrl ?? "");
+  if (adapterId === "dagster") return String(connection.baseUrl ?? "");
+  if (adapterId === "dbt-cloud") return String(connection.baseUrl ?? "");
+  if (adapterId === "mock")
+    return `mock://${String(connection.serviceType ?? "snowflake")}/${String(connection.preset ?? "realistic")}`;
   return "configured";
 }
 
@@ -112,6 +147,11 @@ export function normalizeConnection(
     connection.brokers = connection.brokers
       .split(",")
       .map((broker) => broker.trim())
+      .filter(Boolean);
+  if (adapterId === "kafka" && typeof connection.connectUrls === "string")
+    connection.connectUrls = connection.connectUrls
+      .split(",")
+      .map((url) => url.trim())
       .filter(Boolean);
   for (const key of ["ssl", "forcePathStyle"])
     if (typeof connection[key] === "string")

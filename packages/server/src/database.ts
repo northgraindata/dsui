@@ -10,6 +10,8 @@ export type UiServiceRow = {
   connection_ciphertext: string;
   connection_iv: string;
   connection_tag: string;
+  /** Validated, non-secret settings used only by the built-in Mock Service. */
+  mock_settings: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -101,6 +103,7 @@ const migrations = [
      config_ciphertext TEXT NOT NULL, config_iv TEXT NOT NULL, config_tag TEXT NOT NULL,
      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
    );`,
+  `ALTER TABLE ui_services ADD COLUMN mock_settings TEXT;`,
 ];
 
 export class DsuiDatabase {
@@ -160,7 +163,9 @@ export class DsuiDatabase {
   ): void {
     const now = new Date().toISOString();
     this.sqlite
-      .query("INSERT INTO ui_services VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .query(
+        "INSERT INTO ui_services (id, name, adapter, connection_ciphertext, connection_iv, connection_tag, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      )
       .run(
         service.id,
         service.name,
@@ -170,6 +175,26 @@ export class DsuiDatabase {
         encrypted.tag,
         now,
         now,
+      );
+  }
+  insertMockService(
+    service: Pick<UiServiceRow, "id" | "name" | "adapter">,
+    settings: Record<string, unknown>,
+  ): void {
+    if (service.adapter !== "mock")
+      throw new Error("Plain mock settings are restricted to Mock Service");
+    const now = new Date().toISOString();
+    this.sqlite
+      .query(
+        "INSERT INTO ui_services (id, name, adapter, connection_ciphertext, connection_iv, connection_tag, created_at, updated_at, mock_settings) VALUES (?, ?, ?, '', '', '', ?, ?, ?)",
+      )
+      .run(
+        service.id,
+        service.name,
+        service.adapter,
+        now,
+        now,
+        JSON.stringify(settings),
       );
   }
   audit(

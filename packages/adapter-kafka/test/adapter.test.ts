@@ -15,3 +15,24 @@ test("bounds message reads", () => {
       ?.maxPageSize,
   ).toBe(100);
 });
+
+test("covers the Kafbat management surface", () => {
+  const ids = adapter.capabilities.map((capability) => capability.id);
+  for (const id of [
+    "brokers",
+    "broker-config",
+    "topics",
+    "messages",
+    "produce-message",
+    "consumer-groups",
+    "reset-offsets",
+    "acls",
+    "schema-subjects",
+    "register-schema",
+    "connectors",
+    "connector-action",
+  ])
+    expect(ids).toContain(id);
+  expect(adapter.secretPaths).toContain("schemaRegistryPassword");
+  expect(adapter.secretPaths).toContain("connectPassword");
+});

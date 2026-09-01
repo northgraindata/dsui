@@ -68,8 +68,43 @@
         "vitest": "^4.0.16",
       },
     },
+    "packages/adapter-airflow": {
+      "name": "@northgraindata/dsui-adapter-airflow",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
+    "packages/adapter-bigquery": {
+      "name": "@northgraindata/dsui-adapter-bigquery",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
     "packages/adapter-clickhouse": {
       "name": "@northgraindata/dsui-adapter-clickhouse",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
+    "packages/adapter-dagster": {
+      "name": "@northgraindata/dsui-adapter-dagster",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
+    "packages/adapter-databricks": {
+      "name": "@northgraindata/dsui-adapter-databricks",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
+    "packages/adapter-dbt-cloud": {
+      "name": "@northgraindata/dsui-adapter-dbt-cloud",
       "version": "0.0.0",
       "dependencies": {
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
@@ -97,11 +132,34 @@
         "kafkajs": "2.2.4",
       },
     },
+    "packages/adapter-mock": {
+      "name": "@northgraindata/dsui-adapter-mock",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
     "packages/adapter-polaris": {
       "name": "@northgraindata/dsui-adapter-polaris",
       "version": "0.0.0",
       "dependencies": {
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
+    "packages/adapter-postgres": {
+      "name": "@northgraindata/dsui-adapter-postgres",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "postgres": "3.4.7",
+      },
+    },
+    "packages/adapter-redshift": {
+      "name": "@northgraindata/dsui-adapter-redshift",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "postgres": "3.4.7",
       },
     },
     "packages/adapter-s3": {
@@ -118,6 +176,13 @@
       "dependencies": {
         "@northgraindata/dsui-core": "workspace:*",
         "zod": "^3.24.2",
+      },
+    },
+    "packages/adapter-snowflake": {
+      "name": "@northgraindata/dsui-adapter-snowflake",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
       },
     },
     "packages/adapter-spark": {
@@ -165,13 +230,22 @@
       "version": "0.1.0",
       "dependencies": {
         "@better-auth/sso": "1.7.1",
+        "@northgraindata/dsui-adapter-airflow": "workspace:*",
+        "@northgraindata/dsui-adapter-bigquery": "workspace:*",
         "@northgraindata/dsui-adapter-clickhouse": "workspace:*",
+        "@northgraindata/dsui-adapter-dagster": "workspace:*",
+        "@northgraindata/dsui-adapter-databricks": "workspace:*",
+        "@northgraindata/dsui-adapter-dbt-cloud": "workspace:*",
         "@northgraindata/dsui-adapter-docker": "workspace:*",
         "@northgraindata/dsui-adapter-flink": "workspace:*",
         "@northgraindata/dsui-adapter-kafka": "workspace:*",
+        "@northgraindata/dsui-adapter-mock": "workspace:*",
         "@northgraindata/dsui-adapter-polaris": "workspace:*",
+        "@northgraindata/dsui-adapter-postgres": "workspace:*",
+        "@northgraindata/dsui-adapter-redshift": "workspace:*",
         "@northgraindata/dsui-adapter-s3": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-adapter-snowflake": "workspace:*",
         "@northgraindata/dsui-adapter-spark": "workspace:*",
         "@northgraindata/dsui-adapter-trino": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
@@ -556,7 +630,17 @@
 
     "@nodable/entities": ["@nodable/entities@3.0.0", "", {}, "sha512-8L9xFeTYKhm49xfIypoe2W5wV1m/3Z58kT+7kR9A8OyFxcPduI4VmxaUMQyKYrRjUoLLSXv6EKKID5Tvj9cUVw=="],
 
+    "@northgraindata/dsui-adapter-airflow": ["@northgraindata/dsui-adapter-airflow@workspace:packages/adapter-airflow"],
+
+    "@northgraindata/dsui-adapter-bigquery": ["@northgraindata/dsui-adapter-bigquery@workspace:packages/adapter-bigquery"],
+
     "@northgraindata/dsui-adapter-clickhouse": ["@northgraindata/dsui-adapter-clickhouse@workspace:packages/adapter-clickhouse"],
+
+    "@northgraindata/dsui-adapter-dagster": ["@northgraindata/dsui-adapter-dagster@workspace:packages/adapter-dagster"],
+
+    "@northgraindata/dsui-adapter-databricks": ["@northgraindata/dsui-adapter-databricks@workspace:packages/adapter-databricks"],
+
+    "@northgraindata/dsui-adapter-dbt-cloud": ["@northgraindata/dsui-adapter-dbt-cloud@workspace:packages/adapter-dbt-cloud"],
 
     "@northgraindata/dsui-adapter-docker": ["@northgraindata/dsui-adapter-docker@workspace:packages/adapter-docker"],
 
@@ -564,11 +648,19 @@
 
     "@northgraindata/dsui-adapter-kafka": ["@northgraindata/dsui-adapter-kafka@workspace:packages/adapter-kafka"],
 
+    "@northgraindata/dsui-adapter-mock": ["@northgraindata/dsui-adapter-mock@workspace:packages/adapter-mock"],
+
     "@northgraindata/dsui-adapter-polaris": ["@northgraindata/dsui-adapter-polaris@workspace:packages/adapter-polaris"],
+
+    "@northgraindata/dsui-adapter-postgres": ["@northgraindata/dsui-adapter-postgres@workspace:packages/adapter-postgres"],
+
+    "@northgraindata/dsui-adapter-redshift": ["@northgraindata/dsui-adapter-redshift@workspace:packages/adapter-redshift"],
 
     "@northgraindata/dsui-adapter-s3": ["@northgraindata/dsui-adapter-s3@workspace:packages/adapter-s3"],
 
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
+
+    "@northgraindata/dsui-adapter-snowflake": ["@northgraindata/dsui-adapter-snowflake@workspace:packages/adapter-snowflake"],
 
     "@northgraindata/dsui-adapter-spark": ["@northgraindata/dsui-adapter-spark@workspace:packages/adapter-spark"],
 
@@ -1431,6 +1523,8 @@
     "playwright-core": ["playwright-core@1.55.0", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-GvZs4vU3U5ro2nZpeiwyb0zuFaqb9sUiAJuyrWpcGouD8y9/HLgGbNRjIph7zU9D3hnPaisMl9zG9CgFi/biIg=="],
 
     "postcss": ["postcss@8.5.26", "", { "dependencies": { "nanoid": "^3.3.17", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ=="],
+
+    "postgres": ["postgres@3.4.7", "", {}, "sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw=="],
 
     "prettier": ["prettier@3.9.6", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g=="],
 

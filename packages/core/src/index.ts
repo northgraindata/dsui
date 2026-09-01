@@ -31,8 +31,10 @@ export interface HealthStatus {
 
 export const CAPABILITY_KINDS = [
   "service-info",
+  "metrics",
   "query",
   "schema-browser",
+  "database-explorer",
   "table-browser",
   "topic-browser",
   "message-browser",
@@ -43,6 +45,7 @@ export const CAPABILITY_KINDS = [
   "log-stream",
   "record-list",
   "record-detail",
+  "tree",
   "action-form",
 ] as const;
 export type CapabilityKind = (typeof CAPABILITY_KINDS)[number];
@@ -66,13 +69,53 @@ export interface TableColumn {
   format?: "text" | "code" | "number" | "bytes" | "timestamp" | "status";
 }
 
+/** A node in a hierarchical profile (e.g. a query operator tree or task graph). */
+export interface TreeNode {
+  id: string;
+  label: string;
+  status?: string;
+  metrics?: readonly { label: string; value: string }[];
+  children?: readonly TreeNode[];
+}
+
 export interface CapabilityView {
   /** A core-owned renderer identifier. Adapters never supply browser code. */
   kind: CapabilityKind;
   title: string;
   description?: string;
+  /** Optional placement inside a service workspace. Omission keeps flat navigation. */
+  navigation?: {
+    area: {
+      id: string;
+      label: string;
+      order?: number;
+    };
+    /** Capability that owns this view in a nested master/detail flow. */
+    parent?: { capability: string };
+  };
+  /** Operations used by the core-owned database explorer renderer. */
+  databaseExplorer?: {
+    databasesCapability: string;
+    objectsCapability: string;
+    databaseIdField: string;
+    objectNameField: string;
+    objectTypeField: string;
+    tabs: readonly {
+      id: string;
+      label: string;
+      capability: string;
+      kind: "record-detail" | "record-list" | "code";
+    }[];
+  };
   columns?: readonly TableColumn[];
-  filters?: readonly { id: string; label: string; type: "text" | "select" }[];
+  filters?: readonly {
+    id: string;
+    label: string;
+    type: "text" | "select";
+    options?: readonly { label: string; value: string }[];
+  }[];
+  /** Declarative inputs rendered by the core-owned action form. */
+  fields?: readonly FieldDescriptor[];
   actions?: readonly {
     id: string;
     label: string;

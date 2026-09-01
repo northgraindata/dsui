@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { extname, join, resolve as resolveScript } from "node:path";
+import { createAdapterEmulator } from "@northgraindata/dsui-adapter-mock";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { z } from "zod";
@@ -60,6 +61,7 @@ export type PublicService = {
   latencyMs?: number;
   managedBy: "configuration" | "ui";
   capabilities: string[];
+  mocked?: boolean;
   logo?: string;
 };
 export type Runtime = ReturnType<typeof createRuntime>;
@@ -403,28 +405,50 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     if (!source) throw new Error("Service not found");
     return source.managedBy === "configuration"
       ? configuredConnection(source.service as ConfiguredService)
-      : (cipher?.decrypt<Record<string, unknown>>(
-          rowEncrypted(source.service as UiServiceRow),
-        ) ??
-          (() => {
-            throw new Error(
-              "DSUI_MASTER_KEY is required to read UI-managed services",
-            );
-          })());
+      : (() => {
+          const row = source.service as UiServiceRow;
+          if (row.adapter === "mock" && row.mock_settings)
+            return JSON.parse(row.mock_settings) as Record<string, unknown>;
+          return (
+            cipher?.decrypt<Record<string, unknown>>(rowEncrypted(row)) ??
+            (() => {
+              throw new Error(
+                "DSUI_MASTER_KEY is required to read UI-managed services",
+              );
+            })()
+          );
+        })();
+  };
+  const resolvedAdapter = (
+    source: NonNullable<ReturnType<typeof serviceSource>>,
+  ) => {
+    const sourceAdapter = registry.get(source.service.adapter);
+    const connection = connectionFor(source);
+    if (sourceAdapter.id !== "mock")
+      return { adapter: sourceAdapter, connection };
+    const settings = sourceAdapter.connectionSchema.parse(connection) as {
+      serviceType: string;
+      preset: "realistic" | "empty" | "incident";
+      health: "healthy" | "warning" | "unavailable";
+      latencyMs: number;
+    };
+    return {
+      adapter: registry.get(settings.serviceType),
+      connection,
+      settings,
+    };
   };
   const publicService = async (id: string): Promise<PublicService> => {
     const source = serviceSource(id);
     if (!source) throw new Error("Service not found");
-    const adapter = registry.get(source.service.adapter);
-    const connection = connectionFor(source);
+    const { adapter, connection, settings } = resolvedAdapter(source);
     let health: PublicService["health"] = "unknown";
     let detail: string | undefined;
     let latencyMs: number | undefined;
     try {
-      const instance = adapter.create(
-        {},
-        adapter.connectionSchema.parse(connection),
-      );
+      const instance = settings
+        ? createAdapterEmulator(adapter, id, {}, settings)
+        : adapter.create({}, adapter.connectionSchema.parse(connection));
       const checked = await instance.health();
       health = checked.status;
       detail = checked.detail;
@@ -439,12 +463,15 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       name: source.service.name ?? adapter.metadata.name,
       adapter: adapter.id,
       category: adapter.metadata.category,
-      endpoint: endpointFor(adapter.id, connection),
+      endpoint: settings
+        ? `mock://${adapter.id}/${settings.preset}`
+        : endpointFor(adapter.id, connection),
       health,
       detail,
       latencyMs,
       managedBy: source.managedBy,
       capabilities: adapter.capabilities.map((capability) => capability.id),
+      ...(settings ? { mocked: true } : {}),
       ...(adapter.metadata.logo
         ? { logo: `/api/v1/adapters/${adapter.id}/logo` }
         : {}),
@@ -454,11 +481,25 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     adapterId: string,
     raw: Record<string, unknown>,
   ) => {
-    const adapter = registry.get(adapterId);
-    const connection = adapter.connectionSchema.parse(
+    const sourceAdapter = registry.get(adapterId);
+    const connection = sourceAdapter.connectionSchema.parse(
       normalizeConnection(adapterId, raw),
     );
-    const instance = adapter.create({}, connection);
+    const settings =
+      adapterId === "mock"
+        ? (connection as {
+            serviceType: string;
+            preset: "realistic" | "empty" | "incident";
+            health: "healthy" | "warning" | "unavailable";
+            latencyMs: number;
+          })
+        : undefined;
+    const adapter = settings
+      ? registry.get(settings.serviceType)
+      : sourceAdapter;
+    const instance = settings
+      ? createAdapterEmulator(adapter, "connection-test", {}, settings)
+      : adapter.create({}, connection);
     try {
       return await instance.health();
     } finally {
@@ -646,7 +687,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       await refreshConfig();
       const source = serviceSource(context.req.param("id"));
       if (!source) throw new Error("Service not found");
-      const adapter = registry.get(source.service.adapter);
+      const { adapter } = resolvedAdapter(source);
       return context.json({
         views: adapter.capabilities.map((capability) => ({
           id: capability.id,
@@ -658,13 +699,29 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
               : capability.view.kind,
           kind: capability.view.kind,
           description: capability.view.description,
+          navigation: capability.view.navigation,
+          databaseExplorer: capability.view.databaseExplorer,
           columns: (capability.view.columns ?? []).map((column) => ({
             id: column.id,
             label: column.label,
             format: column.format,
           })),
           actions: capability.view.actions ?? [],
-          filters: capability.view.filters ?? [],
+          filters: (capability.view.filters ?? []).map((filter) => ({
+            id: filter.id,
+            label: filter.label,
+            type: filter.type,
+            options: filter.options,
+          })),
+          fields: (capability.view.fields ?? []).map((field) => ({
+            id: field.id,
+            label: field.label,
+            description: field.description,
+            type: field.type,
+            required: field.required,
+            placeholder: field.placeholder,
+            options: field.options,
+          })),
           detail: capability.view.detail,
           idField: capability.view.idField,
         })),
@@ -688,19 +745,26 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       return context.json({ message: "Insufficient permission" }, 403);
     try {
       const input = createServiceSchema.parse(await context.req.json());
-      if (!cipher)
-        throw new Error(
-          "DSUI_MASTER_KEY is required to persist UI-managed connections",
-        );
       const adapter = registry.get(input.adapter);
       const connection = adapter.connectionSchema.parse(
         normalizeConnection(input.adapter, input.connection),
       );
       const id = randomUUID();
-      database.insertUiService(
-        { id, name: input.name, adapter: input.adapter },
-        cipher.encrypt(connection),
-      );
+      if (adapter.id === "mock")
+        database.insertMockService(
+          { id, name: input.name, adapter: input.adapter },
+          connection,
+        );
+      else {
+        if (!cipher)
+          throw new Error(
+            "DSUI_MASTER_KEY is required to persist UI-managed connections",
+          );
+        database.insertUiService(
+          { id, name: input.name, adapter: input.adapter },
+          cipher.encrypt(connection),
+        );
+      }
       database.audit(principal.id, "service.create", id, {
         adapter: input.adapter,
       });
@@ -715,18 +779,29 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       await refreshConfig();
       const source = serviceSource(context.req.param("id"));
       if (!source) throw new Error("Service not found");
-      const adapter = registry.get(source.service.adapter);
+      const sourceAdapter = registry.get(source.service.adapter);
+      const {
+        adapter,
+        connection: rawConnection,
+        settings,
+      } = resolvedAdapter(source);
       const capability = adapter.capabilities.find(
         (item) => item.id === context.req.param("capability"),
       );
       if (!capability) throw new Error("Unknown capability");
       if (!allowed(principal, capability.authorization))
         return context.json({ message: "Insufficient permission" }, 403);
-      const connection = adapter.connectionSchema.parse(connectionFor(source));
-      const instance = adapter.create(
-        { signal: context.req.raw.signal },
-        connection,
-      );
+      const instance = settings
+        ? createAdapterEmulator(
+            adapter,
+            source.service.id,
+            { signal: context.req.raw.signal },
+            settings,
+          )
+        : sourceAdapter.create(
+            { signal: context.req.raw.signal },
+            sourceAdapter.connectionSchema.parse(rawConnection),
+          );
       try {
         const result = await instance.execute(
           capability.id,
