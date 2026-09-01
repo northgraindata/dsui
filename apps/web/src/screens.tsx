@@ -30,9 +30,9 @@ import {
   getManifest,
   getServices,
   login,
+  type Manifest,
   normalizeRenderer,
   type Renderer,
-  type RendererKind,
   runOperation,
   type Service,
   setupOwner,
@@ -41,6 +41,7 @@ import {
 } from "./api";
 import { AuthFrame, authCardInput } from "./components/AuthFrame";
 import { CornerReveal } from "./components/CornerReveal";
+import { DatabaseExplorer } from "./components/DatabaseExplorer";
 import { Icon } from "./components/Icon";
 import {
   EmptyState,
@@ -52,7 +53,12 @@ import { ServiceMark } from "./components/ServiceMark";
 import { ServiceRow } from "./components/ServiceRow";
 import ScrambleHover from "./components/scramble-hover";
 import { Wordmark } from "./components/Wordmark";
+import {
+  WorkspacePrimaryNavigation,
+  WorkspaceViewTabs,
+} from "./components/WorkspaceNavigation";
 import { usePolling } from "./hooks/usePolling";
+import { buildWorkspaceAreas } from "./workspace-navigation";
 
 const nav = [
   { icon: "grid", label: "Stack", to: "/" },
@@ -649,13 +655,41 @@ export function AddService() {
                 </Field>
                 {selected.fields.map((field) => (
                   <Field key={field.key} label={field.label}>
-                    <Input
-                      type={field.type ?? "text"}
-                      value={values[field.key] ?? ""}
-                      placeholder={field.placeholder}
-                      onChange={(e) => update(field.key, e.target.value)}
-                      required={field.required ?? true}
-                    />
+                    {field.type === "boolean" || field.type === "select" ? (
+                      <select
+                        value={values[field.key] ?? ""}
+                        onChange={(event) =>
+                          update(field.key, event.target.value)
+                        }
+                        required={field.required ?? false}
+                        className="h-9 w-full border border-border bg-canvas px-2.5 text-[12px] text-primary outline-none focus:border-accent"
+                      >
+                        <option value="">Select…</option>
+                        {(field.type === "boolean"
+                          ? [
+                              { label: "Yes", value: "true" },
+                              { label: "No", value: "false" },
+                            ]
+                          : (field.options ?? [])
+                        ).map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        type={
+                          field.type === "list"
+                            ? "text"
+                            : (field.type ?? "text")
+                        }
+                        value={values[field.key] ?? ""}
+                        placeholder={field.placeholder}
+                        onChange={(e) => update(field.key, e.target.value)}
+                        required={field.required ?? false}
+                      />
+                    )}
                   </Field>
                 ))}
               </div>
@@ -692,19 +726,7 @@ export function AddService() {
   );
 }
 
-type ServiceViewDefinition = {
-  id: string;
-  title: string;
-  renderer: RendererKind;
-  capability: string;
-  kind?: string;
-  description?: string;
-  columns?: Array<{ id: string; label: string; format?: string }>;
-  actions?: Array<{ id: string; label: string; authorization: string }>;
-  filters?: Array<{ id: string; label: string; type: string }>;
-  detail?: string;
-  idField?: string;
-};
+type ServiceViewDefinition = Manifest["views"][number];
 export function ServiceDetail() {
   const { serviceId } = useParams({ from: "/services/$serviceId" });
   return <ServiceScreen serviceId={serviceId} />;
@@ -714,6 +736,18 @@ export function ServiceView() {
     from: "/services/$serviceId/$viewId",
   });
   return <ServiceScreen serviceId={serviceId} viewId={viewId} />;
+}
+export function ServiceObjectView() {
+  const { serviceId, viewId, database, objectName, tabId } = useParams({
+    from: "/services/$serviceId/$viewId/$database/$objectName/$tabId",
+  });
+  return (
+    <ServiceScreen
+      serviceId={serviceId}
+      viewId={viewId}
+      objectSelection={{ database, objectName, tabId }}
+    />
+  );
 }
 
 type DockerLogLine = {
@@ -826,9 +860,11 @@ const SCREEN_REGISTRY: Record<
 function ServiceScreen({
   serviceId,
   viewId,
+  objectSelection,
 }: {
   serviceId: string;
   viewId?: string;
+  objectSelection?: { database: string; objectName: string; tabId: string };
 }) {
   const [service, setService] = useState<Service>();
   const [views, setViews] = useState<ServiceViewDefinition[]>([]);
@@ -864,16 +900,13 @@ function ServiceScreen({
         </div>
       </div>
     );
+  const workspaceAreas = buildWorkspaceAreas(views);
   const activeView =
     views.find((item) => item.id === viewId) ??
-    views.find((item) => SCREEN_REGISTRY[item.renderer]) ??
+    (workspaceAreas.length
+      ? views[0]
+      : views.find((item) => SCREEN_REGISTRY[item.renderer])) ??
     views[0];
-  if (activeView && SCREEN_REGISTRY[activeView.renderer])
-    return SCREEN_REGISTRY[activeView.renderer]({
-      service,
-      view: activeView,
-      views,
-    });
   const view = activeView;
   return (
     <div className="grid flex-1 grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
@@ -899,26 +932,18 @@ function ServiceScreen({
           <Status state={service.health} label={service.health} />
         </div>
         <hr className="my-4 border-t border-dashed border-border" />
-        <nav className="grid gap-px">
-          {views.map((item) => (
-            <Link
-              key={item.id}
-              to="/services/$serviceId/$viewId"
-              params={{ serviceId, viewId: item.id }}
-              className={cn(
-                navLink,
-                viewId === item.id
-                  ? "bg-surface-hover text-primary"
-                  : "text-muted",
-              )}
-            >
-              <Icon name={iconFor(normalizeRenderer(item.renderer))} />
-              {item.title}
-            </Link>
-          ))}
-        </nav>
+        <WorkspacePrimaryNavigation
+          serviceId={serviceId}
+          views={views}
+          activeViewId={view?.id}
+        />
       </aside>
       <div className="min-w-0 px-6 py-6">
+        <WorkspaceViewTabs
+          serviceId={serviceId}
+          views={views}
+          activeViewId={view?.id}
+        />
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
@@ -937,8 +962,14 @@ function ServiceScreen({
             }
           />
         </div>
-        {view ? (
-          <CapabilityRenderer service={service} view={view} />
+        {view && SCREEN_REGISTRY[view.renderer] ? (
+          SCREEN_REGISTRY[view.renderer]({ service, view, views })
+        ) : view ? (
+          <CapabilityRenderer
+            service={service}
+            view={view}
+            objectSelection={objectSelection}
+          />
         ) : (
           <EmptyState
             title="Choose a capability"
@@ -949,33 +980,55 @@ function ServiceScreen({
     </div>
   );
 }
-function iconFor(renderer: Renderer) {
-  return renderer.includes("query")
-    ? "terminal"
-    : renderer.includes("object") ||
-        renderer.includes("schema") ||
-        renderer.includes("table")
-      ? "folder"
-      : "database";
-}
 function CapabilityRenderer({
   service,
   view,
+  objectSelection,
 }: {
   service: Service;
   view: ServiceViewDefinition;
+  objectSelection?: { database: string; objectName: string; tabId: string };
 }) {
   const renderer = normalizeRenderer(view.renderer);
+  if (renderer === "database-explorer" && view.databaseExplorer)
+    return (
+      <DatabaseExplorer
+        service={service}
+        viewId={view.id}
+        config={view.databaseExplorer}
+        selection={objectSelection}
+      />
+    );
+  if (view.fields?.length)
+    return (
+      <ActionView
+        service={service}
+        capability={view.capability}
+        fields={view.fields}
+      />
+    );
   if (renderer === "query-workbench")
     return <QueryView service={service} capability={view.capability} />;
   if (renderer === "action-form")
-    return <ActionView service={service} capability={view.capability} />;
+    return (
+      <ActionView
+        service={service}
+        capability={view.capability}
+        fields={view.fields}
+      />
+    );
+  if (renderer === "metrics")
+    return <MetricsView service={service} capability={view.capability} />;
+  if (renderer === "tree")
+    return <TreeView service={service} capability={view.capability} />;
   return (
     <RecordsView
       service={service}
       capability={view.capability}
       title={view.title}
       renderer={renderer}
+      filters={view.filters}
+      columns={view.columns}
     />
   );
 }
@@ -1045,21 +1098,38 @@ function RecordsView({
   capability,
   title,
   renderer,
+  filters,
+  columns,
 }: {
   service: Service;
   capability: string;
   title: string;
   renderer: Renderer;
+  filters?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    options?: Array<{ label: string; value: string }>;
+  }>;
+  columns?: Array<{ id: string; label: string; format?: string }>;
 }) {
   const [data, setData] = useState<unknown>();
   const [error, setError] = useState<string>();
-  useEffect(() => {
-    runOperation(service.id, capability, {})
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [applied, setApplied] = useState<Record<string, string>>({});
+  const load = useCallback(() => {
+    const input = Object.fromEntries(
+      Object.entries(applied).filter(([, value]) => value !== ""),
+    );
+    runOperation(service.id, capability, input)
       .then(setData)
       .catch((e) =>
         setError(e instanceof Error ? e.message : "Could not load data"),
       );
-  }, [capability, service.id]);
+  }, [service.id, capability, applied]);
+  useEffect(() => {
+    load();
+  }, [load]);
   if (error)
     return (
       <EmptyState
@@ -1068,14 +1138,67 @@ function RecordsView({
       />
     );
   const records = (data as { data?: unknown[] })?.data;
+  const headerLabels = columns?.map((column) => column.label);
+  const bodyRows = records
+    ? records.map((row) =>
+        Array.isArray(row)
+          ? row
+          : columns
+            ? columns.map(
+                (column) => (row as Record<string, unknown>)[column.id],
+              )
+            : Object.values(row as object),
+      )
+    : undefined;
   return (
     <div className="grid gap-4">
-      {records ? (
-        <ResultTable
-          rows={records.map((row) =>
-            Array.isArray(row) ? row : Object.values(row as object),
-          )}
-        />
+      {filters?.length ? (
+        <Surface className="flex flex-wrap items-end gap-3 p-3">
+          {filters.map((filter) => (
+            <Field key={filter.id} label={filter.label}>
+              {filter.type === "select" ? (
+                <select
+                  value={draft[filter.id] ?? ""}
+                  onChange={(event) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      [filter.id]: event.target.value,
+                    }))
+                  }
+                  className="h-[34px] w-full min-w-[160px] border border-border-strong bg-background px-2.5 text-[12px] text-primary outline-none focus:border-accent"
+                >
+                  <option value="">Any</option>
+                  {(filter.options ?? []).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={draft[filter.id] ?? ""}
+                  placeholder={filter.label}
+                  onChange={(event) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      [filter.id]: event.target.value,
+                    }))
+                  }
+                />
+              )}
+            </Field>
+          ))}
+          <Button
+            size="small"
+            variant="secondary"
+            onClick={() => setApplied(draft)}
+          >
+            Apply filters
+          </Button>
+        </Surface>
+      ) : null}
+      {bodyRows ? (
+        <ResultTable rows={bodyRows} columns={headerLabels} />
       ) : (
         <Surface className="grid gap-2.5 p-5">
           <span className="h-2.5 animate-pulse bg-surface-hover motion-reduce:animate-none" />
@@ -1089,35 +1212,322 @@ function RecordsView({
     </div>
   );
 }
-function ActionView({
+function MetricsView({
   service,
   capability,
 }: {
   service: Service;
   capability: string;
 }) {
-  const [result, setResult] = useState<string>();
+  const [data, setData] = useState<unknown>();
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => {
+    setBusy(true);
+    runOperation(service.id, capability, {})
+      .then(setData)
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Could not load metrics"),
+      )
+      .finally(() => setBusy(false));
+  }, [service.id, capability]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  const items =
+    (data as { data?: Array<{ label: string; value: unknown }> })?.data ?? [];
   return (
-    <Surface className="grid max-w-lg gap-2 p-5">
+    <div className="grid gap-4">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+          Metrics
+        </span>
+        <Button size="small" variant="secondary" onClick={load} disabled={busy}>
+          {busy ? "Loading…" : "Refresh"}
+        </Button>
+      </div>
+      {error ? (
+        <div className="border border-unavailable/40 bg-unavailable/10 p-3 font-mono text-[11.5px] text-unavailable">
+          {error}
+        </div>
+      ) : items.length ? (
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          {items.map((metric) => (
+            <Surface key={metric.label} className="grid gap-1 p-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+                {metric.label}
+              </span>
+              <span className="text-[20px] font-semibold text-primary">
+                {String(metric.value)}
+              </span>
+            </Surface>
+          ))}
+        </section>
+      ) : (
+        <Surface className="grid gap-2.5 p-5">
+          <span className="h-2.5 animate-pulse bg-surface-hover motion-reduce:animate-none" />
+          <span className="h-2.5 w-[62%] animate-pulse bg-surface-hover motion-reduce:animate-none" />
+        </Surface>
+      )}
+    </div>
+  );
+}
+type ProfileNode = {
+  id: string;
+  label: string;
+  status?: string;
+  metrics?: Array<{ label: string; value: string }>;
+  children?: ProfileNode[];
+};
+function ProfileNodeRow({
+  node,
+  depth,
+  open,
+  toggle,
+}: {
+  node: ProfileNode;
+  depth: number;
+  open: Set<string>;
+  toggle: (id: string) => void;
+}) {
+  const hasChildren = Boolean(node.children?.length);
+  const expanded = open.has(node.id);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => hasChildren && toggle(node.id)}
+        className={cn(
+          "flex w-full items-center gap-2 border-b border-border/60 px-3 py-2 text-left font-mono text-[11.5px] hover:bg-surface-hover",
+          hasChildren ? "cursor-pointer" : "cursor-default",
+        )}
+        style={{ paddingLeft: `${12 + depth * 16}px` }}
+      >
+        {hasChildren ? (
+          <span
+            className={cn(
+              "flex shrink-0 transition-transform",
+              expanded ? "rotate-90" : "",
+            )}
+          >
+            <Icon name="chevron" size={12} />
+          </span>
+        ) : (
+          <span className="size-3 shrink-0" />
+        )}
+        <span className="truncate text-secondary">{node.label}</span>
+        {node.metrics?.length ? (
+          <span className="ml-auto flex shrink-0 gap-3 text-[10.5px] text-muted">
+            {node.metrics.slice(0, 4).map((metric) => (
+              <span key={metric.label}>
+                {metric.label} {metric.value}
+              </span>
+            ))}
+          </span>
+        ) : null}
+        {node.status ? (
+          <span className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-muted">
+            {node.status}
+          </span>
+        ) : null}
+      </button>
+      {hasChildren && expanded
+        ? node.children?.map((child) => (
+            <ProfileNodeRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              open={open}
+              toggle={toggle}
+            />
+          ))
+        : null}
+    </div>
+  );
+}
+function TreeView({
+  service,
+  capability,
+}: {
+  service: Service;
+  capability: string;
+}) {
+  const [nodes, setNodes] = useState<ProfileNode[]>([]);
+  const [error, setError] = useState<string>();
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = useCallback(
+    (id: string) =>
+      setOpen((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      }),
+    [],
+  );
+  useEffect(() => {
+    runOperation(service.id, capability, {})
+      .then((res) => {
+        const incoming = (res.data as ProfileNode[]) ?? [];
+        setNodes(incoming);
+        setOpen(new Set(incoming.slice(0, 12).map((node) => node.id)));
+      })
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Could not load profile"),
+      );
+  }, [service.id, capability]);
+  return (
+    <div className="grid gap-4">
+      {error ? (
+        <div className="border border-unavailable/40 bg-unavailable/10 p-3 font-mono text-[11.5px] text-unavailable">
+          {error}
+        </div>
+      ) : nodes.length ? (
+        <Surface className="overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border bg-surface-raised px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+            <span>Profile</span>
+            <span>{nodes.length} operators</span>
+          </div>
+          <div className="max-h-[560px] overflow-auto">
+            {nodes.map((node) => (
+              <ProfileNodeRow
+                key={node.id}
+                node={node}
+                depth={0}
+                open={open}
+                toggle={toggle}
+              />
+            ))}
+          </div>
+        </Surface>
+      ) : (
+        <Surface className="grid gap-2.5 p-5">
+          <span className="h-2.5 animate-pulse bg-surface-hover motion-reduce:animate-none" />
+          <span className="h-2.5 w-[62%] animate-pulse bg-surface-hover motion-reduce:animate-none" />
+        </Surface>
+      )}
+    </div>
+  );
+}
+function ActionView({
+  service,
+  capability,
+  fields,
+}: {
+  service: Service;
+  capability: string;
+  fields?: ServiceViewDefinition["fields"];
+}) {
+  const [result, setResult] = useState<string>();
+  const [payload, setPayload] = useState("{}");
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [running, setRunning] = useState(false);
+  async function run() {
+    setRunning(true);
+    try {
+      let input: unknown;
+      if (fields?.length) {
+        const entries: Array<[string, unknown]> = [];
+        for (const field of fields) {
+          const value = values[field.id] ?? "";
+          if (!field.required && value === "") continue;
+          if (field.type === "number") entries.push([field.id, Number(value)]);
+          else if (field.type === "boolean")
+            entries.push([field.id, value === "true"]);
+          else if (field.type === "list")
+            entries.push([
+              field.id,
+              value
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean),
+            ]);
+          else entries.push([field.id, value]);
+        }
+        input = Object.fromEntries(entries);
+      } else input = JSON.parse(payload) as unknown;
+      const response = await runOperation(service.id, capability, input);
+      setResult(JSON.stringify(response.data ?? response, null, 2));
+    } catch (error) {
+      setResult(error instanceof Error ? error.message : "Operation failed");
+    } finally {
+      setRunning(false);
+    }
+  }
+  return (
+    <Surface className="grid max-w-2xl gap-3 p-5">
       <h2 className="m-0 text-[14px] font-semibold text-primary">
         Run {titleFor(capability)}
       </h2>
       <p className="m-0 text-[12px] text-secondary">
-        This operation is performed server-side with your service connection.
+        {fields?.length
+          ? "Provide the operation parameters. Credentials remain on the server."
+          : "Enter the operation input as JSON. Credentials remain on the server."}
       </p>
+      {fields?.length ? (
+        <div className="mt-2 grid gap-4 sm:grid-cols-2">
+          {fields.map((field) => (
+            <Field key={field.id} label={field.label} hint={field.description}>
+              {field.type === "boolean" || field.type === "select" ? (
+                <select
+                  value={values[field.id] ?? ""}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.id]: event.target.value,
+                    }))
+                  }
+                  required={field.required ?? false}
+                  className="h-9 w-full border border-border bg-canvas px-2.5 text-[12px] text-primary outline-none focus:border-accent"
+                >
+                  <option value="">Select…</option>
+                  {(field.type === "boolean"
+                    ? [
+                        { label: "Yes", value: "true" },
+                        { label: "No", value: "false" },
+                      ]
+                    : (field.options ?? [])
+                  ).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  type={field.type === "list" ? "text" : field.type}
+                  value={values[field.id] ?? ""}
+                  placeholder={field.placeholder}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.id]: event.target.value,
+                    }))
+                  }
+                  required={field.required ?? false}
+                />
+              )}
+            </Field>
+          ))}
+        </div>
+      ) : (
+        <textarea
+          value={payload}
+          onChange={(event) => setPayload(event.target.value)}
+          spellCheck={false}
+          aria-label="Operation input JSON"
+          className="mt-2 block h-40 w-full resize-y border border-border bg-canvas p-3 font-mono text-[12px] leading-relaxed text-primary outline-none focus:border-accent"
+        />
+      )}
       <div className="mt-2">
-        <Button
-          onClick={() =>
-            runOperation(service.id, capability, {})
-              .then(() => setResult("Operation completed."))
-              .catch((e) => setResult(e.message))
-          }
-        >
-          Run operation
+        <Button onClick={run} disabled={running}>
+          {running ? "Running…" : "Run operation"}
         </Button>
       </div>
       {result && (
-        <p className="m-0 font-mono text-[11px] text-muted">{result}</p>
+        <pre className="m-0 max-h-80 overflow-auto whitespace-pre-wrap break-all border-t border-border pt-3 font-mono text-[11px] text-muted">
+          {result}
+        </pre>
       )}
     </Surface>
   );
@@ -1335,20 +1745,32 @@ function ObjectExplorer({
                           <span className="truncate">{sch.schema}</span>
                         </button>
                         {schOpen &&
-                          sch.tables.map((tbl) => (
-                            <button
-                              type="button"
-                              key={tbl}
-                              onClick={() =>
-                                onPick(`${cat.catalog}.${sch.schema}.${tbl}`)
-                              }
-                              title={`${cat.catalog}.${sch.schema}.${tbl}`}
-                              className="flex w-full items-center gap-1.5 rounded py-1 pl-10 pr-1.5 text-left text-muted hover:bg-surface-hover hover:text-primary"
-                            >
-                              <Icon name="grid" size={12} />
-                              <span className="truncate">{tbl}</span>
-                            </button>
-                          ))}
+                          sch.tables.map((tbl) => {
+                            const qualifiedName = `${cat.catalog}.${sch.schema}.${tbl}`;
+                            return (
+                              <div
+                                key={tbl}
+                                className="flex items-center gap-1.5 rounded py-1 pl-10 pr-1.5 text-muted hover:bg-surface-hover hover:text-primary"
+                              >
+                                <Icon name="grid" size={12} />
+                                <span
+                                  className="min-w-0 flex-1 truncate"
+                                  title={qualifiedName}
+                                >
+                                  {tbl}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => onPick(qualifiedName)}
+                                  title={`Insert ${qualifiedName} into query`}
+                                  aria-label={`Insert ${qualifiedName} into query`}
+                                  className="shrink-0 rounded p-0.5 text-muted hover:bg-surface-raised hover:text-primary"
+                                >
+                                  <Icon name="plus" size={12} />
+                                </button>
+                              </div>
+                            );
+                          })}
                       </div>
                     );
                   })}
@@ -1370,8 +1792,16 @@ function QueryWorkbench({ service }: { service: Service }) {
   const [error, setError] = useState<string>();
   const [running, setRunning] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  const kpis = usePolling(service.id, "metrics", 3000);
-  const liveQueries = usePolling(service.id, "running-queries", 3000);
+  const hasMetrics = service.capabilities?.includes("metrics") ?? false;
+  const hasRunningQueries =
+    service.capabilities?.includes("running-queries") ?? false;
+  const kpis = usePolling(service.id, "metrics", 3000, hasMetrics);
+  const liveQueries = usePolling(
+    service.id,
+    "running-queries",
+    3000,
+    hasRunningQueries,
+  );
   function insertName(name: string) {
     const el = editorRef.current;
     if (!el) {
@@ -1427,30 +1857,32 @@ function QueryWorkbench({ service }: { service: Service }) {
           </div>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-5">
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {kpis.error ? (
-              <span className="col-span-full font-mono text-[11px] text-unavailable">
-                {kpis.error}
-              </span>
-            ) : kpis.data ? (
-              (kpis.data as Array<{ label: string; value: unknown }>).map(
-                (m) => (
-                  <Surface key={m.label} className="grid gap-1 p-3">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-                      {m.label}
-                    </span>
-                    <span className="text-[20px] font-semibold text-primary">
-                      {String(m.value)}
-                    </span>
-                  </Surface>
-                ),
-              )
-            ) : (
-              <span className="col-span-full font-mono text-[11px] text-muted">
-                Loading metrics…
-              </span>
-            )}
-          </section>
+          {hasMetrics && (
+            <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {kpis.error ? (
+                <span className="col-span-full font-mono text-[11px] text-unavailable">
+                  {kpis.error}
+                </span>
+              ) : kpis.data ? (
+                (kpis.data as Array<{ label: string; value: unknown }>).map(
+                  (m) => (
+                    <Surface key={m.label} className="grid gap-1 p-3">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+                        {m.label}
+                      </span>
+                      <span className="text-[20px] font-semibold text-primary">
+                        {String(m.value)}
+                      </span>
+                    </Surface>
+                  ),
+                )
+              ) : (
+                <span className="col-span-full font-mono text-[11px] text-muted">
+                  Loading metrics…
+                </span>
+              )}
+            </section>
+          )}
           <Surface className="overflow-hidden">
             <div className="flex h-9 items-center justify-between border-b border-border px-3">
               <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
@@ -1481,30 +1913,32 @@ function QueryWorkbench({ service }: { service: Service }) {
               detail="Results stay in this browser session and are not written to dsui."
             />
           )}
-          <section className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[12px] font-semibold text-primary">
-                Running queries
-              </h2>
-              <span className="font-mono text-[10px] text-muted">
-                live · 3s
-              </span>
-            </div>
-            {liveQueries.error ? (
-              <div className="border border-unavailable/40 bg-unavailable/10 p-3 font-mono text-[11.5px] text-unavailable">
-                {liveQueries.error}
+          {hasRunningQueries && (
+            <section className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[12px] font-semibold text-primary">
+                  Running queries
+                </h2>
+                <span className="font-mono text-[10px] text-muted">
+                  live · 3s
+                </span>
               </div>
-            ) : (liveQueries.data as unknown[][])?.length ? (
-              <ResultTable
-                rows={liveQueries.data as unknown[][]}
-                columns={liveQueries.columns}
-              />
-            ) : (
-              <p className="font-mono text-[11px] text-muted">
-                No queries running.
-              </p>
-            )}
-          </section>
+              {liveQueries.error ? (
+                <div className="border border-unavailable/40 bg-unavailable/10 p-3 font-mono text-[11.5px] text-unavailable">
+                  {liveQueries.error}
+                </div>
+              ) : (liveQueries.data as unknown[][])?.length ? (
+                <ResultTable
+                  rows={liveQueries.data as unknown[][]}
+                  columns={liveQueries.columns}
+                />
+              ) : (
+                <p className="font-mono text-[11px] text-muted">
+                  No queries running.
+                </p>
+              )}
+            </section>
+          )}
         </div>
       </div>
     </div>

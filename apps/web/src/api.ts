@@ -10,6 +10,7 @@ export type Service = {
   latencyMs?: number;
   managedBy?: "configuration" | "ui";
   capabilities?: string[];
+  mocked?: boolean;
   logo?: string;
 };
 export type Adapter = {
@@ -21,9 +22,10 @@ export type Adapter = {
   fields: Array<{
     key: string;
     label: string;
-    type?: "text" | "password" | "number";
+    type?: "text" | "password" | "number" | "boolean" | "list" | "select";
     placeholder?: string;
     required?: boolean;
+    options?: Array<{ label: string; value: string }>;
   }>;
 };
 export type Manifest = {
@@ -34,9 +36,47 @@ export type Manifest = {
     capability: string;
     kind?: string;
     description?: string;
+    navigation?: {
+      area: { id: string; label: string; order?: number };
+      parent?: { capability: string };
+    };
+    databaseExplorer?: {
+      databasesCapability: string;
+      objectsCapability: string;
+      databaseIdField: string;
+      objectNameField: string;
+      objectTypeField: string;
+      tabs: Array<{
+        id: string;
+        label: string;
+        capability: string;
+        kind: "record-detail" | "record-list" | "code";
+      }>;
+    };
     columns?: Array<{ id: string; label: string; format?: string }>;
     actions?: Array<{ id: string; label: string; authorization: string }>;
-    filters?: Array<{ id: string; label: string; type: string }>;
+    filters?: Array<{
+      id: string;
+      label: string;
+      type: string;
+      options?: Array<{ label: string; value: string }>;
+    }>;
+    fields?: Array<{
+      id: string;
+      label: string;
+      description?: string;
+      type:
+        | "text"
+        | "password"
+        | "number"
+        | "boolean"
+        | "url"
+        | "list"
+        | "select";
+      required?: boolean;
+      placeholder?: string;
+      options?: Array<{ label: string; value: string }>;
+    }>;
     detail?: string;
     idField?: string;
   }>;
@@ -45,6 +85,7 @@ export type Manifest = {
 export type RendererKind =
   | "query"
   | "schema-browser"
+  | "database-explorer"
   | "table-browser"
   | "topic-browser"
   | "message-browser"
@@ -53,6 +94,8 @@ export type RendererKind =
   | "job-browser"
   | "record-list"
   | "record-detail"
+  | "tree"
+  | "metrics"
   | "action-form"
   | "log-stream"
   | "service-info";
@@ -60,6 +103,7 @@ export type Renderer = "query-workbench" | Exclude<RendererKind, "query">;
 export const rendererMap: Record<RendererKind, Renderer> = {
   query: "query-workbench",
   "schema-browser": "schema-browser",
+  "database-explorer": "database-explorer",
   "table-browser": "table-browser",
   "topic-browser": "topic-browser",
   "message-browser": "message-browser",
@@ -69,6 +113,8 @@ export const rendererMap: Record<RendererKind, Renderer> = {
   "log-stream": "log-stream",
   "record-list": "record-list",
   "record-detail": "record-detail",
+  tree: "tree",
+  metrics: "metrics",
   "action-form": "action-form",
   "service-info": "service-info",
 };
