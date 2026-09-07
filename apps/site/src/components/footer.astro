@@ -1,0 +1,94 @@
+<footer class="relative overflow-hidden bg-canvas text-foreground">
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-0 bg-[url('/assets/footer-ascii.png')] bg-cover bg-center bg-no-repeat opacity-70"
+    style="-webkit-mask-image: var(--ds-mask-footer); mask-image: var(--ds-mask-footer);"
+  >
+  </div>
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-0 bg-footer-overlay"
+  >
+  </div>
+
+  <div class="relative mx-auto max-w-6xl px-6">
+    <div
+      class="flex min-h-[34rem] items-center justify-center py-24 text-center sm:min-h-[40rem] sm:py-32"
+    >
+      <div class="max-w-2xl">
+        <h2
+          class="mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-6xl"
+        >
+          Put your whole data stack within reach.
+        </h2>
+        <p
+          class="mx-auto mt-6 max-w-lg text-pretty text-base leading-7 text-copy sm:text-lg"
+        >
+          One lightweight interface. Your infrastructure, credentials, and
+          workflows stay under your control.
+        </p>
+        <div class="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+          <a
+            class="hero-action inline-flex h-12 items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            href="/docs/getting-started/"
+          >
+            Get started
+            <span
+              class="hero-action-icon ml-2 text-brand-softest"
+              aria-hidden="true">→</span
+            >
+          </a>
+          <a
+            class="hero-action hero-action--external inline-flex h-12 items-center justify-center rounded-xl border border-brand-muted/15 bg-canvas/70 px-6 text-sm font-semibold text-copy backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            href="https://github.com/northgraindata/dsui"
+          >
+            View on GitHub
+            <span
+              class="hero-action-icon ml-2 text-brand-muted"
+              aria-hidden="true">↗</span
+            >
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="relative flex flex-col gap-6 border-t border-foreground/10 py-7 text-sm text-copy-subtle sm:flex-row sm:items-center sm:justify-between"
+    >
+      <a
+        href="/"
+        class="inline-flex w-fit items-center gap-2 font-semibold text-copy transition-colors hover:text-brand-muted"
+        aria-label="dsui home"
+      >
+        <img
+          src="/branding/logo-icon.svg"
+          alt=""
+          width="20"
+          height="20"
+          class="size-5"
+        />
+        dsui
+      </a>
+      <nav
+        class="flex flex-wrap gap-x-6 gap-y-3 sm:absolute sm:left-1/2 sm:-translate-x-1/2"
+        aria-label="Footer navigation"
+      >
+        <a class="transition-colors hover:text-foreground" href="#product"
+          >Product</a
+        >
+        <a class="transition-colors hover:text-foreground" href="#adapters"
+          >Adapters</a
+        >
+        <a class="transition-colors hover:text-foreground" href="/docs/"
+          >Documentation</a
+        >
+      </nav>
+      <p class="text-xs text-copy-muted">
+        Built by <a
+          class="transition-colors hover:text-copy"
+          href="https://northgraindata.com">Northgrain Data</a
+        >
+      </p>
+    </div>
+  </div>
+</footer>

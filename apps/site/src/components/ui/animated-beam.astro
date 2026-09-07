@@ -1,0 +1,56 @@
+<svg data-animated-beams aria-hidden="true" class="pointer-events-none absolute inset-0 hidden size-full overflow-visible lg:block">
+  <defs>
+    <linearGradient id="beam-gradient" x1="0%" x2="100%">
+      <stop offset="0%" stop-color="var(--ds-color-brand)" stop-opacity="0"></stop>
+      <stop offset="45%" stop-color="var(--ds-color-brand)" stop-opacity="0.35"></stop>
+      <stop offset="70%" stop-color="var(--ds-color-brand-muted)" stop-opacity="1"></stop>
+      <stop offset="100%" stop-color="var(--ds-color-brand-muted)" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+  <g data-beam-paths></g>
+</svg>
+
+<script>
+  const namespace = "http://www.w3.org/2000/svg";
+
+  function pathBetween(container: DOMRect, source: DOMRect, target: DOMRect) {
+    const sourceIsLeft = source.left + source.width / 2 < target.left + target.width / 2;
+    const startX = (sourceIsLeft ? source.right : source.left) - container.left;
+    const startY = source.top + source.height / 2 - container.top;
+    const endX = (sourceIsLeft ? target.left : target.right) - container.left;
+    const endY = target.top + target.height / 2 - container.top;
+    const controlX = startX + (endX - startX) * 0.52;
+    return `M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`;
+  }
+
+  document.querySelectorAll<HTMLElement>("[data-beam-root]").forEach((root) => {
+    if (root.dataset.beamsReady) return;
+    root.dataset.beamsReady = "true";
+    const svg = root.querySelector<SVGSVGElement>("[data-animated-beams]");
+    const group = svg?.querySelector<SVGGElement>("[data-beam-paths]");
+    const target = root.querySelector<HTMLElement>("[data-beam-to]");
+    if (!svg || !group || !target) return;
+
+    const draw = () => {
+      const bounds = root.getBoundingClientRect();
+      svg.setAttribute("viewBox", `0 0 ${bounds.width} ${bounds.height}`);
+      group.replaceChildren();
+      root.querySelectorAll<HTMLElement>("[data-beam-from]").forEach((source, index) => {
+        const d = pathBetween(bounds, source.getBoundingClientRect(), target.getBoundingClientRect());
+        const track = document.createElementNS(namespace, "path");
+        track.setAttribute("d", d);
+        track.setAttribute("class", "animated-beam-track");
+        const beam = document.createElementNS(namespace, "path");
+        beam.setAttribute("d", d);
+        beam.setAttribute("pathLength", "1");
+        beam.setAttribute("class", "animated-beam-flow");
+        beam.style.animationDelay = `${index * -1.15}s`;
+        group.append(track, beam);
+      });
+    };
+
+    new ResizeObserver(draw).observe(root);
+    document.fonts?.ready.then(draw);
+    draw();
+  });
+</script>

@@ -1,0 +1,150 @@
+---
+type Props = {
+  opacity?: number;
+  speed?: number;
+};
+
+const { opacity = 0.95, speed = 0.001 } = Astro.props;
+---
+
+<canvas
+  data-neural-noise
+  data-speed={speed}
+  aria-hidden="true"
+  tabindex="-1"
+  class="pointer-events-none absolute inset-0 size-full"
+  style={`opacity: ${opacity}`}
+></canvas>
+
+<script>
+  const vertexShaderSource = `
+precision mediump float;
+varying vec2 vUv;
+attribute vec2 a_position;
+void main() { vUv = 0.5 * (a_position + 1.0); gl_Position = vec4(a_position, 0.0, 1.0); }
+`;
+
+  const fragmentShaderSource = `
+precision mediump float;
+varying vec2 vUv;
+uniform float u_time; uniform float u_ratio; uniform vec2 u_pointer_position; uniform vec3 u_color; uniform float u_speed;
+vec2 rotate(vec2 uv, float th) { return mat2(cos(th), sin(th), -sin(th), cos(th)) * uv; }
+float neuro_shape(vec2 uv, float t, float p) {
+  vec2 sine_acc = vec2(0.0); vec2 res = vec2(0.0); float scale = 8.0;
+  for (int j = 0; j < 15; j++) { uv = rotate(uv, 1.0); sine_acc = rotate(sine_acc, 1.0); vec2 layer = uv * scale + float(j) + sine_acc - t; sine_acc += sin(layer) + 2.4 * p; res += (0.5 + 0.5 * cos(layer)) / scale; scale *= 1.2; }
+  return res.x + res.y;
+}
+void main() {
+  vec2 uv = 0.5 * vUv; uv.x *= u_ratio; vec2 pointer = vUv - u_pointer_position; pointer.x *= u_ratio;
+  float p = 0.5 * pow(1.0 - clamp(length(pointer), 0.0, 1.0), 2.0); float noise = neuro_shape(uv, u_speed * u_time, p);
+  noise = 1.2 * pow(noise, 3.0) + pow(noise, 10.0); noise = max(0.0, noise - 0.5); noise *= (1.0 - length(vUv - 0.5));
+  gl_FragColor = vec4(u_color * noise, noise);
+}
+`;
+
+  type Uniforms = Record<string, WebGLUniformLocation | null>;
+
+  function createShader(gl: WebGLRenderingContext, source: string, type: number) {
+    const shader = gl.createShader(type);
+    if (!shader) return null;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  function createProgram(gl: WebGLRenderingContext) {
+    const vertex = createShader(gl, vertexShaderSource, gl.VERTEX_SHADER);
+    const fragment = createShader(gl, fragmentShaderSource, gl.FRAGMENT_SHADER);
+    if (!vertex || !fragment) return null;
+    const program = gl.createProgram();
+    if (!program) return null;
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      gl.deleteProgram(program);
+      return null;
+    }
+    return program;
+  }
+
+  function getUniforms(gl: WebGLRenderingContext, program: WebGLProgram) {
+    const uniforms: Uniforms = {};
+    const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+    for (let index = 0; index < count; index++) {
+      const active = gl.getActiveUniform(program, index);
+      if (active) uniforms[active.name] = gl.getUniformLocation(program, active.name);
+    }
+    return uniforms;
+  }
+
+  function initialize(canvas: HTMLCanvasElement) {
+    if (canvas.dataset.initialized || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    canvas.dataset.initialized = "true";
+    const gl = canvas.getContext("webgl");
+    if (!gl) return;
+    const program = createProgram(gl);
+    if (!program) return;
+    const uniforms = getUniforms(gl, program);
+    const buffer = gl.createBuffer();
+    if (!buffer) return;
+    const color = getComputedStyle(document.documentElement)
+      .getPropertyValue("--ds-shader-rgb")
+      .trim()
+      .split(/\s+/)
+      .map((channel) => Number(channel) / 255);
+    const speed = Number(canvas.dataset.speed ?? 0.001);
+    const pointer = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.useProgram(program);
+    const position = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+    gl.uniform3f(uniforms.u_color, color[0] ?? 0, color[1] ?? 0, color[2] ?? 0);
+    gl.uniform1f(uniforms.u_speed, speed);
+
+    const resize = () => {
+      const ratio = Math.min(devicePixelRatio, 2);
+      const bounds = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(bounds.width * ratio));
+      canvas.height = Math.max(1, Math.floor(bounds.height * ratio));
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.u_ratio, canvas.width / canvas.height);
+    };
+    const updatePointer = (clientX: number, clientY: number) => {
+      const bounds = canvas.getBoundingClientRect();
+      pointer.targetX = Math.min(1, Math.max(0, (clientX - bounds.left) / bounds.width));
+      pointer.targetY = Math.min(1, Math.max(0, 1 - (clientY - bounds.top) / bounds.height));
+    };
+    const onPointerMove = (event: PointerEvent) => updatePointer(event.clientX, event.clientY);
+    const onTouchMove = (event: TouchEvent) => {
+      const touch = event.targetTouches[0];
+      if (touch) updatePointer(touch.clientX, touch.clientY);
+    };
+
+    resize();
+    addEventListener("resize", resize);
+    addEventListener("pointermove", onPointerMove, { passive: true });
+    addEventListener("touchmove", onTouchMove, { passive: true });
+
+    const render = (time: number) => {
+      pointer.x += (pointer.targetX - pointer.x) * 0.2;
+      pointer.y += (pointer.targetY - pointer.y) * 0.2;
+      gl.uniform1f(uniforms.u_time, time);
+      gl.uniform2f(uniforms.u_pointer_position, pointer.x, pointer.y);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(render);
+    };
+    requestAnimationFrame(render);
+  }
+
+  document.querySelectorAll<HTMLCanvasElement>("[data-neural-noise]").forEach(initialize);
+</script>

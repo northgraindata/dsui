@@ -1,0 +1,35 @@
+---
+type Props = {
+  href?: string;
+  stars?: string;
+};
+
+const { href = "https://github.com/northgraindata/dsui", stars = "1.2k" } =
+  Astro.props;
+---
+
+<a
+  class="hero-action hidden h-10 items-center justify-center whitespace-nowrap rounded-md bg-surface px-4 py-2 text-sm font-medium text-copy ring-offset-canvas transition-colors hover:bg-surface-hover hover:shadow-action-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 sm:inline-flex"
+  href={href}
+>
+  <svg
+    class="mr-2 size-4"
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M12 2C6.477 2 2 6.589 2 12.253c0 4.53 2.865 8.37 6.839 9.727.5.096.682-.22.682-.49 0-.24-.009-1.04-.014-1.886-2.782.62-3.369-1.215-3.369-1.215-.455-1.184-1.11-1.5-1.11-1.5-.908-.637.069-.624.069-.624 1.005.073 1.533 1.058 1.533 1.058.892 1.566 2.341 1.114 2.912.852.091-.665.349-1.114.635-1.37-2.22-.26-4.555-1.14-4.555-5.07 0-1.12.39-2.035 1.03-2.753-.104-.26-.446-1.306.098-2.724 0 0 .84-.276 2.75 1.052A9.35 9.35 0 0 1 12 6.93a9.35 9.35 0 0 1 2.504.348c1.91-1.328 2.748-1.052 2.748-1.052.546 1.418.202 2.464.1 2.724.64.718 1.028 1.633 1.028 2.753 0 3.94-2.339 4.807-4.566 5.063.36.32.68.95.68 1.915 0 1.383-.012 2.498-.012 2.838 0 .272.18.59.688.49A10.27 10.27 0 0 0 22 12.253C22 6.589 17.523 2 12 2Z"></path>
+  </svg>
+  Star on GitHub
+  <span class="ml-2 border-l border-brand-muted/15 pl-2 font-mono text-xs text-brand-soft tabular-nums">
+    {stars}
+  </span>
+  <svg
+    class="ml-1 size-3.5 text-brand-muted"
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="m12 2.7 2.83 5.73 6.32.92-4.57 4.46 1.08 6.3L12 17.14l-5.66 2.97 1.08-6.3-4.57-4.46 6.32-.92L12 2.7Z"></path>
+  </svg>
+</a>

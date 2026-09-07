@@ -1,0 +1,155 @@
+---
+import AnimatedBeam from "@/components/ui/animated-beam.astro";
+
+const tools = [
+  { name: "Kafka", src: "/assets/logos/apachekafka.svg" },
+  { name: "Trino", src: "/assets/logos/trino.svg" },
+  { name: "MinIO", src: "/assets/logos/minio.svg" },
+  { name: "Postgres", src: "/assets/logos/postgresql.svg" },
+  { name: "BigQuery", src: "/assets/logos/bigquery.svg" },
+  { name: "Airflow", src: "/assets/logos/airflow.svg" },
+] as const;
+---
+
+<section
+  class="relative overflow-hidden bg-canvas pb-28 pt-16 text-foreground sm:pb-40 sm:pt-24"
+>
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-0 bg-dots bg-[length:24px_24px] opacity-80"
+    style="-webkit-mask-image: var(--ds-dots-mask); mask-image: var(--ds-dots-mask);"
+  >
+  </div>
+
+  <div class="relative z-10 mx-auto max-w-6xl px-6">
+    <div class="mx-auto max-w-4xl text-center">
+      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">
+        WHY DSUI
+      </p>
+      <h2
+        class="mt-6 text-balance text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl"
+      >
+        One interface for every service.
+      </h2>
+      <p
+        class="mx-auto mt-7 max-w-2xl text-pretty text-base leading-7 text-copy sm:text-lg"
+      >
+        Replace the extra admin UI attached to every service with one compact,
+        consistent workspace.
+      </p>
+    </div>
+
+    <div data-beam-root class="relative my-8">
+      <AnimatedBeam />
+
+      <div
+        class="relative mx-auto grid max-w-5xl gap-10 lg:min-h-80 lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-24"
+      >
+        <div
+          class="mx-auto grid h-80 w-full grid-rows-3 items-center justify-items-start gap-6 lg:mx-0"
+        >
+          {
+            tools.slice(0, 3).map((tool) => (
+              <div
+                data-beam-from
+                class="why-tool relative z-10 flex w-fit items-center gap-4"
+              >
+                <p class="text-sm font-medium tracking-tight text-copy">
+                  {tool.name}
+                </p>
+                <span class="grid size-10 shrink-0 place-items-center rounded-xl border border-foreground/10 bg-surface shadow-integration sm:size-11">
+                  <img
+                    src={tool.src}
+                    alt=""
+                    class="size-5 object-contain brightness-0 invert sm:size-6"
+                  />
+                </span>
+              </div>
+            ))
+          }
+        </div>
+
+        <div class="flex flex-col items-center text-center">
+          <div
+            class="mb-10 flex items-center gap-3 text-copy-faint lg:hidden"
+            aria-hidden="true"
+          >
+            <span
+              class="h-px w-14 bg-gradient-to-r from-transparent to-brand/50"
+            ></span>
+            <span class="text-brand-muted">↓</span>
+            <span
+              class="h-px w-14 bg-gradient-to-l from-transparent to-brand/50"
+            ></span>
+          </div>
+          <div
+            data-beam-to
+            data-logo-card
+            class="why-dsui-mark group relative isolate z-10 grid size-28 place-items-center rounded-[2rem] bg-surface shadow-action-secondary transition-shadow duration-500 hover:shadow-action-primary sm:size-32"
+          >
+            <span
+              aria-hidden="true"
+              class="logo-border absolute inset-0 rounded-[2rem]"></span>
+            <div
+              aria-hidden="true"
+              class="pointer-events-none absolute -inset-6 -z-10 rounded-full bg-brand/18 opacity-50 blur-2xl"
+            >
+            </div>
+            <img
+              src="/branding/logo-icon.svg"
+              alt=""
+              class="relative size-12 sm:size-14"
+            />
+          </div>
+        </div>
+
+        <div
+          class="mx-auto grid h-80 w-full grid-rows-3 items-center justify-items-end gap-6 lg:mx-0"
+        >
+          {
+            tools.slice(3).map((tool) => (
+              <div
+                data-beam-from
+                class="why-tool relative z-10 flex w-fit items-center gap-4"
+              >
+                <span class="grid size-10 shrink-0 place-items-center rounded-xl border border-foreground/10 bg-surface shadow-integration sm:size-11">
+                  <img
+                    src={tool.src}
+                    alt=""
+                    class="size-5 object-contain brightness-0 invert sm:size-6"
+                  />
+                </span>
+                <p class="text-sm font-medium tracking-tight text-copy">
+                  {tool.name}
+                </p>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+
+    <p
+      class="mx-auto max-w-3xl border-t border-foreground/8 pt-8 text-center text-sm leading-6 text-copy-muted"
+    >
+      No external control plane. No account required. Credentials stay on the
+      server, where they belong.
+    </p>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-logo-card]").forEach((card) => {
+    card.addEventListener("pointermove", (event) => {
+      const bounds = card.getBoundingClientRect();
+      card.style.setProperty(
+        "--logo-pointer-x",
+        `${event.clientX - bounds.left}px`,
+      );
+      card.style.setProperty(
+        "--logo-pointer-y",
+        `${event.clientY - bounds.top}px`,
+      );
+    });
+  });
+</script>
