@@ -39,7 +39,19 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: 1.3.12 }
       - run: bun install --frozen-lockfile
-      - run: ./scripts/build-release-binary.sh ${{ matrix.os }} ${{ matrix.arch }}
+      - run: |
+          os="${{ matrix.os }}"
+          arch="${{ matrix.arch }}"
+          case "$os/$arch" in
+            linux/amd64|linux/arm64|darwin/amd64|darwin/arm64) ;;
+            *) echo "Unsupported release target: $os/$arch" >&2; exit 2 ;;
+          esac
+
+          mkdir -p dist/release
+          output="dist/release/dsui-${os}-${arch}"
+          bun build packages/server/src/main.ts --compile --minify --target="bun-${os}-${arch}" --outfile "$output"
+          chmod +x "$output"
+          test -s "$output"
       - uses: actions/upload-artifact@v4
         with:
           name: dsui-${{ matrix.os }}-${{ matrix.arch }}
@@ -90,7 +102,19 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: dist/release }
-      - run: ./scripts/package-release.sh dist/release
+      - run: |
+          directory="dist/release"
+          mkdir -p "$directory/.staged"
+
+          find "$directory" -type f -name 'dsui-*' ! -path "$directory/.staged/*" ! -name '*.tar.gz' ! -name '*.sha256' -exec cp {} "$directory/.staged/" \;
+          for binary in "$directory"/.staged/dsui-*; do
+            [ -f "$binary" ] || continue
+            name="$(basename "$binary")"
+            tar -C "$directory/.staged" -czf "$directory/${name}.tar.gz" "$name"
+          done
+          find "$directory" -maxdepth 1 -type f -name '*.tar.gz' -print0 | sort -z | xargs -0 sha256sum >"$directory/checksums.sha256"
+          find "$directory/.staged" -maxdepth 1 -type f -delete
+          rmdir "$directory/.staged"
       - uses: anchore/sbom-action@v0
         with:
           path: dist/release
