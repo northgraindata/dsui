@@ -21,7 +21,7 @@ bun run test
 bun run build
 ```
 
-Use `bun run test:e2e` for browser-facing changes. Adapter changes must run the shared contract suite.
+Adapter changes must run the shared contract suite.
 
 ## Principles
 

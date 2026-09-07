@@ -39,30 +39,20 @@ It is not a data platform, orchestrator, observability suite, catalog, SaaS cont
 
 | Adapter | Workflows | Status |
 | --- | --- | --- |
-| Trino | Queries, catalogs, schemas, tables | Available |
-| Kafka | Brokers, topics, messages, groups, ACLs, schemas, Kafka Connect | Available |
-| S3 | Buckets, objects, metadata, downloads | Available |
-| PostgreSQL / Redshift | SQL, objects, activity, locks, workload | Available |
-| Snowflake / BigQuery / Databricks | SQL, metadata, warehouses, jobs | Available |
-| Apache Airflow / Dagster | DAGs/jobs, runs, tasks/assets, operations | Available |
-| Mock Service | Emulate any adapter with mutable presets and simulated state | Available |
-| dbt Cloud | Administrative API v2 resources, runs, artifacts | Available |
-| ClickHouse / Polaris / Flink / Spark / Docker | Service-specific inspection and operations | Available |
+| Snowflake | SQL, metadata, warehouses, jobs, governance, cost | Available |
 
-Choose **Mock Service**, select Snowflake, Airflow, dbt Cloud, Kafka, or any
-other supported service type, then choose a data preset and simulated health.
-The resulting service uses the selected adapter's logo, screens, and
-capabilities without requiring an external connection.
+Adapters resolve by package name through one loader: local packages run
+in-process, pinned npm packages install verified and run isolated.
+No adapter id receives special handling anywhere in the server.
 
 ```yaml
 services:
-  - id: snowflake-mock
-    adapter: mock
-    name: Snowflake playground
+  - id: analytics
+    adapter: snowflake
+    name: Analytics warehouse
     connection:
-      serviceType: snowflake
-      preset: realistic
-      health: healthy
+      accountIdentifier: org-account
+      token: ${SNOWFLAKE_TOKEN}
 ```
 
 ## Lightweight by design
@@ -86,13 +76,13 @@ Configuration-managed services are read-only in the UI. `${ENV_NAME}` interpolat
 
 ## Adapters
 
-The core application contains no Trino, Kafka, or S3-specific UI logic. Adapters declare connection fields, health, operations, capabilities, and validated views rendered by dsui. Community adapters can be installed from exact, integrity-pinned npm packages or exact GitHub commits; adapter-supplied browser code is not accepted.
+The core application contains no service-specific UI logic. Adapters declare metadata, connection schemas, resources, actions, and pages rendered by dsui. Community adapters install from exact, integrity-pinned npm packages; adapter-supplied browser code is not accepted.
 
-Start with [`templates/adapter`](templates/adapter) and the [Adapter SDK guide](https://dsui.northgraindata.com/docs/adapter-sdk/). The pre-1.0 API is intentionally experimental until all three built-in adapters have exercised it.
+Start with [`templates/adapter`](templates/adapter) and the [Adapter SDK guide](https://dsui.northgraindata.com/docs/adapter-sdk/). The pre-1.0 API is intentionally experimental while the reference adapter exercises it.
 
 ## Documentation
 
-Practical installation, configuration, adapter, CLI, architecture, and security documentation lives at [dsui.northgraindata.com/docs](https://dsui.northgraindata.com/docs/).
+Practical installation, configuration, adapter, architecture, and security documentation lives at [dsui.northgraindata.com/docs](https://dsui.northgraindata.com/docs/).
 
 ## Contributing
 
