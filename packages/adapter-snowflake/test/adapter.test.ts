@@ -292,13 +292,17 @@ test("logs react to search and support polling", async () => {
   await instance.dispose();
 });
 
-test("editor shows Cancel only while a query is tracked", async () => {
+test("editor buttons follow editor state", async () => {
   const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
   const scope = instance.createPageScope("/query");
   const kinds = () =>
     nodes(scope)
       .filter((n) => n.kind === "button")
       .map((n) => (n.kind === "button" ? n.props.label : ""));
+  // Empty SQL binds nothing: no Run button until there is a query.
+  expect(kinds()).toEqual([]);
+
+  scope.stores.use(queryEditorStore).setSql("SELECT 1");
   expect(kinds()).toEqual(["Run"]);
 
   scope.stores.use(queryEditorStore).setCurrentQueryId("q1");
@@ -306,6 +310,9 @@ test("editor shows Cancel only while a query is tracked", async () => {
 
   scope.stores.use(queryEditorStore).setCurrentQueryId(null);
   expect(kinds()).toEqual(["Run"]);
+
+  scope.stores.use(queryEditorStore).setSql("");
+  expect(kinds()).toEqual([]);
   scope.dispose();
   await instance.dispose();
 });

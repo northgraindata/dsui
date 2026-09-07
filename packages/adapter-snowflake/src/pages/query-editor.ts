@@ -56,16 +56,22 @@ export const queryEditorPage = definePage({
         value: editor.sql,
         onChange: editor.setSql,
       }),
-      Button({
-        label: "Run",
-        variant: "primary",
-        action: runQuery({
-          sql: editor.sql,
-          warehouse: session.warehouse,
-          database: session.database,
-          schema: session.schema,
-        }),
-      }),
+      // Bindings validate on creation, so both buttons are guarded:
+      // Run needs non-empty SQL, Cancel needs a tracked query id.
+      ...(editor.sql
+        ? [
+            Button({
+              label: "Run",
+              variant: "primary",
+              action: runQuery({
+                sql: editor.sql,
+                warehouse: session.warehouse,
+                database: session.database,
+                schema: session.schema,
+              }),
+            }),
+          ]
+        : []),
       // Conditional UI from store state: Cancel only exists while a query
       // is tracked. (Binding creation validates, so the guard matters.)
       ...(editor.currentQueryId
