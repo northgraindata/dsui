@@ -1,13 +1,26 @@
 export {
-  AdapterRegistry,
-  endpointFor,
-  normalizeConnection,
-  publicAdapter,
-} from "./adapters";
+  type AdapterFetch,
+  assertSafeAdapterUrl,
+  type CommunityAdapterSource,
+  ExternalAdapterError,
+  ExternalAdapterManager,
+  type InstalledExternalAdapter,
+} from "./adapters/installer";
+export { loadAdapter } from "./adapters/loader";
+export { AdapterRegistry } from "./adapters/registry";
+export type {
+  AdapterBackend,
+  AdapterCatalog,
+  AdapterExecutionError,
+  AdapterLoadError,
+  AdapterPackageSource,
+  AdapterReadiness,
+  LoadedAdapter,
+} from "./adapters/types";
 export {
   type CreateRuntimeOptions,
   createRuntime,
-  type PublicService,
+  type Runtime,
 } from "./app";
 export {
   type AuthMode,
@@ -17,22 +30,19 @@ export {
   type Role,
 } from "./auth";
 export {
+  type AdapterEntry,
+  type AdapterOverride,
+  adapterSourceEntries,
   ConfigError,
   type ConfiguredService,
-  communityAdapterEntries,
   configSchema,
   type DsuiConfig,
   interpolateEnvironment,
-  isCommunityAdapterSource,
+  isAdapterSource,
+  type LocalAdapterSource,
   loadConfig,
+  type NpmAdapterSource,
 } from "./config";
-export { ConnectionCipher, type EncryptedValue } from "./crypto";
-export { DsuiDatabase } from "./database";
-export {
-  type AdapterFetch,
-  assertSafeAdapterUrl,
-  ExternalAdapterManager,
-  type ExternalAdapterManagerOptions,
-  externalAdapterDefinition,
-  type InstalledExternalAdapter,
-} from "./external-adapters";
+export { ConnectionCipher, type EncryptedValue } from "./db/crypto";
+export { DsuiDatabase } from "./db/database";
+export type { Migration } from "./db/migrate";
