@@ -8,15 +8,42 @@ description: Configure services, authentication, storage, and community adapters
 ```yaml
 services:
   - id: analytics
-    adapter: trino
-    name: Local Trino
+    adapter: snowflake
+    name: Analytics warehouse
     connection:
-      host: trino
-      port: 8080
-      username: dsui
+      accountIdentifier: org-account
+      token: ${SNOWFLAKE_TOKEN}
 ```
 
 `${ENV_NAME}` interpolation is supported. Missing variables are errors. Resolved values are never returned to the browser or logged. Configuration-managed services are read-only in the UI.
+
+## Adapters
+
+Adapters resolve by package name. With no `adapters:` section the
+server loads its default set (Snowflake). A local or workspace package
+loads in-process:
+
+```yaml
+adapters:
+  snowflake:
+    package: "@northgraindata/dsui-adapter-snowflake"
+```
+
+A pinned npm package installs verified (tarball SRI plus manifest
+digest) and runs isolated in an `adapter-host` subprocess:
+
+```yaml
+adapters:
+  acme-thing:
+    package: "@acme/dsui-adapter-thing"
+    version: "1.2.3"
+    integrity: "sha512-REPLACE_WITH_NPM_DIST_INTEGRITY"
+```
+
+Presentation overrides (`name`, `description`, `iconUrl`) apply on top
+of any registered adapter id. Entries that fail to load mark
+themselves unavailable in `GET /api/v1/adapters` instead of blocking
+startup.
 
 ## Runtime
 

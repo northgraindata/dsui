@@ -1,65 +1,59 @@
 ---
 title: Adapter SDK
-description: Build, test, customize, and publish an unofficial dsui adapter.
+description: Build, test, and publish a dsui adapter.
 ---
 
-The pre-1.0 SDK is experimental. Compatibility is checked before any adapter is activated.
+The SDK is versioned. Bundles declaring any other `sdkVersion` are
+rejected before activation. Compatibility is checked before any
+adapter code runs.
 
 ## Start from the template
 
-Use `templates/adapter` or the `northgraindata/dsui-adapter-template` repository. Implement connection validation, health, and operations, then declare views with core renderer descriptors.
+Use `templates/adapter`. Model external data as resources, side
+effects as actions, and navigation as pages. Validate every input
+with Zod and return secret-free errors.
 
 ```ts
 export default defineAdapter({
-  id: "polaris",
-  displayName: "Polaris",
+  metadata: { id: "example-service", name: "Example Service", version: "0.1.0" },
   connectionSchema,
-  secretPaths: ["credential"],
-  capabilities: [
-    recordListCapability({ id: "catalogs", label: "Catalogs" }),
-    jobBrowserCapability({ id: "jobs", label: "Maintenance jobs" }),
-  ],
+  context: (config) => ({ endpoint: config.endpoint, token: config.token }),
+  resources: [info],
+  actions: [ping],
+  pages: [overviewPage],
 });
 ```
 
-Trino can expose a query workbench and schema tree while Polaris exposes catalog records and jobs. Both use dsui-owned navigation, tables, forms, states, and accessibility.
+dsui owns navigation, tables, forms, states, and accessibility.
+Adding a new renderer kind requires a dsui core contribution;
+adapters never ship browser code.
 
 ## Declarative UI boundaries
 
-Descriptors may define labels, columns, filters, fields, pagination, actions, and safe formatters. Adding a new renderer kind requires a dsui core contribution. Adapter React, HTML, CSS, SVG, URLs, and browser JavaScript are rejected.
+Pages compose built-in components (tables, buttons, tabs, forms,
+inputs, editors) and named composites of them. Descriptors may define
+labels, validation, and actions. Adapter React, HTML, CSS, SVG, URLs
+beyond `iconUrl`, and browser JavaScript are rejected.
 
 ## Package manifest
 
-Ship `dsui.adapter.json`, `dist/adapter.mjs`, a license, and notices. The ESM file must contain all dependencies and may not use native addons or code splitting.
+Ship `dsui.adapter.json`, `dist/adapter.mjs`, a license, and notices.
+The manifest declares `resources`, `actions`, and `pages` ids alongside
+byte count and SHA-256. The ESM file must contain all dependencies and
+may not use native addons or code splitting.
 
 ## npm installation
 
 ```yaml
 adapters:
-  polaris:
-    source: npm
-    package: "@github_name/github_adapter"
-    version: "1.2.3"
+  example:
+    package: "@your-org/dsui-adapter-example"
+    version: "0.1.0"
     integrity: "sha512-..."
 ```
-
-## GitHub installation
-
-```yaml
-adapters:
-  polaris:
-    source: git
-    repository: "git+https://github.com/user/adapter-repo.git"
-    commit: "0123456789abcdef0123456789abcdef01234567"
-    integrity: "sha512-..."
-```
-
-Git repositories must commit the same prebuilt bundle. dsui never clones, installs dependencies, or runs package scripts.
 
 ## Test and publish
 
-Run the `@northgraindata/dsui-adapter-test` contract suite, publish from CI with npm provenance, disclose network access and authentication, and provide a security contact. Use `dsui doctor --resolve-adapter` to obtain reviewable configuration and integrity.
-
-## Troubleshooting
-
-Compatibility, schema, integrity, timeout, and host-process failures appear in `dsui doctor --check-adapters` without printing connection secrets.
+Cover the adapter with `bun test` against the template's fake-client
+pattern, publish from CI with npm provenance, disclose network access
+and authentication, and provide a security contact.

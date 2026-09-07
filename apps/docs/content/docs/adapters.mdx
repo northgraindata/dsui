@@ -5,46 +5,36 @@ description: How dsui translates different data services into one safe, consiste
 
 ## Available
 
-The built-in adapters are Trino, ClickHouse, Apache Polaris, Kafka, S3/MinIO,
-Flink, Spark, Docker, Snowflake, BigQuery, Apache Airflow, Redshift, PostgreSQL,
-Databricks, Dagster, and dbt Cloud.
-
-Mock Service requires no external service or credentials. Its connection form
-contains only a service type, preset, simulated health, and optional latency.
-Selecting Snowflake, Airflow, dbt Cloud, Kafka, or another supported type makes
-the saved service use that adapter's logo, manifest, screens, and actions while
-execution is routed to mutable local fixtures.
+Snowflake ships as the default adapter. Every adapter, default
+included, resolves by package name through the same loader: local
+packages import in-process, pinned npm packages install verified and
+run isolated in an `adapter-host` subprocess. No adapter id receives
+special handling anywhere in the server.
 
 ```yaml
 services:
-  - id: snowflake-mock
-    adapter: mock
-    name: Snowflake playground
+  - id: analytics
+    adapter: snowflake
+    name: Analytics warehouse
     connection:
-      serviceType: snowflake
-      preset: realistic
-      health: healthy
+      accountIdentifier: org-account
+      token: ${SNOWFLAKE_TOKEN}
 ```
-
-The realistic preset contains populated resources, empty starts clean, and
-incident seeds failed/running work plus a warning event. Mock state lasts until
-the dsui server restarts. SQL writes mutate data and declared adapter actions
-produce local audit events. Including `error` or `fail` in mock SQL deliberately
-exercises the error state.
-
-Kafka includes cluster and broker inspection, topic and partition management,
-bounded message browsing and production, consumer groups and offsets, ACLs,
-Confluent-compatible Schema Registry, and Kafka Connect. Apache Airflow
-automatically negotiates the stable v1 API used by Airflow 2 or the stable v2
-API used by Airflow 3, with a safe version-relative operation covering every
-public endpoint. dbt Cloud covers all Administrative API v2 resource groups
-and exposes a constrained account-scoped API operation for endpoints added
-within v2.
 
 ## Model
 
-An adapter declares metadata, connection fields, secret paths, health, operations, capabilities, and declarative views. dsui owns all browser UI. Adapters cannot ship React, HTML, CSS, or browser JavaScript.
+An adapter declares metadata, a connection schema, resources (data),
+actions (behavior), pages (composition), and stores (state). dsui owns
+all browser UI. Adapters cannot ship React, HTML, CSS, or browser
+JavaScript.
+
+Reads require `inspect`, mutations require `execute`. The SDK carries
+no per-item authorization metadata, so this convention is the
+contract.
 
 ## Community packages
 
-Community adapters are trusted server code. Production sources must be immutable and integrity-pinned. See [Adapter SDK](/docs/adapter-sdk) for package and GitHub examples.
+Community adapters are third-party server code. Production sources
+must be immutable and integrity-pinned; verified bundles execute in an
+isolated subprocess with no access to the server process. See
+[Adapter SDK](/docs/adapter-sdk) for the template and manifest format.
