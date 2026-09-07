@@ -1,67 +1,119 @@
+/**
+ * DSUI adapter SDK: Resource = data, Store = state, Action = behavior,
+ * Page = composition, Context = environment, Adapter = application boundary.
+ */
 import { createHash, timingSafeEqual } from "node:crypto";
-import {
-  type AdapterMetadata,
-  CAPABILITY_KINDS,
-  type CapabilityDeclaration,
-  type FieldDescriptor,
-  type HealthStatus,
-} from "@northgraindata/dsui-core";
 import { z } from "zod";
+import { ADAPTER_SDK_VERSION } from "./adapter/index";
 
+export {
+  type ActionBinding,
+  type ActionDefinition,
+  type ActionExecutionStatus,
+  type ActionFailure,
+  type ActionResult,
+  type ActionRuntimeContext,
+  type ActionSuccess,
+  type ActionTarget,
+  type AnyActionDefinition,
+  defineAction,
+  type InputAction,
+  type InputlessAction,
+} from "./action/index";
+export {
+  ADAPTER_SDK_VERSION,
+  type AdapterDefinition,
+  type AdapterInfo,
+  type DefineAdapterOptions,
+  defineAdapter,
+} from "./adapter/index";
+export {
+  Button,
+  type ButtonNode,
+  type ButtonProps,
+  CodeEditor,
+  type CodeEditorNode,
+  type CodeEditorProps,
+  type ComponentNode,
+  defineComponent,
+  Form,
+  type FormNode,
+  type FormProps,
+  KeyValue,
+  type KeyValueNode,
+  type KeyValueProps,
+  PageHeader,
+  type PageHeaderNode,
+  type PageHeaderProps,
+  Select,
+  type SelectNode,
+  type SelectOption,
+  type SelectProps,
+  Table,
+  type TableColumn,
+  type TableNode,
+  type TableProps,
+  Tabs,
+  type TabsItem,
+  type TabsNode,
+  type TabsProps,
+  TextInput,
+  type TextInputNode,
+  type TextInputProps,
+} from "./components/index";
+export {
+  type AnyPageDefinition,
+  definePage,
+  type ExtractRouteParams,
+  matchRoute,
+  type PageRenderContext,
+  type StoreAccessor,
+} from "./page/index";
+export {
+  ManualRefreshPolicy,
+  manual,
+  type PollInterval,
+  PollingRefreshPolicy,
+  poll,
+  RefreshPolicy,
+  type RefreshStrategy,
+} from "./refresh/index";
+export {
+  type AnyResourceDefinition,
+  type DataSource,
+  defineResource,
+  type InputlessResource,
+  type InputResource,
+  type ResourceBinding,
+  type ResourceDefinition,
+} from "./resource/index";
+export {
+  type ActionExecutionOptions,
+  type AdapterInstance,
+  createAdapterInstance,
+  type PageScope,
+  type ResourceFailure,
+  type ResourceResult,
+  type ResourceStatus,
+  type ResourceSuccess,
+  resourceKey,
+  stableStringify,
+} from "./runtime/index";
+export {
+  InvalidDefinitionError,
+  SdkError,
+  UnknownPageError,
+} from "./shared/errors";
+export {
+  type AnyStoreDefinition,
+  createStoreInstance,
+  defineStore,
+  type StoreDefinition,
+  type StoreHelpers,
+  type StoreInstance,
+  type StoreScope,
+} from "./store/index";
 export { z };
-export const ADAPTER_SDK_VERSION = "0.1.0";
-
-export interface AdapterContext {
-  signal?: AbortSignal;
-  now?: () => Date;
-  fetch?: typeof fetch;
-  log?: {
-    debug(message: string, fields?: Record<string, unknown>): void;
-    warn(message: string, fields?: Record<string, unknown>): void;
-  };
-}
-
-export interface AdapterInstance {
-  health(): Promise<HealthStatus>;
-  execute(operationId: string, input: unknown): Promise<unknown>;
-  close?(): Promise<void> | void;
-}
-
-export interface AdapterDefinition<
-  TConnection extends z.ZodTypeAny = z.ZodTypeAny,
-> {
-  id: string;
-  version: string;
-  sdkVersion: string;
-  metadata: AdapterMetadata;
-  connectionSchema: TConnection;
-  connectionFields: readonly FieldDescriptor[];
-  /** Dot paths that must be redacted in logs and API responses. */
-  secretPaths: readonly string[];
-  capabilities: readonly CapabilityDeclaration[];
-  create(
-    context: AdapterContext,
-    connection: z.output<TConnection>,
-  ): AdapterInstance;
-}
-
-export function defineAdapter<T extends z.ZodTypeAny>(
-  definition: AdapterDefinition<T>,
-): AdapterDefinition<T> {
-  if (!/^[a-z][a-z0-9-]*$/.test(definition.id))
-    throw new Error("Adapter id must be kebab-case");
-  if (definition.sdkVersion !== ADAPTER_SDK_VERSION)
-    throw new Error(
-      `Adapter ${definition.id} targets incompatible SDK ${definition.sdkVersion}`,
-    );
-  const operationIds = new Set<string>();
-  for (const capability of definition.capabilities) {
-    if (operationIds.has(capability.id))
-      throw new Error(`Duplicate capability ${capability.id}`);
-    operationIds.add(capability.id);
-  }
-  return definition;
-}
 
 export const adapterManifestSchema = z.object({
   schemaVersion: z.literal(1),
@@ -72,7 +124,9 @@ export const adapterManifestSchema = z.object({
   entry: z.string().regex(/^\.\/dist\/[A-Za-z0-9._/-]+\.mjs$/),
   license: z.string().min(1),
   repository: z.string().url(),
-  capabilities: z.array(z.string()).min(1),
+  resources: z.array(z.string()).default([]),
+  actions: z.array(z.string()).default([]),
+  pages: z.array(z.string()).default([]),
   bundle: z.object({
     bytes: z
       .number()
@@ -161,16 +215,13 @@ export function validateManifest(
   expected: Pick<ExternalAdapterSource, "version"> & { entry?: string },
 ): AdapterManifest {
   const parsed = adapterManifestSchema.parse(manifest);
+  if (parsed.sdkVersion !== ADAPTER_SDK_VERSION)
+    throw new Error(
+      `Adapter targets SDK ${parsed.sdkVersion}; host requires ${ADAPTER_SDK_VERSION}`,
+    );
   if (parsed.version !== expected.version)
     throw new Error("Adapter manifest version differs from configured version");
   if (expected.entry && parsed.entry !== expected.entry)
     throw new Error("Adapter manifest entry differs from configured entry");
-  for (const capability of parsed.capabilities)
-    if (
-      !CAPABILITY_KINDS.includes(
-        capability as (typeof CAPABILITY_KINDS)[number],
-      )
-    )
-      throw new Error(`Unsupported capability renderer: ${capability}`);
   return parsed;
 }
