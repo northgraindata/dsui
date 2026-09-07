@@ -1,14 +1,8 @@
 import { access, readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { parse } from "yaml";
+import { parse as parseYaml } from "yaml";
 import { z } from "zod";
-import {
-  type CommunityAdapterSource,
-  communityAdapterSourceSchema,
-} from "./external-adapters";
 
 const envToken = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
-const httpUrl = /^https?:\/\//i;
 
 export class ConfigError extends Error {}
 
@@ -48,46 +42,79 @@ const serviceSchema = z.object({
   connection: z.record(z.unknown()).default({}),
 });
 
+/**
+ * A local adapter package resolved by name and imported in-process.
+ * Workspace packages and node_modules entries both work.
+ */
+export const localAdapterSourceSchema = z
+  .object({ package: z.string().min(1) })
+  .strict();
+export type LocalAdapterSource = z.infer<typeof localAdapterSourceSchema>;
+
+const exactVersion = z
+  .string()
+  .regex(
+    /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/,
+    "must be an exact SemVer version",
+  );
+
+/**
+ * A pinned npm adapter. Installed verified (tarball SRI + manifest
+ * digest) and executed in an isolated adapter-host subprocess.
+ */
+export const npmAdapterSourceSchema = z
+  .object({
+    package: z.string().min(1),
+    version: exactVersion,
+    integrity: z
+      .string()
+      .regex(/^sha512-[A-Za-z0-9+/]+={0,2}$/, "must be a SHA-512 SRI digest"),
+    entry: z.string().min(1).optional(),
+  })
+  .strict();
+export type NpmAdapterSource = z.infer<typeof npmAdapterSourceSchema>;
+
 /** Per-adapter presentation overrides keyed by adapter id. */
 export const adapterOverrideSchema = z
   .object({
     name: z.string().min(1).max(120).optional(),
-    category: z.string().min(1).max(80).optional(),
     description: z.string().min(1).max(400).optional(),
-    logo: z.string().min(1).max(2048).optional(),
+    iconUrl: z.string().url().optional(),
   })
   .strict();
 export type AdapterOverride = z.infer<typeof adapterOverrideSchema>;
 
 /**
- * An `adapters:` entry is either a presentation override for a built-in or a
- * community source definition under a logical id, e.g.:
+ * An `adapters:` entry is either a package source (local or pinned npm)
+ * or a presentation override for an already-registered adapter, e.g.:
  *
  * adapters:
- *   polaris-npm:
- *     source: npm
- *     package: "@acme/dsui-adapter-polaris"
+ *   snowflake:
+ *     package: "@northgraindata/dsui-adapter-snowflake"
+ *   acme-thing:
+ *     package: "@acme/dsui-adapter-thing"
  *     version: "1.2.3"
  *     integrity: "sha512-..."
  */
 export const adapterEntrySchema = z.union([
-  communityAdapterSourceSchema,
+  localAdapterSourceSchema,
+  npmAdapterSourceSchema,
   adapterOverrideSchema,
 ]);
 export type AdapterEntry = z.infer<typeof adapterEntrySchema>;
 
-export function isCommunityAdapterSource(
+export function isAdapterSource(
   entry: AdapterEntry,
-): entry is CommunityAdapterSource {
-  return "source" in entry;
+): entry is LocalAdapterSource | NpmAdapterSource {
+  return "package" in entry;
 }
 
-export function communityAdapterEntries(
+export function adapterSourceEntries(
   config: DsuiConfig,
-): Array<[string, CommunityAdapterSource]> {
+): Array<[string, LocalAdapterSource | NpmAdapterSource]> {
   return Object.entries(config.adapters ?? {}).filter(
-    (entry): entry is [string, CommunityAdapterSource] =>
-      isCommunityAdapterSource(entry[1]),
+    (entry): entry is [string, LocalAdapterSource | NpmAdapterSource] =>
+      isAdapterSource(entry[1]),
   );
 }
 
@@ -116,29 +143,17 @@ export async function loadConfig(
   }
   let raw: unknown;
   try {
-    raw = parse(await readFile(path, "utf8"));
+    raw = parseYaml(await readFile(path, "utf8"));
   } catch (error) {
     throw new ConfigError(
       `Could not read configuration: ${error instanceof Error ? error.message : "invalid YAML"}`,
     );
   }
   try {
-    const parsed = configSchema.parse(interpolate(raw ?? {}, environment));
-    return resolveAdapterLogos(parsed, path);
+    return configSchema.parse(interpolate(raw ?? {}, environment));
   } catch (error) {
     throw new ConfigError(
       `Invalid configuration: ${error instanceof Error ? error.message : "unknown error"}`,
     );
   }
-}
-
-/** Relative logo paths are stored absolute, anchored at the config file. */
-function resolveAdapterLogos(config: DsuiConfig, path: string): DsuiConfig {
-  if (!config.adapters) return config;
-  const base = dirname(path);
-  for (const entry of Object.values(config.adapters)) {
-    if ("logo" in entry && entry.logo && !httpUrl.test(entry.logo))
-      entry.logo = resolve(base, entry.logo);
-  }
-  return config;
 }
