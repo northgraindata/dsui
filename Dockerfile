@@ -7,7 +7,7 @@ COPY apps ./apps
 COPY packages ./packages
 RUN bun install --frozen-lockfile
 RUN bun run --filter @dsui/web build
-RUN mkdir -p /out && bun build packages/cli/src/index.ts --compile --minify --outfile /out/dsui
+RUN mkdir -p /out && bun build packages/server/src/main.ts --compile --minify --outfile /out/dsui
 
 FROM gcr.io/distroless/base-debian12:nonroot
 WORKDIR /app
