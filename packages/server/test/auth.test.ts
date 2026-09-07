@@ -1,11 +1,11 @@
+import { describe, expect, it } from "bun:test";
 import { Buffer } from "node:buffer";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
 import { createRuntime } from "../src/app";
-import { ConnectionCipher } from "../src/crypto";
-import { DsuiDatabase } from "../src/database";
+import { ConnectionCipher } from "../src/db/crypto";
+import { DsuiDatabase } from "../src/db/database";
 
 const masterKey = Buffer.alloc(32, 9).toString("base64");
 const authSecret = "7sui-enterprise-secret-with-at-least-32-chars";

@@ -1,72 +1,23 @@
-import { createHash } from "node:crypto";
+import { describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
 import {
   assertSafeAdapterUrl,
-  communityAdapterSourceSchema,
   ExternalAdapterError,
   ExternalAdapterManager,
-} from "../src/external-adapters";
-
-const encoder = new TextEncoder();
-const commit = "a".repeat(40);
-
-function sri(bytes: Uint8Array): string {
-  return `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
-}
-function digest(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-function manifest(bundle: Uint8Array) {
-  return encoder.encode(
-    JSON.stringify({
-      schemaVersion: 1,
-      id: "community-test",
-      name: "Community test",
-      version: "1.2.3",
-      sdkVersion: "0.1.0",
-      entry: "./dist/adapter.mjs",
-      license: "MIT",
-      repository: "https://github.com/acme/community-test",
-      capabilities: ["query"],
-      bundle: { bytes: bundle.length, sha256: digest(bundle) },
-    }),
-  );
-}
-
-function responseFor(files: Record<string, Uint8Array>) {
-  return async (url: string): Promise<Response> => {
-    const bytes = files[url];
-    return bytes
-      ? new Response(new Uint8Array(bytes), { status: 200 })
-      : new Response("missing", { status: 404 });
-  };
-}
-
-function tarHeader(name: string, size: number, type = "0"): Uint8Array {
-  const block = new Uint8Array(512);
-  block.set(encoder.encode(name), 0);
-  block.set(encoder.encode(`${size.toString(8).padStart(11, "0")}\0`), 124);
-  block[156] = type.charCodeAt(0);
-  return block;
-}
-function concat(parts: Uint8Array[]): Uint8Array {
-  const result = new Uint8Array(parts.reduce((n, part) => n + part.length, 0));
-  let offset = 0;
-  for (const part of parts) {
-    result.set(part, offset);
-    offset += part.length;
-  }
-  return result;
-}
-async function gzip(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([new Uint8Array(bytes)])
-    .stream()
-    .pipeThrough(new CompressionStream("gzip"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
+} from "../src/adapters/installer";
+import {
+  commit,
+  concat,
+  digest,
+  encoder,
+  gzip,
+  manifest,
+  responseFor,
+  sri,
+  tarHeader,
+} from "./fixtures";
 
 describe("community adapter resolver", () => {
   it("installs an immutable raw GitHub adapter and serves it from the offline cache", async () => {
@@ -105,25 +56,23 @@ describe("community adapter resolver", () => {
     }
   });
 
-  it("rejects redirect-capable hosts, floating git refs, and mismatched raw bundle SRI", async () => {
+  it("rejects SDK mismatches, unsafe hosts, and mismatched raw bundle SRI", async () => {
     expect(() =>
       assertSafeAdapterUrl("https://registry.npmjs.org.evil.test/pkg"),
     ).toThrow(ExternalAdapterError);
     expect(() => assertSafeAdapterUrl("http://registry.npmjs.org/pkg")).toThrow(
       "HTTPS",
     );
-    expect(() =>
-      communityAdapterSourceSchema.parse({
-        source: "git",
-        repository: "git+https://github.com/acme/repo",
-        commit: "main",
-        integrity: "sha512-aaa=",
-      }),
-    ).toThrow("commit");
     const root = await mkdtemp(join(tmpdir(), "dsui-adapters-"));
     try {
       const bundle = encoder.encode("export default {};\n");
       const url = `https://raw.githubusercontent.com/acme/repo/${commit}`;
+      const source = {
+        source: "git" as const,
+        repository: "git+https://github.com/acme/repo",
+        commit,
+        integrity: sri(encoder.encode("different")),
+      };
       await expect(
         new ExternalAdapterManager({
           dataDir: root,
@@ -131,13 +80,23 @@ describe("community adapter resolver", () => {
             [`${url}/dsui.adapter.json`]: manifest(bundle),
             [`${url}/dist/adapter.mjs`]: bundle,
           }),
+        }).install(source),
+      ).rejects.toThrow("SRI");
+      const wrongSdk = encoder.encode("export default {};\n");
+      await expect(
+        new ExternalAdapterManager({
+          dataDir: root,
+          fetch: responseFor({
+            [`${url}/dsui.adapter.json`]: manifest(wrongSdk, "9.9.9"),
+            [`${url}/dist/adapter.mjs`]: wrongSdk,
+          }),
         }).install({
           source: "git",
           repository: "git+https://github.com/acme/repo",
           commit,
-          integrity: sri(encoder.encode("different")),
+          integrity: sri(wrongSdk),
         }),
-      ).rejects.toThrow("SRI");
+      ).rejects.toThrow("SDK");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

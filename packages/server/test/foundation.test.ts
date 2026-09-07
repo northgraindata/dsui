@@ -1,7 +1,7 @@
+import { describe, expect, it } from "bun:test";
 import { Buffer } from "node:buffer";
-import { describe, expect, it } from "vitest";
 import { interpolateEnvironment } from "../src/config";
-import { ConnectionCipher } from "../src/crypto";
+import { ConnectionCipher } from "../src/db/crypto";
 
 describe("foundation utilities", () => {
   it("interpolates required environment variables", () => {
@@ -20,6 +20,8 @@ describe("foundation utilities", () => {
     const cipher = new ConnectionCipher(Buffer.alloc(32, 1).toString("base64"));
     const encrypted = cipher.encrypt({ password: "not-in-plaintext" });
     expect(encrypted.ciphertext).not.toContain("not-in-plaintext");
-    expect(cipher.decrypt(encrypted)).toEqual({ password: "not-in-plaintext" });
+    expect(cipher.decrypt<Record<string, unknown>>(encrypted)).toEqual({
+      password: "not-in-plaintext",
+    });
   });
 });
