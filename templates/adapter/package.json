@@ -14,13 +14,14 @@
   "scripts": {
     "build": "bun build src/adapter.ts --target=bun --format=esm --outfile dist/adapter.mjs",
     "test": "bun test",
+    "typecheck": "tsc --noEmit",
     "pack:check": "bun run build && npm pack --dry-run"
   },
   "dependencies": {
-    "@northgraindata/dsui-adapter-sdk": "^0.1.0"
+    "@northgraindata/dsui-adapter-sdk": "workspace:*"
   },
   "peerDependencies": {
-    "@northgraindata/dsui-adapter-sdk": "^0.1.0"
+    "@northgraindata/dsui-adapter-sdk": "workspace:*"
   },
   "publishConfig": {
     "access": "public",

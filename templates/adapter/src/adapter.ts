@@ -1,6 +1,12 @@
 import {
-  ADAPTER_SDK_VERSION,
+  type ActionRuntimeContext,
+  Button,
+  defineAction,
   defineAdapter,
+  definePage,
+  defineResource,
+  KeyValue,
+  PageHeader,
   z,
 } from "@northgraindata/dsui-adapter-sdk";
 
@@ -9,91 +15,54 @@ const connectionSchema = z.object({
   token: z.string().min(1),
 });
 
+type Context = {
+  endpoint: string;
+  token: string;
+  request: typeof fetch;
+};
+
+export const info = defineResource({
+  id: "info",
+  query: (_, ctx: Context) => ({
+    endpoint: ctx.endpoint,
+    status: "reachable",
+  }),
+});
+
+export const ping = defineAction({
+  id: "ping",
+  run: async (_, ctx: Context & ActionRuntimeContext) => {
+    const response = await ctx.request(`${ctx.endpoint}/health`, {
+      headers: { Authorization: `Bearer ${ctx.token}` },
+    });
+    ctx.invalidate(info);
+    return { ok: response.ok };
+  },
+});
+
+export const overviewPage = definePage({
+  path: "/",
+  render: () => [
+    PageHeader({ title: "Example Service" }),
+    KeyValue({ source: info() }),
+    Button({ label: "Ping", action: ping() }),
+  ],
+});
+
 export default defineAdapter({
-  id: "example-service",
-  version: "0.1.0",
-  sdkVersion: ADAPTER_SDK_VERSION,
   metadata: {
     id: "example-service",
     name: "Example Service",
-    category: "Data service",
+    version: "0.1.0",
     description: "An example dsui adapter.",
   },
   connectionSchema,
-  connectionFields: [
-    { id: "endpoint", label: "Endpoint", type: "url", required: true },
-    {
-      id: "token",
-      label: "API token",
-      type: "password",
-      required: true,
-      secret: true,
-    },
-  ],
-  secretPaths: ["token"],
-  capabilities: [
-    {
-      id: "service-info",
-      authorization: "inspect",
-      view: { kind: "service-info", title: "Service information" },
-    },
-    {
-      id: "resources",
-      authorization: "inspect",
-      supportsPagination: true,
-      view: {
-        kind: "key-value-browser",
-        title: "Resources",
-        columns: [
-          { id: "name", label: "Name", format: "code" },
-          { id: "status", label: "Status", format: "status" },
-        ],
-      },
-    },
-  ],
-  create(context, connection) {
-    const request = context.fetch ?? fetch;
-    return {
-      async health() {
-        const started = Date.now();
-        try {
-          const response = await request(`${connection.endpoint}/health`, {
-            headers: { Authorization: `Bearer ${connection.token}` },
-            signal: context.signal,
-          });
-          return {
-            status: response.ok ? "healthy" : "warning",
-            checkedAt: new Date().toISOString(),
-            latencyMs: Date.now() - started,
-          };
-        } catch {
-          return {
-            status: "unavailable",
-            checkedAt: new Date().toISOString(),
-            latencyMs: Date.now() - started,
-          };
-        }
-      },
-      async execute(operationId) {
-        if (operationId === "service-info")
-          return {
-            items: [
-              { label: "Endpoint", value: connection.endpoint, format: "code" },
-            ],
-          };
-        if (operationId === "resources") {
-          const response = await request(`${connection.endpoint}/resources`, {
-            headers: { Authorization: `Bearer ${connection.token}` },
-            signal: context.signal,
-          });
-          if (!response.ok)
-            throw new Error(
-              `Example Service request failed (${response.status})`,
-            );
-          return response.json();
-        }
-        throw new Error(`Unsupported operation: ${operationId}`);
-      },
-    };
-  },
+  context: (config) => ({
+    endpoint: config.endpoint,
+    token: config.token,
+    request: fetch,
+  }),
+  resources: [info],
+  actions: [ping],
+  pages: [overviewPage],
 });
