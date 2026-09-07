@@ -1,4 +1,13 @@
-export type Health = "healthy" | "warning" | "unavailable" | "unknown";
+import type {
+  HealthStatus,
+  PublicAdapter,
+  PublicService,
+} from "@northgraindata/dsui-core";
+
+/** Canonical server contracts. New code uses these; see legacy aliases below. */
+export type { HealthStatus, PublicAdapter, PublicService };
+export type Health = HealthStatus["status"];
+
 export type Service = {
   id: string;
   name: string;
@@ -161,6 +170,38 @@ export async function getAdapters() {
   const r = await request<Adapter[] | { data: Adapter[] }>("/adapters");
   return Array.isArray(r) ? r : r.data;
 }
+export async function getServicePages(id: string) {
+  return request<{ pages: Array<{ path: string }> }>(`/services/${id}/pages`);
+}
+export async function executeResource(
+  serviceId: string,
+  resourceId: string,
+  input: unknown,
+) {
+  return request<{ data: unknown }>(
+    `/services/${serviceId}/resources/${resourceId}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ input }),
+    },
+  );
+}
+export async function executeAction(
+  serviceId: string,
+  actionId: string,
+  input: unknown,
+) {
+  return request<
+    { status: "success"; data: unknown } | { status: "error"; message: string }
+  >(`/services/${serviceId}/actions/${actionId}`, {
+    method: "POST",
+    body: JSON.stringify({ input }),
+  });
+}
+export async function deleteService(id: string) {
+  await request<void>(`/services/${id}`, { method: "DELETE" });
+}
+/** @deprecated The server no longer serves capability manifests. */
 export async function getManifest(id: string): Promise<Manifest> {
   return request<Manifest>(`/services/${id}/manifest`);
 }
@@ -176,6 +217,7 @@ export async function testService(input: unknown) {
     { method: "POST", body: JSON.stringify(input) },
   );
 }
+/** @deprecated The server no longer executes capabilities. Use executeResource/executeAction. */
 export async function runOperation(
   serviceId: string,
   capability: string,
