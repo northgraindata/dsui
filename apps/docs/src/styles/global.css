@@ -1,28 +1,195 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
-:root {
-  --color-fd-background: #0a0c0f;
-  --color-fd-foreground: #f4f6f8;
-  --color-fd-primary: #6b8aff;
-  --color-fd-muted: #11151a;
-  --color-fd-border: #222932;
+
+/*
+ * dsui docs theme — mirrors the landing page in apps/site.
+ * Landing tokens: canvas #020617, surface #0f172a, brand #3b82f6.
+ * Docs are dark-only (theme switch disabled), so :root and .dark match.
+ */
+:root,
+.dark {
+  --color-fd-background: #020617;
+  --color-fd-foreground: #ffffff;
+  --color-fd-muted: #0f172a;
+  --color-fd-muted-foreground: #94a3b8;
+  --color-fd-popover: #0f172a;
+  --color-fd-popover-foreground: #f1f5f9;
+  --color-fd-card: #0f172a;
+  --color-fd-card-foreground: #f1f5f9;
+  --color-fd-border: rgb(148 163 184 / 16%);
+  --color-fd-primary: #93c5fd;
+  --color-fd-primary-foreground: #020617;
+  --color-fd-secondary: #1e293b;
+  --color-fd-secondary-foreground: #cbd5e1;
+  --color-fd-accent: rgb(59 130 246 / 12%);
+  --color-fd-accent-foreground: #dbeafe;
+  --color-fd-ring: #3b82f6;
+
+  --docs-brand: #3b82f6;
+  --docs-copy: #cbd5e1;
+  --docs-surface: #0b1225;
+  --docs-highlight: rgb(147 197 253 / 24%);
+  --fd-layout-width: 1400px;
+
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
+
 html {
   scrollbar-gutter: stable;
-  background: #0a0c0f;
+  background: var(--color-fd-background);
 }
+
 body {
-  font-family: Inter, system-ui, sans-serif;
+  background: var(--color-fd-background);
+  color: var(--docs-copy);
+  font-family: var(--font-sans);
 }
-code {
-  font-family: "JetBrains Mono", monospace;
+
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
 }
+
+::selection {
+  background: rgb(59 130 246 / 32%);
+  color: #ffffff;
+}
+
 .nav-subtitle {
   margin-left: 0.65rem;
-  color: #68727f;
+  color: var(--color-fd-muted-foreground);
   font-size: 0.7rem;
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.12em;
+}
+
+/* A quiet version of the landing page's blue light and fine construction lines. */
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-image: radial-gradient(
+    ellipse 70% 32rem at 60% 0%,
+    rgb(37 99 235 / 10%),
+    transparent 75%
+  );
+  -webkit-font-smoothing: antialiased;
+}
+
+#nd-sidebar,
+#nd-sidebar-mobile {
+  background: var(--docs-surface);
+}
+
+#nd-sidebar {
+  background: linear-gradient(
+    180deg,
+    var(--docs-surface),
+    var(--color-fd-background) 80%
+  );
+}
+
+#nd-subnav {
+  background: color-mix(in srgb, var(--color-fd-background) 92%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"] {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-primary);
+  box-shadow: inset 2px 0 var(--docs-brand);
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[data-active] {
+  border-radius: 6px;
+  padding-block: 0.625rem;
+}
+
+:is(#nd-sidebar, #nd-subnav, #nd-sidebar-mobile) a[aria-label="dsui home"] {
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  color: var(--color-fd-foreground);
+  font-size: 1.25rem;
+  letter-spacing: -0.045em;
+}
+
+.nav-subtitle {
+  border-left: 1px solid var(--color-fd-border);
+  padding-left: 0.75rem;
+  margin-left: 0.25rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+}
+
+#nd-page h1 {
+  color: var(--color-fd-foreground);
+  margin-top: 1rem;
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+#nd-page h1 + p {
+  margin-bottom: 1.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--color-fd-border);
+  max-width: 100%;
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+#nd-page .prose {
+  color: var(--docs-copy);
+  font-size: 0.9375rem;
+  line-height: 1.85;
+}
+
+#nd-page .prose :is(h2, h3) {
+  color: var(--color-fd-foreground);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+#nd-page .prose h2 {
+  margin-top: 2.5rem;
+}
+
+#nd-page .prose a:not(.not-prose) {
+  text-decoration-color: var(--docs-highlight);
+  text-underline-offset: 4px;
+}
+
+#nd-page .prose :not(pre) > code {
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-muted);
+  color: var(--color-fd-accent-foreground);
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+#nd-page figure.shiki {
+  border-color: var(--docs-highlight);
+  border-radius: 8px;
+  background: var(--docs-surface);
+  box-shadow: inset 0 1px rgb(255 255 255 / 3%);
+}
+
+:where(a, button, input):focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #nd-page .prose a:not(.not-prose):hover {
+    color: var(--color-fd-accent-foreground);
+    text-decoration-color: currentColor;
+  }
 }

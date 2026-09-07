@@ -9,9 +9,9 @@ import { source } from "@/lib/source";
 interface Props {
   page: CollectionEntry<"docs">;
 }
-export function getStaticPaths() {
+export async function getStaticPaths() {
   return source.getPages().map((page) => ({
-    params: { slug: page.slugs.length ? page.slugs.join("/") : undefined },
+    params: { slug: page.slugs.length > 0 ? page.slugs.join("/") : undefined },
     props: { page: page.data._raw },
   }));
 }

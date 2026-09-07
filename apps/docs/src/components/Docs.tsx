@@ -1,3 +1,4 @@
+import { navigate } from "astro:transitions/client";
 import type { AstroProviderProps } from "fumadocs-core/framework/astro";
 import type { Root } from "fumadocs-core/page-tree";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
@@ -23,9 +24,7 @@ export function Docs({
     <RootProvider
       pathname={pathname}
       params={params}
-      navigate={(href) => {
-        window.location.href = href;
-      }}
+      navigate={navigate}
       theme={{ enabled: false }}
       search={{ SearchDialog: Search }}
     >
@@ -34,10 +33,14 @@ export function Docs({
         themeSwitch={{ enabled: false }}
         nav={{
           title: (
-            <>
-              <strong>dsui</strong>
+            <a
+              href="/"
+              className="inline-flex items-center text-lg font-semibold tracking-tight"
+              aria-label="dsui home"
+            >
+              dsui
               <span className="nav-subtitle">Data Stack UI</span>
-            </>
+            </a>
           ),
         }}
         githubUrl="https://github.com/northgraindata/dsui"

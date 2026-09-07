@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from "astro:transitions";
 import "../styles/global.css";
 ---
-<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><meta name="theme-color" content="#0a0c0f" /><slot name="head" /></head><body class="flex min-h-screen flex-col"><slot /></body></html>
+<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><meta name="theme-color" content="#020617" /><slot name="head" /><ClientRouter /></head><body class="flex min-h-screen flex-col" transition:persist transition:animate="none" transition:name="page-layout"><slot /></body></html>
