@@ -124,6 +124,8 @@ export function createSnowflakeAdapter(
       name: "Snowflake",
       version: "1.0.0",
       author: "DSUI",
+      iconUrl:
+        "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark/snowflake-color.png",
       description:
         "Browse Snowflake objects, warehouses, history, and run SQL.",
     },
