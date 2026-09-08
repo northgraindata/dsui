@@ -193,13 +193,24 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
    * Loads every configured adapter through the uniform loader and
    * records per-adapter readiness. One bad entry marks itself
    * unavailable instead of blocking startup; unknown override ids
-   * are ignored by the registry. No `adapters:` section means an
-   * empty registry — the server never invents a default adapter.
+   * are ignored by the registry. A local installation with no
+   * `adapters:` section includes bundled adapters.
    */
   const syncAdapters = async (loaded: DsuiConfig) => {
     const next: LoadedAdapter[] = [];
     readiness.clear();
-    const entries = Object.entries(loaded.adapters ?? {});
+    const entries = Object.entries(
+      loaded.adapters === undefined
+        ? {
+            duckdb: {
+              package: "@northgraindata/dsui-adapter-duckdb",
+            },
+            snowflake: {
+              package: "@northgraindata/dsui-adapter-snowflake",
+            },
+          }
+        : loaded.adapters,
+    );
     const sources: Array<[string, LocalAdapterSource | NpmAdapterSource]> =
       entries.flatMap(([id, entry]) =>
         isAdapterSource(entry) ? [[id, entry] as const] : [],

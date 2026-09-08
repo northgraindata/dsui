@@ -59,16 +59,53 @@ describe("services API", () => {
     }
   });
 
-  it("serves an empty registry when nothing is configured", async () => {
+  it("includes bundled adapters when nothing is configured", async () => {
     const runtime = createRuntime({
       databasePath: ":memory:",
       authMode: "none",
+      masterKey,
     });
     try {
       await runtime.refreshConfig();
       const response = await runtime.app.request("/api/v1/adapters");
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual([]);
+      const adapters = (await response.json()) as Array<{
+        id: string;
+        status: string;
+      }>;
+      expect(adapters.map(({ id, status }) => ({ id, status }))).toEqual([
+        { id: "duckdb", status: "ok" },
+        { id: "snowflake", status: "ok" },
+      ]);
+
+      const created = await runtime.app.request("/api/v1/services", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          adapter: "duckdb",
+          name: "DuckDB preview",
+          connection: { database: ":memory:" },
+        }),
+      });
+      expect(created.status).toBe(201);
+      const service = (await created.json()) as { id: string; health: string };
+      expect(service.health).toBe("healthy");
+
+      const page = await runtime.app.request(
+        `/api/v1/services/${service.id}/page?path=%2Fquery`,
+      );
+      expect(page.status).toBe(200);
+      expect(await page.json()).toMatchObject({
+        path: "/query",
+        nodes: [
+          { kind: "page-header" },
+          { kind: "form", props: { action: { actionId: "run-query" } } },
+          {
+            kind: "table",
+            props: { source: { resourceId: "orders-preview" } },
+          },
+        ],
+      });
     } finally {
       runtime.close();
     }
