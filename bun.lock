@@ -70,6 +70,13 @@
         "vitest": "^4.0.16",
       },
     },
+    "packages/adapter-duckdb": {
+      "name": "@northgraindata/dsui-adapter-duckdb",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
     "packages/adapter-sdk": {
       "name": "@northgraindata/dsui-adapter-sdk",
       "version": "0.0.0",
@@ -110,7 +117,9 @@
       "version": "0.1.0",
       "dependencies": {
         "@better-auth/sso": "1.7.1",
+        "@northgraindata/dsui-adapter-duckdb": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-adapter-snowflake": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
         "better-auth": "1.7.1",
         "hono": "^4.11.7",
@@ -466,6 +475,8 @@
     "@noble/hashes": ["@noble/hashes@2.3.0", "", {}, "sha512-oN+QwyX7VSHotibwubG3kpzbwKrfnyR6OOO+3Nk/53ADL7FmgHHz4TgrbaYKvvOw09u6QTx0oiH1cNCIOuN0CQ=="],
 
     "@nodable/entities": ["@nodable/entities@3.0.0", "", {}, "sha512-8L9xFeTYKhm49xfIypoe2W5wV1m/3Z58kT+7kR9A8OyFxcPduI4VmxaUMQyKYrRjUoLLSXv6EKKID5Tvj9cUVw=="],
+
+    "@northgraindata/dsui-adapter-duckdb": ["@northgraindata/dsui-adapter-duckdb@workspace:packages/adapter-duckdb"],
 
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
 
