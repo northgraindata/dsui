@@ -106,6 +106,8 @@ export interface ActionDefinition<TInput, TOutput, TContext = unknown> {
  * ```
  */
 export interface ActionRuntimeContext {
+  /** Caller-owned cancellation; pass to cancellable I/O and check during work. */
+  readonly signal?: AbortSignal;
   /**
    * Re-executes watched bindings: none (all), a resource (its bindings),
    * or a resource plus input (one binding).

@@ -92,11 +92,14 @@ narrowest form that stays correct.
 
 ## Long-running and cancellable work
 
-`runQuery`, task runs, and procedure calls share one shape. The
-runtime tracks running, success, and error per execution, accepts an
-abort signal through execution options, and `cancelQuery` shows the
-cancellation action. Progress reporting can extend this shape later
-without changing adapter code, because executions are runtime-owned.
+Pass `{ signal }` to `executeAction` to provide a caller-owned
+`AbortSignal`. An already aborted signal returns an error result without
+calling `run`. Once an action starts, cancellation is cooperative: pass
+`ctx.signal` to cancellable client calls and use
+`ctx.signal?.throwIfAborted()` before further work. The runtime waits for
+`run` to settle; it does not forcibly stop I/O or roll back side effects.
+Provider-side query cancellation still needs the provider's cancellation
+API, as used by `cancelQuery`.
 
 What the SDK cannot do yet: feed an action's result back into a
 store. After Run, the new query appears in history (invalidated), but

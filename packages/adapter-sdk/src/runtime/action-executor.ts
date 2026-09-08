@@ -47,6 +47,7 @@ export class ActionExecutor<TContext> {
       ctx: unknown,
     ) => Promise<unknown> | unknown;
     try {
+      options?.signal?.throwIfAborted();
       const data = (await run(binding.input, actionContext)) as TOutput;
       return { status: "success", data };
     } catch (error) {
