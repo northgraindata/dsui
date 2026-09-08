@@ -49,3 +49,10 @@ export interface PublicService {
   actions: string[];
   logo?: string;
 }
+
+export type {
+  ActionReference,
+  PageDocument,
+  PageNode,
+  ResourceReference,
+} from "./page-document.js";
