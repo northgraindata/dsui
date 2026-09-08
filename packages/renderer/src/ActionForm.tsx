@@ -10,11 +10,18 @@ export function ActionForm({
   client: RendererClient;
   node: Extract<PageNode, { kind: "form" }>;
 }) {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<string>();
   const fields = node.props.fields.filter(
     (field) => field.kind === "text-input" || field.kind === "select",
   );
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      fields.flatMap((field) => {
+        const value = field.props.value;
+        return value == null ? [] : [[field.props.name, value]];
+      }),
+    ),
+  );
+  const [message, setMessage] = useState<string>();
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = await client.executeAction({
