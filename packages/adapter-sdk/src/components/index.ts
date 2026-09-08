@@ -32,3 +32,8 @@ export {
   type TextInputNode,
   type TextInputProps,
 } from "./nodes";
+export {
+  serializeNode,
+  serializeNodes,
+  UnserializablePageError,
+} from "./serialize";

@@ -49,6 +49,8 @@ export {
   type SelectNode,
   type SelectOption,
   type SelectProps,
+  serializeNode,
+  serializeNodes,
   Table,
   type TableColumn,
   type TableNode,
@@ -60,6 +62,7 @@ export {
   TextInput,
   type TextInputNode,
   type TextInputProps,
+  UnserializablePageError,
 } from "./components/index";
 export {
   type AnyPageDefinition,
