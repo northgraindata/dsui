@@ -38,6 +38,71 @@ export type Adapter = {
     options?: Array<{ label: string; value: string }>;
   }>;
 };
+
+type JsonSchema = Record<string, unknown>;
+
+function schemaFields(schema: JsonSchema | undefined): Adapter["fields"] {
+  if (!schema) return [];
+  const properties = schema.properties;
+  if (
+    !properties ||
+    typeof properties !== "object" ||
+    Array.isArray(properties)
+  )
+    return [];
+  const required = new Set(
+    Array.isArray(schema.required)
+      ? schema.required.filter((key): key is string => typeof key === "string")
+      : [],
+  );
+  return Object.entries(properties).flatMap(([key, value]) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const field = value as JsonSchema;
+    const type = Array.isArray(field.type)
+      ? field.type.find((entry) => entry !== "null")
+      : field.type;
+    const enumValues = Array.isArray(field.enum)
+      ? field.enum.filter((entry): entry is string => typeof entry === "string")
+      : [];
+    return [
+      {
+        key,
+        label: key
+          .replace(/([a-z])([A-Z])/g, "$1 $2")
+          .replace(/^./, (letter) => letter.toUpperCase()),
+        type: enumValues.length
+          ? "select"
+          : type === "boolean"
+            ? "boolean"
+            : type === "number" || type === "integer"
+              ? "number"
+              : /token|password|secret|key/i.test(key)
+                ? "password"
+                : "text",
+        ...(enumValues.length
+          ? {
+              options: enumValues.map((option) => ({
+                label: option,
+                value: option,
+              })),
+            }
+          : {}),
+        required: required.has(key),
+      },
+    ];
+  });
+}
+
+export function adapterFromPublicAdapter(adapter: PublicAdapter): Adapter {
+  return {
+    id: adapter.id,
+    name: adapter.name,
+    category: adapter.id,
+    description: adapter.description,
+    ...(adapter.iconUrl ? { logo: adapter.iconUrl } : {}),
+    fields: schemaFields(adapter.connectionSchema),
+  };
+}
 export type Manifest = {
   views: Array<{
     id: string;
@@ -168,8 +233,10 @@ export async function getServices() {
   return Array.isArray(r) ? r : r.data;
 }
 export async function getAdapters() {
-  const r = await request<Adapter[] | { data: Adapter[] }>("/adapters");
-  return Array.isArray(r) ? r : r.data;
+  const r = await request<PublicAdapter[] | { data: PublicAdapter[] }>(
+    "/adapters",
+  );
+  return (Array.isArray(r) ? r : r.data).map(adapterFromPublicAdapter);
 }
 export async function getServicePages(id: string) {
   return request<{ pages: Array<{ path: string }> }>(`/services/${id}/pages`);
