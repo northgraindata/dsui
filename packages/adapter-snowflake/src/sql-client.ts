@@ -1,83 +1,22 @@
-import { randomUUID } from "node:crypto";
+import { z } from "@northgraindata/dsui-adapter-sdk";
 import type {
   QueryResult,
   SnowflakeClient,
   SnowflakeConfig,
-  Warehouse,
   WarehouseDetails,
 } from "./context.js";
+import { createSqlTransport, type TransportLimits } from "./sql-transport.js";
+import { grantSql, procedureArguments, qualifiedName } from "./sql-values.js";
 
-/**
- * Production Snowflake SQL API client. The reference adapter injects a fake
- * in tests; swap `createFakeSnowflakeClient` for this client with real
- * credentials to talk to Snowflake.
- */
+/** Server-side Snowflake operations over the bounded SQL API transport. */
 export function createSnowflakeClient(
   config: SnowflakeConfig,
   fetchFn: typeof fetch = fetch,
+  limits: Partial<TransportLimits> = {},
 ): SnowflakeClient {
-  const base = (
-    config.host ?? `https://${config.accountIdentifier}.snowflakecomputing.com`
-  ).replace(/\/$/, "");
-  const headers = {
-    Authorization: `Bearer ${config.token}`,
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "User-Agent": "dsui-snowflake/0.2",
-  };
-
-  async function statement(sql: string): Promise<QueryResult> {
-    const started = await request(
-      `${base}/api/v2/statements?requestId=${randomUUID()}`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          statement: sql,
-          timeout: 60,
-          ...(config.warehouse ? { warehouse: config.warehouse } : {}),
-          ...(config.database ? { database: config.database } : {}),
-          ...(config.schema ? { schema: config.schema } : {}),
-          ...(config.role ? { role: config.role } : {}),
-        }),
-      },
-    );
-    let result = started;
-    for (
-      let attempt = 0;
-      result.statementHandle && !result.data && attempt < 120;
-      attempt++
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      result = await request(
-        `${base}/api/v2/statements/${encodeURIComponent(result.statementHandle)}`,
-        {},
-      );
-    }
-    const columns =
-      result.resultSetMetaData?.rowType?.map((c) => c.name ?? "") ?? [];
-    const rows = (result.data ?? []).map((row) =>
-      Object.fromEntries(
-        row.map((value, i) => [columns[i] ?? `col${i}`, value]),
-      ),
-    );
-    return { columns, rows };
-  }
-
-  async function request(
-    url: string,
-    init: RequestInit,
-  ): Promise<SqlApiResult> {
-    const response = await fetchFn(url, { ...init, headers });
-    const result = (await response.json().catch(() => ({}))) as SqlApiResult;
-    if (!response.ok && response.status !== 202)
-      throw new Error(
-        result.message ?? `Snowflake responded ${response.status}`,
-      );
-    return result;
-  }
-
-  const firstColumn = (result: QueryResult): string[] =>
-    result.rows.map((row) => String(Object.values(row)[0] ?? ""));
+  const { statement, dispose } = createSqlTransport(config, fetchFn, limits);
+  const names = (result: QueryResult): string[] =>
+    result.rows.map((row) => cell(row, "name"));
 
   const cell = (row: Record<string, unknown>, ...names: string[]): string => {
     for (const name of names) {
@@ -88,15 +27,20 @@ export function createSnowflakeClient(
     return "";
   };
 
+  // SQL literals are needed for SHOW/DDL positions that do not accept bindings.
+  const literal = (value: string): string =>
+    `'${value.replace(/\\/g, "\\\\").replace(/'/g, "''")}'`;
   const ident = (value: string): string => `"${value.replace(/"/g, '""')}"`;
 
   return {
+    dispose,
     async listDatabases() {
-      return firstColumn(await statement("SHOW DATABASES"));
+      return names(await statement("SHOW DATABASES"));
     },
     async getDatabase(database) {
       const result = await statement(
-        `SELECT database_name, database_owner, created, retention_time, comment FROM SNOWFLAKE.ACCOUNT_USAGE.DATABASES WHERE database_name = '${database}' AND deleted IS NULL LIMIT 1`,
+        `SELECT database_name, database_owner, created, retention_time, comment FROM SNOWFLAKE.ACCOUNT_USAGE.DATABASES WHERE database_name = ? AND deleted IS NULL LIMIT 1`,
+        [database],
       );
       const row = result.rows[0] ?? {};
       return {
@@ -108,12 +52,12 @@ export function createSnowflakeClient(
       };
     },
     async listSchemas(database) {
-      return firstColumn(
+      return names(
         await statement(`SHOW SCHEMAS IN DATABASE ${ident(database)}`),
       );
     },
     async listTables(database, schema) {
-      return firstColumn(
+      return names(
         await statement(
           `SHOW TABLES IN SCHEMA ${ident(database)}.${ident(schema)}`,
         ),
@@ -131,9 +75,9 @@ export function createSnowflakeClient(
       };
     },
     async getTableDdl(database, schema, table) {
-      const result = await statement(
-        `SELECT get_ddl('table', '${database}.${schema}.${table}') AS ddl`,
-      );
+      const result = await statement("SELECT get_ddl('table', ?) AS ddl", [
+        qualifiedName(database, schema, table),
+      ]);
       return cell(result.rows[0] ?? {}, "ddl");
     },
     async getColumns(database, schema, table) {
@@ -153,16 +97,16 @@ export function createSnowflakeClient(
       );
     },
     async listViews(database, schema) {
-      return firstColumn(
+      return names(
         await statement(
           `SHOW VIEWS IN SCHEMA ${ident(database)}.${ident(schema)}`,
         ),
       );
     },
     async getView(database, schema, view) {
-      const result = await statement(
-        `SELECT get_ddl('view', '${database}.${schema}.${view}') AS ddl`,
-      );
+      const result = await statement("SELECT get_ddl('view', ?) AS ddl", [
+        qualifiedName(database, schema, view),
+      ]);
       return {
         database,
         schema,
@@ -206,21 +150,21 @@ export function createSnowflakeClient(
       }));
     },
     async listSequences(database, schema) {
-      return firstColumn(
+      return names(
         await statement(
           `SHOW SEQUENCES IN SCHEMA ${ident(database)}.${ident(schema)}`,
         ),
       );
     },
     async listMaterializedViews(database, schema) {
-      return firstColumn(
+      return names(
         await statement(
           `SHOW MATERIALIZED VIEWS IN SCHEMA ${ident(database)}.${ident(schema)}`,
         ),
       );
     },
     async listFileFormats(database, schema) {
-      return firstColumn(
+      return names(
         await statement(
           `SHOW FILE FORMATS IN SCHEMA ${ident(database)}.${ident(schema)}`,
         ),
@@ -256,7 +200,12 @@ export function createSnowflakeClient(
     },
     async executeProcedure(database, schema, name, args) {
       return statement(
-        `CALL ${ident(database)}.${ident(schema)}.${ident(name)}(${args})`,
+        `CALL ${ident(database)}.${ident(schema)}.${ident(name)}(${procedureArguments(
+          args,
+        )
+          .map(() => "?")
+          .join(", ")})`,
+        procedureArguments(args),
       );
     },
     async listWarehouses() {
@@ -265,11 +214,14 @@ export function createSnowflakeClient(
         name: cell(row, "name"),
         status: cell(row, "state", "status"),
         size: cell(row, "size"),
-      })) as Warehouse[];
+      }));
     },
     async getWarehouse(warehouse) {
-      const result = await statement(`SHOW WAREHOUSES LIKE '${warehouse}'`);
-      const row = result.rows[0] ?? {};
+      const result = await statement(
+        `SHOW WAREHOUSES LIKE ${literal(warehouse)}`,
+      );
+      const row =
+        result.rows.find((row) => cell(row, "name") === warehouse) ?? {};
       const details: WarehouseDetails = {
         name: warehouse,
         status: cell(row, "state", "status"),
@@ -287,7 +239,7 @@ export function createSnowflakeClient(
     },
     async createWarehouse(input) {
       await statement(
-        `CREATE WAREHOUSE ${ident(input.name)} WITH WAREHOUSE_SIZE = ${input.size} INITIALLY_SUSPENDED = TRUE`,
+        `CREATE WAREHOUSE ${ident(input.name)} WITH WAREHOUSE_SIZE = ${literal(input.size)} INITIALLY_SUSPENDED = TRUE`,
       );
     },
     async dropWarehouse(warehouse) {
@@ -301,7 +253,7 @@ export function createSnowflakeClient(
     },
     async resizeWarehouse(warehouse, size) {
       await statement(
-        `ALTER WAREHOUSE ${ident(warehouse)} SET WAREHOUSE_SIZE = ${size}`,
+        `ALTER WAREHOUSE ${ident(warehouse)} SET WAREHOUSE_SIZE = ${literal(size)}`,
       );
     },
     async listDynamicTables(database, schema) {
@@ -332,17 +284,17 @@ export function createSnowflakeClient(
         "END_TIME_RANGE_START=>DATEADD('hour',-24,CURRENT_TIMESTAMP())",
         "RESULT_LIMIT=>500",
       ];
-      if (filter.warehouse)
-        clauses.push(`WAREHOUSE_NAME=>'${filter.warehouse}'`);
+      if (filter.warehouse) clauses.push("WAREHOUSE_NAME=>?");
       const result = await statement(
-        `SELECT query_id, user_name, warehouse_name, execution_status, query_text FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(${clauses.join(",")})) ORDER BY start_time DESC`,
+        `SELECT query_id, user_name, warehouse_name, execution_status, query_text FROM TABLE(INFORMATION_SCHEMA.${filter.warehouse ? "QUERY_HISTORY_BY_WAREHOUSE" : "QUERY_HISTORY"}(${clauses.join(",")})) ORDER BY start_time DESC`,
+        filter.warehouse ? [filter.warehouse] : [],
       );
       return result.rows
         .map((row) => ({
           id: String(row.QUERY_ID ?? row.query_id ?? ""),
-          user: String(row.USER_NAME ?? ""),
-          warehouse: String(row.WAREHOUSE_NAME ?? ""),
-          status: String(row.EXECUTION_STATUS ?? ""),
+          user: cell(row, "user_name"),
+          warehouse: cell(row, "warehouse_name"),
+          status: cell(row, "execution_status"),
           text: String(row.QUERY_TEXT ?? row.query_text ?? ""),
         }))
         .filter(
@@ -360,16 +312,10 @@ export function createSnowflakeClient(
       return queries.find((q) => q.id === queryId) ?? null;
     },
     async cancelQuery(queryId) {
-      await statement(`CALL SYSTEM$CANCEL_QUERY('${queryId}')`);
+      await statement("SELECT SYSTEM$CANCEL_QUERY(?)", [queryId]);
     },
     async getQueryResults(queryId) {
-      try {
-        return await statement(
-          `SELECT * FROM TABLE(RESULT_SCAN('${queryId}'))`,
-        );
-      } catch {
-        return null;
-      }
+      return statement("SELECT * FROM TABLE(RESULT_SCAN(?))", [queryId]);
     },
     async listTasks(database, schema) {
       const result = await statement(
@@ -386,13 +332,13 @@ export function createSnowflakeClient(
     },
     async getTask(database, schema, task) {
       const result = await statement(
-        `SHOW TASKS LIKE '${task}' IN SCHEMA ${ident(database)}.${ident(schema)}`,
+        `SHOW TASKS LIKE ${literal(task)} IN SCHEMA ${ident(database)}.${ident(schema)}`,
       );
-      const row = result.rows[0];
+      const row = result.rows.find((row) => cell(row, "name") === task);
       if (!row) return null;
-      const definition = await statement(
-        `SELECT get_ddl('task', '${database}.${schema}.${task}') AS ddl`,
-      );
+      const definition = await statement("SELECT get_ddl('task', ?) AS ddl", [
+        qualifiedName(database, schema, task),
+      ]);
       return {
         database,
         schema,
@@ -416,7 +362,8 @@ export function createSnowflakeClient(
     },
     async taskHistory(database, schema, task) {
       const result = await statement(
-        `SELECT query_id, state, scheduled_time, completed_time FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(SCHEDULED_TIME_RANGE_START=>DATEADD('day',-1,CURRENT_TIMESTAMP()), TASK_NAME=>'${database}.${schema}.${task}')) ORDER BY scheduled_time DESC LIMIT 100`,
+        `SELECT query_id, state, scheduled_time, completed_time FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(SCHEDULED_TIME_RANGE_START=>DATEADD('day',-1,CURRENT_TIMESTAMP()), TASK_NAME=>?)) ORDER BY scheduled_time DESC LIMIT 100`,
+        [qualifiedName(database, schema, task)],
       );
       return result.rows.map((row) => ({
         id: cell(row, "query_id"),
@@ -532,8 +479,8 @@ export function createSnowflakeClient(
       }));
     },
     async getUser(name) {
-      const result = await statement(`SHOW USERS LIKE '${name}'`);
-      const row = result.rows[0];
+      const result = await statement(`SHOW USERS LIKE ${literal(name)}`);
+      const row = result.rows.find((row) => cell(row, "name") === name);
       if (!row) return null;
       return {
         name,
@@ -547,7 +494,7 @@ export function createSnowflakeClient(
     },
     async createUser(input) {
       await statement(
-        `CREATE USER ${ident(input.name)} PASSWORD = '${input.password.replace(/'/g, "''")}'`,
+        `CREATE USER ${ident(input.name)} PASSWORD = ${literal(input.password)}`,
       );
     },
     async suspendUser(name) {
@@ -574,34 +521,29 @@ export function createSnowflakeClient(
       }));
     },
     async grantPrivilege(input) {
-      await statement(
-        `GRANT ${input.privilege} ON ${input.objectType} ${input.objectName} TO ROLE ${ident(input.to)}`,
-      );
+      await statement(grantSql("GRANT", input, input.to));
     },
     async revokePrivilege(input) {
-      await statement(
-        `REVOKE ${input.privilege} ON ${input.objectType} ${input.objectName} FROM ROLE ${ident(input.from)}`,
-      );
+      await statement(grantSql("REVOKE", input, input.from));
     },
     async listCopyHistory(database, schema, table) {
-      const target = table
-        ? `TABLE_NAME=>'${table}'`
-        : `SCHEMA_NAME=>'${schema}'`;
       const result = await statement(
-        `SELECT file_name, table_name, status, row_count, row_errors, last_load_time FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(DATABASE_NAME=>'${database}', ${target}, START_TIME=>DATEADD('day',-7,CURRENT_TIMESTAMP()))) ORDER BY last_load_time DESC LIMIT 200`,
+        `SELECT file_name, table_name, status, row_count, error_count, last_load_time FROM SNOWFLAKE.ACCOUNT_USAGE.COPY_HISTORY WHERE table_catalog_name = ? AND table_schema_name = ?${table ? " AND table_name = ?" : ""} AND last_load_time >= DATEADD('day',-7,CURRENT_TIMESTAMP()) ORDER BY last_load_time DESC LIMIT 200`,
+        table ? [database, schema, table] : [database, schema],
       );
       return result.rows.map((row) => ({
         file: cell(row, "file_name"),
         table: cell(row, "table_name"),
         status: cell(row, "status"),
         rows: Number(cell(row, "row_count") || 0),
-        errors: Number(cell(row, "row_errors") || 0),
+        errors: Number(cell(row, "error_count") || 0),
         timestamp: cell(row, "last_load_time"),
       }));
     },
     async warehouseSpend(days) {
       const result = await statement(
-        `SELECT warehouse_name, SUM(credits_used) AS credits, CURRENT_DATE() AS day FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY WHERE start_time >= DATEADD('day',-${days},CURRENT_TIMESTAMP()) GROUP BY warehouse_name ORDER BY credits DESC`,
+        `SELECT warehouse_name, SUM(credits_used) AS credits, CURRENT_DATE() AS day FROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY WHERE start_time >= DATEADD('day',-?,CURRENT_TIMESTAMP()) GROUP BY warehouse_name ORDER BY credits DESC`,
+        [z.number().int().min(1).max(365).parse(days)],
       );
       return result.rows.map((row) => ({
         warehouse: cell(row, "warehouse_name"),
@@ -633,16 +575,7 @@ export function createSnowflakeClient(
       await statement(`ALTER RESOURCE MONITOR ${ident(name)} RESUME`);
     },
     async execute(sql, options) {
-      void options;
-      return statement(sql);
+      return statement(sql, [], options);
     },
   };
-}
-
-interface SqlApiResult {
-  code?: string;
-  message?: string;
-  statementHandle?: string;
-  data?: unknown[][];
-  resultSetMetaData?: { rowType?: Array<{ name?: string }> };
 }

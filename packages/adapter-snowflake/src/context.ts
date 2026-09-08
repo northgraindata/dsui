@@ -218,6 +218,8 @@ export interface QueryResult {
 }
 
 export interface SnowflakeClient {
+  /** Abort in-flight client requests when the owning instance is disposed. */
+  dispose?(): void;
   // Catalog
   listDatabases(): Promise<string[]>;
   getDatabase(database: string): Promise<DatabaseDetails>;
@@ -357,6 +359,7 @@ export interface SnowflakeClient {
       database: string | null;
       schema: string | null;
       role: string | null;
+      signal?: AbortSignal;
     },
   ): Promise<QueryResult>;
 }

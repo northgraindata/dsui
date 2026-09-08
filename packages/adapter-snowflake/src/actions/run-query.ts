@@ -15,15 +15,19 @@ export const runQuery = defineAction({
     warehouse: z.string().nullable(),
     database: z.string().nullable(),
     schema: z.string().nullable(),
+    role: z.string().nullable(),
   }),
   // Long-running shape: the runtime tracks running/success/error per
   // execution and can later add progress/cancellation without API changes.
-  run: async ({ sql, warehouse, database, schema }, ctx: Ctx) => {
+  // A null role falls back to the connection default; the abort signal is
+  // cooperative and reaches cancellable client calls.
+  run: async ({ sql, warehouse, database, schema, role }, ctx: Ctx) => {
     const result = await ctx.client.execute(sql, {
       warehouse,
       database,
       schema,
-      role: ctx.config.role ?? null,
+      role: role ?? ctx.config.role ?? null,
+      signal: ctx.signal,
     });
     ctx.invalidate(queries);
     return result;

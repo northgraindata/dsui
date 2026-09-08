@@ -68,6 +68,7 @@ export const queryEditorPage = definePage({
                 warehouse: session.warehouse,
                 database: session.database,
                 schema: session.schema,
+                role: session.role,
               }),
             }),
           ]

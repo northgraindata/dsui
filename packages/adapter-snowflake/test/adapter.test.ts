@@ -10,8 +10,9 @@ import {
   createWarehouse,
   suspendWarehouse,
 } from "../src/actions/warehouses.js";
-import { snowflakeAdapter } from "../src/adapter.js";
+import { createSnowflakeAdapter, snowflakeAdapter } from "../src/adapter.js";
 import { SessionBar } from "../src/components/session-bar.js";
+import { createFakeSnowflakeClient } from "../src/fake-client.js";
 import { logs } from "../src/resources/logs.js";
 import { queries } from "../src/resources/queries.js";
 import { tasks } from "../src/resources/tasks.js";
@@ -21,6 +22,12 @@ import { queryFiltersStore } from "../src/stores/query-filters.js";
 import { sessionStore } from "../src/stores/session.js";
 
 const CONFIG = { accountIdentifier: "org-account", token: "test-token" };
+
+// Explicit fake injection: the default adapter contacts Snowflake, so every
+// test below runs against an isolated in-memory client instead.
+function testAdapter() {
+  return createSnowflakeAdapter(() => createFakeSnowflakeClient());
+}
 
 function nodes(scope: {
   render(): ComponentNode | readonly ComponentNode[];
@@ -129,7 +136,7 @@ test("snowflake adapter composes all primitives", () => {
 });
 
 test("database page binds the route param to the schemas resource", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const scope = instance.createPageScope("/databases/ANALYTICS");
   expect(scope.params).toEqual({ database: "ANALYTICS" });
   const table = nodes(scope).find((n) => n.kind === "table");
@@ -144,7 +151,7 @@ test("database page binds the route param to the schemas resource", async () => 
 });
 
 test("query history reacts to filter store changes", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const scope = instance.createPageScope("/queries");
   const tableBefore = nodes(scope).find((n) => n.kind === "table");
   if (tableBefore?.kind !== "table") throw new Error("expected table node");
@@ -172,7 +179,7 @@ test("query history reacts to filter store changes", async () => {
 });
 
 test("suspend action invalidates the warehouses resource", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const seen: string[] = [];
   const unwatch = instance.watchResource(warehouses(), (result) => {
     if (result.status === "success")
@@ -191,8 +198,8 @@ test("suspend action invalidates the warehouses resource", async () => {
 });
 
 test("two instances stay isolated", async () => {
-  const first = await createAdapterInstance(snowflakeAdapter, CONFIG);
-  const second = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const first = await createAdapterInstance(testAdapter(), CONFIG);
+  const second = await createAdapterInstance(testAdapter(), CONFIG);
   first.store(sessionStore).actions.setWarehouse("WH_ONE");
   expect(second.store(sessionStore).get().warehouse).toBeNull();
 
@@ -205,7 +212,7 @@ test("two instances stay isolated", async () => {
 });
 
 test("task lifecycle invalidates task resources", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const scope = { database: "ANALYTICS", schema: "PUBLIC" };
   const before = await instance.executeResource(tasks(scope));
   if (before.status !== "success") throw new Error("expected success");
@@ -239,7 +246,7 @@ test("task lifecycle invalidates task resources", async () => {
 });
 
 test("cancel query flips status and refreshes history", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const cancelled = await instance.executeAction(
     cancelQuery({ queryId: "q1" }),
   );
@@ -253,13 +260,14 @@ test("cancel query flips status and refreshes history", async () => {
 });
 
 test("run query appends history and stores results", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const result = await instance.executeAction(
     runQuery({
       sql: "SELECT 42",
       warehouse: null,
       database: null,
       schema: null,
+      role: null,
     }),
   );
   expect(result.status).toBe("success");
@@ -272,7 +280,7 @@ test("run query appends history and stores results", async () => {
 });
 
 test("logs react to search and support polling", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const scope = instance.createPageScope("/logs");
   const table = nodes(scope).find((n) => n.kind === "table");
   if (table?.kind !== "table") throw new Error("expected table node");
@@ -293,7 +301,7 @@ test("logs react to search and support polling", async () => {
 });
 
 test("editor buttons follow editor state", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const scope = instance.createPageScope("/query");
   const kinds = () =>
     nodes(scope)
@@ -343,7 +351,7 @@ test("session bar renders bound selectors", () => {
 });
 
 test("warehouse detail binds route param with live polling", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const scope = instance.createPageScope("/warehouses/ETL_WH");
   expect(scope.params).toEqual({ warehouse: "ETL_WH" });
   const tabs = nodes(scope).find((n) => n.kind === "tabs");
@@ -359,7 +367,7 @@ test("warehouse detail binds route param with live polling", async () => {
 });
 
 test("create warehouse is form-driven and validated", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const created = await instance.executeAction(
     createWarehouse({ name: "NEW_WH", size: "XSMALL" }),
   );
@@ -372,7 +380,7 @@ test("create warehouse is form-driven and validated", async () => {
 });
 
 test("execute procedure returns a result row", async () => {
-  const instance = await createAdapterInstance(snowflakeAdapter, CONFIG);
+  const instance = await createAdapterInstance(testAdapter(), CONFIG);
   const result = await instance.executeAction(
     executeProcedure({
       database: "ANALYTICS",
