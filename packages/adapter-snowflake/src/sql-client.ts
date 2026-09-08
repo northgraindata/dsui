@@ -362,8 +362,8 @@ export function createSnowflakeClient(
     },
     async taskHistory(database, schema, task) {
       const result = await statement(
-        `SELECT query_id, state, scheduled_time, completed_time FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(SCHEDULED_TIME_RANGE_START=>DATEADD('day',-1,CURRENT_TIMESTAMP()), TASK_NAME=>?)) ORDER BY scheduled_time DESC LIMIT 100`,
-        [qualifiedName(database, schema, task)],
+        `SELECT query_id, state, scheduled_time, completed_time FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(SCHEDULED_TIME_RANGE_START=>DATEADD('day',-1,CURRENT_TIMESTAMP()), DATABASE_NAME=>?, SCHEMA_NAME=>?, TASK_NAME=>?)) ORDER BY scheduled_time DESC LIMIT 100`,
+        [database, schema, task],
       );
       return result.rows.map((row) => ({
         id: cell(row, "query_id"),
@@ -445,13 +445,13 @@ export function createSnowflakeClient(
     },
     async queryAccessHistory() {
       const result = await statement(
-        `SELECT query_id, user_name, base_objects_accessed, start_time FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY WHERE start_time >= DATEADD('day',-1,CURRENT_TIMESTAMP()) ORDER BY start_time DESC LIMIT 200`,
+        `SELECT query_id, user_name, base_objects_accessed, query_start_time FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY WHERE query_start_time >= DATEADD('day',-1,CURRENT_TIMESTAMP()) ORDER BY query_start_time DESC LIMIT 200`,
       );
       return result.rows.map((row) => ({
         query: cell(row, "query_id"),
         user: cell(row, "user_name"),
         object: cell(row, "base_objects_accessed").slice(0, 300),
-        timestamp: cell(row, "start_time"),
+        timestamp: cell(row, "query_start_time"),
       }));
     },
     async getAccount() {
@@ -552,12 +552,9 @@ export function createSnowflakeClient(
       }));
     },
     async listBudgets() {
-      const result = await statement("SHOW BUDGETS IN ACCOUNT");
-      return result.rows.map((row) => ({
-        name: cell(row, "name"),
-        limit: Number(cell(row, "limit") || 0),
-        spent: Number(cell(row, "spent") || 0),
-      }));
+      throw new Error(
+        "Snowflake budget metadata requires the Snowflake Organizations API and is not available through SQL API",
+      );
     },
     async listMonitors() {
       const result = await statement("SHOW RESOURCE MONITORS");
@@ -569,10 +566,16 @@ export function createSnowflakeClient(
       }));
     },
     async suspendMonitor(name) {
-      await statement(`ALTER RESOURCE MONITOR ${ident(name)} SUSPEND`);
+      void name;
+      throw new Error(
+        "Snowflake resource monitors do not support suspend/resume operations",
+      );
     },
     async resumeMonitor(name) {
-      await statement(`ALTER RESOURCE MONITOR ${ident(name)} RESUME`);
+      void name;
+      throw new Error(
+        "Snowflake resource monitors do not support suspend/resume operations",
+      );
     },
     async execute(sql, options) {
       return statement(sql, [], options);
