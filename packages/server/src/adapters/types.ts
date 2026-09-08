@@ -2,7 +2,7 @@ import type {
   AdapterDefinition,
   AdapterInfo,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { HealthStatus } from "@northgraindata/dsui-core";
+import type { HealthStatus, PageDocument } from "@northgraindata/dsui-core";
 
 /**
  * Where an adapter comes from. Every adapter — the default Snowflake
@@ -54,6 +54,8 @@ export interface AdapterBackend {
   validateConnection(connection: unknown): unknown;
   /** Probe: instantiate (and dispose) against a connection. */
   checkHealth(connection: unknown): Promise<HealthStatus>;
+  /** Renders and validates an adapter page for a concrete path. */
+  renderPage(connection: unknown, path: string): Promise<PageDocument>;
   /** Execute one resource query; throws AdapterExecutionError on failure. */
   executeResource(
     resourceId: string,

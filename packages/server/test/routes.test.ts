@@ -132,6 +132,21 @@ describe("services API", () => {
         pages: [{ path: "/things" }],
       });
 
+      const page = await runtime.app.request(
+        `/api/v1/services/${service.id}/page?path=%2Fthings`,
+      );
+      expect(page.status).toBe(200);
+      expect(await page.json()).toEqual({
+        path: "/things",
+        nodes: [
+          { kind: "page-header", props: { title: "Things" } },
+          {
+            kind: "table",
+            props: { source: { resourceId: "things" } },
+          },
+        ],
+      });
+
       const deleted = await runtime.app.request(
         `/api/v1/services/${service.id}`,
         { method: "DELETE" },

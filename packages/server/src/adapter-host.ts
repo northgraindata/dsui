@@ -3,12 +3,13 @@ import {
   type ActionBinding,
   createAdapterInstance,
   type ResourceBinding,
+  serializeNodes,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
 import { assertAdapterDefinition } from "./adapters/loader.js";
 
-type HostMethod = "describe" | "health" | "resource" | "action";
+type HostMethod = "describe" | "health" | "page" | "resource" | "action";
 
 interface HostParams {
   connection?: unknown;
@@ -143,6 +144,26 @@ export async function runAdapterHost(): Promise<number> {
             detail:
               error instanceof Error ? error.message : "Health probe failed",
           });
+        }
+        break;
+      }
+      case "page": {
+        const path = (params.input as { path?: unknown } | undefined)?.path;
+        if (typeof path !== "string" || !path.startsWith("/"))
+          throw new Error("Page path must be an absolute path");
+        const instance = await createAdapterInstance(
+          definition,
+          params.connection,
+        );
+        try {
+          const scope = instance.createPageScope(path);
+          try {
+            reply(request.id, { path, nodes: serializeNodes(scope.render()) });
+          } finally {
+            scope.dispose();
+          }
+        } finally {
+          await instance.dispose();
         }
         break;
       }

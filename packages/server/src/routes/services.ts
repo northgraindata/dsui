@@ -200,4 +200,28 @@ export function registerServiceRoutes(
       return context.json({ message: errorMessage(error) }, httpStatus(error));
     }
   });
+
+  app.get("/api/v1/services/:id/page", async (context) => {
+    try {
+      await deps.refreshConfig();
+      const path = context.req.query("path");
+      if (!path?.startsWith("/"))
+        return context.json({ message: "A page path is required" }, 400);
+      const source = serviceSource(
+        deps.getConfig(),
+        deps.database,
+        context.req.param("id"),
+      );
+      if (!source) throw new Error("Service not found");
+      const adapter = deps.registry.get(source.service.adapter);
+      return context.json(
+        await adapter.backend.renderPage(
+          connectionFor(deps.cipher, source),
+          path,
+        ),
+      );
+    } catch (error) {
+      return context.json({ message: errorMessage(error) }, httpStatus(error));
+    }
+  });
 }

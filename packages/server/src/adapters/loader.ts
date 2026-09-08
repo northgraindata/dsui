@@ -7,8 +7,9 @@ import {
   type AdapterInfo,
   createAdapterInstance,
   type ResourceBinding,
+  serializeNodes,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { HealthStatus } from "@northgraindata/dsui-core";
+import type { HealthStatus, PageDocument } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
 import { AdapterHostClient } from "./host.js";
 import { type AdapterFetch, ExternalAdapterManager } from "./installer.js";
@@ -28,7 +29,7 @@ export interface AdapterLoadOptions {
   /** Subprocess host factory; tests inject fakes. */
   spawnHost?: (bundlePath: string) => {
     request(request: {
-      method: "describe" | "health" | "resource" | "action";
+      method: "describe" | "health" | "page" | "resource" | "action";
       connection?: unknown;
       target?: string;
       input?: unknown;
@@ -157,6 +158,20 @@ class LocalBackend implements AdapterBackend {
     }
   }
 
+  async renderPage(connection: unknown, path: string): Promise<PageDocument> {
+    const instance = await createAdapterInstance(this.definition, connection);
+    try {
+      const scope = instance.createPageScope(path);
+      try {
+        return { path, nodes: serializeNodes(scope.render()) };
+      } finally {
+        scope.dispose();
+      }
+    } finally {
+      await instance.dispose();
+    }
+  }
+
   async executeResource(
     resourceId: string,
     connection: unknown,
@@ -226,7 +241,7 @@ class RemoteBackend implements AdapterBackend {
   constructor(
     private readonly host: {
       request(request: {
-        method: "describe" | "health" | "resource" | "action";
+        method: "describe" | "health" | "page" | "resource" | "action";
         connection?: unknown;
         target?: string;
         input?: unknown;
@@ -250,6 +265,17 @@ class RemoteBackend implements AdapterBackend {
     } catch (error) {
       return unhealthy(started, error);
     }
+  }
+
+  async renderPage(connection: unknown, path: string): Promise<PageDocument> {
+    const result = await this.host.request({
+      method: "page",
+      connection,
+      input: { path },
+    });
+    if (!result || typeof result !== "object")
+      throw new AdapterExecutionError("Adapter host returned an invalid page");
+    return result as PageDocument;
   }
 
   async executeResource(

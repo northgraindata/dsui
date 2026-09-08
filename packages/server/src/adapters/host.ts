@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
  * state can leak between calls.
  */
 
-export type HostMethod = "describe" | "health" | "resource" | "action";
+export type HostMethod = "describe" | "health" | "page" | "resource" | "action";
 
 export interface AdapterHostRequest {
   id?: string | number;
