@@ -15,7 +15,7 @@ export const runQuery = defineAction({
     warehouse: z.string().nullable(),
     database: z.string().nullable(),
     schema: z.string().nullable(),
-    role: z.string().nullable(),
+    role: z.string().nullable().optional().default(null),
   }),
   // Long-running shape: the runtime tracks running/success/error per
   // execution and can later add progress/cancellation without API changes.

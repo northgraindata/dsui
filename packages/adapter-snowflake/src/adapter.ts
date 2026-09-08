@@ -130,6 +130,7 @@ export function createSnowflakeAdapter(
     connectionSchema: snowflakeConnectionSchema,
     context: (config: SnowflakeConfig): SnowflakeContext =>
       createContext(createClient(config), config),
+    disposeContext: (ctx) => ctx.client.dispose?.(),
     stores: [
       sessionStore,
       queryFiltersStore,
