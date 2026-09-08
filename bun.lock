@@ -52,6 +52,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@northgraindata/dsui-core": "workspace:*",
+        "@northgraindata/dsui-renderer": "workspace:*",
         "@northgraindata/dsui-ui": "workspace:*",
         "@tailwindcss/vite": "^4.1.13",
         "@tanstack/react-router": "^1.132.0",
@@ -73,6 +74,7 @@
       "name": "@northgraindata/dsui-adapter-sdk",
       "version": "0.0.0",
       "dependencies": {
+        "@northgraindata/dsui-core": "workspace:*",
         "zod": "^3.24.2",
       },
     },
@@ -86,6 +88,22 @@
     "packages/core": {
       "name": "@northgraindata/dsui-core",
       "version": "0.0.0",
+    },
+    "packages/renderer": {
+      "name": "@northgraindata/dsui-renderer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-core": "workspace:*",
+        "@northgraindata/dsui-ui": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
+        "typescript": "^5.9.2",
+      },
+      "peerDependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+      },
     },
     "packages/server": {
       "name": "@northgraindata/dsui-server",
@@ -456,6 +474,8 @@
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],
 
     "@northgraindata/dsui-docs": ["@northgraindata/dsui-docs@workspace:apps/docs"],
+
+    "@northgraindata/dsui-renderer": ["@northgraindata/dsui-renderer@workspace:packages/renderer"],
 
     "@northgraindata/dsui-server": ["@northgraindata/dsui-server@workspace:packages/server"],
 

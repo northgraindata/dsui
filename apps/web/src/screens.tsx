@@ -1,3 +1,4 @@
+import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import {
   Button,
   cn,
@@ -26,8 +27,11 @@ import {
 import {
   type Adapter,
   createService,
+  executeAction,
+  executeResource,
   getAdapters,
-  getManifest,
+  getPage,
+  getServicePages,
   getServices,
   login,
   type Manifest,
@@ -53,12 +57,7 @@ import { ServiceMark } from "./components/ServiceMark";
 import { ServiceRow } from "./components/ServiceRow";
 import ScrambleHover from "./components/scramble-hover";
 import { Wordmark } from "./components/Wordmark";
-import {
-  WorkspacePrimaryNavigation,
-  WorkspaceViewTabs,
-} from "./components/WorkspaceNavigation";
 import { usePolling } from "./hooks/usePolling";
-import { buildWorkspaceAreas } from "./workspace-navigation";
 
 const nav = [
   { icon: "grid", label: "Stack", to: "/" },
@@ -841,7 +840,7 @@ function LogStream({ service }: { service: Service }) {
  * Adapters opt into these purely through their `view.kind` declaration; no
  * per-adapter branching lives here, so external adapters work automatically.
  */
-const SCREEN_REGISTRY: Record<
+const _SCREEN_REGISTRY: Record<
   string,
   (props: {
     service: Service;
@@ -860,22 +859,24 @@ const SCREEN_REGISTRY: Record<
 function ServiceScreen({
   serviceId,
   viewId,
-  objectSelection,
+  objectSelection: _objectSelection,
 }: {
   serviceId: string;
   viewId?: string;
   objectSelection?: { database: string; objectName: string; tabId: string };
 }) {
   const [service, setService] = useState<Service>();
-  const [views, setViews] = useState<ServiceViewDefinition[]>([]);
+  const [paths, setPaths] = useState<string[]>([]);
+  const [page, setPage] =
+    useState<import("@northgraindata/dsui-core").PageDocument>();
   const [error, setError] = useState<string>();
   useEffect(() => {
     let active = true;
-    Promise.all([getServices(), getManifest(serviceId)])
-      .then(([all, manifest]) => {
+    Promise.all([getServices(), getServicePages(serviceId)])
+      .then(([all, response]) => {
         if (!active) return;
         setService(all.find((x) => x.id === serviceId));
-        setViews(manifest.views);
+        setPaths(response.pages.map((item) => item.path));
       })
       .catch(
         (e) =>
@@ -886,6 +887,24 @@ function ServiceScreen({
       active = false;
     };
   }, [serviceId]);
+  const path = viewId ? `/${decodeURIComponent(viewId)}` : paths[0];
+  useEffect(() => {
+    if (!path) return;
+    let active = true;
+    setPage(undefined);
+    getPage(serviceId, path)
+      .then((document) => active && setPage(document))
+      .catch(
+        (cause) =>
+          active &&
+          setError(
+            cause instanceof Error ? cause.message : "Could not load page.",
+          ),
+      );
+    return () => {
+      active = false;
+    };
+  }, [serviceId, path]);
   if (error)
     return (
       <div className={pageClass}>
@@ -900,14 +919,6 @@ function ServiceScreen({
         </div>
       </div>
     );
-  const workspaceAreas = buildWorkspaceAreas(views);
-  const activeView =
-    views.find((item) => item.id === viewId) ??
-    (workspaceAreas.length
-      ? views[0]
-      : views.find((item) => SCREEN_REGISTRY[item.renderer])) ??
-    views[0];
-  const view = activeView;
   return (
     <div className="grid flex-1 grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
       <aside className="sticky top-12 h-[calc(100vh-3rem)] overflow-y-auto border-r border-border bg-canvas px-3 py-5">
@@ -932,25 +943,34 @@ function ServiceScreen({
           <Status state={service.health} label={service.health} />
         </div>
         <hr className="my-4 border-t border-dashed border-border" />
-        <WorkspacePrimaryNavigation
-          serviceId={serviceId}
-          views={views}
-          activeViewId={view?.id}
-        />
+        <nav aria-label="Adapter pages" className="grid gap-px">
+          {paths.map((item) => (
+            <Link
+              key={item}
+              to="/services/$serviceId/$viewId"
+              params={{ serviceId, viewId: item.slice(1) }}
+              aria-current={item === path ? "page" : undefined}
+              className={cn(
+                "px-2.5 py-2 text-[12px] no-underline",
+                item === path
+                  ? "bg-surface-hover text-primary"
+                  : "text-muted hover:text-primary",
+              )}
+            >
+              {item.split("/").filter(Boolean).at(-1)?.replaceAll("-", " ") ??
+                "Overview"}
+            </Link>
+          ))}
+        </nav>
       </aside>
       <div className="min-w-0 px-6 py-6">
-        <WorkspaceViewTabs
-          serviceId={serviceId}
-          views={views}
-          activeViewId={view?.id}
-        />
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
               {service.category}
             </p>
             <h1 className="mt-1 text-[17px] font-semibold text-primary">
-              {view?.title ?? service.name}
+              {service.name}
             </h1>
           </div>
           <Status
@@ -962,25 +982,41 @@ function ServiceScreen({
             }
           />
         </div>
-        {view && SCREEN_REGISTRY[view.renderer] ? (
-          SCREEN_REGISTRY[view.renderer]({ service, view, views })
-        ) : view ? (
-          <CapabilityRenderer
-            service={service}
-            view={view}
-            objectSelection={objectSelection}
+        {page ? (
+          <DeclarativePageRenderer
+            nodes={page.nodes}
+            client={{
+              executeResource: async (reference) =>
+                (
+                  await executeResource(
+                    service.id,
+                    reference.resourceId,
+                    reference.input,
+                  )
+                ).data,
+              executeAction: async (reference) => {
+                const result = await executeAction(
+                  service.id,
+                  reference.actionId,
+                  reference.input,
+                );
+                return result.status === "success"
+                  ? { status: "success" as const }
+                  : { status: "error" as const, message: result.message };
+              },
+            }}
           />
         ) : (
           <EmptyState
-            title="Choose a capability"
-            detail="Select a capability from the service navigation to begin."
+            title="Loading page"
+            detail="The adapter page is being prepared."
           />
         )}
       </div>
     </div>
   );
 }
-function CapabilityRenderer({
+function _CapabilityRenderer({
   service,
   view,
   objectSelection,

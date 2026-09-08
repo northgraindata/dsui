@@ -1,11 +1,12 @@
 import type {
   HealthStatus,
+  PageDocument,
   PublicAdapter,
   PublicService,
 } from "@northgraindata/dsui-core";
 
 /** Canonical server contracts. New code uses these; see legacy aliases below. */
-export type { HealthStatus, PublicAdapter, PublicService };
+export type { HealthStatus, PageDocument, PublicAdapter, PublicService };
 export type Health = HealthStatus["status"];
 
 export type Service = {
@@ -172,6 +173,11 @@ export async function getAdapters() {
 }
 export async function getServicePages(id: string) {
   return request<{ pages: Array<{ path: string }> }>(`/services/${id}/pages`);
+}
+export async function getPage(serviceId: string, path: string) {
+  return request<PageDocument>(
+    `/services/${serviceId}/page?path=${encodeURIComponent(path)}`,
+  );
 }
 export async function executeResource(
   serviceId: string,
