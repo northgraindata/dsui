@@ -26,9 +26,13 @@ import {
 } from "react";
 import {
   type Adapter,
+  type ConnectionMethod,
+  type ConnectionTopEntry,
+  connectionTopEntries,
   createService,
   executeAction,
   executeResource,
+  firstLeaf,
   getAdapters,
   getPage,
   getServicePages,
@@ -58,6 +62,7 @@ import { ServiceRow } from "./components/ServiceRow";
 import ScrambleHover from "./components/scramble-hover";
 import { Wordmark } from "./components/Wordmark";
 import { usePolling } from "./hooks/usePolling";
+import { connectionTestMessage, navigablePagePaths } from "./service-pages";
 
 const nav = [
   { icon: "grid", label: "Stack", to: "/" },
@@ -451,6 +456,8 @@ export function AddService() {
   const [adapterViewVisible, setAdapterViewVisible] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [activeTop, setActiveTop] = useState<string | null>(null);
+  const [activeMethod, setActiveMethod] = useState<string | null>(null);
   const [message, setMessage] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -467,16 +474,33 @@ export function AddService() {
   }, []);
   const update = (key: string, value: string) =>
     setValues((x) => ({ ...x, [key]: value }));
+  const keepName = (name?: string) => ({ name: name ?? "" });
   const selectAdapter = (adapter: Adapter) => {
     window.clearTimeout(adapterTransitionTimer.current);
     setAdapterViewVisible(false);
     adapterTransitionTimer.current = window.setTimeout(() => {
       setSelected(adapter);
       setValues({ name: adapter.name });
+      const tops = connectionTopEntries(adapter.connectionMethods);
+      const first = tops[0];
+      setActiveTop(
+        first ? (first.kind === "group" ? first.id : first.method.id) : null,
+      );
+      setActiveMethod(firstLeaf(first)?.id ?? null);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setAdapterViewVisible(true));
       });
     }, 220);
+  };
+  const selectTop = (top: ConnectionTopEntry) => {
+    const id = top.kind === "group" ? top.id : top.method.id;
+    setActiveTop(id);
+    setActiveMethod(firstLeaf(top)?.id ?? null);
+    setValues((previous) => keepName(previous.name));
+  };
+  const selectMethod = (method: ConnectionMethod) => {
+    setActiveMethod(method.id);
+    setValues((previous) => keepName(previous.name));
   };
   useEffect(
     () => () => {
@@ -492,11 +516,27 @@ export function AddService() {
     setLeaving(true);
     leaveTimer.current = window.setTimeout(() => nav({ to: "/" }), 220);
   };
+  const tops = connectionTopEntries(selected?.connectionMethods);
+  const top =
+    tops.find((entry) =>
+      entry.kind === "group"
+        ? entry.id === activeTop
+        : entry.method.id === activeTop,
+    ) ?? tops[0];
+  const topMethods = top
+    ? top.kind === "group"
+      ? top.methods
+      : [top.method]
+    : [];
+  const method =
+    topMethods.find((candidate) => candidate.id === activeMethod) ??
+    topMethods[0];
+  const connectionFields = method ? method.fields : (selected?.fields ?? []);
   const input = selected
     ? {
         adapter: selected.id,
         name: values.name || selected.name,
-        connection: values,
+        connection: method ? { method: method.id, ...values } : values,
       }
     : null;
   async function test() {
@@ -505,11 +545,7 @@ export function AddService() {
     setMessage(undefined);
     try {
       const status = await testService(input);
-      setMessage(
-        status.health === "healthy"
-          ? `Connection healthy${status.latencyMs ? ` · ${status.latencyMs}ms` : ""}`
-          : (status.detail ?? "Connection could not be verified"),
-      );
+      setMessage(connectionTestMessage(status));
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Connection test failed",
@@ -644,6 +680,55 @@ export function AddService() {
                   </p>
                 </div>
               </div>
+              {tops.length > 1 ? (
+                <div className="flex gap-px border-b border-border bg-border">
+                  {tops.map((entry) => {
+                    const id =
+                      entry.kind === "group" ? entry.id : entry.method.id;
+                    const label =
+                      entry.kind === "group" ? entry.label : entry.method.label;
+                    return (
+                      <button
+                        type="button"
+                        key={id}
+                        onClick={() => selectTop(entry)}
+                        className={cn(
+                          "px-4 py-2.5 text-[12px] transition-colors",
+                          id === activeTop
+                            ? "bg-canvas font-medium text-primary"
+                            : "bg-surface text-secondary hover:text-primary",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {top?.kind === "group" ? (
+                <div className="flex gap-px border-b border-border bg-border">
+                  {top.methods.map((sub) => (
+                    <button
+                      type="button"
+                      key={sub.id}
+                      onClick={() => selectMethod(sub)}
+                      className={cn(
+                        "px-3 py-2 text-[11px] transition-colors",
+                        sub.id === activeMethod
+                          ? "bg-canvas font-medium text-primary"
+                          : "bg-surface text-secondary hover:text-primary",
+                      )}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {method?.description ? (
+                <p className="border-b border-border px-5 py-2.5 text-[11px] leading-relaxed text-secondary">
+                  {method.description}
+                </p>
+              ) : null}
               <div className="grid gap-4 p-5 sm:grid-cols-2">
                 <Field label="Service name" hint="Shown in your service list.">
                   <Input
@@ -652,7 +737,7 @@ export function AddService() {
                     required
                   />
                 </Field>
-                {selected.fields.map((field) => (
+                {connectionFields.map((field) => (
                   <Field key={field.key} label={field.label}>
                     {field.type === "boolean" || field.type === "select" ? (
                       <select
@@ -856,15 +941,27 @@ const _SCREEN_REGISTRY: Record<
   ),
   "log-stream": ({ service }) => <LogStream service={service} />,
 };
+export function ServicePage() {
+  const { serviceId } = useParams({ from: "/services/$serviceId/$" });
+  const splat = useParams({
+    from: "/services/$serviceId/$",
+    select: (params) => params._splat,
+  });
+  return <ServiceScreen serviceId={serviceId} pagePath={`/${splat}`} />;
+}
+
 function ServiceScreen({
   serviceId,
   viewId,
+  pagePath,
   objectSelection: _objectSelection,
 }: {
   serviceId: string;
   viewId?: string;
+  pagePath?: string;
   objectSelection?: { database: string; objectName: string; tabId: string };
 }) {
+  const nav = useNavigate();
   const [service, setService] = useState<Service>();
   const [paths, setPaths] = useState<string[]>([]);
   const [page, setPage] =
@@ -887,7 +984,8 @@ function ServiceScreen({
       active = false;
     };
   }, [serviceId]);
-  const path = viewId ? `/${decodeURIComponent(viewId)}` : paths[0];
+  const path =
+    pagePath ?? (viewId ? `/${decodeURIComponent(viewId)}` : paths[0]);
   useEffect(() => {
     if (!path) return;
     let active = true;
@@ -944,7 +1042,7 @@ function ServiceScreen({
         </div>
         <hr className="my-4 border-t border-dashed border-border" />
         <nav aria-label="Adapter pages" className="grid gap-px">
-          {paths.map((item) => (
+          {navigablePagePaths(paths).map((item) => (
             <Link
               key={item}
               to="/services/$serviceId/$viewId"
@@ -1001,9 +1099,14 @@ function ServiceScreen({
                   reference.input,
                 );
                 return result.status === "success"
-                  ? { status: "success" as const }
+                  ? { status: "success" as const, data: result.data }
                   : { status: "error" as const, message: result.message };
               },
+              navigate: (page) =>
+                nav({
+                  to: "/services/$serviceId/$",
+                  params: { serviceId: service.id, _splat: page.slice(1) },
+                }),
             }}
           />
         ) : (

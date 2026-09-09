@@ -29,19 +29,34 @@ export type Adapter = {
   category: string;
   description: string;
   logo?: string;
-  fields: Array<{
-    key: string;
+  fields: Field[];
+  connectionMethods?: ConnectionMethod[];
+};
+
+export type Field = {
+  key: string;
+  label: string;
+  type?: "text" | "password" | "number" | "boolean" | "list" | "select";
+  placeholder?: string;
+  required?: boolean;
+  options?: Array<{ label: string; value: string }>;
+};
+
+export type ConnectionMethod = {
+  id: string;
+  label: string;
+  description?: string;
+  fields: Field[];
+  group?: {
+    id: string;
     label: string;
-    type?: "text" | "password" | "number" | "boolean" | "list" | "select";
-    placeholder?: string;
-    required?: boolean;
-    options?: Array<{ label: string; value: string }>;
-  }>;
+    description?: string;
+  };
 };
 
 type JsonSchema = Record<string, unknown>;
 
-function schemaFields(schema: JsonSchema | undefined): Adapter["fields"] {
+function schemaFields(schema: JsonSchema | undefined): Field[] {
   if (!schema) return [];
   const properties = schema.properties;
   if (
@@ -93,14 +108,76 @@ function schemaFields(schema: JsonSchema | undefined): Adapter["fields"] {
   });
 }
 
+export type ConnectionTopEntry =
+  | { kind: "method"; method: ConnectionMethod }
+  | {
+      kind: "group";
+      id: string;
+      label: string;
+      description?: string;
+      methods: ConnectionMethod[];
+    };
+
+/**
+ * Groups connection methods into top-level tabs: ungrouped methods stand
+ * alone, grouped methods collect under their group in first-seen order.
+ */
+export function connectionTopEntries(
+  methods?: ConnectionMethod[],
+): ConnectionTopEntry[] {
+  const entries: ConnectionTopEntry[] = [];
+  const groups = new Map<
+    string,
+    Extract<ConnectionTopEntry, { kind: "group" }>
+  >();
+  for (const method of methods ?? []) {
+    if (!method.group) {
+      entries.push({ kind: "method", method });
+      continue;
+    }
+    let entry = groups.get(method.group.id);
+    if (!entry) {
+      entry = {
+        kind: "group",
+        id: method.group.id,
+        label: method.group.label,
+        ...(method.group.description
+          ? { description: method.group.description }
+          : {}),
+        methods: [],
+      };
+      groups.set(method.group.id, entry);
+      entries.push(entry);
+    }
+    entry.methods.push(method);
+  }
+  return entries;
+}
+
+export function firstLeaf(
+  top?: ConnectionTopEntry,
+): ConnectionMethod | undefined {
+  if (!top) return undefined;
+  return top.kind === "group" ? top.methods[0] : top.method;
+}
+
 export function adapterFromPublicAdapter(adapter: PublicAdapter): Adapter {
+  const fields = schemaFields(adapter.connectionSchema);
+  const connectionMethods = adapter.connectionMethods?.map((method) => ({
+    id: method.id,
+    label: method.label,
+    ...(method.description ? { description: method.description } : {}),
+    fields: schemaFields(method.schema),
+    ...(method.group ? { group: { ...method.group } } : {}),
+  }));
   return {
     id: adapter.id,
     name: adapter.name,
     category: adapter.id,
     description: adapter.description,
     ...(adapter.iconUrl ? { logo: adapter.iconUrl } : {}),
-    fields: schemaFields(adapter.connectionSchema),
+    fields,
+    ...(connectionMethods ? { connectionMethods } : {}),
   };
 }
 export type Manifest = {
@@ -285,10 +362,10 @@ export async function createService(input: unknown) {
   });
 }
 export async function testService(input: unknown) {
-  return request<{ health: Health; detail?: string; latencyMs?: number }>(
-    "/services/test",
-    { method: "POST", body: JSON.stringify(input) },
-  );
+  return request<HealthStatus>("/services/test", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 /** @deprecated The server no longer executes capabilities. Use executeResource/executeAction. */
 export async function runOperation(

@@ -10,6 +10,7 @@ import {
   Login,
   ServiceDetail,
   ServiceObjectView,
+  ServicePage,
   Services,
   ServiceView,
   Settings,
@@ -52,6 +53,11 @@ const objectViewRoute = createRoute({
   path: "/services/$serviceId/$viewId/$database/$objectName/$tabId",
   component: ServiceObjectView,
 });
+const pageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/services/$serviceId/$",
+  component: ServicePage,
+});
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
@@ -70,6 +76,7 @@ const routeTree = rootRoute.addChildren([
   detailRoute,
   viewRoute,
   objectViewRoute,
+  pageRoute,
   loginRoute,
   setupRoute,
 ]);
