@@ -144,7 +144,10 @@ test("database page binds the route param to the schemas resource", async () => 
   if (table?.kind === "table") {
     expect(table.props.source?.resourceId).toBe("schemas");
     expect(table.props.source?.input).toEqual({ database: "ANALYTICS" });
-    expect(typeof table.props.onRowClick).toBe("function");
+    expect(table.props.rowLink).toEqual({
+      path: "/databases/ANALYTICS/schemas/:schema",
+      params: { schema: "value" },
+    });
   }
   scope.dispose();
   await instance.dispose();
