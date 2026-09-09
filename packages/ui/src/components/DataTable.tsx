@@ -1,11 +1,16 @@
+import type { ReactNode } from "react";
 import { Surface } from "./Surface";
 
 export function DataTable({
   columns,
   rows,
+  onRowClick,
+  renderRowActions,
 }: {
   columns: readonly { id: string; label: string }[];
   rows: readonly Record<string, unknown>[];
+  onRowClick?: (row: Record<string, unknown>) => void;
+  renderRowActions?: (row: Record<string, unknown>) => ReactNode;
 }) {
   return (
     <Surface className="overflow-x-auto">
@@ -17,6 +22,11 @@ export function DataTable({
                 {column.label}
               </th>
             ))}
+            {renderRowActions !== undefined ? (
+              <th key="__actions" className="px-3 py-2 font-medium">
+                Actions
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -25,14 +35,31 @@ export function DataTable({
               key={JSON.stringify(row)}
               className="border-b border-border last:border-0"
             >
-              {columns.map((column) => (
+              {columns.map((column, index) => (
                 <td
                   key={column.id}
                   className="max-w-72 truncate px-3 py-2 text-primary"
                 >
-                  {formatCell(row[column.id])}
+                  {index === 0 && onRowClick ? (
+                    <button
+                      type="button"
+                      onClick={() => onRowClick(row)}
+                      className="cursor-pointer bg-transparent p-0 text-left text-accent hover:underline"
+                    >
+                      {formatCell(row[column.id])}
+                    </button>
+                  ) : (
+                    formatCell(row[column.id])
+                  )}
                 </td>
               ))}
+              {renderRowActions !== undefined ? (
+                <td key="__actions" className="px-3 py-2">
+                  <span className="flex flex-wrap gap-2">
+                    {renderRowActions(row)}
+                  </span>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

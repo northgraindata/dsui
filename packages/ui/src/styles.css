@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "./";
+@source "../../renderer/src";
 
 @theme {
   /* Terminal phosphor theme — warm neutrals, green accent, zero blue. */
