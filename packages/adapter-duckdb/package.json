@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@duckdb/node-api": "^1.5.5-r.4",
     "@northgraindata/dsui-adapter-sdk": "workspace:*"
   }
 }
