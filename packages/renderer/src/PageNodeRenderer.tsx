@@ -1,7 +1,10 @@
 import type { PageNode } from "@northgraindata/dsui-core";
 import { Button, Input } from "@northgraindata/dsui-ui";
 import { ActionForm } from "./ActionForm";
+import { QueryWorkbench } from "./QueryWorkbench";
+import { ResourceTreeView } from "./ResourceTree";
 import { ResourceKeyValue, ResourceTable } from "./ResourceViews";
+import { SplitPaneView } from "./SplitPane";
 import { Tabs } from "./Tabs";
 import type { RendererClient } from "./types";
 
@@ -30,6 +33,24 @@ export function PageNodeRenderer({
       return <ResourceTable client={client} node={node} />;
     case "key-value":
       return <ResourceKeyValue client={client} node={node} />;
+    case "query-workbench":
+      return <QueryWorkbench client={client} node={node} />;
+    case "resource-tree":
+      return <ResourceTreeView client={client} node={node} />;
+    case "split-pane":
+      return (
+        <SplitPaneView
+          client={client}
+          node={node}
+          renderNode={(nextClient, child) => (
+            <PageNodeRenderer
+              key={JSON.stringify(child)}
+              client={nextClient}
+              node={child}
+            />
+          )}
+        />
+      );
     case "button":
       return (
         <Button
