@@ -2,7 +2,14 @@ import { expect, test } from "bun:test";
 import { z } from "zod";
 import { defineAction } from "../action/index";
 import { defineResource } from "../resource/index";
-import { Button, Form, PageHeader, Table, Tabs } from "./nodes";
+import {
+  Form,
+  PageHeader,
+  ResourceTree,
+  SplitPane,
+  Table,
+  Tabs,
+} from "./nodes";
 
 test("PageHeader requires a title", () => {
   expect(PageHeader({ title: "Databases" }).kind).toBe("page-header");
@@ -19,29 +26,37 @@ test("Table accepts a resource binding as source", () => {
   expect(node.props.source?.resourceId).toBe("databases");
 });
 
-test("Table supports data-driven row actions", () => {
+test("Table supports declarative row links and row actions", () => {
   const suspend = defineAction({
     id: "suspend-warehouse",
     input: z.object({ warehouse: z.string() }),
     run: () => "ok",
   });
-  const resume = defineAction({
-    id: "resume-warehouse",
-    input: z.object({ warehouse: z.string() }),
-    run: () => "ok",
+  const node = Table({
+    rowLink: { path: "/warehouses/:warehouse", params: { warehouse: "name" } },
+    rowActions: [
+      {
+        label: "Resume",
+        action: suspend,
+        input: { warehouse: "name" },
+        when: { field: "status", equals: "SUSPENDED" },
+      },
+    ],
   });
-  const node = Table<{ name: string; status: string }>({
-    actions: (row) =>
-      Button({
-        label: row.status === "SUSPENDED" ? "Resume" : "Suspend",
-        action:
-          row.status === "SUSPENDED"
-            ? resume({ warehouse: row.name })
-            : suspend({ warehouse: row.name }),
-      }),
+  expect(node.props.rowLink).toEqual({
+    path: "/warehouses/:warehouse",
+    params: { warehouse: "name" },
   });
-  const actions = node.props.actions?.({ name: "ETL_WH", status: "SUSPENDED" });
-  expect(actions).toMatchObject({ props: { label: "Resume" } });
+  expect(node.props.rowActions?.[0]).toMatchObject({
+    label: "Resume",
+    when: { field: "status", equals: "SUSPENDED" },
+  });
+});
+
+test("Table rejects a relative row-link path", () => {
+  expect(() =>
+    Table({ rowLink: { path: "warehouses/x", params: {} } }),
+  ).toThrow("must be absolute");
 });
 
 test("Tabs requires at least one item", () => {
@@ -62,4 +77,47 @@ test("Form binds a Zod schema to an action", () => {
   const node = Form({ schema: input, onSubmit: resize({ size: "X" }) });
   expect(node.kind).toBe("form");
   expect(node.props.onSubmit).toMatchObject({ actionId: "resize" });
+});
+
+test("ResourceTree describes lazy children and leaf navigation", () => {
+  const databases = defineResource({ id: "databases", query: () => [] });
+  const schemas = defineResource({
+    id: "schemas",
+    input: z.object({ database: z.string() }),
+    query: () => [],
+  });
+  const tree = ResourceTree({
+    label: "Data explorer",
+    stateKey: "duckdb-data",
+    selectedPath: "/data/memory/main/tables/orders",
+    branch: {
+      source: databases(),
+      children: {
+        source: schemas({ database: "$name" }),
+        rowLink: {
+          path: "/data/:database/:schema",
+          params: { database: "database", schema: "name" },
+        },
+      },
+    },
+  });
+
+  expect(tree.kind).toBe("resource-tree");
+  expect(tree.props.branch.children?.rowLink?.path).toBe(
+    "/data/:database/:schema",
+  );
+});
+
+test("SplitPane composes existing nodes without owning their behavior", () => {
+  const databases = defineResource({ id: "databases", query: () => [] });
+  const pane = SplitPane({
+    sidebar: ResourceTree({
+      label: "Data explorer",
+      branch: { source: databases() },
+    }),
+    content: PageHeader({ title: "Data" }),
+  });
+
+  expect(pane.kind).toBe("split-pane");
+  expect(pane.props.sidebar).toMatchObject({ kind: "resource-tree" });
 });

@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { ActionTarget } from "../action/index";
+import type { ActionTarget, AnyActionDefinition } from "../action/index";
 import type { DataSource } from "../resource/index";
 
 /**
@@ -36,36 +36,86 @@ export interface TableColumn {
 }
 
 /**
+ * Declarative row deep-link. Params map URL param names to row field
+ * names; the renderer URL-encodes substituted values.
+ *
+ * @example
+ * ```ts
+ * rowLink: {
+ *   path: "/warehouses/:warehouse",
+ *   params: { warehouse: "name" },
+ * },
+ * ```
+ */
+export interface TableRowLink {
+  /** Adapter page path with :param placeholders. */
+  path: string;
+  /** URL param name -> row field name. */
+  params: Record<string, string>;
+}
+
+/**
+ * Declarative per-row button. Inputs map action-input fields to row
+ * field names and are substituted renderer-side, then validated by the
+ * normal action execution path.
+ *
+ * @example
+ * ```ts
+ * rowActions: [
+ *   {
+ *     label: "Resume",
+ *     action: resumeWarehouse,
+ *     input: { warehouse: "name" },
+ *     when: { field: "status", equals: "SUSPENDED" },
+ *   },
+ * ],
+ * ```
+ */
+export interface TableRowAction {
+  /** Button label. */
+  label: string;
+  /** Visual weight. */
+  variant?: "primary" | "secondary" | "danger";
+  /** Action definition or id; the wire carries the id. */
+  action: AnyActionDefinition | string;
+  /** Action-input field -> row field. */
+  input?: Record<string, string>;
+  /** Show only when the row matches every present clause. */
+  when?: {
+    field: string;
+    equals?: string | number | boolean;
+    notEquals?: string | number | boolean;
+  };
+}
+
+/**
  * Data table props.
  *
  * @example
  * ```ts
- * Table<Warehouse>({
+ * Table({
  *   source: warehouses(),
- *   onRowClick: (row) => `/warehouses/${row.name}`,
- *   actions: (row) =>
- *     row.status === "SUSPENDED"
- *       ? Button({ label: "Resume", action: resume(row.name) })
- *       : Button({ label: "Suspend", action: suspend(row.name) }),
+ *   rowLink: { path: "/warehouses/:warehouse", params: { warehouse: "name" } },
+ *   rowActions: [
+ *     { label: "Resume", action: resumeWarehouse, input: { warehouse: "name" }, when: { field: "status", equals: "SUSPENDED" } },
+ *     { label: "Suspend", action: suspendWarehouse, input: { warehouse: "name" }, when: { field: "status", notEquals: "SUSPENDED" } },
+ *   ],
  * });
  * ```
  */
-export interface TableProps<TRow = Record<string, unknown>> {
+export interface TableProps {
   /** Resource binding providing rows (preferred for external data). */
   source?: DataSource;
   /**
    * Escape hatch for local/static rows; prefer `source` for external data.
    */
-  data?: readonly TRow[];
+  data?: readonly Record<string, unknown>[];
   /** Column overrides; omitted derives columns from the data. */
   columns?: readonly TableColumn[];
-  /**
-   * Per-row buttons; may return one, many, or null. Method syntax keeps
-   * row callbacks bivariant so concrete row types fit.
-   */
-  actions?(row: TRow): ButtonNode | readonly ButtonNode[] | null;
-  /** Deep link for row clicks. */
-  onRowClick?(row: TRow): string;
+  /** Deep link for row clicks, substituted from row fields. */
+  rowLink?: TableRowLink;
+  /** Per-row buttons, substituted from row fields. */
+  rowActions?: readonly TableRowAction[];
 }
 
 /**
@@ -74,8 +124,8 @@ export interface TableProps<TRow = Record<string, unknown>> {
 export interface TableNode {
   /** Discriminant: always `"table"`. */
   readonly kind: "table";
-  /** Table content (row type erased; callbacks stay callable). */
-  readonly props: TableProps<unknown>;
+  /** Table content. */
+  readonly props: TableProps;
 }
 
 /**
@@ -178,6 +228,66 @@ export interface CodeEditorNode {
   readonly kind: "code-editor";
   /** Editor content. */
   readonly props: CodeEditorProps;
+}
+
+/** A browser-owned editor that submits its current text to an action. */
+export interface QueryWorkbenchProps {
+  /** Language id understood by the renderer's syntax highlighter. */
+  language: string;
+  /** Initial editor contents. Editing remains browser-owned. */
+  value?: string;
+  /** Action definition receiving `{ sql: editorContents }`. */
+  action: AnyActionDefinition | string;
+  /** Optional catalog list rendered beside the editor. */
+  explorer?: QueryExplorerProps;
+}
+
+/** A resource-backed level in a query workbench explorer tree. */
+export interface QueryExplorerProps {
+  /** Resource providing the rows at this level. */
+  source: DataSource;
+  /** Field displayed as the tree item's label. Defaults to `name`. */
+  nameField?: string;
+  /** Child level. `$field` values in its source input use the selected row. */
+  children?: QueryExplorerProps;
+}
+
+/** Query workbench node (`"query-workbench"`). */
+export interface QueryWorkbenchNode {
+  readonly kind: "query-workbench";
+  readonly props: QueryWorkbenchProps;
+}
+
+/** One lazy, resource-backed level in a navigable tree. */
+export interface ResourceTreeBranchProps {
+  source: DataSource;
+  nameField?: string;
+  typeField?: string;
+  rowLink?: TableRowLink;
+  children?: ResourceTreeBranchProps;
+}
+
+export interface ResourceTreeProps {
+  label: string;
+  branch: ResourceTreeBranchProps;
+  selectedPath?: string;
+  stateKey?: string;
+  searchPlaceholder?: string;
+}
+
+export interface ResourceTreeNode {
+  readonly kind: "resource-tree";
+  readonly props: ResourceTreeProps;
+}
+
+export interface SplitPaneProps {
+  sidebar: ComponentNode | readonly ComponentNode[];
+  content: ComponentNode | readonly ComponentNode[];
+}
+
+export interface SplitPaneNode {
+  readonly kind: "split-pane";
+  readonly props: SplitPaneProps;
 }
 
 /**
@@ -310,6 +420,9 @@ export type ComponentNode =
   | TabsNode
   | KeyValueNode
   | CodeEditorNode
+  | QueryWorkbenchNode
+  | ResourceTreeNode
+  | SplitPaneNode
   | SelectNode
   | TextInputNode
   | FormNode;
@@ -334,21 +447,18 @@ export function PageHeader(props: PageHeaderProps): PageHeaderNode {
  * Data table factory. Prefer `source` (resource binding) for external
  * data; `data` is the static escape hatch.
  *
- * @param props - Source or rows, columns, row actions, and deep links.
- * @typeParam TRow - Row shape for `actions`/`onRowClick` callbacks.
+ * @param props - Source or rows, columns, row link, and row actions.
+ * @throws An error when the row-link path is not absolute.
  *
  * @example
  * ```ts
  * Table({ source: warehouses() });
  * ```
  */
-export function Table<TRow = Record<string, unknown>>(
-  props: TableProps<TRow>,
-): TableNode {
-  return {
-    kind: "table",
-    props: props as unknown as TableProps<unknown>,
-  };
+export function Table(props: TableProps): TableNode {
+  if (props.rowLink && !props.rowLink.path.startsWith("/"))
+    throw new Error("Table rowLink path must be absolute");
+  return { kind: "table", props: { ...props } };
 }
 
 /**
@@ -411,6 +521,30 @@ export function KeyValue(props: KeyValueProps): KeyValueNode {
  */
 export function CodeEditor(props: CodeEditorProps): CodeEditorNode {
   return { kind: "code-editor", props: { ...props } };
+}
+
+/**
+ * A query editor and result workspace owned by the browser renderer.
+ *
+ * @example
+ * ```ts
+ * QueryWorkbench({ language: "sql", action: runQuery });
+ * ```
+ */
+export function QueryWorkbench(props: QueryWorkbenchProps): QueryWorkbenchNode {
+  if (!props.language) throw new Error("QueryWorkbench requires a language");
+  return { kind: "query-workbench", props: { ...props } };
+}
+
+/** A lazy resource-backed navigation tree rendered and controlled by DSUI. */
+export function ResourceTree(props: ResourceTreeProps): ResourceTreeNode {
+  if (!props.label) throw new Error("ResourceTree requires a label");
+  return { kind: "resource-tree", props: { ...props } };
+}
+
+/** A responsive sidebar/content layout for ordinary DSUI page nodes. */
+export function SplitPane(props: SplitPaneProps): SplitPaneNode {
+  return { kind: "split-pane", props: { ...props } };
 }
 
 /**
