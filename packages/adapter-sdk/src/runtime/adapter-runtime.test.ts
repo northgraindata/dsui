@@ -235,9 +235,14 @@ test("unknown urls throw", async () => {
 });
 
 test("connection schema is validated per instance", async () => {
-  const adapter = defineAdapter({
+  const adapter = defineAdapter<{ token: string }, { token: string }>({
     metadata: { id: "guarded", name: "G", version: "1.0.0" },
-    connectionSchema: z.object({ token: z.string().min(1) }),
+    connectionMethods: {
+      default: {
+        label: "Connection",
+        schema: z.object({ token: z.string().min(1) }),
+      },
+    },
     context: (config) => ({ token: config.token }),
   });
   await expect(createAdapterInstance(adapter, {})).rejects.toThrow();
