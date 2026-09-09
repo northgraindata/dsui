@@ -7,11 +7,13 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@northgraindata/dsui-core": "workspace:*",
-    "@northgraindata/dsui-ui": "workspace:*"
+    "@northgraindata/dsui-ui": "workspace:*",
+    "modern-monaco": "^0.4.2"
   },
   "peerDependencies": {
     "react": "^19.0.0",
