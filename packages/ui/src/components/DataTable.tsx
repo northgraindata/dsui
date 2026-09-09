@@ -14,8 +14,8 @@ export function DataTable({
 }) {
   return (
     <Surface className="overflow-x-auto">
-      <table className="w-full border-collapse text-left text-[12px]">
-        <thead className="border-b border-border bg-surface-hover text-secondary">
+      <table className="dsui-data-table w-full border-collapse text-left text-[12px]">
+        <thead className="border-b border-border bg-surface-raised text-secondary">
           <tr>
             {columns.map((column) => (
               <th key={column.id} className="px-3 py-2 font-medium">

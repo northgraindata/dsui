@@ -13,6 +13,7 @@
   "dependencies": {
     "@northgraindata/dsui-core": "workspace:*",
     "@northgraindata/dsui-ui": "workspace:*",
+    "@tanstack/react-virtual": "^3.14.11",
     "modern-monaco": "^0.4.2"
   },
   "peerDependencies": {
