@@ -267,6 +267,10 @@ describe("services API", () => {
   });
 
   it("requires encrypted storage for UI services", async () => {
+    // A developer .env is loaded into this process, so the unconfigured
+    // case has to be established here rather than assumed.
+    const ambientKey = process.env.DSUI_MASTER_KEY;
+    delete process.env.DSUI_MASTER_KEY;
     const runtime = createRuntime({
       databasePath: ":memory:",
       authMode: "none",
@@ -284,6 +288,7 @@ describe("services API", () => {
       expect(created.status).not.toBe(201);
     } finally {
       runtime.close();
+      if (ambientKey !== undefined) process.env.DSUI_MASTER_KEY = ambientKey;
     }
   });
 });

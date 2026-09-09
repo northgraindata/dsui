@@ -121,21 +121,29 @@ describe("enterprise authentication", () => {
   });
 
   it("requires the master key, URL, and signing secret", () => {
-    expect(() =>
-      createRuntime({
-        databasePath: ":memory:",
-        authMode: "enterprise",
-        enterpriseAuthUrl: "https://dsui.test",
-        enterpriseAuthSecret: authSecret,
-      }),
-    ).toThrow("DSUI_MASTER_KEY");
-    expect(() =>
-      createRuntime({
-        databasePath: ":memory:",
-        authMode: "enterprise",
-        masterKey,
-        enterpriseAuthSecret: authSecret,
-      }),
-    ).toThrow("DSUI_AUTH_URL");
+    // A developer .env is loaded into this process, so the unconfigured
+    // case has to be established here rather than assumed.
+    const ambientKey = process.env.DSUI_MASTER_KEY;
+    delete process.env.DSUI_MASTER_KEY;
+    try {
+      expect(() =>
+        createRuntime({
+          databasePath: ":memory:",
+          authMode: "enterprise",
+          enterpriseAuthUrl: "https://dsui.test",
+          enterpriseAuthSecret: authSecret,
+        }),
+      ).toThrow("DSUI_MASTER_KEY");
+      expect(() =>
+        createRuntime({
+          databasePath: ":memory:",
+          authMode: "enterprise",
+          masterKey,
+          enterpriseAuthSecret: authSecret,
+        }),
+      ).toThrow("DSUI_AUTH_URL");
+    } finally {
+      if (ambientKey !== undefined) process.env.DSUI_MASTER_KEY = ambientKey;
+    }
   });
 });
