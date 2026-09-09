@@ -40,6 +40,34 @@ UI needs functions, and functions need types.
 description and header actions. `Tabs` groups labeled content; it
 requires at least one item, and each item holds one node or many.
 
+`ResourceTree` describes a lazy hierarchy whose levels are backed by
+resources. Child source inputs may reference fields from the selected parent row
+with `$field` values. Pair it with `SplitPane` for persistent explorer/detail
+pages; the renderer owns expansion, search, selection, scroll restoration, and
+responsive collapse behavior.
+
+```ts
+SplitPane({
+  sidebar: ResourceTree({
+    label: "Data explorer",
+    selectedPath: "/data/main/analytics",
+    stateKey: "data-explorer",
+    branch: {
+      source: databases(),
+      rowLink: { path: "/data/:database", params: { database: "name" } },
+      children: {
+        source: schemas({ database: "$name" }),
+        rowLink: {
+          path: "/data/:database/:schema",
+          params: { database: "database", schema: "name" },
+        },
+      },
+    },
+  }),
+  content: PageHeader({ title: "analytics" }),
+});
+```
+
 Static `data` props exist on `Table` and `KeyValue` as escape hatches
 for fixed content. External data always goes through `source`
 bindings, because only bindings get execution, refresh, and

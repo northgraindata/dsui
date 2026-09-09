@@ -38,8 +38,8 @@ open on its own.
 
 Instance creation and teardown follow a fixed order:
 
-1. Validate configuration against `connectionSchema`, when declared.
-   Rejection throws before anything is built.
+1. Validate configuration against the declared `connectionMethods`, when
+   present. Rejection throws before anything is built.
 2. Build the context through the `context()` factory (may be async).
 3. Create adapter-scoped stores on first use, not upfront.
 4. Mount pages, resources, and actions lazily as the UI uses them.
