@@ -9,6 +9,7 @@ const EXPECTED_EXPORTS = [
   "ADAPTER_SDK_VERSION",
   "Button",
   "CodeEditor",
+  "DependencyGraph",
   "Form",
   "InvalidDefinitionError",
   "KeyValue",

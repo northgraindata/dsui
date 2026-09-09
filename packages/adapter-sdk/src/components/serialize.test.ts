@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { z } from "zod";
 import { defineResource } from "../resource/index";
 import {
+  DependencyGraph,
   PageHeader,
   QueryWorkbench,
   ResourceTree,
@@ -52,6 +53,30 @@ test("serializes declarative row links and row actions", () => {
             when: { field: "stale", equals: true },
           },
         ],
+      },
+    },
+  ]);
+});
+
+test("serializes a dependency graph binding", () => {
+  const tasks = defineResource({ id: "dag-tasks", query: () => [] });
+  expect(
+    serializeNodes(
+      DependencyGraph({
+        source: tasks(),
+        idField: "taskId",
+        dependsOnField: "upstreamTaskIds",
+        labelField: "name",
+      }),
+    ),
+  ).toEqual([
+    {
+      kind: "dependency-graph",
+      props: {
+        source: { resourceId: "dag-tasks" },
+        idField: "taskId",
+        dependsOnField: "upstreamTaskIds",
+        labelField: "name",
       },
     },
   ]);

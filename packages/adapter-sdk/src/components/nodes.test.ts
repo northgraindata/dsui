@@ -3,6 +3,7 @@ import { z } from "zod";
 import { defineAction } from "../action/index";
 import { defineResource } from "../resource/index";
 import {
+  DependencyGraph,
   Form,
   PageHeader,
   ResourceTree,
@@ -56,6 +57,26 @@ test("Table supports declarative row links and row actions", () => {
 test("Table rejects a relative row-link path", () => {
   expect(() =>
     Table({ rowLink: { path: "warehouses/x", params: {} } }),
+  ).toThrow("must be absolute");
+});
+
+test("DependencyGraph requires the fields that define its edges", () => {
+  const tasks = defineResource({ id: "dag-tasks", query: () => [] });
+  const node = DependencyGraph({
+    source: tasks(),
+    idField: "taskId",
+    dependsOnField: "upstreamTaskIds",
+  });
+  expect(node.kind).toBe("dependency-graph");
+  expect(() =>
+    DependencyGraph({ idField: "", dependsOnField: "upstreamTaskIds" }),
+  ).toThrow("idField and dependsOnField");
+  expect(() =>
+    DependencyGraph({
+      idField: "taskId",
+      dependsOnField: "upstreamTaskIds",
+      rowLink: { path: "tasks/:taskId", params: { taskId: "taskId" } },
+    }),
   ).toThrow("must be absolute");
 });
 

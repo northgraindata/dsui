@@ -55,6 +55,37 @@ export interface TableRowLink {
 }
 
 /**
+ * Dependency graph: rows that each name the rows they depend on. The
+ * renderer derives layers from the edges; adapters supply no geometry.
+ */
+export interface DependencyGraphProps {
+  /** Resource binding producing one row per graph node. */
+  source?: DataSource;
+  /** Static rows; the escape hatch when no resource exists. */
+  data?: readonly unknown[];
+  /** Row field holding the unique node id. */
+  idField: string;
+  /** Row field holding an array of ids this node depends on. */
+  dependsOnField: string;
+  /** Row field rendered as the node title; defaults to `idField`. */
+  labelField?: string;
+  /** Row field rendered under the title, e.g. an operator name. */
+  detailField?: string;
+  /** Deep link followed when a node is activated. */
+  rowLink?: TableRowLink;
+}
+
+/**
+ * Dependency graph node (`"dependency-graph"`).
+ */
+export interface DependencyGraphNode {
+  /** Discriminant: always `"dependency-graph"`. */
+  readonly kind: "dependency-graph";
+  /** Graph content. */
+  readonly props: DependencyGraphProps;
+}
+
+/**
  * Declarative per-row button. Inputs map action-input fields to row
  * field names and are substituted renderer-side, then validated by the
  * normal action execution path.
@@ -418,6 +449,7 @@ export interface FormNode {
 export type ComponentNode =
   | PageHeaderNode
   | TableNode
+  | DependencyGraphNode
   | ButtonNode
   | TabsNode
   | KeyValueNode
@@ -461,6 +493,32 @@ export function Table(props: TableProps): TableNode {
   if (props.rowLink && !props.rowLink.path.startsWith("/"))
     throw new Error("Table rowLink path must be absolute");
   return { kind: "table", props: { ...props } };
+}
+
+/**
+ * Dependency graph factory. Rows describe nodes and their incoming
+ * edges; the renderer computes layers, positions, and edge paths.
+ *
+ * @param props - Source or rows, id and dependency fields, node link.
+ * @throws An error when a field name is empty or the link is relative.
+ *
+ * @example
+ * ```ts
+ * DependencyGraph({
+ *   source: dagTasks({ dagId: "hourly" }),
+ *   idField: "taskId",
+ *   dependsOnField: "upstreamTaskIds",
+ * });
+ * ```
+ */
+export function DependencyGraph(
+  props: DependencyGraphProps,
+): DependencyGraphNode {
+  if (!props.idField || !props.dependsOnField)
+    throw new Error("DependencyGraph requires idField and dependsOnField");
+  if (props.rowLink && !props.rowLink.path.startsWith("/"))
+    throw new Error("DependencyGraph rowLink path must be absolute");
+  return { kind: "dependency-graph", props: { ...props } };
 }
 
 /**
