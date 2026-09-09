@@ -20,6 +20,21 @@ export interface ApiError {
   message: string;
 }
 
+/** One named connection method as served by GET /api/v1/adapters. */
+export interface PublicConnectionMethod {
+  id: string;
+  label: string;
+  description?: string;
+  /** JSON Schema for this method's fields (excludes `method`). */
+  schema: Record<string, unknown>;
+  /** Presentational group; the form renders these methods as sub-tabs. */
+  group?: {
+    id: string;
+    label: string;
+    description?: string;
+  };
+}
+
 /** One adapter as served by GET /api/v1/adapters. */
 export interface PublicAdapter {
   id: string;
@@ -31,6 +46,8 @@ export interface PublicAdapter {
   detail?: string;
   /** JSON Schema for the connection object, when the adapter declares one. */
   connectionSchema?: Record<string, unknown>;
+  /** Named connection methods, when the adapter declares them. */
+  connectionMethods?: PublicConnectionMethod[];
   resources: Array<{ id: string; inputSchema?: Record<string, unknown> }>;
   actions: Array<{ id: string; inputSchema?: Record<string, unknown> }>;
   pages: Array<{ path: string }>;
@@ -54,5 +71,9 @@ export type {
   ActionReference,
   PageDocument,
   PageNode,
+  QueryExplorerDocument,
   ResourceReference,
+  ResourceTreeBranchDocument,
+  TableRowAction,
+  TableRowLink,
 } from "./page-document.js";
