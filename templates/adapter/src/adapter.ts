@@ -56,7 +56,12 @@ export default defineAdapter({
     version: "0.1.0",
     description: "An example dsui adapter.",
   },
-  connectionSchema,
+  connectionMethods: {
+    default: {
+      label: "Connection",
+      schema: connectionSchema,
+    },
+  },
   context: (config) => ({
     endpoint: config.endpoint,
     token: config.token,
