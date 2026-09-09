@@ -72,11 +72,28 @@ describe("services API", () => {
       const adapters = (await response.json()) as Array<{
         id: string;
         status: string;
+        iconUrl?: string;
+        connectionMethods?: Array<{
+          id: string;
+          schema: { required?: string[] };
+        }>;
       }>;
       expect(adapters.map(({ id, status }) => ({ id, status }))).toEqual([
+        { id: "airflow", status: "ok" },
         { id: "duckdb", status: "ok" },
         { id: "snowflake", status: "ok" },
       ]);
+      expect(
+        adapters.find((adapter) => adapter.id === "airflow")?.connectionMethods,
+      ).toEqual([
+        expect.objectContaining({
+          id: "airflow",
+          schema: expect.objectContaining({ required: ["baseUrl", "token"] }),
+        }),
+      ]);
+      expect(
+        adapters.find((adapter) => adapter.id === "airflow")?.iconUrl,
+      ).toBe("/assets/logos/airflow.svg");
 
       const created = await runtime.app.request("/api/v1/services", {
         method: "POST",
