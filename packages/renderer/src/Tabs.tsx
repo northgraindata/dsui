@@ -13,7 +13,7 @@ export function Tabs({
   const [selected, setSelected] = useState(0);
   const item = node.props.items[selected];
   return (
-    <div>
+    <div className="workspace-tabs">
       <div role="tablist" className="mb-4 flex gap-1 border-b border-border">
         {node.props.items.map((tab, index) => (
           <button

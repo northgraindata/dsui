@@ -19,7 +19,7 @@ export function ServiceMark({
 }) {
   const [failed, setFailed] = useState(false);
   const classes = cn(
-    "relative flex shrink-0 items-center justify-center",
+    "service-mark relative flex shrink-0 items-center justify-center",
     variant === "contained"
       ? "border border-border bg-surface-raised text-secondary"
       : "text-primary",

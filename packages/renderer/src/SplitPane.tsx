@@ -14,7 +14,9 @@ export function SplitPaneView({
 }) {
   const [open, setOpen] = useState(true);
   return (
-    <section className="grid min-h-[42rem] overflow-hidden border border-border bg-canvas md:grid-cols-[17rem_minmax(0,1fr)]">
+    <section
+      className={`explorer-layout ${node.props.inspector?.length ? "explorer-layout--inspector" : ""}`}
+    >
       <div className="border-b border-border bg-surface md:hidden">
         <button
           type="button"
@@ -27,13 +29,18 @@ export function SplitPaneView({
         </button>
       </div>
       <aside
-        className={`${open ? "block" : "hidden"} max-h-80 overflow-auto border-b border-border md:block md:max-h-none md:border-r md:border-b-0`}
+        className={`explorer-tree-panel ${open ? "block" : "hidden"} md:block`}
       >
         {node.props.sidebar.map((child) => renderNode(client, child))}
       </aside>
-      <div className="min-w-0 space-y-5 overflow-auto p-4 md:p-5">
+      <div className="explorer-content">
         {node.props.content.map((child) => renderNode(client, child))}
       </div>
+      {node.props.inspector?.length ? (
+        <aside className="explorer-inspector" aria-label="Object details">
+          {node.props.inspector.map((child) => renderNode(client, child))}
+        </aside>
+      ) : null}
     </section>
   );
 }

@@ -17,13 +17,13 @@ export function Button({
   return (
     <Component
       className={cn(
-        "inline-flex min-h-8 items-center justify-center gap-[7px] border border-transparent px-3 text-[12px] font-medium leading-none no-underline transition-[background-color,border-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent active:translate-y-px disabled:pointer-events-none disabled:opacity-45",
+        "inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-transparent px-3 text-[12px] font-medium leading-none no-underline transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent active:brightness-90 disabled:cursor-not-allowed disabled:opacity-45",
         {
           "bg-accent font-semibold text-accent-foreground hover:bg-accent-hover":
             variant === "default",
           "border-border-strong bg-transparent text-primary hover:border-accent-dim hover:bg-surface-hover":
             variant === "secondary",
-          "bg-transparent text-secondary before:content-['[_'] before:opacity-45 after:content-['_]'] after:opacity-45 hover:text-accent hover:before:opacity-100 hover:after:opacity-100":
+          "bg-transparent text-secondary hover:bg-surface-hover hover:text-primary":
             variant === "ghost",
           "border-unavailable/45 bg-unavailable/10 text-danger-foreground hover:border-unavailable hover:bg-unavailable/15":
             variant === "danger",

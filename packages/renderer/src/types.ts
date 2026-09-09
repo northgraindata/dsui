@@ -5,6 +5,8 @@ import type {
 } from "@northgraindata/dsui-core";
 
 export interface RendererClient {
+  /** Already-public connection details for presentation; never credentials. */
+  connection?: { name: string; endpoint: string };
   executeResource(reference: ResourceReference): Promise<unknown>;
   executeAction(
     reference: ActionReference,

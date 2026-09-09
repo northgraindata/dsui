@@ -11,3 +11,5 @@ if (rootElement)
       <RouterProvider router={router} />
     </StrictMode>,
   );
+
+import "./workspace.css";

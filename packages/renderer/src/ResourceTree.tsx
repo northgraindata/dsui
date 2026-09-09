@@ -6,6 +6,7 @@ import type {
 } from "@northgraindata/dsui-core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RendererClient } from "./types";
+import { WorkbenchIcon } from "./WorkbenchIcon";
 
 export function resolveTreeTemplate(
   value: unknown,
@@ -203,6 +204,16 @@ function TreeBranch({
                   }
                 }}
               >
+                <WorkbenchIcon
+                  name={
+                    branch.children
+                      ? depth === 0
+                        ? "database"
+                        : "table"
+                      : "table"
+                  }
+                  size={15}
+                />
                 {name}
               </button>
               {row[branch.typeField ?? "type"] ? (
@@ -279,9 +290,12 @@ export function ResourceTreeView({
   const branch = useMemo(() => node.props.branch, [node.props.branch]);
   return (
     <section
-      className="flex min-h-0 flex-col bg-surface"
+      className="resource-tree flex min-h-0 flex-col"
       aria-label={node.props.label}
     >
+      <header className="resource-tree-heading">
+        <h2>Explorer</h2>
+      </header>
       <div className="border-b border-border p-2.5">
         <label
           className="sr-only"
@@ -295,7 +309,7 @@ export function ResourceTreeView({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={node.props.searchPlaceholder ?? "Search data…"}
-          className="h-8 w-full border border-border-strong bg-background px-2.5 font-mono text-[11px] text-primary outline-none placeholder:text-muted focus:border-accent"
+          className="h-9 w-full rounded-md border border-border bg-background px-2.5 text-[12px] text-primary outline-none placeholder:text-muted focus:border-accent"
         />
       </div>
       <div

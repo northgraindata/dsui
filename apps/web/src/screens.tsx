@@ -47,9 +47,12 @@ import {
   testService,
   titleFor,
 } from "./api";
+import { AdapterWorkspace } from "./components/AdapterWorkspace";
+import { AppChrome } from "./components/AppChrome";
 import { AuthFrame, authCardInput } from "./components/AuthFrame";
 import { CornerReveal } from "./components/CornerReveal";
 import { DatabaseExplorer } from "./components/DatabaseExplorer";
+import { HomeDashboard } from "./components/HomeDashboard";
 import { Icon } from "./components/Icon";
 import {
   EmptyState,
@@ -58,13 +61,10 @@ import {
   UnavailableState,
 } from "./components/Page";
 import { ServiceMark } from "./components/ServiceMark";
-import { ServiceRow } from "./components/ServiceRow";
-import ScrambleHover from "./components/scramble-hover";
-import { Wordmark } from "./components/Wordmark";
 import { usePolling } from "./hooks/usePolling";
-import { connectionTestMessage, navigablePagePaths } from "./service-pages";
+import { connectionTestMessage } from "./service-pages";
 
-const nav = [
+const _nav = [
   { icon: "grid", label: "Stack", to: "/" },
   { icon: "plug", label: "Services", to: "/services" },
   { icon: "gear", label: "Settings", to: "/settings" },
@@ -82,17 +82,11 @@ function useShortcut(key: string, fn: () => void) {
   }, [key, fn]);
 }
 
-const navLink =
+const _navLink =
   "group relative flex h-8 items-center gap-2.5 px-2.5 text-[12px] no-underline transition-colors hover:bg-surface-hover hover:text-primary";
 
 export function AppShell() {
   const [command, setCommand] = useState(false);
-  const [addServiceHovered, setAddServiceHovered] = useState(false);
-  const [contentVisible, setContentVisible] = useState(true);
-  const navigationTimer = useRef<number | undefined>(undefined);
-  const navigationFrame = useRef<number | undefined>(undefined);
-  const navigationSecondFrame = useRef<number | undefined>(undefined);
-  const navigate = useNavigate();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -100,151 +94,12 @@ export function AppShell() {
   useShortcut("k", () => {
     if (!isAuthPage) setCommand(true);
   });
-  useEffect(
-    () => () => {
-      window.clearTimeout(navigationTimer.current);
-      if (navigationFrame.current)
-        window.cancelAnimationFrame(navigationFrame.current);
-      if (navigationSecondFrame.current)
-        window.cancelAnimationFrame(navigationSecondFrame.current);
-    },
-    [],
-  );
-  const transitionTo = (event: MouseEvent<HTMLAnchorElement>, to: string) => {
-    if (
-      event.button !== 0 ||
-      event.metaKey ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      to === pathname
-    )
-      return;
-
-    event.preventDefault();
-    window.clearTimeout(navigationTimer.current);
-    if (navigationFrame.current)
-      window.cancelAnimationFrame(navigationFrame.current);
-    if (navigationSecondFrame.current)
-      window.cancelAnimationFrame(navigationSecondFrame.current);
-    setContentVisible(false);
-    navigationTimer.current = window.setTimeout(() => {
-      navigate({ to: to as never });
-      navigationFrame.current = window.requestAnimationFrame(() => {
-        navigationSecondFrame.current = window.requestAnimationFrame(() => {
-          setContentVisible(true);
-        });
-      });
-    }, 220);
-  };
   if (isAuthPage) return <Outlet />;
   return (
-    <div className="grid min-h-screen grid-cols-1 md:grid-cols-[216px_minmax(0,1fr)]">
-      <aside className="sticky top-0 flex h-screen flex-col border-r border-border bg-canvas px-3 py-5">
-        <Wordmark />
-        <nav className="grid gap-3">
-          {nav.map((item) => (
-            <Link
-              key={item.label}
-              to={item.to}
-              onClick={(event) => transitionTo(event, item.to)}
-              className={cn(navLink, "text-muted")}
-              activeProps={{
-                className: cn(
-                  navLink,
-                  "text-primary [&_.nav-corner]:translate-x-0 [&_.nav-corner]:translate-y-0 [&_.nav-corner]:opacity-100",
-                ),
-              }}
-            >
-              <CornerReveal className="nav-corner border-accent" />
-              <Icon name={item.icon} /> <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className="mt-auto grid gap-3">
-          <button
-            type="button"
-            className="hidden"
-            onClick={() => setCommand(true)}
-          >
-            <Icon name="command" /> Command{" "}
-            <kbd className="ml-auto border border-border bg-background px-1 py-0.5 font-mono text-[10px] text-muted">
-              ⌘ K
-            </kbd>
-          </button>
-          <div className="flex items-center gap-2.5 border border-border bg-background p-2">
-            <span className="flex size-7 shrink-0 items-center justify-center bg-accent/15 font-mono text-[10px] font-semibold text-accent">
-              DS
-            </span>
-            <div className="min-w-0 leading-tight">
-              <b className="block truncate text-[11.5px] font-semibold text-primary">
-                Workspace
-              </b>
-              <small className="block truncate font-mono text-[10px] text-muted">
-                Local installation
-              </small>
-            </div>
-          </div>
-        </div>
-      </aside>
-      <main className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-10 flex h-15 items-center justify-between gap-4 overflow-visible border-b border-border bg-canvas/90 px-5 backdrop-blur">
-          <div className="group relative overflow-visible">
-            <CornerReveal className="border-accent" placement="outside" />
-            <Button
-              type="button"
-              variant="secondary"
-              size="small"
-              className="gap-2 !border-transparent !bg-transparent font-normal text-secondary hover:!border-transparent hover:!bg-transparent hover:!text-primary"
-              onClick={() => setCommand(true)}
-            >
-              <Icon name="command" /> Command
-              <kbd className="ml-auto border border-border bg-background px-1 py-0.5 font-mono text-[10px] text-muted">
-                ⌘ K
-              </kbd>
-            </Button>
-          </div>
-          <div className="group relative shrink-0 overflow-visible">
-            <CornerReveal className="border-accent" placement="outside" />
-            <Button
-              asChild
-              size="small"
-              variant="secondary"
-              className="!border-transparent !bg-transparent !text-accent hover:!border-transparent hover:!bg-transparent hover:!text-accent"
-            >
-              <Link
-                to="/services/new"
-                aria-label="Add service"
-                onClick={(event) => transitionTo(event, "/services/new")}
-                onPointerEnter={(event) => {
-                  if (event.pointerType === "mouse") setAddServiceHovered(true);
-                }}
-                onPointerLeave={() => setAddServiceHovered(false)}
-              >
-                <Icon name="plus" />
-                <ScrambleHover
-                  text="Add service"
-                  active={addServiceHovered}
-                  scrambleSpeed={25}
-                  maxIterations={8}
-                />
-              </Link>
-            </Button>
-          </div>
-        </header>
-        <div
-          className={cn(
-            "flex flex-1 flex-col transition-[opacity,scale] duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:duration-150",
-            contentVisible
-              ? "opacity-100 scale-100"
-              : "pointer-events-none opacity-0 scale-[0.985]",
-          )}
-        >
-          <Outlet />
-        </div>
-      </main>
+    <>
+      <AppChrome pathname={pathname} openSearch={() => setCommand(true)} />
       {command && <CommandPalette close={() => setCommand(false)} />}
-    </div>
+    </>
   );
 }
 
@@ -370,56 +225,7 @@ export function Dashboard() {
       )
       .finally(() => setLoading(false));
   }, []);
-  const healthy = services.filter((x) => x.health === "healthy").length;
-  return (
-    <div className={pageClass}>
-      <PageHeading
-        title="Connected services"
-        detail="Health and access for your local data stack."
-        aside={
-          !error && (
-            <Status
-              state={
-                services.length && healthy === services.length
-                  ? "healthy"
-                  : "unknown"
-              }
-              label={`${healthy}/${services.length} healthy`}
-            />
-          )
-        }
-      />
-      {error ? (
-        <UnavailableState detail={error} />
-      ) : (
-        <div className="overflow-hidden border-y border-border bg-surface">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-surface-raised px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted md:grid-cols-[minmax(0,1fr)_130px_170px_16px] md:gap-4">
-            <span>Service</span>
-            <span className="hidden md:block">Type</span>
-            <span className="hidden md:block">Status</span>
-            <span />
-          </div>
-          {loading ? (
-            <div className="px-4 py-8 text-center font-mono text-[11px] text-muted">
-              Checking services…
-            </div>
-          ) : services.length ? (
-            services.map((service) => (
-              <ServiceRow service={service} key={service.id} />
-            ))
-          ) : (
-            <div className="px-4 py-8 text-center font-mono text-[11px] text-muted">
-              No services connected yet.
-            </div>
-          )}
-        </div>
-      )}
-      <p className="mt-4 font-mono text-[10.5px] text-muted">
-        Services loaded from <code>dsui.yaml</code> are managed by configuration
-        and remain read-only.
-      </p>
-    </div>
-  );
+  return <HomeDashboard services={services} loading={loading} error={error} />;
 }
 
 export function Services() {
@@ -1018,105 +824,44 @@ function ServiceScreen({
       </div>
     );
   return (
-    <div className="grid flex-1 grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
-      <aside className="sticky top-12 h-[calc(100vh-3rem)] overflow-y-auto border-r border-border bg-canvas px-3 py-5">
-        <Link
-          to="/"
-          className="mx-1 inline-block font-mono text-[10.5px] text-muted no-underline hover:text-primary"
-        >
-          ← All services
-        </Link>
-        <div className="mx-1 mt-5 flex items-center gap-3">
-          <ServiceMark adapter={service.adapter} logo={service.logo} />
-          <div className="min-w-0 leading-tight">
-            <b className="block truncate text-[12.5px] font-medium text-primary">
-              {service.name}
-            </b>
-            <code className="block truncate font-mono text-[10.5px] text-muted">
-              {service.endpoint}
-            </code>
-          </div>
-        </div>
-        <div className="mx-1 mt-3">
-          <Status state={service.health} label={service.health} />
-        </div>
-        <hr className="my-4 border-t border-dashed border-border" />
-        <nav aria-label="Adapter pages" className="grid gap-px">
-          {navigablePagePaths(paths).map((item) => (
-            <Link
-              key={item}
-              to="/services/$serviceId/$viewId"
-              params={{ serviceId, viewId: item.slice(1) }}
-              aria-current={item === path ? "page" : undefined}
-              className={cn(
-                "px-2.5 py-2 text-[12px] no-underline",
-                item === path
-                  ? "bg-surface-hover text-primary"
-                  : "text-muted hover:text-primary",
-              )}
-            >
-              {item.split("/").filter(Boolean).at(-1)?.replaceAll("-", " ") ??
-                "Overview"}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-      <div className="min-w-0 px-6 py-6">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-              {service.category}
-            </p>
-            <h1 className="mt-1 text-[17px] font-semibold text-primary">
-              {service.name}
-            </h1>
-          </div>
-          <Status
-            state={service.health}
-            label={
-              service.latencyMs
-                ? `${service.latencyMs}ms`
-                : (service.detail ?? service.health)
-            }
-          />
-        </div>
-        {page ? (
-          <DeclarativePageRenderer
-            nodes={page.nodes}
-            client={{
-              executeResource: async (reference) =>
-                (
-                  await executeResource(
-                    service.id,
-                    reference.resourceId,
-                    reference.input,
-                  )
-                ).data,
-              executeAction: async (reference) => {
-                const result = await executeAction(
+    <AdapterWorkspace service={service} paths={paths} path={path}>
+      {page ? (
+        <DeclarativePageRenderer
+          nodes={page.nodes}
+          client={{
+            connection: { name: service.name, endpoint: service.endpoint },
+            executeResource: async (reference) =>
+              (
+                await executeResource(
                   service.id,
-                  reference.actionId,
+                  reference.resourceId,
                   reference.input,
-                );
-                return result.status === "success"
-                  ? { status: "success" as const, data: result.data }
-                  : { status: "error" as const, message: result.message };
-              },
-              navigate: (page) =>
-                nav({
-                  to: "/services/$serviceId/$",
-                  params: { serviceId: service.id, _splat: page.slice(1) },
-                }),
-            }}
-          />
-        ) : (
-          <EmptyState
-            title="Loading page"
-            detail="The adapter page is being prepared."
-          />
-        )}
-      </div>
-    </div>
+                )
+              ).data,
+            executeAction: async (reference) => {
+              const result = await executeAction(
+                service.id,
+                reference.actionId,
+                reference.input,
+              );
+              return result.status === "success"
+                ? { status: "success" as const, data: result.data }
+                : { status: "error" as const, message: result.message };
+            },
+            navigate: (page) =>
+              nav({
+                to: "/services/$serviceId/$",
+                params: { serviceId: service.id, _splat: page.slice(1) },
+              }),
+          }}
+        />
+      ) : (
+        <EmptyState
+          title="Loading page"
+          detail="The adapter page is being prepared."
+        />
+      )}
+    </AdapterWorkspace>
   );
 }
 function _CapabilityRenderer({
