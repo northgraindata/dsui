@@ -36,7 +36,7 @@ run: async ({ dagId }, ctx: AirflowActionContext) => {
 
 ## Testing Strategy
 
-Start with failing fake-client/runtime tests. Verify action input validation,
+Start with failing test-double and runtime tests. Verify action input validation,
 state transition results, narrow invalidation, trigger configuration parsing,
 and that provider failures become SDK error results.
 
