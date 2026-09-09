@@ -1,6 +1,7 @@
 import type { PageNode } from "@northgraindata/dsui-core";
 import { Button, Input } from "@northgraindata/dsui-ui";
 import { ActionForm } from "./ActionForm";
+import { DependencyGraphView } from "./DependencyGraphView";
 import { QueryWorkbench } from "./QueryWorkbench";
 import { ResourceTreeView } from "./ResourceTree";
 import { ResourceKeyValue, ResourceTable } from "./ResourceViews";
@@ -31,6 +32,8 @@ export function PageNodeRenderer({
       );
     case "table":
       return <ResourceTable client={client} node={node} />;
+    case "dependency-graph":
+      return <DependencyGraphView client={client} node={node} />;
     case "key-value":
       return <ResourceKeyValue client={client} node={node} />;
     case "query-workbench":
