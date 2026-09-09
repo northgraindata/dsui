@@ -4,14 +4,13 @@ import {
   PageHeader,
   Table,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { AccessRow } from "../context.js";
 import { accessHistory, accountDetails } from "../resources/admin.js";
 
 export const accessHistoryPage = definePage({
   path: "/access-history",
   render: () => [
     PageHeader({ title: "Access history" }),
-    Table<AccessRow>({ source: accessHistory() }),
+    Table({ source: accessHistory() }),
   ],
 });
 

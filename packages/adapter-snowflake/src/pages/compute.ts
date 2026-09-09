@@ -1,29 +1,31 @@
 import {
-  Button,
   definePage,
   PageHeader,
   Table,
 } from "@northgraindata/dsui-adapter-sdk";
 import { resumeComputePool, suspendComputePool } from "../actions/compute.js";
-import type { ComputePoolInfo } from "../context.js";
 import { computePools } from "../resources/compute.js";
 
 export const poolsPage = definePage({
   path: "/compute-pools",
   render: () => [
     PageHeader({ title: "Compute pools" }),
-    Table<ComputePoolInfo>({
+    Table({
       source: computePools(),
-      actions: (row) =>
-        row.status === "ACTIVE"
-          ? Button({
-              label: "Suspend",
-              action: suspendComputePool({ name: row.name }),
-            })
-          : Button({
-              label: "Resume",
-              action: resumeComputePool({ name: row.name }),
-            }),
+      rowActions: [
+        {
+          label: "Suspend",
+          action: suspendComputePool,
+          input: { name: "name" },
+          when: { field: "status", equals: "ACTIVE" },
+        },
+        {
+          label: "Resume",
+          action: resumeComputePool,
+          input: { name: "name" },
+          when: { field: "status", notEquals: "ACTIVE" },
+        },
+      ],
     }),
   ],
 });

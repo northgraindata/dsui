@@ -1,5 +1,4 @@
 import {
-  Button,
   definePage,
   Form,
   KeyValue,
@@ -18,26 +17,29 @@ import {
   revokePrivilegeInput,
   suspendUser,
 } from "../actions/governance.js";
-import type { GrantInfo, RoleInfo, UserInfo } from "../context.js";
 import { grants, roles, userDetails, users } from "../resources/governance.js";
 
 export const usersPage = definePage({
   path: "/users",
   render: () => [
     PageHeader({ title: "Users" }),
-    Table<UserInfo>({
+    Table({
       source: users(),
-      onRowClick: (row) => `/users/${encodeURIComponent(row.name)}`,
-      actions: (row) =>
-        row.status === "ACTIVE"
-          ? Button({
-              label: "Suspend",
-              action: suspendUser({ name: row.name }),
-            })
-          : Button({
-              label: "Resume",
-              action: resumeUser({ name: row.name }),
-            }),
+      rowLink: { path: "/users/:user", params: { user: "name" } },
+      rowActions: [
+        {
+          label: "Suspend",
+          action: suspendUser,
+          input: { name: "name" },
+          when: { field: "status", equals: "ACTIVE" },
+        },
+        {
+          label: "Resume",
+          action: resumeUser,
+          input: { name: "name" },
+          when: { field: "status", notEquals: "ACTIVE" },
+        },
+      ],
     }),
     Form({
       schema: createUserInput,
@@ -61,10 +63,7 @@ export const userDetailPage = definePage({
 
 export const rolesPage = definePage({
   path: "/roles",
-  render: () => [
-    PageHeader({ title: "Roles" }),
-    Table<RoleInfo>({ source: roles() }),
-  ],
+  render: () => [PageHeader({ title: "Roles" }), Table({ source: roles() })],
 });
 
 const grantFields = [
@@ -81,7 +80,7 @@ export const grantsPage = definePage({
       items: [
         {
           label: "Privileges",
-          content: Table<GrantInfo>({ source: grants() }),
+          content: Table({ source: grants() }),
         },
         {
           label: "Grant",

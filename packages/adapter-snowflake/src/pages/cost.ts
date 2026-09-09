@@ -1,12 +1,10 @@
 import {
-  Button,
   definePage,
   PageHeader,
   Table,
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
 import { resumeMonitor, suspendMonitor } from "../actions/cost.js";
-import type { BudgetInfo, CostRow, MonitorInfo } from "../context.js";
 import { budgets, monitors, warehouseSpend } from "../resources/cost.js";
 
 export const costPage = definePage({
@@ -17,26 +15,30 @@ export const costPage = definePage({
       items: [
         {
           label: "Warehouse spend",
-          content: Table<CostRow>({ source: warehouseSpend({ days: 7 }) }),
+          content: Table({ source: warehouseSpend({ days: 7 }) }),
         },
         {
           label: "Budgets",
-          content: Table<BudgetInfo>({ source: budgets() }),
+          content: Table({ source: budgets() }),
         },
         {
           label: "Monitors",
-          content: Table<MonitorInfo>({
+          content: Table({
             source: monitors(),
-            actions: (row) =>
-              row.status === "ACTIVE"
-                ? Button({
-                    label: "Suspend",
-                    action: suspendMonitor({ name: row.name }),
-                  })
-                : Button({
-                    label: "Resume",
-                    action: resumeMonitor({ name: row.name }),
-                  }),
+            rowActions: [
+              {
+                label: "Suspend",
+                action: suspendMonitor,
+                input: { name: "name" },
+                when: { field: "status", equals: "ACTIVE" },
+              },
+              {
+                label: "Resume",
+                action: resumeMonitor,
+                input: { name: "name" },
+                when: { field: "status", notEquals: "ACTIVE" },
+              },
+            ],
           }),
         },
       ],

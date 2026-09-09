@@ -5,7 +5,6 @@ import {
   Table,
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { QuerySummary } from "../context.js";
 import { queries, queryDetails, queryResults } from "../resources/queries.js";
 import { queryFiltersStore } from "../stores/query-filters.js";
 
@@ -16,13 +15,13 @@ export const queryHistoryPage = definePage({
     const filters = stores.use(queryFiltersStore);
     return [
       PageHeader({ title: "Query history" }),
-      Table<QuerySummary>({
+      Table({
         source: queries({
           warehouse: filters.warehouse,
           status: filters.status,
           search: filters.search,
         }),
-        onRowClick: (row) => `/queries/${encodeURIComponent(row.id)}`,
+        rowLink: { path: "/queries/:queryId", params: { queryId: "id" } },
       }),
     ];
   },

@@ -129,7 +129,12 @@ export function createSnowflakeAdapter(
       description:
         "Browse Snowflake objects, warehouses, history, and run SQL.",
     },
-    connectionSchema: snowflakeConnectionSchema,
+    connectionMethods: {
+      snowflake: {
+        label: "Snowflake",
+        schema: snowflakeConnectionSchema,
+      },
+    },
     context: (config: SnowflakeConfig): SnowflakeContext =>
       createContext(createClient(config), config),
     disposeContext: (ctx) => ctx.client.dispose?.(),

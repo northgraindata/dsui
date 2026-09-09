@@ -135,7 +135,9 @@ export function createFakeSnowflakeClient(
       return database === "ANALYTICS" ? ["PUBLIC", "MARTS"] : ["PUBLIC"];
     },
     async listTables(database, schema) {
-      return [`${database}.${schema}.EVENTS`, `${database}.${schema}.USERS`];
+      void database;
+      void schema;
+      return ["EVENTS", "USERS"];
     },
     async getTable(database, schema, table) {
       return { database, schema, table, columns: 4 };
@@ -159,7 +161,9 @@ export function createFakeSnowflakeClient(
       };
     },
     async listViews(database, schema) {
-      return [`${database}.${schema}.EVENT_SUMMARY`];
+      void database;
+      void schema;
+      return ["EVENT_SUMMARY"];
     },
     async getView(database, schema, view) {
       return {
@@ -202,13 +206,19 @@ export function createFakeSnowflakeClient(
       ];
     },
     async listSequences(database, schema) {
-      return [`${database}.${schema}.EVENT_SEQ`];
+      void database;
+      void schema;
+      return ["EVENT_SEQ"];
     },
     async listMaterializedViews(database, schema) {
-      return [`${database}.${schema}.EVENT_DAILY`];
+      void database;
+      void schema;
+      return ["EVENT_DAILY"];
     },
     async listFileFormats(database, schema) {
-      return [`${database}.${schema}.JSON_FORMAT`];
+      void database;
+      void schema;
+      return ["JSON_FORMAT"];
     },
     async listFunctions(database, schema) {
       return [

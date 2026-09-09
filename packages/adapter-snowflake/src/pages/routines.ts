@@ -10,7 +10,6 @@ import {
   executeProcedure,
   executeProcedureInput,
 } from "../actions/ingestion.js";
-import type { RoutineInfo } from "../context.js";
 import { functions, procedures } from "../resources/routines.js";
 
 export const routinesPage = definePage({
@@ -23,7 +22,7 @@ export const routinesPage = definePage({
       items: [
         {
           label: "Functions",
-          content: Table<RoutineInfo>({
+          content: Table({
             source: functions({
               database: params.database,
               schema: params.schema,
@@ -32,7 +31,7 @@ export const routinesPage = definePage({
         },
         {
           label: "Procedures",
-          content: Table<RoutineInfo>({
+          content: Table({
             source: procedures({
               database: params.database,
               schema: params.schema,
