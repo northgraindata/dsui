@@ -64,6 +64,22 @@ export type PageNode =
       };
     }
   | {
+      kind: "dependency-graph";
+      props: {
+        source?: ResourceReference;
+        data?: readonly unknown[];
+        /** Row field holding the unique node id. */
+        idField: string;
+        /** Row field holding the ids this node depends on. */
+        dependsOnField: string;
+        /** Row field rendered as the node title; defaults to `idField`. */
+        labelField?: string;
+        /** Row field rendered under the title, e.g. an operator name. */
+        detailField?: string;
+        rowLink?: TableRowLink;
+      };
+    }
+  | {
       kind: "button";
       props: {
         label: string;
