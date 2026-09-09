@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { connectionTestMessage, navigablePagePaths } from "./service-pages";
+import {
+  connectionTestMessage,
+  navigablePagePaths,
+  servicePagePath,
+} from "./service-pages";
+
+describe("servicePagePath", () => {
+  it("uses the adapter default for an empty catch-all route", () => {
+    expect(servicePagePath(undefined)).toBeUndefined();
+    expect(servicePagePath("")).toBeUndefined();
+  });
+
+  it("converts a populated catch-all route to an adapter page path", () => {
+    expect(servicePagePath("dags/example")).toBe("/dags/example");
+  });
+});
 
 describe("navigablePagePaths", () => {
   it("keeps only concrete top-level adapter pages in the sidebar", () => {

@@ -62,7 +62,7 @@ import {
 } from "./components/Page";
 import { ServiceMark } from "./components/ServiceMark";
 import { usePolling } from "./hooks/usePolling";
-import { connectionTestMessage } from "./service-pages";
+import { connectionTestMessage, servicePagePath } from "./service-pages";
 
 const _nav = [
   { icon: "grid", label: "Stack", to: "/" },
@@ -536,13 +536,18 @@ export function AddService() {
                 </p>
               ) : null}
               <div className="grid gap-4 p-5 sm:grid-cols-2">
-                <Field label="Service name" hint="Shown in your service list.">
-                  <Input
-                    value={values.name ?? ""}
-                    onChange={(e) => update("name", e.target.value)}
-                    required
-                  />
-                </Field>
+                <div className="sm:col-span-2">
+                  <Field
+                    label="Service name"
+                    hint="Shown in your service list."
+                  >
+                    <Input
+                      value={values.name ?? ""}
+                      onChange={(e) => update("name", e.target.value)}
+                      required
+                    />
+                  </Field>
+                </div>
                 {connectionFields.map((field) => (
                   <Field key={field.key} label={field.label}>
                     {field.type === "boolean" || field.type === "select" ? (
@@ -753,7 +758,9 @@ export function ServicePage() {
     from: "/services/$serviceId/$",
     select: (params) => params._splat,
   });
-  return <ServiceScreen serviceId={serviceId} pagePath={`/${splat}`} />;
+  return (
+    <ServiceScreen serviceId={serviceId} pagePath={servicePagePath(splat)} />
+  );
 }
 
 function ServiceScreen({
