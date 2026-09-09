@@ -23,11 +23,46 @@ function resource(source: DataSource): ResourceReference {
 }
 
 function action(
-  target: ActionTarget | { readonly kind: "action"; readonly id: string },
+  target:
+    | ActionTarget
+    | { readonly kind: "action"; readonly id: string }
+    | string,
 ): ActionReference {
+  if (typeof target === "string") return { actionId: target };
   return target.kind === "action-binding"
     ? { actionId: target.actionId, input: target.input }
     : { actionId: target.id };
+}
+
+function explorer(
+  value: NonNullable<import("./nodes").QueryWorkbenchProps["explorer"]>,
+): NonNullable<
+  Extract<PageNode, { kind: "query-workbench" }>["props"]["explorer"]
+> {
+  return {
+    source: resource(value.source),
+    ...(value.nameField ? { nameField: value.nameField } : {}),
+    ...(value.children ? { children: explorer(value.children) } : {}),
+  };
+}
+
+function treeBranch(
+  value: import("./nodes").ResourceTreeBranchProps,
+): import("@northgraindata/dsui-core").ResourceTreeBranchDocument {
+  return {
+    source: resource(value.source),
+    ...(value.nameField ? { nameField: value.nameField } : {}),
+    ...(value.typeField ? { typeField: value.typeField } : {}),
+    ...(value.rowLink
+      ? {
+          rowLink: {
+            path: value.rowLink.path,
+            params: { ...value.rowLink.params },
+          },
+        }
+      : {}),
+    ...(value.children ? { children: treeBranch(value.children) } : {}),
+  };
 }
 
 function nodes(
@@ -54,16 +89,38 @@ export function serializeNode(node: ComponentNode): PageNode {
         },
       };
     case "table":
-      if (node.props.actions || node.props.onRowClick)
-        throw new UnserializablePageError(
-          "Table callbacks cannot be serialized",
-        );
       return {
         kind: node.kind,
         props: {
           ...(node.props.source ? { source: resource(node.props.source) } : {}),
           ...(node.props.data ? { data: node.props.data } : {}),
           ...(node.props.columns ? { columns: node.props.columns } : {}),
+          ...(node.props.rowLink
+            ? {
+                rowLink: {
+                  path: node.props.rowLink.path,
+                  params: { ...node.props.rowLink.params },
+                },
+              }
+            : {}),
+          ...(node.props.rowActions
+            ? {
+                rowActions: node.props.rowActions.map((rowAction) => ({
+                  label: rowAction.label,
+                  ...(rowAction.variant ? { variant: rowAction.variant } : {}),
+                  action: {
+                    actionId:
+                      typeof rowAction.action === "string"
+                        ? rowAction.action
+                        : rowAction.action.id,
+                    ...(rowAction.input
+                      ? { input: { ...rowAction.input } }
+                      : {}),
+                  },
+                  ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
+                })),
+              }
+            : {}),
         },
       };
     case "button":
@@ -92,6 +149,45 @@ export function serializeNode(node: ComponentNode): PageNode {
           ...(node.props.title ? { title: node.props.title } : {}),
           ...(node.props.source ? { source: resource(node.props.source) } : {}),
           ...(node.props.data ? { data: { ...node.props.data } } : {}),
+        },
+      };
+    case "query-workbench":
+      return {
+        kind: node.kind,
+        props: {
+          language: node.props.language,
+          ...(node.props.value !== undefined
+            ? { value: node.props.value }
+            : {}),
+          action: action(node.props.action),
+          ...(node.props.explorer
+            ? {
+                explorer: explorer(node.props.explorer),
+              }
+            : {}),
+        },
+      };
+    case "resource-tree":
+      return {
+        kind: node.kind,
+        props: {
+          label: node.props.label,
+          branch: treeBranch(node.props.branch),
+          ...(node.props.selectedPath
+            ? { selectedPath: node.props.selectedPath }
+            : {}),
+          ...(node.props.stateKey ? { stateKey: node.props.stateKey } : {}),
+          ...(node.props.searchPlaceholder
+            ? { searchPlaceholder: node.props.searchPlaceholder }
+            : {}),
+        },
+      };
+    case "split-pane":
+      return {
+        kind: node.kind,
+        props: {
+          sidebar: nodes(node.props.sidebar),
+          content: nodes(node.props.content),
         },
       };
     case "select":
