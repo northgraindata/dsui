@@ -7,11 +7,6 @@ import {
   TextInput,
 } from "@northgraindata/dsui-adapter-sdk";
 import {
-  attachDatabase,
-  attachInput,
-  detachDatabase,
-} from "../actions/schema.js";
-import {
   createSecret,
   createSecretInput,
   dropSecret,
@@ -22,6 +17,11 @@ import {
   setSetting,
   setSettingInput,
 } from "../actions/config.js";
+import {
+  attachDatabase,
+  attachInput,
+  detachDatabase,
+} from "../actions/schema.js";
 import { databases, functions, types } from "../resources/catalog.js";
 import { extensions, secrets, settings } from "../resources/config.js";
 

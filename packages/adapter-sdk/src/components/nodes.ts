@@ -283,6 +283,8 @@ export interface ResourceTreeNode {
 export interface SplitPaneProps {
   sidebar: ComponentNode | readonly ComponentNode[];
   content: ComponentNode | readonly ComponentNode[];
+  /** Optional details rail, stacked below content on narrow screens. */
+  inspector?: ComponentNode | readonly ComponentNode[];
 }
 
 export interface SplitPaneNode {

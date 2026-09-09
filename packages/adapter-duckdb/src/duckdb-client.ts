@@ -7,7 +7,12 @@ import type {
   QueryResult,
 } from "./context.js";
 
-const MAX_ROWS = 10_000;
+// Table previews take an explicit LIMIT from the caller; clamp it so a bad
+// input can't request an unbounded preview. Ad-hoc reads are intentionally
+// uncapped: the engine materializes the full result before this layer sees
+// it, so a row-count check here never protected the server — and the browser
+// renders result rows virtualized (see decision 0014).
+const PREVIEW_MAX_ROWS = 10_000;
 
 /**
  * Real DuckDB client over `@duckdb/node-api`. Each instance owns one
@@ -66,11 +71,13 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
   ): Promise<QueryResult> {
     const conn = await connect();
     const reader = await conn.runAndReadAll(sql, values);
-    if (reader.currentRowCount > MAX_ROWS)
-      throw new Error("Result exceeds row limit; narrow the query with LIMIT");
     await reader.readAll();
     const rows = reader.getRowObjectsJson() as Record<string, unknown>[];
-    return { columns: reader.columnNames(), rows };
+    return {
+      columns: reader.columnNames(),
+      columnTypes: reader.columnTypes().map(String),
+      rows,
+    };
   }
 
   async function run(sql: string): Promise<number> {
@@ -205,7 +212,7 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     },
     async previewTable(database, schema, table, limit = 100) {
       return read(
-        `SELECT * FROM ${qualified(database, schema, table)} LIMIT ${Math.max(1, Math.min(limit, MAX_ROWS))}`,
+        `SELECT * FROM ${qualified(database, schema, table)} LIMIT ${Math.max(1, Math.min(limit, PREVIEW_MAX_ROWS))}`,
       );
     },
     async getTableDdl(database, schema, table) {

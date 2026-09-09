@@ -109,6 +109,7 @@ export type PageNode =
       props: {
         sidebar: readonly PageNode[];
         content: readonly PageNode[];
+        inspector?: readonly PageNode[];
       };
     }
   | {

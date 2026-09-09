@@ -117,6 +117,8 @@ export type DuckDbConfig = {
 
 export interface QueryResult {
   columns: string[];
+  /** SQL type names aligned with columns; omitted by legacy clients. */
+  columnTypes?: string[];
   rows: Record<string, unknown>[];
   rowsChanged?: number;
 }

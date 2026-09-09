@@ -188,6 +188,9 @@ export function serializeNode(node: ComponentNode): PageNode {
         props: {
           sidebar: nodes(node.props.sidebar),
           content: nodes(node.props.content),
+          ...(node.props.inspector
+            ? { inspector: nodes(node.props.inspector) }
+            : {}),
         },
       };
     case "select":

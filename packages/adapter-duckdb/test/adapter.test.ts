@@ -47,9 +47,22 @@ test("runs ad-hoc SQL against a real in-memory instance", async () => {
   if (result.status === "success") {
     expect(result.data).toMatchObject({
       columns: ["n", "s"],
+      columnTypes: ["INTEGER", "VARCHAR"],
       rows: [{ n: 1, s: "x" }],
       elapsedMs: expect.any(Number),
     });
+  }
+  await instance.dispose();
+});
+
+test("returns large ad-hoc results without a row cap", async () => {
+  const instance = await createAdapterInstance(duckdbAdapter, MEMORY);
+  const result = await instance.executeAction(
+    runQuery({ sql: "SELECT i FROM range(15000) t(i)" }),
+  );
+  expect(result.status).toBe("success");
+  if (result.status === "success") {
+    expect(result.data.rows).toHaveLength(15000);
   }
   await instance.dispose();
 });
@@ -329,9 +342,9 @@ test("table detail prioritizes overview, data, columns, statistics, and DDL", as
           kind: "tabs",
           props: {
             items: [
-              { label: "Overview" },
-              { label: "Data" },
-              { label: "Columns" },
+              { label: "Preview" },
+              { label: "Schema" },
+              { label: "Details" },
               { label: "Statistics" },
               { label: "DDL" },
             ],

@@ -143,3 +143,15 @@ test("serializes a resource tree inside a split pane", () => {
     },
   ]);
 });
+test("serializes an optional inspector using the existing node boundary", () => {
+  const node = SplitPane({
+    sidebar: PageHeader({ title: "Explorer" }),
+    content: PageHeader({ title: "orders" }),
+    inspector: PageHeader({ title: "Table details" }),
+  });
+  expect(serializeNodes(node)[0]).toMatchObject({
+    props: {
+      inspector: [{ kind: "page-header", props: { title: "Table details" } }],
+    },
+  });
+});

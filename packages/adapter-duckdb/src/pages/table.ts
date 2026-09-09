@@ -25,8 +25,10 @@ export const relationPage = definePage({
       table: params.relation,
     };
     const commonTabs = [
+      { label: "Preview", content: Table({ source: tablePreview(input) }) },
+      { label: "Schema", content: Table({ source: tableColumns(input) }) },
       {
-        label: "Overview",
+        label: "Details",
         content: KeyValue({
           data: {
             database: params.database,
@@ -36,8 +38,6 @@ export const relationPage = definePage({
           },
         }),
       },
-      { label: "Data", content: Table({ source: tablePreview(input) }) },
-      { label: "Columns", content: Table({ source: tableColumns(input) }) },
     ];
     return SplitPane({
       sidebar: dataExplorer(
@@ -74,6 +74,30 @@ export const relationPage = definePage({
                   content: KeyValue({ source: tableDdl(input) }),
                 },
               ],
+        }),
+      ],
+      inspector: [
+        KeyValue({
+          title: "Table details",
+          data: {
+            schema: params.schema,
+            name: params.relation,
+            type: isView ? "VIEW" : "TABLE",
+            database: params.database,
+          },
+        }),
+        Table({
+          source: tableColumns(input),
+          columns: [
+            { id: "name", label: "Columns" },
+            { id: "type", label: "Type" },
+          ],
+        }),
+        KeyValue({
+          title: "Sample query",
+          data: {
+            SQL: `SELECT *\nFROM ${[params.database, params.schema, params.relation].map((name) => `"${name.replaceAll('"', '""')}"`).join(".")}\nLIMIT 100;`,
+          },
         }),
       ],
     });

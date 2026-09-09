@@ -15,7 +15,6 @@ export const queryPage = definePage({
     }),
     QueryWorkbench({
       language: "sql",
-      value: "SELECT 42 AS answer;",
       action: runQuery,
       explorer: {
         source: databases(),

@@ -46,6 +46,11 @@ with `$field` values. Pair it with `SplitPane` for persistent explorer/detail
 pages; the renderer owns expansion, search, selection, scroll restoration, and
 responsive collapse behavior.
 
+`SplitPane` also accepts an optional `inspector` node or array of nodes. It
+renders a details rail beside the content on wide screens and below it on narrow
+screens. It uses the same serialization and resource bindings as `content`.
+For example: `SplitPane({ sidebar: tree, content: preview, inspector: details })`.
+
 ```ts
 SplitPane({
   sidebar: ResourceTree({
