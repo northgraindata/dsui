@@ -17,6 +17,9 @@ export function publicAdapterPayload(
     ...(adapter.connectionSchema
       ? { connectionSchema: adapter.connectionSchema }
       : {}),
+    ...(adapter.connectionMethods
+      ? { connectionMethods: adapter.connectionMethods }
+      : {}),
     resources: adapter.catalog.resources.map((resource) => ({
       id: resource.id,
       ...(resource.inputSchema ? { inputSchema: resource.inputSchema } : {}),

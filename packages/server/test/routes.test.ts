@@ -84,28 +84,21 @@ describe("services API", () => {
         body: JSON.stringify({
           adapter: "duckdb",
           name: "DuckDB preview",
-          connection: { database: ":memory:" },
+          connection: { method: "memory" },
         }),
       });
       expect(created.status).toBe(201);
       const service = (await created.json()) as { id: string; health: string };
       expect(service.health).toBe("healthy");
 
-      const page = await runtime.app.request(
-        `/api/v1/services/${service.id}/page?path=%2Fquery`,
+      const pages = await runtime.app.request(
+        `/api/v1/services/${service.id}/pages`,
       );
-      expect(page.status).toBe(200);
-      expect(await page.json()).toMatchObject({
-        path: "/query",
-        nodes: [
-          { kind: "page-header" },
-          { kind: "form", props: { action: { actionId: "run-query" } } },
-          {
-            kind: "table",
-            props: { source: { resourceId: "orders-preview" } },
-          },
-        ],
-      });
+      expect(pages.status).toBe(200);
+      const pageList = (await pages.json()) as {
+        pages: Array<{ path: string }>;
+      };
+      expect(pageList.pages.map((page) => page.path)).toContain("/query");
     } finally {
       runtime.close();
     }

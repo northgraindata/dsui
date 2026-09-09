@@ -23,6 +23,18 @@ export type AdapterPackageSource = {
 /** JSON Schema (draft 2020-12-ish) for a Zod input or connection schema. */
 export type JsonSchema = Record<string, unknown>;
 
+export interface LoadedConnectionMethod {
+  id: string;
+  label: string;
+  description?: string;
+  schema: JsonSchema;
+  group?: {
+    id: string;
+    label: string;
+    description?: string;
+  };
+}
+
 export interface ResourceCatalogEntry {
   id: string;
   inputSchema?: JsonSchema;
@@ -89,6 +101,8 @@ export interface LoadedAdapter {
   readonly metadata: AdapterInfo;
   /** JSON Schema for the connection object; absent when unavailable. */
   readonly connectionSchema?: JsonSchema;
+  /** Named connection methods; absent for adapters that declare none. */
+  readonly connectionMethods?: LoadedConnectionMethod[];
   readonly catalog: AdapterCatalog;
   readonly backend: AdapterBackend;
   /** The live definition. Present for in-process adapters only. */
