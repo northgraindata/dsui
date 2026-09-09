@@ -113,11 +113,9 @@ Reproduce a bug with a failing test before fixing it. New behavior needs coverag
 proportionate to its risks. Pure prose, formatting, and static configuration edits
 need appropriate executable checks, not tests that restate the edited text.
 
-Prefer real implementations, then stateful fakes, then stubs. Mock true external
-boundaries rather than internal functions. A fake provider client should implement
-the production interface, maintain independent state, and reflect mutations in
-subsequent reads. Direct SDK tests complement host and HTTP integration tests;
-they do not prove serialization, authorization, or browser behavior.
+Prefer real implementations, then stubs for true external boundaries. Direct SDK
+tests complement host and HTTP integration tests; they do not prove serialization,
+authorization, or browser behavior.
 
 Choose the layers affected by the change:
 
@@ -125,7 +123,7 @@ Choose the layers affected by the change:
 | --- | --- |
 | Parser or transformation | Valid, invalid, empty, and boundary inputs |
 | Public SDK API | Runtime semantics and accepted/rejected TypeScript usage |
-| Adapter behavior | Real SDK with a fake client; validation, isolation, lifecycle |
+| Adapter behavior | Real adapter instance; validation, isolation, lifecycle |
 | Execution or transport | Relevant in-process and subprocess behavior, malformed output, limits |
 | Credentials or auth | Allowed/denied requests and secret non-disclosure |
 | Persistence | Real SQLite migrations and existing-data behavior |

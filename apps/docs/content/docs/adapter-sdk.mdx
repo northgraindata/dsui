@@ -16,13 +16,20 @@ with Zod and return secret-free errors.
 ```ts
 export default defineAdapter({
   metadata: { id: "example-service", name: "Example Service", version: "0.1.0" },
-  connectionSchema,
+  connectionMethods: {
+    default: { label: "Connection", schema: connectionSchema },
+  },
   context: (config) => ({ endpoint: config.endpoint, token: config.token }),
   resources: [info],
   actions: [ping],
   pages: [overviewPage],
 });
 ```
+
+Adapters with more than one way to connect declare one method per
+mode (for example DuckDB `memory`, `file`, and `remote`). Each method
+gets a label and a Zod object schema; the connection form renders one
+tab per method, or the fields directly when there is a single method.
 
 dsui owns navigation, tables, forms, states, and accessibility.
 Adding a new renderer kind requires a dsui core contribution;

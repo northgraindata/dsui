@@ -73,6 +73,25 @@ describe("adapter loading", () => {
       catalog.resources.find((resource) => resource.id === "things"),
     ).toMatchObject({ id: "things" });
   });
+
+  it("serializes connection methods from the definition", async () => {
+    const loaded = await loadAdapter("duckdb", {
+      package: "@northgraindata/dsui-adapter-duckdb",
+    });
+    expect(loaded.connectionMethods?.map((method) => method.id)).toEqual([
+      "memory",
+      "file",
+      "s3",
+    ]);
+    expect(loaded.connectionMethods?.[0]?.label).toBe("In-memory");
+    expect(loaded.connectionMethods?.[0]?.schema).toMatchObject({
+      type: "object",
+    });
+    expect(loaded.connectionMethods?.[2]?.group).toMatchObject({
+      id: "remote",
+      label: "Remote",
+    });
+  });
 });
 
 describe("adapter registry", () => {

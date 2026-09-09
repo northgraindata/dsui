@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { adapterFromPublicAdapter, normalizeRenderer, titleFor } from "./api";
+import {
+  adapterFromPublicAdapter,
+  type ConnectionMethod,
+  connectionTopEntries,
+  firstLeaf,
+  normalizeRenderer,
+  titleFor,
+} from "./api";
 
 describe("adapter UI normalization", () => {
   it("derives safe connection fields from an adapter schema", () => {
@@ -50,6 +57,79 @@ describe("adapter UI normalization", () => {
         pages: [],
       }).fields,
     ).toEqual([]);
+  });
+
+  it("derives tabbed connection methods from the adapter schema", () => {
+    const adapter = adapterFromPublicAdapter({
+      id: "duckdb",
+      name: "DuckDB",
+      description: "Embedded OLAP",
+      status: "ok",
+      resources: [],
+      actions: [],
+      pages: [],
+      connectionMethods: [
+        {
+          id: "memory",
+          label: "In-memory",
+          schema: { type: "object", properties: {} },
+        },
+        {
+          id: "file",
+          label: "Local file",
+          description: "A .duckdb file on disk.",
+          schema: {
+            type: "object",
+            required: ["path"],
+            properties: { path: { type: "string" } },
+          },
+        },
+      ],
+    });
+    expect(adapter.connectionMethods).toHaveLength(2);
+    expect(adapter.connectionMethods?.[0]).toMatchObject({
+      id: "memory",
+      label: "In-memory",
+      fields: [],
+    });
+    expect(adapter.connectionMethods?.[1]).toMatchObject({
+      id: "file",
+      label: "Local file",
+      description: "A .duckdb file on disk.",
+      fields: [{ key: "path", label: "Path", type: "text", required: true }],
+    });
+  });
+
+  it("groups connection methods into top-level tabs in order", () => {
+    const leaf = (
+      id: string,
+      group?: ConnectionMethod["group"],
+    ): ConnectionMethod => ({
+      id,
+      label: id,
+      fields: [],
+      ...(group ? { group } : {}),
+    });
+    const tops = connectionTopEntries([
+      leaf("memory"),
+      leaf("s3", { id: "remote", label: "Remote" }),
+      leaf("gcs", { id: "remote", label: "Remote" }),
+      leaf("file"),
+    ]);
+    expect(tops.map((t) => (t.kind === "group" ? t.id : t.method.id))).toEqual([
+      "memory",
+      "remote",
+      "file",
+    ]);
+    const remote = tops[1];
+    expect(remote?.kind).toBe("group");
+    if (remote?.kind === "group") {
+      expect(remote.methods.map((m) => m.id)).toEqual(["s3", "gcs"]);
+      expect(firstLeaf(remote)?.id).toBe("s3");
+    }
+    expect(firstLeaf(tops[0])?.id).toBe("memory");
+    expect(firstLeaf(undefined)).toBeUndefined();
+    expect(connectionTopEntries()).toEqual([]);
   });
 
   it("maps the stable query kind to the core-owned workbench", () => {

@@ -16,7 +16,9 @@ that talks to Snowflake goes in context.
 ```ts title="snowflake/adapter.ts"
 defineAdapter({
   metadata: { id: "snowflake", name: "Snowflake", version: "1.0.0" },
-  connectionSchema: snowflakeConnectionSchema,
+  connectionMethods: {
+    snowflake: { label: "Snowflake", schema: snowflakeConnectionSchema },
+  },
   context: (config) => createContext(createSnowflakeClient(config), config),
   // ...
 });
@@ -24,9 +26,14 @@ defineAdapter({
 
 | Option | Type | Default | Description |
 | ------ | ---- | ------- | ----------- |
-| `connectionSchema` | `ZodType` | none | Validates instance config in `createAdapterInstance`. |
+| `connectionMethods` | `Record<string, method or group>` | none | Named connection methods; each validates its own fields in `createAdapterInstance`. |
 | `context` | `(config) => ctx` | `{}` | Builds per-instance dependencies. May be async. |
 | `disposeContext` | `(ctx) => void` | none | Releases pools and clients on instance disposal. |
+
+A method entry is `{ label, description?, schema }`. A group entry replaces
+`schema` with nested `methods` and renders as sub-tabs; validation still
+discriminates on the leaf method id, so the parsed config never names a
+group.
 
 Configuration is validated before the factory runs, so `config`
 inside is always well-typed. If validation rejects, the instance is

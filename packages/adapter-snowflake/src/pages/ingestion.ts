@@ -1,5 +1,4 @@
 import {
-  Button,
   definePage,
   PageHeader,
   Table,
@@ -8,13 +7,6 @@ import {
   resumeDynamicTable,
   suspendDynamicTable,
 } from "../actions/ingestion.js";
-import type {
-  CopyHistoryEntry,
-  DynamicTableInfo,
-  StageFile,
-  StageInfo,
-  StreamInfo,
-} from "../context.js";
 import {
   copyHistory,
   dynamicTables,
@@ -27,10 +19,12 @@ export const stagesPage = definePage({
   path: "/stages/:database/:schema",
   render: ({ params }) => [
     PageHeader({ title: `Stages in ${params.database}.${params.schema}` }),
-    Table<StageInfo>({
+    Table({
       source: stages({ database: params.database, schema: params.schema }),
-      onRowClick: (row) =>
-        `/stages/${encodeURIComponent(params.database)}/${encodeURIComponent(params.schema)}/${encodeURIComponent(row.name)}`,
+      rowLink: {
+        path: `/stages/${encodeURIComponent(params.database)}/${encodeURIComponent(params.schema)}/:stage`,
+        params: { stage: "name" },
+      },
     }),
   ],
 });
@@ -39,7 +33,7 @@ export const stageFilesPage = definePage({
   path: "/stages/:database/:schema/:stage",
   render: ({ params }) => [
     PageHeader({ title: `@${params.stage}` }),
-    Table<StageFile>({
+    Table({
       source: stageFiles({
         database: params.database,
         schema: params.schema,
@@ -53,7 +47,7 @@ export const streamsPage = definePage({
   path: "/streams/:database/:schema",
   render: ({ params }) => [
     PageHeader({ title: `Streams in ${params.database}.${params.schema}` }),
-    Table<StreamInfo>({
+    Table({
       source: streams({ database: params.database, schema: params.schema }),
     }),
   ],
@@ -65,7 +59,7 @@ export const copyHistoryPage = definePage({
     PageHeader({
       title: `Copy history in ${params.database}.${params.schema}`,
     }),
-    Table<CopyHistoryEntry>({
+    Table({
       source: copyHistory({
         database: params.database,
         schema: params.schema,
@@ -81,29 +75,25 @@ export const dynamicTablesPage = definePage({
     PageHeader({
       title: `Dynamic tables in ${params.database}.${params.schema}`,
     }),
-    Table<DynamicTableInfo>({
+    Table({
       source: dynamicTables({
         database: params.database,
         schema: params.schema,
       }),
-      actions: (row) =>
-        row.status === "ACTIVE"
-          ? Button({
-              label: "Suspend",
-              action: suspendDynamicTable({
-                database: params.database,
-                schema: params.schema,
-                name: row.name,
-              }),
-            })
-          : Button({
-              label: "Resume",
-              action: resumeDynamicTable({
-                database: params.database,
-                schema: params.schema,
-                name: row.name,
-              }),
-            }),
+      rowActions: [
+        {
+          label: "Suspend",
+          action: suspendDynamicTable,
+          input: { database: "database", schema: "schema", name: "name" },
+          when: { field: "status", equals: "ACTIVE" },
+        },
+        {
+          label: "Resume",
+          action: resumeDynamicTable,
+          input: { database: "database", schema: "schema", name: "name" },
+          when: { field: "status", notEquals: "ACTIVE" },
+        },
+      ],
     }),
   ],
 });

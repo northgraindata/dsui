@@ -9,7 +9,7 @@ export function KeyValueList({
   values: Record<string, unknown>;
 }) {
   return (
-    <Surface className="p-4">
+    <Surface className="key-value-panel p-4">
       {title ? (
         <h2 className="m-0 mb-3 text-[13px] font-medium text-primary">
           {title}

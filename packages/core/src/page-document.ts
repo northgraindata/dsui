@@ -14,6 +14,43 @@ export type ActionReference = {
   input?: unknown;
 };
 
+export interface QueryExplorerDocument {
+  source: ResourceReference;
+  nameField?: string;
+  children?: QueryExplorerDocument;
+}
+
+export interface ResourceTreeBranchDocument {
+  source: ResourceReference;
+  nameField?: string;
+  typeField?: string;
+  rowLink?: TableRowLink;
+  children?: ResourceTreeBranchDocument;
+}
+
+export type TableRowLink = {
+  /** Adapter page path with :param placeholders, e.g. "/databases/:database". */
+  path: string;
+  /** URL param name -> row field name; values are URL-encoded on render. */
+  params: Record<string, string>;
+};
+
+export type TableRowAction = {
+  label: string;
+  variant?: "primary" | "secondary" | "danger";
+  /** Action id plus input template (action-input field -> row field). */
+  action: {
+    actionId: string;
+    input?: Record<string, string>;
+  };
+  /** Show only when the row matches every present clause. */
+  when?: {
+    field: string;
+    equals?: string | number | boolean;
+    notEquals?: string | number | boolean;
+  };
+};
+
 export type PageNode =
   | { kind: "page-header"; props: { title: string; description?: string } }
   | {
@@ -22,6 +59,8 @@ export type PageNode =
         source?: ResourceReference;
         data?: readonly unknown[];
         columns?: readonly { id: string; label: string }[];
+        rowLink?: TableRowLink;
+        rowActions?: readonly TableRowAction[];
       };
     }
   | {
@@ -44,6 +83,33 @@ export type PageNode =
         title?: string;
         source?: ResourceReference;
         data?: Record<string, unknown>;
+      };
+    }
+  | {
+      kind: "query-workbench";
+      props: {
+        language: string;
+        value?: string;
+        action: ActionReference;
+        explorer?: QueryExplorerDocument;
+      };
+    }
+  | {
+      kind: "resource-tree";
+      props: {
+        label: string;
+        branch: ResourceTreeBranchDocument;
+        selectedPath?: string;
+        stateKey?: string;
+        searchPlaceholder?: string;
+      };
+    }
+  | {
+      kind: "split-pane";
+      props: {
+        sidebar: readonly PageNode[];
+        content: readonly PageNode[];
+        inspector?: readonly PageNode[];
       };
     }
   | {

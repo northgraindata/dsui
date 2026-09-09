@@ -1,30 +1,31 @@
 @import "tailwindcss";
+@import "./workspace.css";
 @source "./";
+@source "../../renderer/src";
 
 @theme {
-  /* Terminal phosphor theme — warm neutrals, green accent, zero blue. */
-  --color-canvas: #080a07;
-  --color-background: #0c0f0b;
-  --color-surface: #11150f;
-  --color-surface-raised: #151b13;
-  --color-surface-hover: #1c2418;
-  --color-border: #293325;
-  --color-border-strong: #44523d;
-  --color-primary: #f0f5e8;
-  --color-secondary: #b2bda8;
-  --color-muted: #788272;
-  --color-accent: #a3e635;
-  --color-accent-hover: #bef264;
-  --color-accent-foreground: #111b08;
-  --color-accent-dim: #6fae26;
-  --color-healthy: #86efac;
-  --color-warning: #facc15;
-  --color-unavailable: #fb7185;
+  /* Shared with the site's navy / electric-blue visual language. */
+  --color-canvas: #040813;
+  --color-background: #060b16;
+  --color-surface: #080e1b;
+  --color-surface-raised: #0c1323;
+  --color-surface-hover: #0c1836;
+  --color-border: #172134;
+  --color-border-strong: #273651;
+  --color-primary: #f0f3fc;
+  --color-secondary: #b0c1df;
+  --color-muted: #8399bd;
+  --color-accent: #2870ff;
+  --color-accent-hover: #4687ff;
+  --color-accent-foreground: #ffffff;
+  --color-accent-dim: #2451a1;
+  --color-healthy: #50c878;
+  --color-warning: #edbd54;
+  --color-unavailable: #ff547f;
   --color-danger-foreground: #fecdd3;
-  --color-unknown: #94a38a;
-  --color-overlay: #040603;
-  --font-ui:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --color-unknown: #8491aa;
+  --color-overlay: #02050d;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -50,7 +51,7 @@
   body {
     margin: 0;
     min-width: 320px;
-    background: var(--color-background);
+    background: var(--color-canvas);
     color: var(--color-primary);
     font-family: var(--font-ui);
     font-size: 13px;

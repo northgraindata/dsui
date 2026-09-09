@@ -1,18 +1,19 @@
 import { cn } from "@northgraindata/dsui-ui";
 import { Link } from "@tanstack/react-router";
+import logo from "../../../site/public/branding/logo-icon.svg";
 
 export function Wordmark({ className }: { className?: string }) {
   return (
     <Link
       to="/"
       className={cn(
-        "mx-2.5 mb-8 inline-flex items-baseline text-[19px] font-bold tracking-tight text-primary no-underline",
+        "inline-flex items-center gap-2 text-[16px] font-bold tracking-tight text-primary no-underline",
         className,
       )}
       aria-label="dsui home"
     >
-      <span className="text-accent">ds</span>ui
-      <span className="animate-blink text-accent">_</span>
+      <img src={logo} width="25" height="25" alt="" />
+      <span>dsui</span>
     </Link>
   );
 }

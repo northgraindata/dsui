@@ -5,7 +5,6 @@ import {
   Table,
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { DynamicTableInfo, StageInfo, StreamInfo } from "../context.js";
 import {
   databaseDetails,
   databases,
@@ -32,9 +31,9 @@ export const databasesPage = definePage({
   path: "/databases",
   render: () => [
     PageHeader({ title: "Databases" }),
-    Table<string>({
+    Table({
       source: databases(),
-      onRowClick: (name) => `/databases/${encodeURIComponent(name)}`,
+      rowLink: { path: "/databases/:database", params: { database: "value" } },
     }),
   ],
 });
@@ -44,10 +43,12 @@ export const databasePage = definePage({
   render: ({ params }) => [
     PageHeader({ title: params.database }),
     KeyValue({ source: databaseDetails({ database: params.database }) }),
-    Table<string>({
+    Table({
       source: schemas({ database: params.database }),
-      onRowClick: (schema) =>
-        `/databases/${encodeURIComponent(params.database)}/schemas/${encodeURIComponent(schema)}`,
+      rowLink: {
+        path: `/databases/${encodeURIComponent(params.database)}/schemas/:schema`,
+        params: { schema: "value" },
+      },
     }),
   ],
 });
@@ -60,40 +61,46 @@ export const schemaPage = definePage({
       items: [
         {
           label: "Tables",
-          content: Table<string>({
+          content: Table({
             source: tables({
               database: params.database,
               schema: params.schema,
             }),
-            onRowClick: (table) =>
-              `/databases/${encodeURIComponent(params.database)}/schemas/${encodeURIComponent(params.schema)}/tables/${encodeURIComponent(table.split(".").pop() ?? table)}`,
+            rowLink: {
+              path: `/databases/${encodeURIComponent(params.database)}/schemas/${encodeURIComponent(params.schema)}/tables/:table`,
+              params: { table: "value" },
+            },
           }),
         },
         {
           label: "Views",
-          content: Table<string>({
+          content: Table({
             source: views({
               database: params.database,
               schema: params.schema,
             }),
-            onRowClick: (view) =>
-              `/databases/${encodeURIComponent(params.database)}/schemas/${encodeURIComponent(params.schema)}/views/${encodeURIComponent(view.split(".").pop() ?? view)}`,
+            rowLink: {
+              path: `/databases/${encodeURIComponent(params.database)}/schemas/${encodeURIComponent(params.schema)}/views/:view`,
+              params: { view: "value" },
+            },
           }),
         },
         {
           label: "Stages",
-          content: Table<StageInfo>({
+          content: Table({
             source: stages({
               database: params.database,
               schema: params.schema,
             }),
-            onRowClick: (row) =>
-              `/stages/${encodeURIComponent(params.database)}/${encodeURIComponent(params.schema)}/${encodeURIComponent(row.name)}`,
+            rowLink: {
+              path: `/stages/${encodeURIComponent(params.database)}/${encodeURIComponent(params.schema)}/:stage`,
+              params: { stage: "name" },
+            },
           }),
         },
         {
           label: "Streams",
-          content: Table<StreamInfo>({
+          content: Table({
             source: streams({
               database: params.database,
               schema: params.schema,
@@ -102,7 +109,7 @@ export const schemaPage = definePage({
         },
         {
           label: "Dynamic Tables",
-          content: Table<DynamicTableInfo>({
+          content: Table({
             source: dynamicTables({
               database: params.database,
               schema: params.schema,
@@ -111,7 +118,7 @@ export const schemaPage = definePage({
         },
         {
           label: "Sequences",
-          content: Table<string>({
+          content: Table({
             source: sequences({
               database: params.database,
               schema: params.schema,
@@ -120,7 +127,7 @@ export const schemaPage = definePage({
         },
         {
           label: "Materialized",
-          content: Table<string>({
+          content: Table({
             source: materializedViews({
               database: params.database,
               schema: params.schema,
@@ -129,7 +136,7 @@ export const schemaPage = definePage({
         },
         {
           label: "Formats",
-          content: Table<string>({
+          content: Table({
             source: fileFormats({
               database: params.database,
               schema: params.schema,

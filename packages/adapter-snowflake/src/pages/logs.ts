@@ -4,7 +4,6 @@ import {
   Table,
   TextInput,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { LogEntry } from "../context.js";
 import { logs } from "../resources/logs.js";
 import { logFiltersStore } from "../stores/log-filters.js";
 
@@ -21,7 +20,7 @@ export const logsPage = definePage({
         value: filters.search,
         onChange: filters.setSearch,
       }),
-      Table<LogEntry>({
+      Table({
         source: logs({ search: filters.search, level: filters.level }),
       }),
     ];

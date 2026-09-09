@@ -1,5 +1,4 @@
 import {
-  Button,
   definePage,
   Form,
   KeyValue,
@@ -17,7 +16,6 @@ import {
   resumeWarehouse,
   suspendWarehouse,
 } from "../actions/warehouses.js";
-import type { QuerySummary, Warehouse } from "../context.js";
 import { queries } from "../resources/queries.js";
 import { warehouseDetails, warehouses } from "../resources/warehouses.js";
 
@@ -29,19 +27,26 @@ export const warehousesPage = definePage({
   path: "/warehouses",
   render: () => [
     PageHeader({ title: "Warehouses" }),
-    Table<Warehouse>({
+    Table({
       source: warehouses(),
-      onRowClick: (row) => `/warehouses/${encodeURIComponent(row.name)}`,
-      actions: (row) =>
-        row.status === "SUSPENDED"
-          ? Button({
-              label: "Resume",
-              action: resumeWarehouse({ warehouse: row.name }),
-            })
-          : Button({
-              label: "Suspend",
-              action: suspendWarehouse({ warehouse: row.name }),
-            }),
+      rowLink: {
+        path: "/warehouses/:warehouse",
+        params: { warehouse: "name" },
+      },
+      rowActions: [
+        {
+          label: "Resume",
+          action: resumeWarehouse,
+          input: { warehouse: "name" },
+          when: { field: "status", equals: "SUSPENDED" },
+        },
+        {
+          label: "Suspend",
+          action: suspendWarehouse,
+          input: { warehouse: "name" },
+          when: { field: "status", notEquals: "SUSPENDED" },
+        },
+      ],
     }),
     Form({
       schema: createWarehouseInput,
@@ -78,7 +83,7 @@ export const warehouseDetailPage = definePage({
         },
         {
           label: "Queries",
-          content: Table<QuerySummary>({
+          content: Table({
             source: queries({
               warehouse: params.warehouse,
               status: null,

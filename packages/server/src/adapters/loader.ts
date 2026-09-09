@@ -82,6 +82,19 @@ function toJsonSchema(schema: unknown): JsonSchema | undefined {
   }
 }
 
+function toConnectionMethods(
+  definition: AdapterDefinition,
+): LoadedAdapter["connectionMethods"] {
+  if (!definition.connectionMethods) return undefined;
+  return definition.connectionMethods.map((method) => ({
+    id: method.id,
+    label: method.label,
+    ...(method.description ? { description: method.description } : {}),
+    schema: toJsonSchema(method.schema) ?? {},
+    ...(method.group ? { group: { ...method.group } } : {}),
+  }));
+}
+
 function findMember<T extends { id: string }>(
   list: readonly T[],
   kind: string,
@@ -392,6 +405,7 @@ export async function loadAdapter(
       id,
       metadata: { ...definition.metadata },
       connectionSchema: toJsonSchema(definition.connectionSchema),
+      connectionMethods: toConnectionMethods(definition),
       catalog: catalogFromDefinition(definition),
       backend: new LocalBackend(definition),
       definition,

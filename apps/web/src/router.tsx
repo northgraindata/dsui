@@ -3,6 +3,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import { ActivityPage } from "./components/HomeDashboard";
 import {
   AddService,
   AppShell,
@@ -10,6 +11,7 @@ import {
   Login,
   ServiceDetail,
   ServiceObjectView,
+  ServicePage,
   Services,
   ServiceView,
   Settings,
@@ -32,6 +34,11 @@ const settingsRoute = createRoute({
   path: "/settings",
   component: Settings,
 });
+const activityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/activity",
+  component: ActivityPage,
+});
 const addRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/services/new",
@@ -52,6 +59,11 @@ const objectViewRoute = createRoute({
   path: "/services/$serviceId/$viewId/$database/$objectName/$tabId",
   component: ServiceObjectView,
 });
+const pageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/services/$serviceId/$",
+  component: ServicePage,
+});
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
@@ -66,10 +78,12 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   servicesRoute,
   settingsRoute,
+  activityRoute,
   addRoute,
   detailRoute,
   viewRoute,
   objectViewRoute,
+  pageRoute,
   loginRoute,
   setupRoute,
 ]);

@@ -1,5 +1,4 @@
 import {
-  Button,
   definePage,
   KeyValue,
   PageHeader,
@@ -7,7 +6,6 @@ import {
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
 import { resumeTask, runTask, suspendTask } from "../actions/tasks.js";
-import type { TaskSummary } from "../context.js";
 import { taskDetails, taskHistory, tasks } from "../resources/tasks.js";
 
 const taskInput = (params: {
@@ -24,24 +22,30 @@ export const taskListPage = definePage({
   path: "/tasks/:database/:schema",
   render: ({ params }) => [
     PageHeader({ title: `Tasks in ${params.database}.${params.schema}` }),
-    Table<TaskSummary>({
+    Table({
       source: tasks({ database: params.database, schema: params.schema }),
-      onRowClick: (row) =>
-        `/tasks/${encodeURIComponent(params.database)}/${encodeURIComponent(params.schema)}/${encodeURIComponent(row.name)}`,
-      actions: (row) => [
-        Button({
+      rowLink: {
+        path: `/tasks/${encodeURIComponent(params.database)}/${encodeURIComponent(params.schema)}/:task`,
+        params: { task: "name" },
+      },
+      rowActions: [
+        {
           label: "Run now",
-          action: runTask(taskInput({ ...params, task: row.name })),
-        }),
-        row.status === "STARTED"
-          ? Button({
-              label: "Suspend",
-              action: suspendTask(taskInput({ ...params, task: row.name })),
-            })
-          : Button({
-              label: "Resume",
-              action: resumeTask(taskInput({ ...params, task: row.name })),
-            }),
+          action: runTask,
+          input: { database: "database", schema: "schema", task: "name" },
+        },
+        {
+          label: "Suspend",
+          action: suspendTask,
+          input: { database: "database", schema: "schema", task: "name" },
+          when: { field: "status", equals: "STARTED" },
+        },
+        {
+          label: "Resume",
+          action: resumeTask,
+          input: { database: "database", schema: "schema", task: "name" },
+          when: { field: "status", notEquals: "STARTED" },
+        },
       ],
     }),
   ],
