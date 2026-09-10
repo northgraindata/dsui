@@ -19,6 +19,7 @@ function resource(source: DataSource): ResourceReference {
   return {
     resourceId: source.resourceId,
     ...(source.input === undefined ? {} : { input: source.input }),
+    ...(source.refresh?.kind === "poll" ? { refresh: source.refresh } : {}),
   };
 }
 
@@ -30,7 +31,10 @@ function action(
 ): ActionReference {
   if (typeof target === "string") return { actionId: target };
   return target.kind === "action-binding"
-    ? { actionId: target.actionId, input: target.input }
+    ? {
+        actionId: target.actionId,
+        ...(target.input === undefined ? {} : { input: target.input }),
+      }
     : { actionId: target.id };
 }
 
@@ -107,6 +111,7 @@ export function serializeNode(node: ComponentNode): PageNode {
             ? {
                 rowActions: node.props.rowActions.map((rowAction) => ({
                   label: rowAction.label,
+                  ...(rowAction.icon ? { icon: rowAction.icon } : {}),
                   ...(rowAction.variant ? { variant: rowAction.variant } : {}),
                   action: {
                     actionId:
@@ -117,6 +122,14 @@ export function serializeNode(node: ComponentNode): PageNode {
                       ? { input: { ...rowAction.input } }
                       : {}),
                   },
+                  ...(rowAction.successLink
+                    ? {
+                        successLink: {
+                          path: rowAction.successLink.path,
+                          params: { ...rowAction.successLink.params },
+                        },
+                      }
+                    : {}),
                   ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
                 })),
               }
@@ -137,6 +150,9 @@ export function serializeNode(node: ComponentNode): PageNode {
           ...(node.props.detailField
             ? { detailField: node.props.detailField }
             : {}),
+          ...(node.props.stateField
+            ? { stateField: node.props.stateField }
+            : {}),
           ...(node.props.rowLink
             ? {
                 rowLink: {
@@ -152,8 +168,17 @@ export function serializeNode(node: ComponentNode): PageNode {
         kind: node.kind,
         props: {
           label: node.props.label,
+          ...(node.props.icon ? { icon: node.props.icon } : {}),
           ...(node.props.variant ? { variant: node.props.variant } : {}),
           ...(node.props.action ? { action: action(node.props.action) } : {}),
+          ...(node.props.successLink
+            ? {
+                successLink: {
+                  path: node.props.successLink.path,
+                  params: { ...node.props.successLink.params },
+                },
+              }
+            : {}),
         },
       };
     case "tabs":

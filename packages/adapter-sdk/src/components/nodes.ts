@@ -1,3 +1,4 @@
+import type { ActionIcon } from "@northgraindata/dsui-core";
 import type { z } from "zod";
 import type { ActionTarget, AnyActionDefinition } from "../action/index";
 import type { DataSource } from "../resource/index";
@@ -71,6 +72,8 @@ export interface DependencyGraphProps {
   labelField?: string;
   /** Row field rendered under the title, e.g. an operator name. */
   detailField?: string;
+  /** Row field rendered as the node's current execution state. */
+  stateField?: string;
   /** Deep link followed when a node is activated. */
   rowLink?: TableRowLink;
 }
@@ -105,12 +108,16 @@ export interface DependencyGraphNode {
 export interface TableRowAction {
   /** Button label. */
   label: string;
+  /** Optional renderer-owned visual cue shown beside the label. */
+  icon?: ActionIcon;
   /** Visual weight. */
   variant?: "primary" | "secondary" | "danger";
   /** Action definition or id; the wire carries the id. */
   action: AnyActionDefinition | string;
   /** Action-input field -> row field. */
   input?: Record<string, string>;
+  /** Adapter page opened from fields in successful action data. */
+  successLink?: TableRowLink;
   /** Show only when the row matches every present clause. */
   when?: {
     field: string;
@@ -165,8 +172,12 @@ export interface TableNode {
 export interface ButtonProps {
   /** Button label. */
   label: string;
+  /** Optional renderer-owned visual cue shown beside the label. */
+  icon?: ActionIcon;
   /** Action binding executed on click. */
   action?: ActionTarget;
+  /** Adapter page opened from fields in successful action data. */
+  successLink?: TableRowLink;
   /** Visual weight. */
   variant?: "primary" | "secondary" | "danger";
 }
@@ -492,6 +503,13 @@ export function PageHeader(props: PageHeaderProps): PageHeaderNode {
 export function Table(props: TableProps): TableNode {
   if (props.rowLink && !props.rowLink.path.startsWith("/"))
     throw new Error("Table rowLink path must be absolute");
+  if (
+    props.rowActions?.some(
+      (action) =>
+        action.successLink && !action.successLink.path.startsWith("/"),
+    )
+  )
+    throw new Error("Table action successLink path must be absolute");
   return { kind: "table", props: { ...props } };
 }
 
@@ -534,6 +552,8 @@ export function DependencyGraph(
  */
 export function Button(props: ButtonProps): ButtonNode {
   if (!props.label) throw new Error("Button requires a label");
+  if (props.successLink && !props.successLink.path.startsWith("/"))
+    throw new Error("Button successLink path must be absolute");
   return { kind: "button", props: { ...props } };
 }
 

@@ -6,6 +6,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { ADAPTER_SDK_VERSION } from "./adapter/index";
 
+export type { ActionIcon } from "@northgraindata/dsui-core";
 export {
   type ActionBinding,
   type ActionDefinition,

@@ -1,7 +1,10 @@
 import { expect, test } from "bun:test";
 import { z } from "zod";
+import { defineAction } from "../action/index";
+import { poll } from "../refresh/index";
 import { defineResource } from "../resource/index";
 import {
+  Button,
   DependencyGraph,
   PageHeader,
   QueryWorkbench,
@@ -32,9 +35,14 @@ test("serializes declarative row links and row actions", () => {
         rowActions: [
           {
             label: "Refresh",
+            icon: "retry",
             variant: "danger",
             action: "refresh",
             input: { name: "name" },
+            successLink: {
+              path: "/things/:name/runs/:runId",
+              params: { name: "name", runId: "runId" },
+            },
             when: { field: "stale", equals: true },
           },
         ],
@@ -48,8 +56,13 @@ test("serializes declarative row links and row actions", () => {
         rowActions: [
           {
             label: "Refresh",
+            icon: "retry",
             variant: "danger",
             action: { actionId: "refresh", input: { name: "name" } },
+            successLink: {
+              path: "/things/:name/runs/:runId",
+              params: { name: "name", runId: "runId" },
+            },
             when: { field: "stale", equals: true },
           },
         ],
@@ -58,8 +71,42 @@ test("serializes declarative row links and row actions", () => {
   ]);
 });
 
+test("serializes a semantic button icon and successful-result link", () => {
+  const run = defineAction({ id: "run", run: () => undefined });
+  expect(
+    serializeNodes(
+      Button({
+        label: "Run",
+        icon: "play",
+        action: run(),
+        successLink: {
+          path: "/runs/:runId",
+          params: { runId: "dagRunId" },
+        },
+      }),
+    ),
+  ).toEqual([
+    {
+      kind: "button",
+      props: {
+        label: "Run",
+        icon: "play",
+        action: { actionId: "run" },
+        successLink: {
+          path: "/runs/:runId",
+          params: { runId: "dagRunId" },
+        },
+      },
+    },
+  ]);
+});
+
 test("serializes a dependency graph binding", () => {
-  const tasks = defineResource({ id: "dag-tasks", query: () => [] });
+  const tasks = defineResource({
+    id: "dag-tasks",
+    query: () => [],
+    refresh: poll("2s"),
+  });
   expect(
     serializeNodes(
       DependencyGraph({
@@ -67,16 +114,21 @@ test("serializes a dependency graph binding", () => {
         idField: "taskId",
         dependsOnField: "upstreamTaskIds",
         labelField: "name",
+        stateField: "state",
       }),
     ),
   ).toEqual([
     {
       kind: "dependency-graph",
       props: {
-        source: { resourceId: "dag-tasks" },
+        source: {
+          resourceId: "dag-tasks",
+          refresh: { kind: "poll", intervalMs: 2000 },
+        },
         idField: "taskId",
         dependsOnField: "upstreamTaskIds",
         labelField: "name",
+        stateField: "state",
       },
     },
   ]);

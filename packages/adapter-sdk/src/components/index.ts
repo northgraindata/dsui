@@ -1,3 +1,4 @@
+export type { ActionIcon } from "@northgraindata/dsui-core";
 export { defineComponent } from "./custom";
 export {
   Button,

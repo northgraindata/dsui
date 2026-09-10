@@ -38,8 +38,13 @@ test("Table supports declarative row links and row actions", () => {
     rowActions: [
       {
         label: "Resume",
+        icon: "resume",
         action: suspend,
         input: { warehouse: "name" },
+        successLink: {
+          path: "/warehouses/:warehouse",
+          params: { warehouse: "warehouse" },
+        },
         when: { field: "status", equals: "SUSPENDED" },
       },
     ],
@@ -50,6 +55,8 @@ test("Table supports declarative row links and row actions", () => {
   });
   expect(node.props.rowActions?.[0]).toMatchObject({
     label: "Resume",
+    icon: "resume",
+    successLink: { path: "/warehouses/:warehouse" },
     when: { field: "status", equals: "SUSPENDED" },
   });
 });
@@ -60,14 +67,30 @@ test("Table rejects a relative row-link path", () => {
   ).toThrow("must be absolute");
 });
 
+test("actions reject relative successful-result links", () => {
+  expect(() =>
+    Table({
+      rowActions: [
+        {
+          label: "Run",
+          action: "run",
+          successLink: { path: "runs/:runId", params: { runId: "runId" } },
+        },
+      ],
+    }),
+  ).toThrow("must be absolute");
+});
+
 test("DependencyGraph requires the fields that define its edges", () => {
   const tasks = defineResource({ id: "dag-tasks", query: () => [] });
   const node = DependencyGraph({
     source: tasks(),
     idField: "taskId",
     dependsOnField: "upstreamTaskIds",
+    stateField: "state",
   });
   expect(node.kind).toBe("dependency-graph");
+  expect(node.props.stateField).toBe("state");
   expect(() =>
     DependencyGraph({ idField: "", dependsOnField: "upstreamTaskIds" }),
   ).toThrow("idField and dependsOnField");
