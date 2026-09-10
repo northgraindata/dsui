@@ -1,12 +1,27 @@
 export { CustomView } from "./components/custom";
+export {
+  EntityCatalogView,
+  EntityDetailView,
+} from "./components/entity/entity-views";
+export {
+  ActionListView,
+  CardListView,
+  ColumnsView,
+  MeterView,
+  SectionView,
+  StatGridView,
+} from "./components/overview-views";
 export { PageHeaderView } from "./components/page-header";
 export { ResourceTreeView } from "./components/resource-tree";
-export { DeclarativePageRenderer } from "./declarative-page-renderer";
+export { DeclarativePageRenderer } from "./page/declarative-page-renderer";
 export {
   clearViews,
   type RegistryViewProps,
   registerLazyView,
   registerView,
   resolveView,
-} from "./registry";
-export type { DeclarativePageRendererProps, RendererClient } from "./types";
+} from "./registry/view-registry";
+export type {
+  DeclarativePageRendererProps,
+  RendererClient,
+} from "./types/renderer-types";

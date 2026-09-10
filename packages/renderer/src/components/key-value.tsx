@@ -1,6 +1,6 @@
 import { KeyValueList, Surface } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 export function KeyValueView({ client, node }: RegistryViewProps) {
   const source = node.kind === "key-value" ? node.props.source : undefined;
@@ -32,5 +32,3 @@ export function KeyValueView({ client, node }: RegistryViewProps) {
     </Surface>
   );
 }
-
-registerView("key-value", KeyValueView);

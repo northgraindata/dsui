@@ -1,5 +1,5 @@
 import { Button } from "@northgraindata/dsui-ui";
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 export function ButtonView({ client, node }: RegistryViewProps) {
   if (node.kind !== "button") return null;
@@ -17,5 +17,3 @@ export function ButtonView({ client, node }: RegistryViewProps) {
     </Button>
   );
 }
-
-registerView("button", ButtonView);

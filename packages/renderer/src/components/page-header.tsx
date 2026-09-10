@@ -1,4 +1,4 @@
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 /** Page header: title with optional description. */
 export function PageHeaderView({ node }: RegistryViewProps) {
@@ -16,5 +16,3 @@ export function PageHeaderView({ node }: RegistryViewProps) {
     </header>
   );
 }
-
-registerView("page-header", PageHeaderView);

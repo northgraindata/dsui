@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   type ActionBinding,
-  ADAPTER_SDK_VERSION,
   type AdapterDefinition,
   type AdapterInfo,
   createAdapterInstance,
@@ -11,6 +10,7 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus, PageDocument } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
+import { assertAdapterDefinition } from "./definition.js";
 import { AdapterHostClient } from "./host.js";
 import { type AdapterFetch, ExternalAdapterManager } from "./installer.js";
 import type {
@@ -46,30 +46,7 @@ type CallableAction = (
   input: unknown,
 ) => ActionBinding<unknown, unknown, unknown>;
 
-/** Structural gate: every loaded module must satisfy the SDK contract. */
-export function assertAdapterDefinition(
-  value: unknown,
-  from: string,
-): AdapterDefinition {
-  const problem = (detail: string) =>
-    new AdapterLoadError(`Invalid adapter definition from ${from}: ${detail}`);
-  if (!value || typeof value !== "object") throw problem("not an object");
-  const candidate = value as Record<string, unknown>;
-  if (candidate.kind !== "adapter") throw problem("missing kind");
-  const metadata = candidate.metadata as Record<string, unknown>;
-  if (!metadata || typeof metadata.id !== "string" || !metadata.id)
-    throw problem("metadata.id must be a non-empty string");
-  if (candidate.sdkVersion !== ADAPTER_SDK_VERSION)
-    throw problem(
-      `targets SDK ${String(candidate.sdkVersion)}; host requires ${ADAPTER_SDK_VERSION}`,
-    );
-  if (typeof candidate.createContext !== "function")
-    throw problem("missing createContext factory");
-  for (const key of ["stores", "resources", "actions", "pages"] as const) {
-    if (!Array.isArray(candidate[key])) throw problem(`missing ${key} list`);
-  }
-  return value as AdapterDefinition;
-}
+export { assertAdapterDefinition } from "./definition.js";
 
 function toJsonSchema(schema: unknown): JsonSchema | undefined {
   if (!schema || typeof schema !== "object") return undefined;

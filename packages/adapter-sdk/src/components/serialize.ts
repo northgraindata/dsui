@@ -46,9 +46,9 @@ function action(
 }
 
 function explorer(
-  value: NonNullable<import("./nodes").QueryWorkbenchProps["explorer"]>,
+  value: NonNullable<import("./nodes").QueryEditorProps["explorer"]>,
 ): NonNullable<
-  Extract<PageNode, { kind: "query-workbench" }>["props"]["explorer"]
+  Extract<PageNode, { kind: "query-editor" }>["props"]["explorer"]
 > {
   return {
     source: resource(value.source),
@@ -85,6 +85,16 @@ function nodes(
 /** Converts static SDK page nodes into the browser-safe page protocol. */
 export function serializeNode(node: ComponentNode): PageNode {
   switch (node.kind) {
+    case "entity-catalog":
+      return {
+        kind: node.kind,
+        props: { ...node.props, source: resource(node.props.source) },
+      };
+    case "entity-detail":
+      return {
+        kind: node.kind,
+        props: { source: resource(node.props.source) },
+      };
     case "page-header":
       return {
         kind: node.kind,
@@ -164,7 +174,7 @@ export function serializeNode(node: ComponentNode): PageNode {
           ...(node.props.data ? { data: { ...node.props.data } } : {}),
         },
       };
-    case "query-workbench":
+    case "query-editor":
       return {
         kind: node.kind,
         props: {

@@ -4,8 +4,8 @@ import type {
   TableRowLink,
 } from "@northgraindata/dsui-core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type RegistryViewProps, registerView } from "../registry";
-import type { RendererClient } from "../types";
+import type { RegistryViewProps } from "../registry/view-registry";
+import type { RendererClient } from "../types/renderer-types";
 import { WorkbenchIcon } from "./icons";
 
 export function resolveTreeTemplate(
@@ -305,7 +305,7 @@ export function ResourceTreeView({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={node.props.searchPlaceholder ?? "Search data…"}
-          className="h-9 w-full rounded-md border border-border bg-background px-2.5 text-[12px] text-primary outline-none placeholder:text-muted focus:border-accent"
+          className="resource-tree-search"
         />
       </div>
       <div
@@ -335,5 +335,3 @@ export function ResourceTreeView({
     </section>
   );
 }
-
-registerView("resource-tree", ResourceTreeView);

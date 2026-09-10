@@ -23,6 +23,13 @@ test("PageHeader requires a title", () => {
   expect(() => PageHeader({ title: "" })).toThrow();
 });
 
+test("standard factories expose the shared component definition metadata", () => {
+  expect(PageHeader.kind).toBe("component");
+  expect(PageHeader.id).toBe("page-header");
+  expect(Table.kind).toBe("component");
+  expect(Table.id).toBe("table");
+});
+
 test("Table accepts a resource binding as source", () => {
   const databases = defineResource({
     id: "databases",

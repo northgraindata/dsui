@@ -1,11 +1,11 @@
 import type { TableRowAction } from "@northgraindata/dsui-core";
 import { Button, DataTable, Surface } from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useState } from "react";
-import { type RegistryViewProps, registerView } from "../registry";
-import type { RendererClient } from "../types";
+import type { RegistryViewProps } from "../registry/view-registry";
+import type { RendererClient } from "../types/renderer-types";
 
 /** Fills :param placeholders from row fields; null when a field is missing. */
-function resolveLink(
+export function resolveLink(
   path: string,
   params: Record<string, string>,
   row: Record<string, unknown>,
@@ -170,5 +170,3 @@ export function TableView({ client, node }: RegistryViewProps) {
     />
   );
 }
-
-registerView("table", TableView);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 export function SplitPaneView({ client, node, renderNode }: RegistryViewProps) {
   const [open, setOpen] = useState(true);
@@ -35,5 +35,3 @@ export function SplitPaneView({ client, node, renderNode }: RegistryViewProps) {
     </section>
   );
 }
-
-registerView("split-pane", SplitPaneView);

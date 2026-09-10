@@ -11,7 +11,10 @@ import type { ComponentNode, CustomNode } from "./nodes";
  *   the adapter package) is lazy-loaded by `id`; no browser code crosses
  *   the server boundary, only the id and JSON-serializable props.
  *
- * Custom components are NOT required for standard adapters.
+ * The same definition mechanism is used internally by DSUI's standard
+ * components and is available to adapters for composites and browser views.
+ * Standard adapters should import the shared component factories rather than
+ * define duplicate versions of them.
  *
  * @param options.id - Unique component name, e.g. `"session-bar"` or `"duckdb/table-card"`.
  * @param options.render - Builds builtin nodes from props (render mode).

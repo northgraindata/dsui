@@ -1,5 +1,12 @@
 export { defineComponent } from "./custom";
 export {
+  EntityCatalog,
+  type EntityCatalogNode,
+  type EntityCatalogProps,
+  EntityDetail,
+  type EntityDetailNode,
+} from "./entities";
+export {
   ActionList,
   type ActionListItem,
   type ActionListNode,
@@ -33,9 +40,10 @@ export {
   PageHeader,
   type PageHeaderNode,
   type PageHeaderProps,
-  QueryWorkbench,
-  type QueryWorkbenchNode,
-  type QueryWorkbenchProps,
+  QueryEditor,
+  type QueryEditorExplorerProps,
+  type QueryEditorNode,
+  type QueryEditorProps,
   ResourceTree,
   type ResourceTreeBranchProps,
   type ResourceTreeNode,

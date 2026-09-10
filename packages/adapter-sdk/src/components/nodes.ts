@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { ActionTarget, AnyActionDefinition } from "../action/index";
 import type { DataSource } from "../resource/index";
+import { defineComponent } from "./custom";
 
 /**
  * Page header: title, optional description, status badge, meta line, and
@@ -240,8 +241,8 @@ export interface CodeEditorNode {
   readonly props: CodeEditorProps;
 }
 
-/** A browser-owned editor that submits its current text to an action. */
-export interface QueryWorkbenchProps {
+/** A browser-owned query editor that submits its current text to an action. */
+export interface QueryEditorProps {
   /** Language id understood by the renderer's syntax highlighter. */
   language: string;
   /** Initial editor contents. Editing remains browser-owned. */
@@ -249,23 +250,23 @@ export interface QueryWorkbenchProps {
   /** Action definition receiving `{ sql: editorContents }`. */
   action: AnyActionDefinition | string;
   /** Optional catalog list rendered beside the editor. */
-  explorer?: QueryExplorerProps;
+  explorer?: QueryEditorExplorerProps;
 }
 
-/** A resource-backed level in a query workbench explorer tree. */
-export interface QueryExplorerProps {
+/** A resource-backed level in a query editor explorer tree. */
+export interface QueryEditorExplorerProps {
   /** Resource providing the rows at this level. */
   source: DataSource;
   /** Field displayed as the tree item's label. Defaults to `name`. */
   nameField?: string;
   /** Child level. `$field` values in its source input use the selected row. */
-  children?: QueryExplorerProps;
+  children?: QueryEditorExplorerProps;
 }
 
-/** Query workbench node (`"query-workbench"`). */
-export interface QueryWorkbenchNode {
-  readonly kind: "query-workbench";
-  readonly props: QueryWorkbenchProps;
+/** Query editor node (`"query-editor"`). */
+export interface QueryEditorNode {
+  readonly kind: "query-editor";
+  readonly props: QueryEditorProps;
 }
 
 /** One lazy, resource-backed level in a navigable tree. */
@@ -663,13 +664,15 @@ export interface CustomNode {
  * on the renderer side.
  */
 export type ComponentNode =
+  | import("./entities").EntityCatalogNode
+  | import("./entities").EntityDetailNode
   | PageHeaderNode
   | TableNode
   | ButtonNode
   | TabsNode
   | KeyValueNode
   | CodeEditorNode
-  | QueryWorkbenchNode
+  | QueryEditorNode
   | ResourceTreeNode
   | SplitPaneNode
   | SelectNode
@@ -694,10 +697,13 @@ export type ComponentNode =
  * PageHeader({ title: "Warehouses" });
  * ```
  */
-export function PageHeader(props: PageHeaderProps): PageHeaderNode {
-  if (!props.title) throw new Error("PageHeader requires a title");
-  return { kind: "page-header", props: { ...props } };
-}
+export const PageHeader = defineComponent<PageHeaderProps, PageHeaderNode>({
+  id: "page-header",
+  render: (props) => {
+    if (!props.title) throw new Error("PageHeader requires a title");
+    return { kind: "page-header", props: { ...props } };
+  },
+});
 
 /**
  * Data table factory. Prefer `source` (resource binding) for external
@@ -711,11 +717,14 @@ export function PageHeader(props: PageHeaderProps): PageHeaderNode {
  * Table({ source: warehouses() });
  * ```
  */
-export function Table(props: TableProps): TableNode {
-  if (props.rowLink && !props.rowLink.path.startsWith("/"))
-    throw new Error("Table rowLink path must be absolute");
-  return { kind: "table", props: { ...props } };
-}
+export const Table = defineComponent<TableProps, TableNode>({
+  id: "table",
+  render: (props) => {
+    if (props.rowLink && !props.rowLink.path.startsWith("/"))
+      throw new Error("Table rowLink path must be absolute");
+    return { kind: "table", props: { ...props } };
+  },
+});
 
 /**
  * Button factory.
@@ -728,12 +737,15 @@ export function Table(props: TableProps): TableNode {
  * Button({ label: "Resume", action: resumeWarehouse({ warehouse: "ETL_WH" }) });
  * ```
  */
-export function Button(props: ButtonProps): ButtonNode {
-  if (!props.label) throw new Error("Button requires a label");
-  if (props.link && !props.link.startsWith("/"))
-    throw new Error("Button link path must be absolute");
-  return { kind: "button", props: { ...props } };
-}
+export const Button = defineComponent<ButtonProps, ButtonNode>({
+  id: "button",
+  render: (props) => {
+    if (!props.label) throw new Error("Button requires a label");
+    if (props.link && !props.link.startsWith("/"))
+      throw new Error("Button link path must be absolute");
+    return { kind: "button", props: { ...props } };
+  },
+});
 
 /**
  * Tabs factory.
@@ -746,11 +758,14 @@ export function Button(props: ButtonProps): ButtonNode {
  * Tabs({ items: [{ label: "Preview", content: Table({ source: preview() }) }] });
  * ```
  */
-export function Tabs(props: TabsProps): TabsNode {
-  if (props.items.length === 0)
-    throw new Error("Tabs requires at least one item");
-  return { kind: "tabs", props: { items: [...props.items] } };
-}
+export const Tabs = defineComponent<TabsProps, TabsNode>({
+  id: "tabs",
+  render: (props) => {
+    if (props.items.length === 0)
+      throw new Error("Tabs requires at least one item");
+    return { kind: "tabs", props: { items: [...props.items] } };
+  },
+});
 
 /**
  * Key/value detail factory.
@@ -762,9 +777,10 @@ export function Tabs(props: TabsProps): TabsNode {
  * KeyValue({ source: warehouseDetails({ warehouse: "ETL_WH" }) });
  * ```
  */
-export function KeyValue(props: KeyValueProps): KeyValueNode {
-  return { kind: "key-value", props: { ...props } };
-}
+export const KeyValue = defineComponent<KeyValueProps, KeyValueNode>({
+  id: "key-value",
+  render: (props) => ({ kind: "key-value", props: { ...props } }),
+});
 
 /**
  * Code editor factory. Content is store-backed; the SDK owns no editor
@@ -777,33 +793,44 @@ export function KeyValue(props: KeyValueProps): KeyValueNode {
  * CodeEditor({ language: "sql", value: editor.sql, onChange: editor.setSql });
  * ```
  */
-export function CodeEditor(props: CodeEditorProps): CodeEditorNode {
-  return { kind: "code-editor", props: { ...props } };
-}
+export const CodeEditor = defineComponent<CodeEditorProps, CodeEditorNode>({
+  id: "code-editor",
+  render: (props) => ({ kind: "code-editor", props: { ...props } }),
+});
 
 /**
  * A query editor and result workspace owned by the browser renderer.
  *
  * @example
  * ```ts
- * QueryWorkbench({ language: "sql", action: runQuery });
+ * QueryEditor({ language: "sql", action: runQuery });
  * ```
  */
-export function QueryWorkbench(props: QueryWorkbenchProps): QueryWorkbenchNode {
-  if (!props.language) throw new Error("QueryWorkbench requires a language");
-  return { kind: "query-workbench", props: { ...props } };
-}
+export const QueryEditor = defineComponent<QueryEditorProps, QueryEditorNode>({
+  id: "query-editor",
+  render: (props) => {
+    if (!props.language) throw new Error("QueryEditor requires a language");
+    return { kind: "query-editor", props: { ...props } };
+  },
+});
 
 /** A lazy resource-backed navigation tree rendered and controlled by DSUI. */
-export function ResourceTree(props: ResourceTreeProps): ResourceTreeNode {
-  if (!props.label) throw new Error("ResourceTree requires a label");
-  return { kind: "resource-tree", props: { ...props } };
-}
+export const ResourceTree = defineComponent<
+  ResourceTreeProps,
+  ResourceTreeNode
+>({
+  id: "resource-tree",
+  render: (props) => {
+    if (!props.label) throw new Error("ResourceTree requires a label");
+    return { kind: "resource-tree", props: { ...props } };
+  },
+});
 
 /** A responsive sidebar/content layout for ordinary DSUI page nodes. */
-export function SplitPane(props: SplitPaneProps): SplitPaneNode {
-  return { kind: "split-pane", props: { ...props } };
-}
+export const SplitPane = defineComponent<SplitPaneProps, SplitPaneNode>({
+  id: "split-pane",
+  render: (props) => ({ kind: "split-pane", props: { ...props } }),
+});
 
 /**
  * Select factory.
@@ -816,10 +843,13 @@ export function SplitPane(props: SplitPaneProps): SplitPaneNode {
  * Select({ name: "size", label: "Size", options: SIZES });
  * ```
  */
-export function Select(props: SelectProps): SelectNode {
-  if (!props.name) throw new Error("Select requires a field name");
-  return { kind: "select", props: { ...props, options: [...props.options] } };
-}
+export const Select = defineComponent<SelectProps, SelectNode>({
+  id: "select",
+  render: (props) => {
+    if (!props.name) throw new Error("Select requires a field name");
+    return { kind: "select", props: { ...props, options: [...props.options] } };
+  },
+});
 
 /**
  * Text input factory.
@@ -832,10 +862,13 @@ export function Select(props: SelectProps): SelectNode {
  * TextInput({ name: "search", label: "Search", value: filters.search });
  * ```
  */
-export function TextInput(props: TextInputProps): TextInputNode {
-  if (!props.name) throw new Error("TextInput requires a field name");
-  return { kind: "text-input", props: { ...props } };
-}
+export const TextInput = defineComponent<TextInputProps, TextInputNode>({
+  id: "text-input",
+  render: (props) => {
+    if (!props.name) throw new Error("TextInput requires a field name");
+    return { kind: "text-input", props: { ...props } };
+  },
+});
 
 /**
  * Form factory. Shares its schema with the submitted action; the
@@ -848,12 +881,13 @@ export function TextInput(props: TextInputProps): TextInputNode {
  * Form({ schema: resizeWarehouseInput, onSubmit: resizeWarehouse });
  * ```
  */
-export function Form(props: FormProps): FormNode {
-  return {
+export const Form = defineComponent<FormProps, FormNode>({
+  id: "form",
+  render: (props) => ({
     kind: "form",
     props: { ...props, fields: props.fields ? [...props.fields] : undefined },
-  };
-}
+  }),
+});
 
 function absolutePath(path: string | undefined, message: string): void {
   if (path && !path.startsWith("/")) throw new Error(message);
@@ -873,13 +907,16 @@ function absolutePath(path: string | undefined, message: string): void {
  * });
  * ```
  */
-export function StatGrid(props: StatGridProps): StatGridNode {
-  if (props.items.length === 0)
-    throw new Error("StatGrid requires at least one item");
-  for (const item of props.items)
-    if (!item.field) throw new Error("StatGrid items require a field");
-  return { kind: "stat-grid", props: { ...props, items: [...props.items] } };
-}
+export const StatGrid = defineComponent<StatGridProps, StatGridNode>({
+  id: "stat-grid",
+  render: (props) => {
+    if (props.items.length === 0)
+      throw new Error("StatGrid requires at least one item");
+    for (const item of props.items)
+      if (!item.field) throw new Error("StatGrid items require a field");
+    return { kind: "stat-grid", props: { ...props, items: [...props.items] } };
+  },
+});
 
 /**
  * Titled section factory.
@@ -892,11 +929,14 @@ export function StatGrid(props: StatGridProps): StatGridNode {
  * Section({ title: "Recent tables", content: Table({ source: tables() }) });
  * ```
  */
-export function Section(props: SectionProps): SectionNode {
-  if (!props.title) throw new Error("Section requires a title");
-  absolutePath(props.link?.path, "Section link path must be absolute");
-  return { kind: "section", props: { ...props } };
-}
+export const Section = defineComponent<SectionProps, SectionNode>({
+  id: "section",
+  render: (props) => {
+    if (!props.title) throw new Error("Section requires a title");
+    absolutePath(props.link?.path, "Section link path must be absolute");
+    return { kind: "section", props: { ...props } };
+  },
+});
 
 /**
  * Entity cards factory. Prefer `source` (resource binding) for external
@@ -910,19 +950,24 @@ export function Section(props: SectionProps): SectionNode {
  * CardList({ source: databases() });
  * ```
  */
-export function CardList(props: CardListProps): CardListNode {
-  for (const card of props.cards ?? [])
-    absolutePath(card.link?.path, "CardList card link path must be absolute");
-  if (
-    props.columns !== undefined &&
-    (!Number.isInteger(props.columns) || props.columns < 1 || props.columns > 4)
-  )
-    throw new Error("CardList columns must be an integer between 1 and 4");
-  return {
-    kind: "card-list",
-    props: { ...props, cards: props.cards ? [...props.cards] : undefined },
-  };
-}
+export const CardList = defineComponent<CardListProps, CardListNode>({
+  id: "card-list",
+  render: (props) => {
+    for (const card of props.cards ?? [])
+      absolutePath(card.link?.path, "CardList card link path must be absolute");
+    if (
+      props.columns !== undefined &&
+      (!Number.isInteger(props.columns) ||
+        props.columns < 1 ||
+        props.columns > 4)
+    )
+      throw new Error("CardList columns must be an integer between 1 and 4");
+    return {
+      kind: "card-list",
+      props: { ...props, cards: props.cards ? [...props.cards] : undefined },
+    };
+  },
+});
 
 /**
  * Multi-column layout factory.
@@ -935,11 +980,17 @@ export function CardList(props: CardListProps): CardListNode {
  * Columns({ columns: [{ content: Section({ title: "A", content }) }] });
  * ```
  */
-export function Columns(props: ColumnsProps): ColumnsNode {
-  if (props.columns.length === 0)
-    throw new Error("Columns requires at least one column");
-  return { kind: "columns", props: { ...props, columns: [...props.columns] } };
-}
+export const Columns = defineComponent<ColumnsProps, ColumnsNode>({
+  id: "columns",
+  render: (props) => {
+    if (props.columns.length === 0)
+      throw new Error("Columns requires at least one column");
+    return {
+      kind: "columns",
+      props: { ...props, columns: [...props.columns] },
+    };
+  },
+});
 
 /**
  * One meter segment: a labeled byte value with a tone.
@@ -998,26 +1049,31 @@ export interface MeterNode {
  * Meter({ source: storageMeter() });
  * ```
  */
-export function Meter(props: MeterProps): MeterNode {
-  if (props.data) {
-    if (props.data.segments.length === 0)
-      throw new Error("Meter requires at least one segment");
-    for (const segment of props.data.segments) {
-      if (!segment.label) throw new Error("Meter segments require a label");
-      if (!Number.isFinite(segment.value) || segment.value < 0)
-        throw new Error("Meter segment values must be finite and non-negative");
+export const Meter = defineComponent<MeterProps, MeterNode>({
+  id: "meter",
+  render: (props) => {
+    if (props.data) {
+      if (props.data.segments.length === 0)
+        throw new Error("Meter requires at least one segment");
+      for (const segment of props.data.segments) {
+        if (!segment.label) throw new Error("Meter segments require a label");
+        if (!Number.isFinite(segment.value) || segment.value < 0)
+          throw new Error(
+            "Meter segment values must be finite and non-negative",
+          );
+      }
     }
-  }
-  return {
-    kind: "meter",
-    props: {
-      ...props,
-      data: props.data
-        ? { ...props.data, segments: [...props.data.segments] }
-        : undefined,
-    },
-  };
-}
+    return {
+      kind: "meter",
+      props: {
+        ...props,
+        data: props.data
+          ? { ...props.data, segments: [...props.data.segments] }
+          : undefined,
+      },
+    };
+  },
+});
 
 /**
  * Quick action list factory.
@@ -1033,12 +1089,18 @@ export function Meter(props: MeterProps): MeterNode {
  * });
  * ```
  */
-export function ActionList(props: ActionListProps): ActionListNode {
-  if (props.items.length === 0)
-    throw new Error("ActionList requires at least one item");
-  for (const item of props.items) {
-    if (!item.title) throw new Error("ActionList items require a title");
-    absolutePath(item.link, "ActionList item link path must be absolute");
-  }
-  return { kind: "action-list", props: { ...props, items: [...props.items] } };
-}
+export const ActionList = defineComponent<ActionListProps, ActionListNode>({
+  id: "action-list",
+  render: (props) => {
+    if (props.items.length === 0)
+      throw new Error("ActionList requires at least one item");
+    for (const item of props.items) {
+      if (!item.title) throw new Error("ActionList items require a title");
+      absolutePath(item.link, "ActionList item link path must be absolute");
+    }
+    return {
+      kind: "action-list",
+      props: { ...props, items: [...props.items] },
+    };
+  },
+});

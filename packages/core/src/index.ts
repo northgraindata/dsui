@@ -68,6 +68,18 @@ export interface PublicService {
 }
 
 export type {
+  CatalogFilter,
+  EntityAction,
+  EntityBadge,
+  EntityDetail,
+  EntityFact,
+  EntityItem,
+  EntityLink,
+  EntityPanel,
+  EntityTone,
+} from "./entity-document";
+export { parseEntityCatalog, parseEntityDetail } from "./entity-document";
+export type {
   ActionListItem,
   ActionReference,
   MeterData,
