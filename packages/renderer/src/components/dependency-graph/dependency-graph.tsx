@@ -792,7 +792,7 @@ function GraphBoard({
                       ? "text-accent"
                       : active
                         ? "text-border"
-                        : "text-border-strong",
+                        : "text-muted",
                   )}
                 />
               );
