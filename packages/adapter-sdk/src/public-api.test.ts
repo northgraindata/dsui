@@ -12,7 +12,6 @@ const EXPECTED_EXPORTS = [
   "CardList",
   "CodeEditor",
   "Columns",
-  "DependencyGraph",
   "EntityCatalog",
   "EntityDetail",
   "Form",

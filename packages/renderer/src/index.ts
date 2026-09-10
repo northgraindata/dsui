@@ -1,6 +1,4 @@
-export { ActionIcon } from "./components/action-icon";
 export { CustomView } from "./components/custom";
-export { DependencyGraphView } from "./components/dependency-graph/dependency-graph";
 export {
   EntityCatalogView,
   EntityDetailView,

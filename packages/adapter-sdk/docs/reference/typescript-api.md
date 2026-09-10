@@ -77,8 +77,7 @@ follow the links into the guides; for hover docs, read TSDoc in source
 
 | Export | Kind | Description |
 | ------ | ---- | ----------- |
-| `PageHeader` / `Table` / `Button` | functions | Header, data grid, action button; actions may navigate from successful result fields. |
-| `DependencyGraph` | function | Dependency layout with optional detail, state, and row-link fields. |
+| `PageHeader` / `Table` / `Button` | functions | Header, data grid, action button. |
 | `Tabs` / `KeyValue` | functions | Grouped content, record details. |
 | `CodeEditor` / `Select` / `TextInput` | functions | Store-bound inputs. |
 | `Form` | function | Schema-shared submit form. |

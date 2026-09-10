@@ -11,7 +11,3 @@ coverage/
 .env.*
 !.env.example
 data/
-
-# Local Airflow deployment used to exercise the adapter by hand.
-airflow-test/
-airflow2-test/

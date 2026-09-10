@@ -1,6 +1,5 @@
 import type { ComponentType } from "react";
 import { ButtonView } from "../components/button";
-import { DependencyGraphView } from "../components/dependency-graph/dependency-graph";
 import {
   EntityCatalogView,
   EntityDetailView,
@@ -77,17 +76,8 @@ const columnsView: ComponentType<RegistryViewProps> = ({
 const meterView: ComponentType<RegistryViewProps> = ({ client, node }) =>
   node.kind === "meter" ? <MeterView client={client} node={node} /> : null;
 
-const dependencyGraphView: ComponentType<RegistryViewProps> = ({
-  client,
-  node,
-}) =>
-  node.kind === "dependency-graph" ? (
-    <DependencyGraphView client={client} node={node} />
-  ) : null;
-
 const firstPartyViews: readonly [string, ComponentType<RegistryViewProps>][] = [
   ["button", ButtonView],
-  ["dependency-graph", dependencyGraphView],
   ["form", ActionForm],
   ["key-value", KeyValueView],
   ["page-header", PageHeaderView],

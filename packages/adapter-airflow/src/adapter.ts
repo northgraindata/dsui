@@ -35,7 +35,7 @@ export function createAirflowAdapter(
       name: "Airflow",
       version: "1.0.0",
       author: "DSUI",
-      iconUrl: "/assets/logos/airflow.svg",
+      iconUrl: "https://airflow.apache.org/images/airflow-logo-dark.svg",
       description: "Browse and operate Apache Airflow DAGs, runs, and assets.",
     },
     connectionMethods: {

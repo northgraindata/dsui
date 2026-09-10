@@ -1,10 +1,5 @@
 import type { HealthStatus } from "@northgraindata/dsui-core";
 
-/** Treats an empty catch-all route as the service's default adapter page. */
-export function servicePagePath(splat: string | undefined): string | undefined {
-  return splat ? `/${splat}` : undefined;
-}
-
 /** Returns concrete top-level pages suitable for primary sidebar navigation. */
 export function navigablePagePaths(paths: readonly string[]): string[] {
   return paths.filter(

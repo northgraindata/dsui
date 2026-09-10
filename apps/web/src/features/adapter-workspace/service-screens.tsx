@@ -1,5 +1,4 @@
 import { useParams } from "@tanstack/react-router";
-import { servicePagePath } from "../../service-pages";
 import { ServiceScreen } from "./service-screen";
 
 export function ServiceDetail() {
@@ -34,6 +33,9 @@ export function ServicePage() {
     select: (params) => params._splat,
   });
   return (
-    <ServiceScreen serviceId={serviceId} pagePath={servicePagePath(splat)} />
+    <ServiceScreen
+      serviceId={serviceId}
+      pagePath={splat ? `/${splat}` : undefined}
+    />
   );
 }

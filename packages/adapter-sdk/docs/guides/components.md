@@ -78,38 +78,6 @@ for fixed content. External data always goes through `source`
 bindings, because only bindings get execution, refresh, and
 invalidation.
 
-`DependencyGraph` renders one row per node and derives its edges from an
-array field. Set `stateField` when rows carry live execution state; the renderer
-shows the value as text with a semantic status treatment. A polling resource
-keeps that state current while the graph is mounted:
-
-```ts
-DependencyGraph({
-  source: taskRuns({ runId }),
-  idField: "taskId",
-  dependsOnField: "upstreamTaskIds",
-  labelField: "name",
-  detailField: "operator",
-  stateField: "state",
-});
-```
-
-Buttons and table row actions may set `successLink` to open another adapter
-page using fields returned by a successful action. The path must be absolute;
-the renderer URL-encodes every substituted value and stays in place when the
-result lacks one of the declared fields.
-
-```ts
-Button({
-  label: "Trigger",
-  action: triggerDag({ dagId }),
-  successLink: {
-    path: "/dags/:dagId/runs/:dagRunId",
-    params: { dagId: "dagId", dagRunId: "dagRunId" },
-  },
-});
-```
-
 ## Compose overview pages
 
 `Section` groups one panel: a heading, an optional description and
