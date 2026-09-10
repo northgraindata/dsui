@@ -1,4 +1,4 @@
-export { Dialog } from "@radix-ui/react-dialog";
+export * as Dialog from "@radix-ui/react-dialog";
 export type { ReactNode } from "react";
 export { Button } from "./components/button";
 export { cn } from "./components/cn";
