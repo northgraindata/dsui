@@ -1,5 +1,5 @@
 import type { Adapter } from "../api";
-import { Icon } from "./Icon";
+import { Icon } from "./icon";
 
 // Editorial product information only. Connection behavior and fields always
 // come from the adapter's public schema, never from this presentation copy.

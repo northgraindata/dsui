@@ -10,10 +10,10 @@ import {
   testService,
 } from "../api";
 import { connectionTestMessage } from "../service-pages";
-import { ConnectionAbout } from "./ConnectionAbout";
-import { ConnectionFields } from "./ConnectionFields";
-import { Icon } from "./Icon";
-import { ServiceMark } from "./ServiceMark";
+import { ConnectionAbout } from "./connection-about";
+import { ConnectionFields } from "./connection-fields";
+import { Icon } from "./icon";
+import { ServiceMark } from "./service-mark";
 
 type TestResult =
   | { kind: "health"; health: HealthStatus }

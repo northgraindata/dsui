@@ -1,7 +1,5 @@
 @import "tailwindcss";
-@import "./workspace.css";
 @source "./";
-@source "../../renderer/src";
 
 @theme {
   /* Shared with the site's navy / electric-blue visual language. */

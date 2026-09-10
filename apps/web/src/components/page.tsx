@@ -1,6 +1,6 @@
 import { Button, cn, Status } from "@northgraindata/dsui-ui";
 import type { ReactNode } from "react";
-import { Icon } from "./Icon";
+import { Icon } from "./icon";
 
 export const pageClass =
   "mx-auto w-full max-w-5xl flex-1 px-6 py-6 [&_code]:font-mono";
