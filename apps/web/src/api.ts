@@ -14,7 +14,7 @@ export type Service = {
   name: string;
   adapter: string;
   category: string;
-  endpoint: string;
+  endpoint?: string;
   health: Health;
   detail?: string;
   latencyMs?: number;
