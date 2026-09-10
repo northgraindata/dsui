@@ -7,7 +7,7 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
-import { assertAdapterDefinition } from "./adapters/loader.js";
+import { assertAdapterDefinition } from "./adapters/definition.js";
 
 type HostMethod = "describe" | "health" | "page" | "resource" | "action";
 
