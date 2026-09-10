@@ -110,6 +110,48 @@ Button({
 });
 ```
 
+## Compose overview pages
+
+`Section` groups one panel: a heading, an optional description and
+link, and nested content. `StatGrid` reads one record (like
+`KeyValue`) and renders value/label cards from its fields.
+`CardList` renders entity cards from card-shaped resource rows or a
+static `cards` array, and `ActionList` renders quick actions with
+display-only keyboard hints:
+
+```ts title="duckdb/pages/databases.ts"
+Section({
+  title: "Attached databases",
+  description: "Databases available in this instance.",
+  link: { label: "Attach", path: "/databases" },
+  content: CardList({ source: databases() }),
+});
+StatGrid({
+  source: overviewStats(),
+  items: [{ icon: "database", field: "size", label: "Database size" }],
+});
+ActionList({
+  items: [{ icon: "play", title: "New query", link: "/query", kbd: "⌘N" }],
+});
+```
+
+`PageHeader` also takes a status `badge`, a `meta` line, and header
+`actions`. `Button` accepts either an `action` binding or a page
+`link`; paths are absolute adapter routes in both cases. Pair panels
+side by side with `Columns` (weighted columns, collapsing on narrow
+screens). Fix a card grid to N columns with `CardList({ columns: 2 })`,
+and show byte breakdowns with `Meter`:
+
+```ts title="duckdb/pages/databases.ts"
+Columns({
+  columns: [
+    { weight: 2, content: Section({ title: "Attached", content: cards }) },
+    { weight: 1, content: Section({ title: "Quick", content: actions }) },
+  ],
+});
+Meter({ source: storageMeter() });
+```
+
 ## Collect input
 
 Text inputs, selects, and the code editor bind store state directly.
@@ -153,8 +195,11 @@ by construction.
 
 ## Reuse composites
 
-`defineComponent` names a composite of builtins for reuse across
-pages. It carries no browser code and needs no renderer changes:
+`defineComponent` is the common definition mechanism behind the standard
+component factories and adapter-owned components. Adapter authors normally
+import standard primitives directly; use `defineComponent` when naming a
+reusable adapter composite. A render-mode component carries no browser code and
+needs no renderer changes:
 
 ```ts title="snowflake/components/session-bar.ts"
 export const SessionBar = defineComponent<SessionBarProps, readonly ComponentNode[]>({
@@ -173,6 +218,33 @@ export const SessionBar = defineComponent<SessionBarProps, readonly ComponentNod
 
 Use composites for repeated adapter chrome: session bars, context
 displays, standard detail headers. One definition, every page.
+
+## Browser components
+
+Composites return builtin nodes evaluated on the server. When a custom
+visual is genuinely needed, `defineComponent` also accepts a `path`
+pointing at the tsx module (relative to the adapter package) instead
+of `render`:
+
+```ts
+export const TableCard = defineComponent<{ table: string }>({
+  id: "duckdb/table-card",
+  path: "./components/TableCard.tsx",
+});
+```
+
+Calling it returns a `"custom"` node carrying the component id and
+JSON-serializable props — no browser code crosses the server boundary.
+The renderer resolves the id from its component registry and
+lazy-loads the module; unknown ids render an explicit fallback, never
+a blank screen. Props are validated against the optional `props`
+schema at authoring time, like action inputs.
+
+Custom components compose the generic layer: import primitives and
+views from the shared packages rather than reimplementing them. The
+tsx must be resolvable by the host build (dev glob, prod manifest
+entries), so an adapter installed after the build needs a rebuild
+before its components render.
 
 ## What to read next
 

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { resolveActionSuccessLink } from "./ResourceViews";
+import { resolveActionSuccessLink } from "./components/table";
 
 const link = {
   path: "/dags/:dagId/runs/:dagRunId",

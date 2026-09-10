@@ -1,9 +1,11 @@
 /* Reference dimensions: 70px header, 254px home rail, 294px adapter rail. */
 .app-chrome {
+  --app-page-padding: 32px 30px 28px;
+  --app-page-title-size: 28px;
   min-height: 100dvh;
   background:
-    radial-gradient(ellipse at 67% 0%, #0b17312b, transparent 42%),
-    var(--color-canvas);
+    var(--color-canvas) url("./assets/home-background.png") center top / cover
+    no-repeat fixed;
 }
 .app-topbar {
   height: 70px;
@@ -15,7 +17,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--color-canvas);
+  background: transparent;
   transition: transform 0.25s ease;
 }
 .app-topbar.is-hidden {
@@ -49,30 +51,15 @@
   .app-topbar {
     transition: none;
   }
-  .app-body,
-  .adapter-layout,
-  .app-sidebar,
-  .adapter-sidebar {
-    transition: none;
-  }
-}
-.app-topbar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    148deg,
-    transparent 16%,
-    #174cb823 18%,
-    transparent 18.4%,
-    transparent 32%,
-    #1648a817 33%,
-    transparent 33.4%
-  );
 }
 .app-topbar > * {
   position: relative;
+}
+.app-topbar-search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 24px;
 }
 .app-topbar-actions {
   display: flex;
@@ -80,7 +67,8 @@
   gap: 64px;
 }
 .app-search {
-  width: 288px;
+  width: 480px;
+  max-width: 100%;
   height: 40px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
@@ -173,24 +161,6 @@
 }
 .app-sidebar-bottom {
   margin-top: auto;
-}
-.workspace-note {
-  padding: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-}
-.workspace-note > svg {
-  display: inline;
-  vertical-align: middle;
-  margin-right: 10px;
-  color: var(--color-accent);
-}
-.workspace-note p {
-  margin: 8px 0 0;
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.7;
 }
 .workspace-profile {
   display: flex;
@@ -344,7 +314,40 @@
 }
 .adapter-main {
   min-width: 0;
-  padding: 27px 24px 28px;
+  padding: var(--app-page-padding);
+}
+.adapter-main > .grid {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+.adapter-connection-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 24px 19px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+  text-decoration: none;
+  min-width: 0;
+}
+.adapter-connection-card > span {
+  min-width: 0;
+  flex: 1;
+}
+.adapter-connection-card strong,
+.adapter-connection-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.adapter-connection-card small {
+  color: var(--color-secondary);
+  margin-top: 3px;
 }
 .adapter-heading {
   min-height: 54px;
@@ -395,7 +398,7 @@
     left: 44%;
   }
   .app-search {
-    width: 220px;
+    width: 360px;
   }
   .adapter-layout {
     grid-template-columns: 240px minmax(0, 1fr);
@@ -500,7 +503,8 @@
   }
   .adapter-back,
   .adapter-identity,
-  .adapter-recent {
+  .adapter-recent,
+  .adapter-connection-card {
     display: none;
   }
   .adapter-pages {
@@ -525,14 +529,14 @@
   }
 }
 .home-dashboard {
-  padding: 32px 30px 28px;
+  padding: var(--app-page-padding);
 }
 .home-heading {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  margin-bottom: 36px;
+  margin-bottom: 32px;
 }
 .home-greeting {
   display: flex;
@@ -552,7 +556,7 @@
   color: #bedaff;
 }
 .home-heading h1 {
-  font-size: 28px;
+  font-size: var(--app-page-title-size);
   font-weight: 600;
   letter-spacing: -1px;
   margin: 0 0 5px;
@@ -741,8 +745,12 @@
   white-space: nowrap;
 }
 .stack-card-detail small {
+  display: block;
   font-size: 11px;
   color: var(--color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .stack-card-detail > svg {
   position: absolute;
@@ -897,8 +905,9 @@
   }
 }
 @media (max-width: 1050px) {
-  .home-dashboard {
-    padding: 24px 20px;
+  .app-chrome {
+    --app-page-padding: 24px 20px;
+    --app-page-title-size: 24px;
   }
   .home-panels {
     grid-template-columns: 1fr;
@@ -916,19 +925,14 @@
   .stack-panel {
     min-height: 380px;
   }
-  .home-heading h1 {
-    font-size: 24px;
-  }
 }
 @media (max-width: 640px) {
-  .home-dashboard {
-    padding: 24px 12px;
+  .app-chrome {
+    --app-page-padding: 20px 12px;
+    --app-page-title-size: 22px;
   }
   .home-greeting {
     gap: 10px;
-  }
-  .home-heading h1 {
-    font-size: 22px;
   }
   .home-heading p {
     font-size: 12px;

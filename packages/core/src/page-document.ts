@@ -59,8 +59,105 @@ export type TableRowAction = {
   };
 };
 
+export type PageHeaderBadge = {
+  label: string;
+  tone?: "healthy" | "warning" | "unavailable" | "info";
+};
+
+export type PageHeaderAction = {
+  label: string;
+  variant?: "primary" | "secondary" | "danger";
+  action?: ActionReference;
+  /** Adapter page path; mutually exclusive with `action`. */
+  link?: string;
+};
+
+export type StatGridItem = {
+  /** Icon id; the renderer falls back to a default glyph when unknown. */
+  icon?: string;
+  /** Record field read for the value. */
+  field: string;
+  /** Label under the value. */
+  label: string;
+};
+
+export type SectionLink = {
+  label: string;
+  /** Adapter page path. */
+  path: string;
+};
+
+export type OverviewCard = {
+  title: string;
+  description?: string;
+  badge?: string;
+  badgeTone?: "healthy" | "warning" | "unavailable" | "info";
+  icon?: string;
+  /** Short detail lines rendered under the description. */
+  meta?: readonly string[];
+  link?: TableRowLink;
+};
+
+export type ActionListItem = {
+  icon?: string;
+  title: string;
+  description?: string;
+  /** Keyboard hint rendered beside the item; display only. */
+  kbd?: string;
+  /** Adapter page path; mutually exclusive with `action`. */
+  link?: string;
+  action?: ActionReference;
+};
+
+export type MeterSegment = {
+  label: string;
+  /** Segment size in bytes; must be finite and non-negative. */
+  value: number;
+  tone?: "info" | "healthy" | "warning" | "unavailable" | "muted" | "deep";
+  /** Hide from the legend (still rendered in the bar); defaults to true. */
+  legend?: boolean;
+};
+
+export type MeterData = {
+  segments: readonly MeterSegment[];
+  footer?: string;
+};
+
 export type PageNode =
-  | { kind: "page-header"; props: { title: string; description?: string } }
+  | {
+      kind: "custom";
+      props: {
+        /** Registry id, e.g. `"duckdb/table-card"`. */
+        component: string;
+        /** JSON-serializable props for the component. */
+        props?: Record<string, unknown>;
+      };
+    }
+  | {
+      kind: "entity-catalog";
+      props: {
+        source: ResourceReference;
+        title: string;
+        subtitle?: string;
+        description?: string;
+        icon?: string;
+        filters?: import("./entity-document").CatalogFilter[];
+        createLabel?: string;
+        searchPlaceholder?: string;
+      };
+    }
+  | { kind: "entity-detail"; props: { source: ResourceReference } }
+  | {
+      kind: "page-header";
+      props: {
+        title: string;
+        description?: string;
+        badge?: PageHeaderBadge;
+        /** Secondary line under the description, e.g. a file path. */
+        meta?: string;
+        actions?: readonly PageHeaderAction[];
+      };
+    }
   | {
       kind: "table";
       props: {
@@ -76,15 +173,10 @@ export type PageNode =
       props: {
         source?: ResourceReference;
         data?: readonly unknown[];
-        /** Row field holding the unique node id. */
         idField: string;
-        /** Row field holding the ids this node depends on. */
         dependsOnField: string;
-        /** Row field rendered as the node title; defaults to `idField`. */
         labelField?: string;
-        /** Row field rendered under the title, e.g. an operator name. */
         detailField?: string;
-        /** Row field rendered as the node's current execution state. */
         stateField?: string;
         rowLink?: TableRowLink;
       };
@@ -96,8 +188,58 @@ export type PageNode =
         icon?: ActionIcon;
         variant?: "primary" | "secondary" | "danger";
         action?: ActionReference;
+        /** Adapter page path; mutually exclusive with `action`. */
+        link?: string;
         /** Adapter page opened from fields in successful action data. */
         successLink?: TableRowLink;
+      };
+    }
+  | {
+      kind: "stat-grid";
+      props: {
+        source?: ResourceReference;
+        data?: Record<string, unknown>;
+        items: readonly StatGridItem[];
+      };
+    }
+  | {
+      kind: "section";
+      props: {
+        title: string;
+        description?: string;
+        link?: SectionLink;
+        content: readonly PageNode[];
+      };
+    }
+  | {
+      kind: "card-list";
+      props: {
+        source?: ResourceReference;
+        cards?: readonly OverviewCard[];
+        /** Fixed column count (1-4); defaults to a fluid fit. */
+        columns?: number;
+      };
+    }
+  | {
+      kind: "action-list";
+      props: {
+        items: readonly ActionListItem[];
+      };
+    }
+  | {
+      kind: "columns";
+      props: {
+        columns: readonly {
+          weight?: number;
+          content: readonly PageNode[];
+        }[];
+      };
+    }
+  | {
+      kind: "meter";
+      props: {
+        source?: ResourceReference;
+        data?: MeterData;
       };
     }
   | {
@@ -115,7 +257,7 @@ export type PageNode =
       };
     }
   | {
-      kind: "query-workbench";
+      kind: "query-editor";
       props: {
         language: string;
         value?: string;

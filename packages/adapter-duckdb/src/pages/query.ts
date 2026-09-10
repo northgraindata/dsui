@@ -1,7 +1,7 @@
 import {
   definePage,
   PageHeader,
-  QueryWorkbench,
+  QueryEditor,
 } from "@northgraindata/dsui-adapter-sdk";
 import { runQuery } from "../actions/run-query.js";
 import { databases, relations, schemas } from "../resources/catalog.js";
@@ -13,7 +13,7 @@ export const queryPage = definePage({
       title: "Query",
       description: "Write and run SQL against this DuckDB instance.",
     }),
-    QueryWorkbench({
+    QueryEditor({
       language: "sql",
       action: runQuery,
       explorer: {

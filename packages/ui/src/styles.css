@@ -1,7 +1,6 @@
 @import "tailwindcss";
-@import "./workspace.css";
+@import "./entities.css";
 @source "./";
-@source "../../renderer/src";
 
 @theme {
   /* Shared with the site's navy / electric-blue visual language. */
@@ -47,6 +46,7 @@
   html {
     background: var(--color-canvas);
     color-scheme: dark;
+    scrollbar-gutter: stable;
   }
   body {
     margin: 0;

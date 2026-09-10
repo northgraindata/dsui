@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { router } from "./router";
 import "@northgraindata/dsui-ui/styles.css";
+import "@northgraindata/dsui-renderer/styles.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement)
@@ -13,3 +14,4 @@ if (rootElement)
   );
 
 import "./workspace.css";
+import "./connections.css";

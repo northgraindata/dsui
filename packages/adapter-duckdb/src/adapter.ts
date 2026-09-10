@@ -5,6 +5,7 @@ import {
   installExtension,
   loadExtension,
   resetSetting,
+  restartExtension,
   setSetting,
 } from "./actions/config.js";
 import { cancelQuery, runQuery } from "./actions/run-query.js";
@@ -30,31 +31,36 @@ import {
 } from "./context.js";
 import { createDuckDbClient } from "./duckdb-client.js";
 import { activityPage } from "./pages/activity.js";
-import {
-  databasePage,
-  dataPage,
-  overviewPage,
-  schemaPage,
-} from "./pages/databases.js";
+import { dataPage } from "./pages/data.js";
+import { databasePage } from "./pages/database.js";
 import { extensionPage, extensionsPage } from "./pages/extensions.js";
 import { filesPage } from "./pages/files.js";
+import { overviewPage } from "./pages/overview.js";
 import { queryPage } from "./pages/query.js";
+import { schemaPage } from "./pages/schema.js";
 import { relationPage } from "./pages/table.js";
 import {
   columnProfile,
+  databaseCards,
   databaseDetails,
   databaseSize,
+  databaseStats,
   databases,
+  extensionCards,
   functions,
   indexes,
   macros,
   overview,
+  recentQueries,
+  recentTables,
   relations,
   schemas,
   sequences,
+  storageMeter,
   tableColumns,
   tableDdl,
   tablePreview,
+  tableRowCounts,
   tables,
   types,
   version,
@@ -67,6 +73,10 @@ import {
   secrets,
   settings,
 } from "./resources/config.js";
+import {
+  extensionCatalog,
+  extensionProfileResource,
+} from "./resources/extensions";
 import { queryHistory } from "./resources/history.js";
 import {
   activityFiltersStore,
@@ -114,10 +124,16 @@ export function createDuckDbAdapter(
       version,
       overview,
       databases,
+      databaseCards,
       databaseDetails,
       databaseSize,
+      databaseStats,
       schemas,
       tables,
+      tableRowCounts,
+      recentTables,
+      recentQueries,
+      storageMeter,
       relations,
       tableColumns,
       tablePreview,
@@ -131,7 +147,10 @@ export function createDuckDbAdapter(
       functions,
       types,
       extensions,
+      extensionCards,
       extensionDetails,
+      extensionCatalog,
+      extensionProfileResource,
       settings,
       secrets,
       queryHistory,
@@ -152,6 +171,7 @@ export function createDuckDbAdapter(
       importData,
       installExtension,
       loadExtension,
+      restartExtension,
       setSetting,
       resetSetting,
       createSecret,

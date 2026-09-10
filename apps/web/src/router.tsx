@@ -3,46 +3,41 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { ActivityPage } from "./components/HomeDashboard";
+import { AppShell } from "./app/app-shell";
 import {
-  AddService,
-  AppShell,
-  Dashboard,
-  Login,
   ServiceDetail,
   ServiceObjectView,
   ServicePage,
-  Services,
   ServiceView,
-  Settings,
-  Setup,
-} from "./screens";
+} from "./features/adapter-workspace/service-screens";
+import {
+  AdaptersScreen,
+  AddAdapterScreen,
+} from "./features/adapters/adapter-screens";
+import { LoginScreen, SetupScreen } from "./features/auth/auth-screens";
+import { DashboardScreen } from "./features/dashboard/dashboard-screen";
+import { SettingsScreen } from "./features/settings/settings-screen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: Dashboard,
+  component: DashboardScreen,
 });
 const servicesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/services",
-  component: Services,
+  component: AdaptersScreen,
 });
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: Settings,
-});
-const activityRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/activity",
-  component: ActivityPage,
+  component: SettingsScreen,
 });
 const addRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/services/new",
-  component: AddService,
+  component: AddAdapterScreen,
 });
 const detailRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -67,18 +62,17 @@ const pageRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  component: Login,
+  component: LoginScreen,
 });
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup",
-  component: Setup,
+  component: SetupScreen,
 });
 const routeTree = rootRoute.addChildren([
   indexRoute,
   servicesRoute,
   settingsRoute,
-  activityRoute,
   addRoute,
   detailRoute,
   viewRoute,
