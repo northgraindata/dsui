@@ -3,10 +3,17 @@ import { z } from "zod";
 import { defineAction } from "../action/index";
 import { defineResource } from "../resource/index";
 import {
+  ActionList,
+  Button,
+  CardList,
+  Columns,
   Form,
+  Meter,
   PageHeader,
   ResourceTree,
+  Section,
   SplitPane,
+  StatGrid,
   Table,
   Tabs,
 } from "./nodes";
@@ -120,4 +127,124 @@ test("SplitPane composes existing nodes without owning their behavior", () => {
 
   expect(pane.kind).toBe("split-pane");
   expect(pane.props.sidebar).toMatchObject({ kind: "resource-tree" });
+});
+
+test("StatGrid requires items with fields", () => {
+  const stats = defineResource({ id: "stats", query: () => [] });
+  const node = StatGrid({
+    source: stats(),
+    items: [{ icon: "database", field: "size", label: "Database size" }],
+  });
+  expect(node.kind).toBe("stat-grid");
+  expect(node.props.items).toHaveLength(1);
+  expect(() => StatGrid({ items: [] })).toThrow();
+  expect(() => StatGrid({ items: [{ field: "", label: "Empty" }] })).toThrow();
+});
+
+test("Section requires a title and an absolute link", () => {
+  const node = Section({
+    title: "Recent tables",
+    description: "Recently accessed tables.",
+    link: { label: "View all", path: "/data" },
+    content: PageHeader({ title: "Tables" }),
+  });
+  expect(node.kind).toBe("section");
+  expect(() =>
+    Section({ title: "", content: PageHeader({ title: "x" }) }),
+  ).toThrow();
+  expect(() =>
+    Section({
+      title: "Bad",
+      link: { label: "x", path: "relative" },
+      content: PageHeader({ title: "x" }),
+    }),
+  ).toThrow();
+});
+
+test("CardList rejects relative card links", () => {
+  const node = CardList({
+    cards: [
+      {
+        title: "main",
+        badge: "Primary",
+        meta: ["4 schemas"],
+        link: { path: "/data/memory", params: {} },
+      },
+    ],
+  });
+  expect(node.kind).toBe("card-list");
+  expect(() =>
+    CardList({
+      cards: [{ title: "bad", link: { path: "nope", params: {} } }],
+    }),
+  ).toThrow();
+});
+
+test("ActionList requires titled items with absolute links", () => {
+  const node = ActionList({
+    items: [
+      { icon: "play", title: "New query", link: "/query", kbd: "⌘N" },
+      { title: "Attach", action: "attach-database" },
+    ],
+  });
+  expect(node.kind).toBe("action-list");
+  expect(() => ActionList({ items: [] })).toThrow();
+  expect(() => ActionList({ items: [{ title: "" }] })).toThrow();
+  expect(() =>
+    ActionList({ items: [{ title: "Bad", link: "relative" }] }),
+  ).toThrow();
+});
+
+test("Button and PageHeader accept absolute links and badges", () => {
+  const node = PageHeader({
+    title: "DuckDB",
+    description: "Fast analytics.",
+    badge: { label: "Connected", tone: "healthy" },
+    meta: "~/data/demo.duckdb",
+    actions: [
+      Button({ label: "New query", variant: "primary", link: "/query" }),
+    ],
+  });
+  expect(node.props.badge).toEqual({ label: "Connected", tone: "healthy" });
+  expect(node.props.actions).toHaveLength(1);
+  expect(() => Button({ label: "Bad", link: "relative" })).toThrow();
+});
+
+test("Columns requires at least one column", () => {
+  const node = Columns({
+    columns: [
+      { weight: 2, content: PageHeader({ title: "A" }) },
+      { content: PageHeader({ title: "B" }) },
+    ],
+  });
+  expect(node.kind).toBe("columns");
+  expect(node.props.columns).toHaveLength(2);
+  expect(() => Columns({ columns: [] })).toThrow();
+});
+
+test("CardList columns stay within 1 and 4", () => {
+  expect(CardList({ columns: 2 }).props.columns).toBe(2);
+  expect(() => CardList({ columns: 0 })).toThrow();
+  expect(() => CardList({ columns: 5 })).toThrow();
+  expect(() => CardList({ columns: 1.5 })).toThrow();
+});
+
+test("Meter requires labeled segments with finite values", () => {
+  const node = Meter({
+    data: {
+      segments: [{ label: "Database file", value: 1024, tone: "info" }],
+      footer: "1 GB free",
+    },
+  });
+  expect(node.kind).toBe("meter");
+  expect(() => Meter({ data: { segments: [] } })).toThrow();
+  expect(() =>
+    Meter({ data: { segments: [{ label: "", value: 1 }] } }),
+  ).toThrow();
+  expect(() =>
+    Meter({ data: { segments: [{ label: "x", value: Number.NaN }] } }),
+  ).toThrow();
+  expect(() =>
+    Meter({ data: { segments: [{ label: "x", value: -1 }] } }),
+  ).toThrow();
 });

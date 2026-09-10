@@ -5,7 +5,18 @@ import type {
 } from "@northgraindata/dsui-core";
 import type { ActionTarget } from "../action/index";
 import type { DataSource } from "../resource/index";
-import type { ComponentNode } from "./nodes";
+import type { ButtonNode, ComponentNode } from "./nodes";
+
+function pageButton(
+  button: ButtonNode,
+): import("@northgraindata/dsui-core").PageHeaderAction {
+  return {
+    label: button.props.label,
+    ...(button.props.variant ? { variant: button.props.variant } : {}),
+    ...(button.props.action ? { action: action(button.props.action) } : {}),
+    ...(button.props.link ? { link: button.props.link } : {}),
+  };
+}
 
 /** Thrown when a live SDK node cannot cross the server/browser boundary. */
 export class UnserializablePageError extends Error {
@@ -75,16 +86,17 @@ function nodes(
 export function serializeNode(node: ComponentNode): PageNode {
   switch (node.kind) {
     case "page-header":
-      if (node.props.actions?.length)
-        throw new UnserializablePageError(
-          "Page header actions are not supported yet",
-        );
       return {
         kind: node.kind,
         props: {
           title: node.props.title,
           ...(node.props.description
             ? { description: node.props.description }
+            : {}),
+          ...(node.props.badge ? { badge: { ...node.props.badge } } : {}),
+          ...(node.props.meta ? { meta: node.props.meta } : {}),
+          ...(node.props.actions?.length
+            ? { actions: node.props.actions.map(pageButton) }
             : {}),
         },
       };
@@ -130,6 +142,7 @@ export function serializeNode(node: ComponentNode): PageNode {
           label: node.props.label,
           ...(node.props.variant ? { variant: node.props.variant } : {}),
           ...(node.props.action ? { action: action(node.props.action) } : {}),
+          ...(node.props.link ? { link: node.props.link } : {}),
         },
       };
     case "tabs":
@@ -246,6 +259,96 @@ export function serializeNode(node: ComponentNode): PageNode {
       throw new UnserializablePageError(
         "Code editor nodes require a browser-state protocol",
       );
+    case "stat-grid":
+      return {
+        kind: node.kind,
+        props: {
+          ...(node.props.source ? { source: resource(node.props.source) } : {}),
+          ...(node.props.data ? { data: { ...node.props.data } } : {}),
+          items: node.props.items.map((item) => ({ ...item })),
+        },
+      };
+    case "section":
+      return {
+        kind: node.kind,
+        props: {
+          title: node.props.title,
+          ...(node.props.description
+            ? { description: node.props.description }
+            : {}),
+          ...(node.props.link ? { link: { ...node.props.link } } : {}),
+          content: nodes(node.props.content),
+        },
+      };
+    case "card-list":
+      return {
+        kind: node.kind,
+        props: {
+          ...(node.props.source ? { source: resource(node.props.source) } : {}),
+          ...(node.props.columns !== undefined
+            ? { columns: node.props.columns }
+            : {}),
+          ...(node.props.cards
+            ? {
+                cards: node.props.cards.map((card) => ({
+                  ...card,
+                  ...(card.meta ? { meta: [...card.meta] } : {}),
+                  ...(card.link
+                    ? {
+                        link: {
+                          path: card.link.path,
+                          params: { ...card.link.params },
+                        },
+                      }
+                    : {}),
+                })),
+              }
+            : {}),
+        },
+      };
+    case "action-list":
+      return {
+        kind: node.kind,
+        props: {
+          items: node.props.items.map((item) => ({
+            ...(item.icon ? { icon: item.icon } : {}),
+            title: item.title,
+            ...(item.description ? { description: item.description } : {}),
+            ...(item.kbd ? { kbd: item.kbd } : {}),
+            ...(item.link ? { link: item.link } : {}),
+            ...(item.action ? { action: action(item.action) } : {}),
+          })),
+        },
+      };
+    case "columns":
+      return {
+        kind: node.kind,
+        props: {
+          columns: node.props.columns.map((column) => ({
+            ...(column.weight !== undefined ? { weight: column.weight } : {}),
+            content: nodes(column.content),
+          })),
+        },
+      };
+    case "meter":
+      return {
+        kind: node.kind,
+        props: {
+          ...(node.props.source ? { source: resource(node.props.source) } : {}),
+          ...(node.props.data
+            ? {
+                data: {
+                  segments: node.props.data.segments.map((segment) => ({
+                    ...segment,
+                  })),
+                  ...(node.props.data.footer
+                    ? { footer: node.props.data.footer }
+                    : {}),
+                },
+              }
+            : {}),
+        },
+      };
   }
 }
 

@@ -68,12 +68,20 @@ export interface PublicService {
 }
 
 export type {
+  ActionListItem,
   ActionReference,
+  MeterData,
+  MeterSegment,
+  OverviewCard,
   PageDocument,
+  PageHeaderAction,
+  PageHeaderBadge,
   PageNode,
   QueryExplorerDocument,
   ResourceReference,
   ResourceTreeBranchDocument,
+  SectionLink,
+  StatGridItem,
   TableRowAction,
   TableRowLink,
 } from "./page-document.js";

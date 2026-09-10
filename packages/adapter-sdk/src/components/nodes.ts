@@ -3,13 +3,21 @@ import type { ActionTarget, AnyActionDefinition } from "../action/index";
 import type { DataSource } from "../resource/index";
 
 /**
- * Page header: title, optional description, optional header actions.
+ * Page header: title, optional description, status badge, meta line, and
+ * optional header actions (links or action bindings).
  */
 export interface PageHeaderProps {
   /** Page title, e.g. the database name. */
   title: string;
   /** One-line subtitle. */
   description?: string;
+  /** Status pill beside the title. */
+  badge?: {
+    label: string;
+    tone?: "healthy" | "warning" | "unavailable" | "info";
+  };
+  /** Secondary line under the description, e.g. a file path. */
+  meta?: string;
   /** Buttons rendered beside the title. */
   actions?: ButtonNode[];
 }
@@ -136,6 +144,8 @@ export interface ButtonProps {
   label: string;
   /** Action binding executed on click. */
   action?: ActionTarget;
+  /** Adapter page path; mutually exclusive with `action`. */
+  link?: string;
   /** Visual weight. */
   variant?: "primary" | "secondary" | "danger";
 }
@@ -411,6 +421,220 @@ export interface FormNode {
 }
 
 /**
+ * One statistic: an icon, a record field read for the value, and a label.
+ */
+export interface StatGridItem {
+  /** Icon id; the renderer falls back to a default glyph when unknown. */
+  icon?: string;
+  /** Record field read for the value. */
+  field: string;
+  /** Label under the value. */
+  label: string;
+}
+
+/**
+ * Statistic cards props. Values come from one record, like KeyValue.
+ *
+ * @example
+ * ```ts
+ * StatGrid({
+ *   source: overviewStats(),
+ *   items: [{ icon: "database", field: "size", label: "Database size" }],
+ * });
+ * ```
+ */
+export interface StatGridProps {
+  /** Resource binding providing the record (preferred for external data). */
+  source?: DataSource;
+  /** Escape hatch for static records; prefer `source` for external data. */
+  data?: Readonly<Record<string, unknown>>;
+  /** Cards in display order; requires at least one item. */
+  items: readonly StatGridItem[];
+}
+
+/**
+ * Statistic cards node (`"stat-grid"`).
+ */
+export interface StatGridNode {
+  /** Discriminant: always `"stat-grid"`. */
+  readonly kind: "stat-grid";
+  /** Statistic cards content. */
+  readonly props: StatGridProps;
+}
+
+/**
+ * Titled section props. Groups one panel: heading, optional link, content.
+ *
+ * @example
+ * ```ts
+ * Section({
+ *   title: "Recent tables",
+ *   link: { label: "View all", path: "/data" },
+ *   content: Table({ source: recentTables() }),
+ * });
+ * ```
+ */
+export interface SectionLink {
+  label: string;
+  /** Adapter page path. */
+  path: string;
+}
+
+export interface SectionProps {
+  /** Section heading. */
+  title: string;
+  /** One-line description under the heading. */
+  description?: string;
+  /** Link rendered beside the heading. */
+  link?: SectionLink;
+  /** Section content (one node or many). */
+  content: ComponentNode | readonly ComponentNode[];
+}
+
+/**
+ * Titled section node (`"section"`).
+ */
+export interface SectionNode {
+  /** Discriminant: always `"section"`. */
+  readonly kind: "section";
+  /** Section content. */
+  readonly props: SectionProps;
+}
+
+/**
+ * One grid column: relative width plus nested content.
+ */
+export interface ColumnsColumn {
+  /** Relative width in fractional units; defaults to 1. */
+  weight?: number;
+  /** Column content (one node or many). */
+  content: ComponentNode | readonly ComponentNode[];
+}
+
+/**
+ * Multi-column layout props for pairing panels side by side. The
+ * renderer collapses to one column on narrow screens.
+ *
+ * @example
+ * ```ts
+ * Columns({
+ *   columns: [
+ *     { weight: 2, content: Section({ title: "Attached databases", content: cards }) },
+ *     { weight: 1, content: Section({ title: "Quick actions", content: actions }) },
+ *   ],
+ * });
+ * ```
+ */
+export interface ColumnsProps {
+  /** Columns in display order; requires at least one column. */
+  columns: readonly ColumnsColumn[];
+}
+
+/**
+ * Multi-column layout node (`"columns"`).
+ */
+export interface ColumnsNode {
+  /** Discriminant: always `"columns"`. */
+  readonly kind: "columns";
+  /** Multi-column layout content. */
+  readonly props: ColumnsProps;
+}
+
+/**
+ * One entity card. Resource rows use the same field names.
+ */
+export interface OverviewCard {
+  /** Card title. */
+  title: string;
+  /** One-line description under the title. */
+  description?: string;
+  /** Status pill, e.g. "Primary" or "Loaded". */
+  badge?: string;
+  /** Pill tone. */
+  badgeTone?: "healthy" | "warning" | "unavailable" | "info";
+  /** Icon id; the renderer falls back to a default glyph when unknown. */
+  icon?: string;
+  /** Short detail lines under the description. */
+  meta?: readonly string[];
+  /** Whole-card deep link, substituted from row fields for sources. */
+  link?: TableRowLink;
+}
+
+/**
+ * Entity cards props, e.g. attached databases or installed extensions.
+ *
+ * @example
+ * ```ts
+ * CardList({
+ *   source: databases(),
+ *   cards: [{ title: "main", badge: "Primary" }],
+ * });
+ * ```
+ */
+export interface CardListProps {
+  /** Resource binding providing card-shaped rows. */
+  source?: DataSource;
+  /** Escape hatch for static cards; prefer `source` for external data. */
+  cards?: readonly OverviewCard[];
+  /** Fixed column count (1-4); defaults to a fluid fit. */
+  columns?: number;
+}
+
+/**
+ * Entity cards node (`"card-list"`).
+ */
+export interface CardListNode {
+  /** Discriminant: always `"card-list"`. */
+  readonly kind: "card-list";
+  /** Entity cards content. */
+  readonly props: CardListProps;
+}
+
+/**
+ * One quick action: a link or action binding with an optional kbd hint.
+ * `kbd` is display only; shortcut wiring is renderer-owned.
+ */
+export interface ActionListItem {
+  /** Icon id; the renderer falls back to a default glyph when unknown. */
+  icon?: string;
+  /** Action title. */
+  title: string;
+  /** One-line description under the title. */
+  description?: string;
+  /** Keyboard hint rendered beside the item; display only. */
+  kbd?: string;
+  /** Adapter page path; mutually exclusive with `action`. */
+  link?: string;
+  /** Action binding executed on click. */
+  action?: ActionTarget | string;
+}
+
+/**
+ * Quick action list props.
+ *
+ * @example
+ * ```ts
+ * ActionList({
+ *   items: [{ icon: "play", title: "New query", link: "/query", kbd: "⌘N" }],
+ * });
+ * ```
+ */
+export interface ActionListProps {
+  /** Actions in display order; requires at least one item. */
+  items: readonly ActionListItem[];
+}
+
+/**
+ * Quick action list node (`"action-list"`).
+ */
+export interface ActionListNode {
+  /** Discriminant: always `"action-list"`. */
+  readonly kind: "action-list";
+  /** Quick action list content. */
+  readonly props: ActionListProps;
+}
+
+/**
  * Any UI node a page render can return. Renderers switch exhaustively
  * over `kind`; adding a kind without renderer support is a compile error
  * on the renderer side.
@@ -427,7 +651,13 @@ export type ComponentNode =
   | SplitPaneNode
   | SelectNode
   | TextInputNode
-  | FormNode;
+  | FormNode
+  | StatGridNode
+  | SectionNode
+  | CardListNode
+  | ActionListNode
+  | ColumnsNode
+  | MeterNode;
 
 /**
  * Page header factory.
@@ -466,8 +696,8 @@ export function Table(props: TableProps): TableNode {
 /**
  * Button factory.
  *
- * @param props - Label, optional action binding, and variant.
- * @throws An error when the label is empty.
+ * @param props - Label, optional action binding or page link, and variant.
+ * @throws An error when the label is empty or the link is not absolute.
  *
  * @example
  * ```ts
@@ -476,6 +706,8 @@ export function Table(props: TableProps): TableNode {
  */
 export function Button(props: ButtonProps): ButtonNode {
   if (!props.label) throw new Error("Button requires a label");
+  if (props.link && !props.link.startsWith("/"))
+    throw new Error("Button link path must be absolute");
   return { kind: "button", props: { ...props } };
 }
 
@@ -597,4 +829,192 @@ export function Form(props: FormProps): FormNode {
     kind: "form",
     props: { ...props, fields: props.fields ? [...props.fields] : undefined },
   };
+}
+
+function absolutePath(path: string | undefined, message: string): void {
+  if (path && !path.startsWith("/")) throw new Error(message);
+}
+
+/**
+ * Statistic cards factory.
+ *
+ * @param props - Record source or static record plus at least one item.
+ * @throws An error when no items are given or an item field is empty.
+ *
+ * @example
+ * ```ts
+ * StatGrid({
+ *   source: overviewStats(),
+ *   items: [{ icon: "database", field: "size", label: "Database size" }],
+ * });
+ * ```
+ */
+export function StatGrid(props: StatGridProps): StatGridNode {
+  if (props.items.length === 0)
+    throw new Error("StatGrid requires at least one item");
+  for (const item of props.items)
+    if (!item.field) throw new Error("StatGrid items require a field");
+  return { kind: "stat-grid", props: { ...props, items: [...props.items] } };
+}
+
+/**
+ * Titled section factory.
+ *
+ * @param props - Heading, optional link, and nested content.
+ * @throws An error when the title is empty or the link is not absolute.
+ *
+ * @example
+ * ```ts
+ * Section({ title: "Recent tables", content: Table({ source: tables() }) });
+ * ```
+ */
+export function Section(props: SectionProps): SectionNode {
+  if (!props.title) throw new Error("Section requires a title");
+  absolutePath(props.link?.path, "Section link path must be absolute");
+  return { kind: "section", props: { ...props } };
+}
+
+/**
+ * Entity cards factory. Prefer `source` (resource binding) for external
+ * data; `cards` is the static escape hatch.
+ *
+ * @param props - Source or cards; static card links must be absolute.
+ * @throws An error when a static card link is not absolute.
+ *
+ * @example
+ * ```ts
+ * CardList({ source: databases() });
+ * ```
+ */
+export function CardList(props: CardListProps): CardListNode {
+  for (const card of props.cards ?? [])
+    absolutePath(card.link?.path, "CardList card link path must be absolute");
+  if (
+    props.columns !== undefined &&
+    (!Number.isInteger(props.columns) || props.columns < 1 || props.columns > 4)
+  )
+    throw new Error("CardList columns must be an integer between 1 and 4");
+  return {
+    kind: "card-list",
+    props: { ...props, cards: props.cards ? [...props.cards] : undefined },
+  };
+}
+
+/**
+ * Multi-column layout factory.
+ *
+ * @param props - At least one column with nested content.
+ * @throws An error when no columns are given.
+ *
+ * @example
+ * ```ts
+ * Columns({ columns: [{ content: Section({ title: "A", content }) }] });
+ * ```
+ */
+export function Columns(props: ColumnsProps): ColumnsNode {
+  if (props.columns.length === 0)
+    throw new Error("Columns requires at least one column");
+  return { kind: "columns", props: { ...props, columns: [...props.columns] } };
+}
+
+/**
+ * One meter segment: a labeled byte value with a tone.
+ */
+export interface MeterSegment {
+  label: string;
+  /** Segment size in bytes; must be finite and non-negative. */
+  value: number;
+  tone?: "info" | "healthy" | "warning" | "unavailable" | "muted" | "deep";
+  /** Hide from the legend (still rendered in the bar); defaults to true. */
+  legend?: boolean;
+}
+
+/**
+ * Meter data: segments summing to the bar plus an optional footer line.
+ */
+export interface MeterData {
+  segments: readonly MeterSegment[];
+  footer?: string;
+}
+
+/**
+ * Storage-meter props. The source returns one meter-shaped record.
+ *
+ * @example
+ * ```ts
+ * Meter({ source: storageMeter() });
+ * ```
+ */
+export interface MeterProps {
+  /** Resource binding providing the meter record. */
+  source?: DataSource;
+  /** Escape hatch for static meters; prefer `source` for external data. */
+  data?: MeterData;
+}
+
+/**
+ * Storage-meter node (`"meter"`).
+ */
+export interface MeterNode {
+  /** Discriminant: always `"meter"`. */
+  readonly kind: "meter";
+  /** Storage-meter content. */
+  readonly props: MeterProps;
+}
+
+/**
+ * Storage-meter factory.
+ *
+ * @param props - Meter record source or static meter data.
+ * @throws An error when static data has no segments or a segment value
+ * is not a finite, non-negative number.
+ *
+ * @example
+ * ```ts
+ * Meter({ source: storageMeter() });
+ * ```
+ */
+export function Meter(props: MeterProps): MeterNode {
+  if (props.data) {
+    if (props.data.segments.length === 0)
+      throw new Error("Meter requires at least one segment");
+    for (const segment of props.data.segments) {
+      if (!segment.label) throw new Error("Meter segments require a label");
+      if (!Number.isFinite(segment.value) || segment.value < 0)
+        throw new Error("Meter segment values must be finite and non-negative");
+    }
+  }
+  return {
+    kind: "meter",
+    props: {
+      ...props,
+      data: props.data
+        ? { ...props.data, segments: [...props.data.segments] }
+        : undefined,
+    },
+  };
+}
+
+/**
+ * Quick action list factory.
+ *
+ * @param props - At least one titled item with a link or action binding.
+ * @throws An error when no items are given, a title is empty, or a link
+ * is not absolute.
+ *
+ * @example
+ * ```ts
+ * ActionList({
+ *   items: [{ icon: "play", title: "New query", link: "/query" }],
+ * });
+ * ```
+ */
+export function ActionList(props: ActionListProps): ActionListNode {
+  if (props.items.length === 0)
+    throw new Error("ActionList requires at least one item");
+  for (const item of props.items) {
+    if (!item.title) throw new Error("ActionList items require a title");
+    absolutePath(item.link, "ActionList item link path must be absolute");
+  }
+  return { kind: "action-list", props: { ...props, items: [...props.items] } };
 }
