@@ -640,6 +640,7 @@ export function ServiceObjectView() {
     <ServiceScreen
       serviceId={serviceId}
       viewId={viewId}
+      pagePath={`/${viewId}/${database}/${objectName}/${tabId}`}
       objectSelection={{ database, objectName, tabId }}
     />
   );
@@ -782,6 +783,8 @@ function ServiceScreen({
   const [error, setError] = useState<string>();
   useEffect(() => {
     let active = true;
+    setPage(undefined);
+    setError(undefined);
     Promise.all([getServices(), getServicePages(serviceId)])
       .then(([all, response]) => {
         if (!active) return;
@@ -802,7 +805,6 @@ function ServiceScreen({
   useEffect(() => {
     if (!path) return;
     let active = true;
-    setPage(undefined);
     getPage(serviceId, path)
       .then((document) => active && setPage(document))
       .catch(
