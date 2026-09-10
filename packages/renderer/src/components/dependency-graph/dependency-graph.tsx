@@ -121,7 +121,7 @@ function formatValue(value: unknown) {
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 }
 
-/** Related tasks, clickable so the inspector doubles as graph navigation. */
+/** Related nodes, clickable so the inspector doubles as graph navigation. */
 function RelationList({
   title,
   ids,
@@ -206,7 +206,7 @@ function NodeInspector({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close task details"
+          aria-label="Close node details"
           className="ml-auto grid h-6 w-6 shrink-0 place-items-center border border-border bg-surface text-[12px] leading-none text-secondary transition-colors hover:border-border-strong hover:text-primary"
         >
           ×
@@ -253,7 +253,7 @@ function NodeInspector({
   );
 }
 
-function getTaskStateConfig(state: string | undefined) {
+function getNodeStateConfig(state: string | undefined) {
   const s = state?.trim().toLowerCase();
   switch (s) {
     case "success":
@@ -325,7 +325,7 @@ const GraphNodeCard = memo(function GraphNodeCard({
 }) {
   const glyph = node.detail?.trim().charAt(0).toUpperCase();
   const normalizedState = node.state?.trim().toLowerCase();
-  const stateConfig = getTaskStateConfig(node.state);
+  const stateConfig = getNodeStateConfig(node.state);
   const isRunning = stateConfig.pulse;
 
   return (
@@ -658,13 +658,13 @@ function GraphBoard({
     <Surface className="overflow-hidden p-0">
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-raised px-4 py-2">
         <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
-          {plural(layout.nodes.length, "task")} ·{" "}
+          {plural(layout.nodes.length, "node")} ·{" "}
           {plural(layout.edges.length, "dependency")}
         </span>
         {stateSummary.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
             {stateSummary.map(([st, count]) => {
-              const cfg = getTaskStateConfig(st);
+              const cfg = getNodeStateConfig(st);
               return (
                 <span
                   key={st}
@@ -731,7 +731,7 @@ function GraphBoard({
             moved.current = false;
             return;
           }
-          // A click on empty canvas, next to no task, closes the inspector.
+          // A click on empty canvas, next to no node, closes the inspector.
           const target = event.target;
           if (!(target instanceof Element)) return;
           if (target.closest("button") || panel.current?.contains(target))

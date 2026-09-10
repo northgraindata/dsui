@@ -79,7 +79,7 @@ export interface DependencyGraphProps {
   dependsOnField: string;
   /** Row field rendered as the node title; defaults to `idField`. */
   labelField?: string;
-  /** Row field rendered under the title, e.g. an operator name. */
+  /** Row field rendered under the title, e.g. a resource type. */
   detailField?: string;
   /** Row field rendered as the node's current execution state. */
   stateField?: string;
@@ -786,9 +786,9 @@ export const Table = defineComponent<TableProps, TableNode>({
  * @example
  * ```ts
  * DependencyGraph({
- *   source: dagTasks({ dagId: "hourly" }),
- *   idField: "taskId",
- *   dependsOnField: "upstreamTaskIds",
+ *   source: pipelineNodes({ pipelineId: "main" }),
+ *   idField: "id",
+ *   dependsOnField: "dependencies",
  * });
  * ```
  */
