@@ -6,6 +6,13 @@ const config = {
   token: "secret-token",
 };
 
+const airflow2Config = {
+  apiVersion: "v1",
+  baseUrl: "https://airflow.example.test/",
+  username: "airflow-user",
+  password: "secret-password",
+} as const;
+
 function fixture(handler: (request: Request) => Response | Promise<Response>) {
   const requests: Request[] = [];
   const fetchFn = Object.assign(
@@ -20,6 +27,20 @@ function fixture(handler: (request: Request) => Response | Promise<Response>) {
 }
 
 describe("Airflow client", () => {
+  test("authenticates an Airflow 2 API request with basic credentials", async () => {
+    const http = fixture(() => Response.json({ version: "2.10.5" }));
+    const client = createAirflowClient(airflow2Config, http.fetchFn);
+
+    expect(await client.getVersion()).toEqual({ version: "2.10.5" });
+    expect(http.requests).toHaveLength(1);
+    expect(http.requests[0]?.url).toBe(
+      "https://airflow.example.test/api/v1/version",
+    );
+    expect(http.requests[0]?.headers.get("authorization")).toBe(
+      `Basic ${btoa("airflow-user:secret-password")}`,
+    );
+  });
+
   test("authenticates a normalized Airflow 3 API request", async () => {
     const http = fixture(() => Response.json({ version: "3.0.0" }));
     const client = createAirflowClient(config, http.fetchFn);
@@ -167,7 +188,7 @@ describe("Airflow client", () => {
             task_id: "extract",
             task_display_name: "Extract",
             owner: "data",
-            operator_name: "PythonOperator",
+            operator_name: "@task",
             is_mapped: false,
             downstream_task_ids: ["load"],
           },
@@ -199,7 +220,7 @@ describe("Airflow client", () => {
         taskId: "extract",
         name: "Extract",
         owner: "data",
-        operator: "PythonOperator",
+        operator: "Task",
         isMapped: false,
         upstreamTaskIds: [],
         downstreamTaskIds: ["load"],
@@ -515,6 +536,252 @@ describe("Airflow client", () => {
       "https://airflow.example.test/api/v2/assets?limit=100&offset=0&order_by=id",
       "https://airflow.example.test/api/v2/assets/7",
       "https://airflow.example.test/api/v2/assets/events?limit=100&offset=0&order_by=-timestamp&asset_id=7",
+    ]);
+  });
+
+  test("normalizes Airflow 2 DAGs and tasks", async () => {
+    const dag = {
+      dag_id: "hourly/load",
+      dag_display_name: "Hourly load",
+      is_paused: false,
+      is_active: true,
+      description: "Loads the warehouse",
+      timetable_description: "At the top of every hour",
+      last_parsed_time: "2026-09-09T10:00:00Z",
+      owners: ["data"],
+      tags: [{ name: "production" }],
+    };
+    const responses = [
+      Response.json({ dags: [dag], total_entries: 1 }),
+      Response.json({ ...dag, fileloc: "/opt/airflow/dags/hourly.py" }),
+      Response.json({
+        tasks: [
+          {
+            task_id: "extract",
+            task_display_name: "Extract",
+            owner: "data",
+            class_ref: {
+              module_path: "airflow.operators.python",
+              class_name: "_PythonDecoratedOperator",
+            },
+            is_mapped: false,
+            downstream_task_ids: ["load"],
+          },
+          {
+            task_id: "load",
+            task_display_name: "Load",
+            owner: "data",
+            class_ref: {
+              module_path: "airflow.providers.common.sql",
+              class_name: "SQLExecuteQueryOperator",
+            },
+            is_mapped: true,
+            downstream_task_ids: [],
+          },
+        ],
+      }),
+    ];
+    const http = fixture(() => {
+      const response = responses.shift();
+      if (!response) throw new Error("Unexpected request");
+      return response;
+    });
+    const client = createAirflowClient(airflow2Config, http.fetchFn);
+
+    expect(await client.listDags()).toEqual([
+      {
+        dagId: "hourly/load",
+        name: "Hourly load",
+        isPaused: false,
+        isStale: false,
+        description: "Loads the warehouse",
+        schedule: "At the top of every hour",
+        lastParsedTime: "2026-09-09T10:00:00Z",
+        owners: "data",
+        tags: "production",
+      },
+    ]);
+    expect(await client.getDag("hourly/load")).toMatchObject({
+      dagId: "hourly/load",
+      fileLocation: "/opt/airflow/dags/hourly.py",
+    });
+    expect(await client.listDagTasks("hourly/load")).toMatchObject([
+      { taskId: "extract", operator: "Task" },
+      {
+        taskId: "load",
+        operator: "SQLExecuteQueryOperator",
+        upstreamTaskIds: ["extract"],
+      },
+    ]);
+    expect(
+      http.requests.map((request) => new URL(request.url).pathname),
+    ).toEqual([
+      "/api/v1/dags",
+      "/api/v1/dags/hourly%2Fload/details",
+      "/api/v1/dags/hourly%2Fload/tasks",
+    ]);
+  });
+
+  test("normalizes Airflow 2 runs, task instances, logs, and mutations", async () => {
+    const run = {
+      dag_run_id: "manual/2026",
+      dag_id: "hourly/load",
+      logical_date: "2026-09-09T10:00:00Z",
+      start_date: "2026-09-09T10:01:00Z",
+      end_date: null,
+      run_type: "manual",
+      state: "running",
+      note: null,
+    };
+    const task = {
+      task_id: "load",
+      task_display_name: "Load",
+      dag_id: "hourly/load",
+      dag_run_id: "manual/2026",
+      map_index: -1,
+      start_date: "2026-09-09T10:01:00Z",
+      end_date: null,
+      duration: 3.5,
+      state: "failed",
+      try_number: 2,
+      max_tries: 3,
+      operator: "_PythonDecoratedOperator",
+      pool: "default_pool",
+      queue: "default",
+    };
+    const responses = [
+      Response.json({ dag_runs: [run], total_entries: 1 }),
+      Response.json(run),
+      Response.json({ task_instances: [task], total_entries: 1 }),
+      Response.json(task),
+      Response.json({
+        content: "first line\nsecond line",
+        continuation_token: "",
+      }),
+      Response.json({ ...run, state: "queued" }),
+      Response.json({
+        dag_id: "hourly/load",
+        dag_display_name: "Hourly load",
+        is_paused: true,
+        is_active: true,
+      }),
+      Response.json({ task_instances: [] }),
+    ];
+    const http = fixture(() => {
+      const response = responses.shift();
+      if (!response) throw new Error("Unexpected request");
+      return response;
+    });
+    const client = createAirflowClient(airflow2Config, http.fetchFn);
+
+    expect(await client.listDagRuns("hourly/load")).toMatchObject([
+      { dagRunId: "manual/2026", runAfter: "", state: "running" },
+    ]);
+    expect(http.requests[0]?.url).toBe(
+      "https://airflow.example.test/api/v1/dags/hourly%2Fload/dagRuns?limit=100&offset=0&order_by=-execution_date",
+    );
+    expect(await client.getDagRun("hourly/load", "manual/2026")).toMatchObject({
+      dagRunId: "manual/2026",
+    });
+    expect(
+      await client.listTaskInstances("hourly/load", "manual/2026"),
+    ).toMatchObject([
+      {
+        taskId: "load",
+        id: "hourly/load:manual/2026:load:-1",
+        operator: "Task",
+      },
+    ]);
+    const input = {
+      dagId: "hourly/load",
+      dagRunId: "manual/2026",
+      taskId: "load",
+      mapIndex: -1,
+    };
+    expect(await client.getTaskInstance(input)).toMatchObject({
+      id: "hourly/load:manual/2026:load:-1",
+      operator: "Task",
+    });
+    expect(await client.getTaskLog({ ...input, tryNumber: 2 })).toEqual([
+      { timestamp: "", event: "first line\nsecond line" },
+    ]);
+    await client.triggerDag("hourly/load", { partition: "2026-09-09" });
+    await client.setDagPaused("hourly/load", true);
+    await client.clearTaskInstance(input, true);
+
+    expect(await http.requests[5]?.json()).toEqual({
+      conf: { partition: "2026-09-09" },
+    });
+    expect(await http.requests[7]?.json()).toMatchObject({
+      task_ids: ["load"],
+      dag_run_id: "manual/2026",
+      only_failed: true,
+    });
+    await expect(
+      client.clearTaskInstance({ ...input, mapIndex: 2 }, false),
+    ).rejects.toThrow("Airflow 2 cannot clear one mapped task instance safely");
+    expect(http.requests).toHaveLength(8);
+  });
+
+  test("normalizes Airflow 2 datasets as assets", async () => {
+    const dataset = {
+      id: 7,
+      uri: "s3://warehouse/orders",
+      extra: {},
+      created_at: "2026-09-01T00:00:00Z",
+      updated_at: "2026-09-09T00:00:00Z",
+      consuming_dags: [{ dag_id: "consume_orders" }],
+      producing_tasks: [{ dag_id: "warehouse_daily", task_id: "load" }],
+    };
+    const responses = [
+      Response.json({ datasets: [dataset], total_entries: 1 }),
+      Response.json({ datasets: [dataset], total_entries: 1 }),
+      Response.json({
+        dataset_events: [
+          {
+            dataset_id: 7,
+            dataset_uri: dataset.uri,
+            source_task_id: "load",
+            source_dag_id: "warehouse_daily",
+            source_run_id: "scheduled__1",
+            source_map_index: -1,
+            timestamp: "2026-09-09T04:02:00Z",
+          },
+        ],
+        total_entries: 1,
+      }),
+    ];
+    const http = fixture(() => {
+      const response = responses.shift();
+      if (!response) throw new Error("Unexpected request");
+      return response;
+    });
+    const client = createAirflowClient(airflow2Config, http.fetchFn);
+
+    expect(await client.listAssets()).toMatchObject([
+      {
+        assetId: 7,
+        name: "s3://warehouse/orders",
+        uri: "s3://warehouse/orders",
+        group: "",
+      },
+    ]);
+    expect(await client.getAsset(7)).toMatchObject({ assetId: 7 });
+    expect(await client.listAssetEvents(7)).toEqual([
+      {
+        eventId: 7,
+        assetId: 7,
+        timestamp: "2026-09-09T04:02:00Z",
+        sourceDagId: "warehouse_daily",
+        sourceTaskId: "load",
+        sourceRunId: "scheduled__1",
+        sourceMapIndex: -1,
+      },
+    ]);
+    expect(http.requests.map((request) => request.url)).toEqual([
+      "https://airflow.example.test/api/v1/datasets?limit=100&offset=0&order_by=id",
+      "https://airflow.example.test/api/v1/datasets?limit=100&offset=0&order_by=id",
+      "https://airflow.example.test/api/v1/datasets/events?limit=100&offset=0&order_by=-timestamp&dataset_id=7",
     ]);
   });
 

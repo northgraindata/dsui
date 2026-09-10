@@ -7,8 +7,8 @@ refreshing only affected resources.
 
 ## Tech Stack
 
-SDK actions and forms over `POST /api/v2/dags/{dag_id}/dagRuns` and
-`PATCH /api/v2/dags/{dag_id}`.
+SDK actions and forms over the versioned stable API's
+`POST /dags/{dag_id}/dagRuns` and `PATCH /dags/{dag_id}` endpoints.
 
 ## Commands
 
@@ -42,8 +42,9 @@ and that provider failures become SDK error results.
 
 ## Boundaries
 
-- Always: use `logical_date: null` for Airflow 3 manual runs and validate trigger
-  configuration as a JSON object before execution.
+- Always: omit a logical date for Airflow 2, use `logical_date: null` for
+  Airflow 3 manual runs, and validate trigger configuration as a JSON object
+  before execution.
 - Ask first: automatic action retries or scheduled/backfill creation.
 - Never: retry a mutation automatically or claim a trigger means run success.
 
@@ -56,4 +57,3 @@ and that provider failures become SDK error results.
 ## Open Questions
 
 None. Mutations are intentionally not automatically retryable.
-

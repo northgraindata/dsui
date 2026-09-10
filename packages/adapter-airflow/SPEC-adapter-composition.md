@@ -62,9 +62,9 @@ invalidation, instance isolation, disposal, and default-client wiring.
 - All requested capabilities are registered and reachable through pages.
 - The default adapter contacts Airflow; tests inject isolated stateful fakes.
 - Package tests and typecheck pass, followed by repository checks and build.
-- Documentation states the Airflow 3 `/api/v2` and bearer-token requirements.
+- Documentation states the Airflow 3 `/api/v2` bearer-token and Airflow 2.10
+  `/api/v1` basic-auth requirements.
 
 ## Open Questions
 
-None. SDK graph extensions and additional auth methods are deferred.
-
+None.

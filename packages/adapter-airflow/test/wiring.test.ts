@@ -47,14 +47,61 @@ test("default adapter reads Airflow instead of fixture data", async () => {
   }
 });
 
-test("a deployment URL and token are the only way to connect", async () => {
+test("Airflow 2 connections wire the v1 API and basic authentication", async () => {
+  const http = spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({ dags: [], total_entries: 0 }),
+  );
+  const instance = await createAdapterInstance(airflowAdapter, {
+    method: "airflow-2",
+    baseUrl: "https://airflow.example.test",
+    username: "airflow-user",
+    password: "secret-password",
+  });
+  try {
+    expect(await instance.executeResource(dags())).toEqual({
+      status: "success",
+      data: [],
+    });
+    const [input, init] = http.mock.calls[0] ?? [];
+    expect(String(input)).toBe(
+      "https://airflow.example.test/api/v1/dags?limit=100&offset=0&order_by=dag_id",
+    );
+    expect(new Headers(init?.headers).get("authorization")).toBe(
+      `Basic ${btoa("airflow-user:secret-password")}`,
+    );
+  } finally {
+    await instance.dispose();
+    http.mockRestore();
+  }
+});
+
+test("offers version-specific Airflow connection methods", async () => {
   expect(airflowAdapter.connectionMethods?.map((method) => method.id)).toEqual([
     "airflow",
+    "airflow-2",
   ]);
-  const schema = airflowAdapter.connectionMethods?.[0]?.schema;
-  expect(schema?.safeParse({}).success).toBe(false);
+  const airflow3Schema = airflowAdapter.connectionMethods?.[0]?.schema;
+  const airflow2Schema = airflowAdapter.connectionMethods?.[1]?.schema;
+  expect(airflow3Schema?.safeParse({}).success).toBe(false);
   expect(
-    schema?.safeParse({ baseUrl: "https://airflow.example.test", token: "" })
-      .success,
+    airflow3Schema?.safeParse({
+      baseUrl: "https://airflow.example.test",
+      token: "",
+    }).success,
+  ).toBe(false);
+  expect(
+    airflow2Schema?.safeParse({
+      baseUrl: "https://airflow.example.test",
+      username: "airflow",
+      password: "airflow",
+    }).success,
+  ).toBe(true);
+  expect(
+    airflowAdapter.connectionSchema?.safeParse({
+      method: "airflow-2",
+      baseUrl: "https://airflow.example.test",
+      username: "airflow",
+      password: "",
+    }).success,
   ).toBe(false);
 });

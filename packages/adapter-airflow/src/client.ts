@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { z } from "@northgraindata/dsui-adapter-sdk";
 import type {
   AirflowClient,
@@ -22,9 +23,9 @@ const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const tagSchema = z.object({ name: z.string() });
 const dagSchema = z.object({
   dag_id: z.string().min(1),
-  dag_display_name: z.string().min(1),
+  dag_display_name: z.string().min(1).optional(),
   is_paused: z.boolean(),
-  is_stale: z.boolean(),
+  is_stale: z.boolean().optional().default(false),
   description: z.string().nullable().optional(),
   timetable_summary: z.string().nullable().optional(),
   last_parsed_time: z.string().nullable().optional(),
@@ -36,38 +37,82 @@ const dagCollectionSchema = z.object({
   total_entries: z.number().int().nonnegative(),
 });
 const dagDetailsSchema = dagSchema.extend({
-  fileloc: z.string(),
+  fileloc: z.string().optional().default(""),
+});
+const airflow2DagSchema = z.object({
+  dag_id: z.string().min(1),
+  dag_display_name: z.string().min(1).optional(),
+  is_paused: z.boolean(),
+  is_active: z.boolean().nullable().optional(),
+  description: z.string().nullable().optional(),
+  timetable_description: z.string().nullable().optional(),
+  last_parsed_time: z.string().nullable().optional(),
+  owners: z.array(z.string()).optional(),
+  tags: z.array(tagSchema).nullable().optional(),
+});
+const airflow2DagCollectionSchema = z.object({
+  dags: z.array(airflow2DagSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const airflow2DagDetailsSchema = airflow2DagSchema.extend({
+  fileloc: z.string().optional().default(""),
 });
 const taskSchema = z.object({
   task_id: z.string().min(1),
-  task_display_name: z.string().min(1),
-  owner: z.string(),
-  operator_name: z.string(),
-  is_mapped: z.boolean(),
-  downstream_task_ids: z.array(z.string()),
+  task_display_name: z.string().min(1).optional(),
+  owner: z.string().optional().default(""),
+  operator_name: z.string().optional().default(""),
+  is_mapped: z.boolean().optional().default(false),
+  downstream_task_ids: z.array(z.string()).optional().default([]),
 });
 const taskCollectionSchema = z.object({
   tasks: z.array(taskSchema).max(100),
   total_entries: z.number().int().nonnegative(),
 });
-const nullableString = z.string().nullable().optional();
-const dagRunSchema = z.object({
-  dag_run_id: z.string().min(1),
-  dag_id: z.string().min(1),
-  state: z.string(),
-  run_type: z.string(),
-  logical_date: nullableString,
-  run_after: nullableString,
-  start_date: nullableString,
-  end_date: nullableString,
-  note: nullableString,
+const airflow2TaskSchema = z.object({
+  task_id: z.string().min(1),
+  task_display_name: z.string().min(1).optional(),
+  owner: z.string().optional().default(""),
+  class_ref: z.object({
+    module_path: z.string().optional().default(""),
+    class_name: z.string().min(1),
+  }),
+  is_mapped: z.boolean().optional().default(false),
+  downstream_task_ids: z.array(z.string()).optional().default([]),
 });
+const airflow2TaskCollectionSchema = z.object({
+  tasks: z.array(airflow2TaskSchema).max(100),
+});
+const nullableString = z.string().nullable().optional();
+const dagRunSchema = z
+  .object({
+    dag_run_id: z.string().min(1).optional(),
+    run_id: z.string().min(1).optional(),
+    dag_id: z.string().min(1),
+    state: z.string().nullable().optional(),
+    run_type: z.string().nullable().optional(),
+    logical_date: nullableString,
+    run_after: nullableString,
+    start_date: nullableString,
+    end_date: nullableString,
+    note: nullableString,
+  })
+  .transform((data) => ({
+    ...data,
+    dag_run_id: data.dag_run_id ?? data.run_id ?? "",
+    state: data.state ?? "queued",
+    run_type: data.run_type ?? "manual",
+  }));
 const dagRunCollectionSchema = z.object({
   dag_runs: z.array(dagRunSchema).max(100),
   total_entries: z.number().int().nonnegative(),
 });
 const taskInstanceSchema = z.object({
-  id: z.string(),
+  id: z
+    .union([z.string(), z.number()])
+    .transform(String)
+    .optional()
+    .default(""),
   task_id: z.string().min(1),
   dag_id: z.string().min(1),
   dag_run_id: z.string().min(1),
@@ -75,10 +120,10 @@ const taskInstanceSchema = z.object({
   start_date: nullableString,
   end_date: nullableString,
   duration: z.number().nullable().optional(),
-  state: z.string().nullable(),
-  try_number: z.number().int().nonnegative(),
-  max_tries: z.number().int(),
-  task_display_name: z.string().min(1),
+  state: z.string().nullable().optional(),
+  try_number: z.number().int().nonnegative().optional().default(0),
+  max_tries: z.number().int().optional().default(0),
+  task_display_name: z.string().min(1).optional(),
   operator: z.string().nullable().optional(),
   pool: z.string().nullable().optional(),
   queue: z.string().nullable().optional(),
@@ -86,6 +131,18 @@ const taskInstanceSchema = z.object({
 const taskInstanceCollectionSchema = z.object({
   task_instances: z.array(taskInstanceSchema).max(100),
   total_entries: z.number().int().nonnegative(),
+});
+const airflow2TaskInstanceSchema = taskInstanceSchema
+  .omit({ id: true })
+  .extend({
+    task_display_name: z.string().min(1).optional(),
+  });
+const airflow2TaskInstanceCollectionSchema = z.object({
+  task_instances: z.array(airflow2TaskInstanceSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const clearedTaskCollectionSchema = z.object({
+  task_instances: z.array(z.unknown()).max(100),
 });
 const taskLogSchema = z.object({
   // Grouping markers such as `::group::` carry no timestamp at all.
@@ -95,6 +152,10 @@ const taskLogSchema = z.object({
       event: z.string(),
     }),
   ),
+  continuation_token: z.string().nullable().optional(),
+});
+const airflow2TaskLogSchema = z.object({
+  content: z.string(),
   continuation_token: z.string().nullable().optional(),
 });
 const assetSchema = z.object({
@@ -126,17 +187,71 @@ const assetEventCollectionSchema = z.object({
   asset_events: z.array(assetEventSchema).max(100),
   total_entries: z.number().int().nonnegative(),
 });
+const datasetSchema = z.object({
+  id: z.number().int().nonnegative(),
+  uri: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  consuming_dags: z.array(z.object({ dag_id: z.string().nullable() })),
+  producing_tasks: z.array(
+    z.object({
+      dag_id: z.string().nullable(),
+      task_id: z.string().nullable(),
+    }),
+  ),
+});
+const datasetCollectionSchema = z.object({
+  datasets: z.array(datasetSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const datasetEventSchema = z.object({
+  id: z.number().int().nonnegative().optional(),
+  dataset_id: z.number().int().nonnegative(),
+  timestamp: z.string(),
+  source_dag_id: nullableString,
+  source_task_id: nullableString,
+  source_run_id: nullableString,
+  source_map_index: z.number().int().nullable().optional(),
+});
+const datasetEventCollectionSchema = z.object({
+  dataset_events: z.array(datasetEventSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
 
 type DagPayload = z.output<typeof dagSchema>;
+
+function normalizeOperator(value: string | null | undefined): string {
+  if (
+    value === "@task" ||
+    value === "_PythonDecoratedOperator" ||
+    value === "PythonDecoratedOperator"
+  )
+    return "Task";
+  return value ?? "";
+}
 
 function mapDag(dag: DagPayload): DagSummary {
   return {
     dagId: dag.dag_id,
-    name: dag.dag_display_name,
+    name: dag.dag_display_name ?? dag.dag_id,
     isPaused: dag.is_paused,
     isStale: dag.is_stale,
     description: dag.description ?? "",
     schedule: dag.timetable_summary ?? "",
+    lastParsedTime: dag.last_parsed_time ?? "",
+    owners: (dag.owners ?? []).join(", "),
+    tags: (dag.tags ?? []).map((tag) => tag.name).join(", "),
+  };
+}
+
+function mapAirflow2Dag(dag: z.output<typeof airflow2DagSchema>): DagSummary {
+  return {
+    dagId: dag.dag_id,
+    name: dag.dag_display_name ?? dag.dag_id,
+    isPaused: dag.is_paused,
+    isStale: dag.is_active === false,
+    description: dag.description ?? "",
+    schedule: dag.timetable_description ?? "",
     lastParsedTime: dag.last_parsed_time ?? "",
     owners: (dag.owners ?? []).join(", "),
     tags: (dag.tags ?? []).map((tag) => tag.name).join(", "),
@@ -161,19 +276,43 @@ function mapTaskInstance(
   task: z.output<typeof taskInstanceSchema>,
 ): TaskInstance {
   return {
-    id: task.id,
+    id:
+      task.id ||
+      `${task.dag_id}:${task.dag_run_id}:${task.task_id}:${task.map_index}`,
     dagId: task.dag_id,
     dagRunId: task.dag_run_id,
     taskId: task.task_id,
     mapIndex: task.map_index,
-    name: task.task_display_name,
+    name: task.task_display_name ?? task.task_id,
     state: task.state ?? "none",
     tryNumber: task.try_number,
     maxTries: task.max_tries,
     startDate: task.start_date ?? "",
     endDate: task.end_date ?? "",
     duration: task.duration ?? null,
-    operator: task.operator ?? "",
+    operator: normalizeOperator(task.operator),
+    pool: task.pool ?? "",
+    queue: task.queue ?? "",
+  };
+}
+
+function mapAirflow2TaskInstance(
+  task: z.output<typeof airflow2TaskInstanceSchema>,
+): TaskInstance {
+  return {
+    id: `${task.dag_id}:${task.dag_run_id}:${task.task_id}:${task.map_index}`,
+    dagId: task.dag_id,
+    dagRunId: task.dag_run_id,
+    taskId: task.task_id,
+    mapIndex: task.map_index,
+    name: task.task_display_name ?? task.task_id,
+    state: task.state ?? "none",
+    tryNumber: task.try_number,
+    maxTries: task.max_tries,
+    startDate: task.start_date ?? "",
+    endDate: task.end_date ?? "",
+    duration: task.duration ?? null,
+    operator: normalizeOperator(task.operator),
     pool: task.pool ?? "",
     queue: task.queue ?? "",
   };
@@ -192,6 +331,29 @@ function mapAsset(asset: z.output<typeof assetSchema>): Asset {
       .join(", "),
     producingTasks: asset.producing_tasks
       .map((reference) => `${reference.dag_id}.${reference.task_id}`)
+      .join(", "),
+  };
+}
+
+function mapDataset(dataset: z.output<typeof datasetSchema>): Asset {
+  return {
+    assetId: dataset.id,
+    name: dataset.uri,
+    uri: dataset.uri,
+    group: "",
+    createdAt: dataset.created_at,
+    updatedAt: dataset.updated_at,
+    consumingDags: dataset.consuming_dags
+      .flatMap((reference) =>
+        reference.dag_id === null ? [] : [reference.dag_id],
+      )
+      .join(", "),
+    producingTasks: dataset.producing_tasks
+      .flatMap((reference) =>
+        reference.dag_id === null || reference.task_id === null
+          ? []
+          : [`${reference.dag_id}.${reference.task_id}`],
+      )
       .join(", "),
   };
 }
@@ -217,6 +379,12 @@ export function createAirflowClient(
   fetchFn: typeof fetch = fetch,
 ): AirflowClient {
   const baseUrl = normalizeBaseUrl(config.baseUrl);
+  const apiVersion = config.apiVersion ?? "v2";
+  const isAirflow2 = apiVersion === "v1";
+  const authorization =
+    config.apiVersion === "v1"
+      ? `Basic ${Buffer.from(`${config.username}:${config.password}`, "utf8").toString("base64")}`
+      : `Bearer ${config.token}`;
   const lifetime = new AbortController();
 
   async function readJson(
@@ -264,7 +432,7 @@ export function createAirflowClient(
 
   async function request<T>(
     path: string,
-    schema: z.ZodType<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, any>,
     signal?: AbortSignal,
     init: RequestInit = {},
   ): Promise<T> {
@@ -273,17 +441,20 @@ export function createAirflowClient(
       ...(signal ? [signal] : []),
     ]);
     combinedSignal.throwIfAborted();
-    const response = await fetchFn(new URL(`api/v2/${path}`, baseUrl), {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        Accept: "application/json",
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        "User-Agent": "dsui-airflow/0.1",
+    const response = await fetchFn(
+      new URL(`api/${apiVersion}/${path}`, baseUrl),
+      {
+        ...init,
+        headers: {
+          Authorization: authorization,
+          Accept: "application/json",
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
+          "User-Agent": "dsui-airflow/0.1",
+        },
+        redirect: "error",
+        signal: combinedSignal,
       },
-      redirect: "error",
-      signal: combinedSignal,
-    });
+    );
     if (!response.ok) {
       await response.body?.cancel();
       throw new Error(`Airflow request failed (HTTP ${response.status})`);
@@ -299,6 +470,14 @@ export function createAirflowClient(
     getVersion: async (signal): Promise<AirflowVersion> =>
       request("version", versionResponseSchema, signal),
     listDags: async (signal): Promise<DagSummary[]> => {
+      if (isAirflow2) {
+        const result = await request(
+          "dags?limit=100&offset=0&order_by=dag_id",
+          airflow2DagCollectionSchema,
+          signal,
+        );
+        return result.dags.map(mapAirflow2Dag);
+      }
       const result = await request(
         "dags?limit=100&offset=0&order_by=dag_id",
         dagCollectionSchema,
@@ -307,6 +486,14 @@ export function createAirflowClient(
       return result.dags.map(mapDag);
     },
     getDag: async (dagId, signal): Promise<DagDetails> => {
+      if (isAirflow2) {
+        const result = await request(
+          `dags/${encodeURIComponent(dagId)}/details`,
+          airflow2DagDetailsSchema,
+          signal,
+        );
+        return { ...mapAirflow2Dag(result), fileLocation: result.fileloc };
+      }
       const result = await request(
         `dags/${encodeURIComponent(dagId)}/details`,
         dagDetailsSchema,
@@ -315,6 +502,26 @@ export function createAirflowClient(
       return { ...mapDag(result), fileLocation: result.fileloc };
     },
     listDagTasks: async (dagId, signal): Promise<DagTask[]> => {
+      if (isAirflow2) {
+        const result = await request(
+          `dags/${encodeURIComponent(dagId)}/tasks`,
+          airflow2TaskCollectionSchema,
+          signal,
+        );
+        return result.tasks.map((task) => ({
+          taskId: task.task_id,
+          name: task.task_display_name ?? task.task_id,
+          owner: task.owner,
+          operator: normalizeOperator(task.class_ref.class_name),
+          isMapped: task.is_mapped,
+          upstreamTaskIds: result.tasks
+            .filter((candidate) =>
+              candidate.downstream_task_ids.includes(task.task_id),
+            )
+            .map((candidate) => candidate.task_id),
+          downstreamTaskIds: [...task.downstream_task_ids],
+        }));
+      }
       const result = await request(
         `dags/${encodeURIComponent(dagId)}/tasks`,
         taskCollectionSchema,
@@ -322,9 +529,9 @@ export function createAirflowClient(
       );
       return result.tasks.map((task) => ({
         taskId: task.task_id,
-        name: task.task_display_name,
+        name: task.task_display_name ?? task.task_id,
         owner: task.owner,
-        operator: task.operator_name,
+        operator: normalizeOperator(task.operator_name),
         isMapped: task.is_mapped,
         upstreamTaskIds: result.tasks
           .filter((candidate) =>
@@ -336,7 +543,7 @@ export function createAirflowClient(
     },
     listDagRuns: async (dagId, signal): Promise<DagRun[]> => {
       const result = await request(
-        `dags/${encodeURIComponent(dagId)}/dagRuns?limit=100&offset=0&order_by=-run_after`,
+        `dags/${encodeURIComponent(dagId)}/dagRuns?limit=100&offset=0&order_by=${isAirflow2 ? "-execution_date" : "-run_after"}`,
         dagRunCollectionSchema,
         signal,
       );
@@ -355,6 +562,14 @@ export function createAirflowClient(
       dagRunId,
       signal,
     ): Promise<TaskInstance[]> => {
+      if (isAirflow2) {
+        const result = await request(
+          `dags/${encodeURIComponent(dagId)}/dagRuns/${encodeURIComponent(dagRunId)}/taskInstances?limit=100&offset=0`,
+          airflow2TaskInstanceCollectionSchema,
+          signal,
+        );
+        return result.task_instances.map(mapAirflow2TaskInstance);
+      }
       const result = await request(
         `dags/${encodeURIComponent(dagId)}/dagRuns/${encodeURIComponent(dagRunId)}/taskInstances?limit=100&offset=0&order_by=map_index`,
         taskInstanceCollectionSchema,
@@ -367,23 +582,23 @@ export function createAirflowClient(
       signal,
     ): Promise<TaskInstance> => {
       const mappedSegment = input.mapIndex >= 0 ? `/${input.mapIndex}` : "";
-      return mapTaskInstance(
-        await request(
-          `dags/${encodeURIComponent(input.dagId)}/dagRuns/${encodeURIComponent(input.dagRunId)}/taskInstances/${encodeURIComponent(input.taskId)}${mappedSegment}`,
-          taskInstanceSchema,
-          signal,
-        ),
-      );
+      const path = `dags/${encodeURIComponent(input.dagId)}/dagRuns/${encodeURIComponent(input.dagRunId)}/taskInstances/${encodeURIComponent(input.taskId)}${mappedSegment}`;
+      if (isAirflow2)
+        return mapAirflow2TaskInstance(
+          await request(path, airflow2TaskInstanceSchema, signal),
+        );
+      return mapTaskInstance(await request(path, taskInstanceSchema, signal));
     },
     getTaskLog: async (
       input: TaskInstanceRef & { tryNumber: number },
       signal,
     ): Promise<TaskLogEntry[]> => {
-      const result = await request(
-        `dags/${encodeURIComponent(input.dagId)}/dagRuns/${encodeURIComponent(input.dagRunId)}/taskInstances/${encodeURIComponent(input.taskId)}/logs/${input.tryNumber}?full_content=true&map_index=${input.mapIndex}`,
-        taskLogSchema,
-        signal,
-      );
+      const path = `dags/${encodeURIComponent(input.dagId)}/dagRuns/${encodeURIComponent(input.dagRunId)}/taskInstances/${encodeURIComponent(input.taskId)}/logs/${input.tryNumber}?full_content=true&map_index=${input.mapIndex}`;
+      if (isAirflow2) {
+        const result = await request(path, airflow2TaskLogSchema, signal);
+        return [{ timestamp: "", event: result.content }];
+      }
+      const result = await request(path, taskLogSchema, signal);
       return result.content.map((entry) => ({
         timestamp: entry.timestamp ?? "",
         event: entry.event,
@@ -397,26 +612,32 @@ export function createAirflowClient(
           signal,
           {
             method: "POST",
-            body: JSON.stringify({ logical_date: null, conf }),
+            body: JSON.stringify(
+              isAirflow2 ? { conf } : { logical_date: null, conf },
+            ),
           },
         ),
       ),
-    setDagPaused: async (dagId, isPaused, signal): Promise<DagSummary> =>
-      mapDag(
-        await request(
-          `dags/${encodeURIComponent(dagId)}?update_mask=is_paused`,
-          dagSchema,
-          signal,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ is_paused: isPaused }),
-          },
-        ),
-      ),
+    setDagPaused: async (dagId, isPaused, signal): Promise<DagSummary> => {
+      const path = `dags/${encodeURIComponent(dagId)}?update_mask=is_paused`;
+      const init = {
+        method: "PATCH",
+        body: JSON.stringify({ is_paused: isPaused }),
+      };
+      if (isAirflow2)
+        return mapAirflow2Dag(
+          await request(path, airflow2DagSchema, signal, init),
+        );
+      return mapDag(await request(path, dagSchema, signal, init));
+    },
     clearTaskInstance: async (input, onlyFailed, signal): Promise<void> => {
+      if (isAirflow2 && input.mapIndex >= 0)
+        throw new Error(
+          "Airflow 2 cannot clear one mapped task instance safely",
+        );
       await request(
         `dags/${encodeURIComponent(input.dagId)}/clearTaskInstances`,
-        taskInstanceCollectionSchema,
+        isAirflow2 ? clearedTaskCollectionSchema : taskInstanceCollectionSchema,
         signal,
         {
           method: "POST",
@@ -426,7 +647,7 @@ export function createAirflowClient(
             only_running: false,
             reset_dag_runs: true,
             task_ids: [
-              input.mapIndex >= 0
+              !isAirflow2 && input.mapIndex >= 0
                 ? [input.taskId, input.mapIndex]
                 : input.taskId,
             ],
@@ -440,6 +661,14 @@ export function createAirflowClient(
       );
     },
     listAssets: async (signal): Promise<Asset[]> => {
+      if (isAirflow2) {
+        const result = await request(
+          "datasets?limit=100&offset=0&order_by=id",
+          datasetCollectionSchema,
+          signal,
+        );
+        return result.datasets.map(mapDataset);
+      }
       const result = await request(
         "assets?limit=100&offset=0&order_by=id",
         assetCollectionSchema,
@@ -447,9 +676,36 @@ export function createAirflowClient(
       );
       return result.assets.map(mapAsset);
     },
-    getAsset: async (assetId, signal): Promise<Asset> =>
-      mapAsset(await request(`assets/${assetId}`, assetSchema, signal)),
+    getAsset: async (assetId, signal): Promise<Asset> => {
+      if (isAirflow2) {
+        const result = await request(
+          "datasets?limit=100&offset=0&order_by=id",
+          datasetCollectionSchema,
+          signal,
+        );
+        const dataset = result.datasets.find((item) => item.id === assetId);
+        if (!dataset) throw new Error(`Airflow dataset ${assetId} not found`);
+        return mapDataset(dataset);
+      }
+      return mapAsset(await request(`assets/${assetId}`, assetSchema, signal));
+    },
     listAssetEvents: async (assetId, signal): Promise<AssetEvent[]> => {
+      if (isAirflow2) {
+        const result = await request(
+          `datasets/events?limit=100&offset=0&order_by=-timestamp&dataset_id=${assetId}`,
+          datasetEventCollectionSchema,
+          signal,
+        );
+        return result.dataset_events.map((event) => ({
+          eventId: event.id ?? event.dataset_id,
+          assetId: event.dataset_id,
+          timestamp: event.timestamp,
+          sourceDagId: event.source_dag_id ?? "",
+          sourceTaskId: event.source_task_id ?? "",
+          sourceRunId: event.source_run_id ?? "",
+          sourceMapIndex: event.source_map_index ?? null,
+        }));
+      }
       const result = await request(
         `assets/events?limit=100&offset=0&order_by=-timestamp&asset_id=${assetId}`,
         assetEventCollectionSchema,

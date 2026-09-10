@@ -5,8 +5,22 @@ export const airflowConnectionSchema = z.object({
   token: z.string().min(1),
 });
 
-export type AirflowHttpConfig = z.output<typeof airflowConnectionSchema>;
-export type AirflowConfig = { method: "airflow" } & AirflowHttpConfig;
+export const airflow2ConnectionSchema = z.object({
+  baseUrl: z.string().url(),
+  username: z.string().min(1),
+  password: z.string().min(1),
+});
+
+type Airflow3HttpConfig = z.output<typeof airflowConnectionSchema> & {
+  apiVersion?: "v2";
+};
+type Airflow2HttpConfig = z.output<typeof airflow2ConnectionSchema> & {
+  apiVersion: "v1";
+};
+export type AirflowHttpConfig = Airflow3HttpConfig | Airflow2HttpConfig;
+export type AirflowConfig =
+  | ({ method: "airflow" } & Airflow3HttpConfig)
+  | ({ method: "airflow-2" } & Omit<Airflow2HttpConfig, "apiVersion">);
 
 export interface AirflowVersion {
   version: string;

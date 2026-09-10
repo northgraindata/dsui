@@ -6,8 +6,9 @@ Let users browse Airflow assets, open one asset, and inspect its recent events.
 
 ## Tech Stack
 
-TypeScript SDK resources/pages over `GET /api/v2/assets`,
-`/api/v2/assets/{asset_id}`, and `/api/v2/assets/events`.
+TypeScript SDK resources/pages over Airflow 3's `GET /api/v2/assets`,
+`/api/v2/assets/{asset_id}`, and `/api/v2/assets/events`, or Airflow 2's
+`GET /api/v1/datasets` and `/api/v1/datasets/events`.
 
 ## Commands
 
@@ -49,8 +50,9 @@ encoded row links, malformed provider failures, and empty collections.
 - `/assets` lists assets and links to `/assets/:assetId`.
 - Asset details render provider metadata and recent events.
 - Empty collections remain explicit successful empty arrays.
+- Airflow 2 datasets normalize into the asset model; dataset URIs supply the
+  display name and the selected dataset is resolved from the bounded list.
 
 ## Open Questions
 
 None. Asset mutations are outside the requested scope.
-

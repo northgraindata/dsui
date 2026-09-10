@@ -13,6 +13,7 @@ import {
   dagRunDetails,
   dagRuns,
   taskInstanceDetails,
+  taskInstanceGraph,
   taskInstances,
   taskLog,
 } from "../src/resources/runs.js";
@@ -24,11 +25,16 @@ const CONFIG = {
   token: "test-token",
 } as const;
 
+function childNodes(
+  value: ComponentNode | readonly ComponentNode[],
+): ComponentNode[] {
+  return "kind" in value ? [value] : [...value];
+}
+
 function nodes(scope: {
   render(): ComponentNode | readonly ComponentNode[];
 }): ComponentNode[] {
-  const rendered = scope.render();
-  return "kind" in rendered ? [rendered] : [...rendered];
+  return childNodes(scope.render());
 }
 
 test("airflow adapter registers every requested capability", () => {
@@ -41,6 +47,7 @@ test("airflow adapter registers every requested capability", () => {
     "dag-runs",
     "dag-run-details",
     "task-instances",
+    "task-instance-graph",
     "task-instance-details",
     "task-log",
     "assets",
@@ -76,11 +83,26 @@ test("DAG pages bind list, details, and dependency graph resources", async () =>
       expect(list.data.map((dag) => dag.dagId)).toContain("warehouse_daily");
 
     const listScope = instance.createPageScope("/dags");
-    const listTable = nodes(listScope).find((node) => node.kind === "table");
+    const listNodes = nodes(listScope);
+    expect(serializeNodes(listNodes)[0]).toMatchObject({
+      kind: "page-header",
+      props: {
+        title: "DAGs",
+        description: "Monitor schedules and start or pause workflows.",
+      },
+    });
+    const listTable = listNodes.find((node) => node.kind === "table");
     expect(listTable?.kind === "table" && listTable.props.rowLink).toEqual({
       path: "/dags/:dagId",
       params: { dagId: "dagId" },
     });
+    expect(listTable?.kind === "table" && listTable.props.columns).toEqual([
+      { id: "name", label: "DAG" },
+      { id: "schedule", label: "Schedule" },
+      { id: "owners", label: "Owners" },
+      { id: "isPaused", label: "Paused" },
+      { id: "lastParsedTime", label: "Last parsed" },
+    ]);
     listScope.dispose();
 
     const detailScope = instance.createPageScope("/dags/warehouse_daily");
@@ -112,9 +134,15 @@ test("DAG pages bind list, details, and dependency graph resources", async () =>
       kind: "button",
       props: {
         label: "Trigger",
+        icon: "play",
+        variant: "primary",
         action: {
           actionId: "trigger-dag",
           input: { dagId: "warehouse_daily", conf: {} },
+        },
+        successLink: {
+          path: "/dags/:dagId/runs/:dagRunId",
+          params: { dagId: "dagId", dagRunId: "dagRunId" },
         },
       },
     });
@@ -162,6 +190,25 @@ test("run pages preserve DAG run, mapped task, and log try identity", async () =
       (candidate) => candidate.taskId === "load",
     );
     if (!task) throw new Error("expected load task");
+    const graphResult = await instance.executeResource(
+      taskInstanceGraph(runInput),
+    );
+    if (graphResult.status !== "success") throw new Error("expected graph");
+    expect(
+      graphResult.data.find((candidate) => candidate.taskId === "load"),
+    ).toMatchObject({
+      graphId: "load",
+      upstreamGraphIds: ["extract"],
+      state: "failed",
+    });
+    expect(
+      graphResult.data
+        .filter((candidate) => candidate.taskId === "stage_events")
+        .map((candidate) => [candidate.graphId, candidate.state]),
+    ).toEqual([
+      ["stage_events[0]", "success"],
+      ["stage_events[1]", "success"],
+    ]);
     const taskInput = {
       ...runInput,
       taskId: task.taskId,
@@ -179,7 +226,45 @@ test("run pages preserve DAG run, mapped task, and log try identity", async () =
     const runScope = instance.createPageScope(
       `/dags/warehouse_daily/runs/${encodeURIComponent(runId)}`,
     );
-    const runTable = nodes(runScope).find((node) => node.kind === "table");
+    const runTabs = nodes(runScope).find((node) => node.kind === "tabs");
+    expect(
+      runTabs?.kind === "tabs" && runTabs.props.items.map((item) => item.label),
+    ).toEqual(["Graph", "Details", "Tasks"]);
+    expect(
+      runTabs?.kind === "tabs" &&
+        serializeNodes(runTabs.props.items[0]?.content ?? []),
+    ).toEqual([
+      {
+        kind: "dependency-graph",
+        props: {
+          source: {
+            resourceId: "task-instance-graph",
+            input: runInput,
+            refresh: { kind: "poll", intervalMs: 2000 },
+          },
+          idField: "graphId",
+          dependsOnField: "upstreamGraphIds",
+          labelField: "name",
+          detailField: "operator",
+          stateField: "state",
+          rowLink: {
+            path: `/dags/warehouse_daily/runs/${encodeURIComponent(runId)}/tasks/:taskId/:mapIndex/:tryNumber`,
+            params: {
+              taskId: "taskId",
+              mapIndex: "mapIndex",
+              tryNumber: "tryNumber",
+            },
+          },
+        },
+      },
+    ]);
+    const taskTab =
+      runTabs?.kind === "tabs"
+        ? runTabs.props.items.find((item) => item.label === "Tasks")
+        : undefined;
+    const runTable = taskTab
+      ? childNodes(taskTab.content).find((node) => node.kind === "table")
+      : undefined;
     expect(runTable?.kind === "table" && runTable.props.rowLink).toEqual({
       path: `/dags/warehouse_daily/runs/${encodeURIComponent(runId)}/tasks/:taskId/:mapIndex/:tryNumber`,
       params: {
@@ -188,6 +273,13 @@ test("run pages preserve DAG run, mapped task, and log try identity", async () =
         tryNumber: "tryNumber",
       },
     });
+    expect(runTable?.kind === "table" && runTable.props.columns).toEqual([
+      { id: "name", label: "Task" },
+      { id: "state", label: "State" },
+      { id: "tryNumber", label: "Try" },
+      { id: "duration", label: "Duration (s)" },
+      { id: "operator", label: "Operator" },
+    ]);
     runScope.dispose();
   } finally {
     await instance.dispose();
@@ -243,8 +335,16 @@ test("DAG actions mutate isolated state and expose row controls", async () => {
     const table = nodes(listScope).find((node) => node.kind === "table");
     expect(
       table?.kind === "table" &&
-        table.props.rowActions?.map((action) => action.label),
-    ).toEqual(["Trigger", "Pause", "Unpause"]);
+        table.props.rowActions?.map((action) => [
+          action.label,
+          action.icon,
+          action.successLink?.path,
+        ]),
+    ).toEqual([
+      ["Trigger", "play", "/dags/:dagId/runs/:dagRunId"],
+      ["Pause", "pause", undefined],
+      ["Unpause", "resume", undefined],
+    ]);
     listScope.dispose();
   } finally {
     await first.dispose();
@@ -296,11 +396,21 @@ test("retry and clear only the selected task instance", async () => {
     const runScope = instance.createPageScope(
       "/dags/warehouse_daily/runs/scheduled__2026-09-09T04%3A00%3A00Z",
     );
-    const table = nodes(runScope).find((node) => node.kind === "table");
+    const tabs = nodes(runScope).find((node) => node.kind === "tabs");
+    const taskTab =
+      tabs?.kind === "tabs"
+        ? tabs.props.items.find((item) => item.label === "Tasks")
+        : undefined;
+    const table = taskTab
+      ? childNodes(taskTab.content).find((node) => node.kind === "table")
+      : undefined;
     expect(
       table?.kind === "table" &&
-        table.props.rowActions?.map((action) => action.label),
-    ).toEqual(["Retry", "Clear"]);
+        table.props.rowActions?.map((action) => [action.label, action.icon]),
+    ).toEqual([
+      ["Retry", "retry"],
+      ["Clear", "clear"],
+    ]);
     runScope.dispose();
   } finally {
     await instance.dispose();
@@ -325,11 +435,24 @@ test("asset pages bind list, details, and recent event resources", async () => {
     ).toMatchObject({ status: "success" });
 
     const listScope = instance.createPageScope("/assets");
-    const table = nodes(listScope).find((node) => node.kind === "table");
+    const listNodes = nodes(listScope);
+    expect(serializeNodes(listNodes)[0]).toMatchObject({
+      kind: "page-header",
+      props: {
+        description: "Browse Airflow 3 assets or Airflow 2 datasets.",
+      },
+    });
+    const table = listNodes.find((node) => node.kind === "table");
     expect(table?.kind === "table" && table.props.rowLink).toEqual({
       path: "/assets/:assetId",
       params: { assetId: "assetId" },
     });
+    expect(table?.kind === "table" && table.props.columns).toEqual([
+      { id: "name", label: "Asset" },
+      { id: "uri", label: "URI" },
+      { id: "group", label: "Group" },
+      { id: "updatedAt", label: "Updated" },
+    ]);
     listScope.dispose();
 
     const detailScope = instance.createPageScope("/assets/7");

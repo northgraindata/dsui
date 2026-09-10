@@ -6,6 +6,7 @@ import {
   type AirflowClient,
   type AirflowConfig,
   type AirflowHttpConfig,
+  airflow2ConnectionSchema,
   airflowConnectionSchema,
   createContext,
 } from "./context.js";
@@ -18,6 +19,7 @@ import {
   dagRunDetails,
   dagRuns,
   taskInstanceDetails,
+  taskInstanceGraph,
   taskInstances,
   taskLog,
 } from "./resources/runs.js";
@@ -43,9 +45,25 @@ export function createAirflowAdapter(
           "Enter the Airflow deployment URL and a JWT access token from your auth manager's /auth/token endpoint.",
         schema: airflowConnectionSchema,
       },
+      "airflow-2": {
+        label: "Airflow 2.10",
+        description:
+          "Enter the Airflow deployment URL and Basic-auth username and password configured for the stable REST API.",
+        schema: airflow2ConnectionSchema,
+      },
     },
-    context: (config: AirflowConfig) =>
-      createContext(createClient(config), config),
+    context: (config: AirflowConfig) => {
+      const clientConfig: AirflowHttpConfig =
+        config.method === "airflow-2"
+          ? {
+              apiVersion: "v1",
+              baseUrl: config.baseUrl,
+              username: config.username,
+              password: config.password,
+            }
+          : config;
+      return createContext(createClient(clientConfig), config);
+    },
     disposeContext: (ctx) => ctx.client.dispose(),
     resources: [
       dags,
@@ -54,6 +72,7 @@ export function createAirflowAdapter(
       dagRuns,
       dagRunDetails,
       taskInstances,
+      taskInstanceGraph,
       taskInstanceDetails,
       taskLog,
       assets,
