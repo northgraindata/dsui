@@ -1,6 +1,7 @@
-import { Link } from "@tanstack/react-router";
+import { Button } from "@northgraindata/dsui-ui";
+import { Link, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import type { Service } from "../api";
+import { deleteService, type Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
@@ -39,6 +40,7 @@ export function AdapterWorkspace({
   path?: string;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const pages = navigablePagePaths(paths);
   const query = path === "/query";
   const active = (item: string) =>
@@ -55,6 +57,14 @@ export function AdapterWorkspace({
       {pageLabel(item)}
     </Link>
   );
+
+  const handleRemove = async () => {
+    if (confirm(`Are you sure you want to remove ${service.name}?`)) {
+      await deleteService(service.id);
+      router.navigate({ to: "/" });
+    }
+  };
+
   return (
     <div className="adapter-layout">
       <aside className="adapter-sidebar">
@@ -105,7 +115,7 @@ export function AdapterWorkspace({
         </Link>
       </aside>
       <div className="adapter-main">
-        <header className="adapter-heading">
+        <header className="adapter-heading flex items-center justify-between">
           <div className="adapter-heading-identity">
             <ServiceMark
               adapter={service.adapter}
@@ -121,6 +131,9 @@ export function AdapterWorkspace({
               </p>
             </div>
           </div>
+          <Button variant="danger" onClick={handleRemove}>
+            Remove connection
+          </Button>
         </header>
         {children}
       </div>
