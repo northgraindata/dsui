@@ -1,4 +1,8 @@
-export { DeclarativePageRenderer } from "./DeclarativePageRenderer";
+export { CustomView } from "./components/custom";
+export { PageHeaderView } from "./components/page-header";
+export { ResourceTreeView } from "./components/resource-tree";
+export { DeclarativePageRenderer } from "./declarative-page-renderer";
+export { EntityCatalogView, EntityDetailView } from "./EntityViews";
 export {
   ActionListView,
   CardListView,
@@ -7,5 +11,11 @@ export {
   SectionView,
   StatGridView,
 } from "./OverviewViews";
-export { ResourceTreeView } from "./ResourceTree";
+export {
+  clearViews,
+  type RegistryViewProps,
+  registerLazyView,
+  registerView,
+  resolveView,
+} from "./registry";
 export type { DeclarativePageRendererProps, RendererClient } from "./types";

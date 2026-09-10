@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { HighlightedSqlInput } from "./HighlightedSqlInput";
+import { HighlightedSqlInput } from "./highlighted-sql-input";
 
 export function SqlEditor({
   value,

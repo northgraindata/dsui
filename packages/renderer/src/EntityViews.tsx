@@ -5,6 +5,7 @@ import {
 } from "@northgraindata/dsui-core";
 import { Button } from "@northgraindata/dsui-ui";
 import { type KeyboardEvent, useId, useState } from "react";
+import { WorkbenchIcon } from "./components/icons";
 import {
   Badge,
   EntityActionButton,
@@ -16,7 +17,6 @@ import {
 } from "./EntityPrimitives";
 import { filterEntities, useEntityResource } from "./entity-hooks";
 import type { RendererClient } from "./types";
-import { WorkbenchIcon } from "./WorkbenchIcon";
 
 function moveTab(
   event: KeyboardEvent<HTMLButtonElement>,

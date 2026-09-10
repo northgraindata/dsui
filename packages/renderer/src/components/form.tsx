@@ -1,16 +1,9 @@
-import type { PageNode } from "@northgraindata/dsui-core";
 import { Button, Field, Input, Surface } from "@northgraindata/dsui-ui";
 import { type FormEvent, useState } from "react";
-import type { RendererClient } from "./types";
+import { type RegistryViewProps, registerView } from "../registry";
 
-export function ActionForm({
-  client,
-  node,
-}: {
-  client: RendererClient;
-  node: Extract<PageNode, { kind: "form" }>;
-}) {
-  const fields = node.props.fields.filter(
+export function ActionForm({ client, node }: RegistryViewProps) {
+  const fields = (node.kind === "form" ? node.props.fields : []).filter(
     (field) => field.kind === "text-input" || field.kind === "select",
   );
   const [values, setValues] = useState<Record<string, string>>(() =>
@@ -22,6 +15,7 @@ export function ActionForm({
     ),
   );
   const [message, setMessage] = useState<string>();
+  if (node.kind !== "form") return null;
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = await client.executeAction({
@@ -89,3 +83,5 @@ export function ActionForm({
     </Surface>
   );
 }
+
+registerView("form", ActionForm);

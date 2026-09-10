@@ -7,9 +7,9 @@ import type {
 } from "@northgraindata/dsui-core";
 import { Button, Surface } from "@northgraindata/dsui-ui";
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
-import { resolveLink } from "./ResourceViews";
+import { WorkbenchIcon } from "./components/icons";
+import { resolveLink } from "./components/table";
 import type { RendererClient } from "./types";
-import { WorkbenchIcon } from "./WorkbenchIcon";
 
 type RenderNode = (client: RendererClient, node: PageNode) => ReactNode;
 

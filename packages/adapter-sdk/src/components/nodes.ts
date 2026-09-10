@@ -635,6 +635,29 @@ export interface ActionListNode {
 }
 
 /**
+ * Browser component reference props. The component is resolved by id
+ * from the renderer's registry and lazy-loaded; `props` must be plain
+ * JSON-serializable data.
+ */
+export interface CustomProps {
+  /** Registry id, e.g. `"duckdb/table-card"`. */
+  component: string;
+  /** JSON-serializable props for the component. */
+  props?: Record<string, unknown>;
+}
+
+/**
+ * Browser component reference node (`"custom"`). Produced by
+ * `defineComponent` in `path` mode; never hand-built.
+ */
+export interface CustomNode {
+  /** Discriminant: always `"custom"`. */
+  readonly kind: "custom";
+  /** Component reference content. */
+  readonly props: CustomProps;
+}
+
+/**
  * Any UI node a page render can return. Renderers switch exhaustively
  * over `kind`; adding a kind without renderer support is a compile error
  * on the renderer side.
@@ -659,7 +682,8 @@ export type ComponentNode =
   | CardListNode
   | ActionListNode
   | ColumnsNode
-  | MeterNode;
+  | MeterNode
+  | CustomNode;
 
 /**
  * Page header factory.

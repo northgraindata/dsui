@@ -1,12 +1,8 @@
-import type { PageNode, TableRowAction } from "@northgraindata/dsui-core";
-import {
-  Button,
-  DataTable,
-  KeyValueList,
-  Surface,
-} from "@northgraindata/dsui-ui";
+import type { TableRowAction } from "@northgraindata/dsui-core";
+import { Button, DataTable, Surface } from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useState } from "react";
-import type { RendererClient } from "./types";
+import { type RegistryViewProps, registerView } from "../registry";
+import type { RendererClient } from "../types";
 
 /** Fills :param placeholders from row fields; null when a field is missing. */
 export function resolveLink(
@@ -86,22 +82,19 @@ function RowActionButton({
   );
 }
 
-export function ResourceTable({
-  client,
-  node,
-}: {
-  client: RendererClient;
-  node: Extract<PageNode, { kind: "table" }>;
-}) {
-  const [data, setData] = useState<unknown>(node.props.data);
+export function TableView({ client, node }: RegistryViewProps) {
+  const source = node.kind === "table" ? node.props.source : undefined;
+  const [data, setData] = useState<unknown>(
+    node.kind === "table" ? node.props.data : undefined,
+  );
   const [error, setError] = useState<string>();
   const [_refresh, setRefresh] = useState(0);
   const reload = useCallback(() => setRefresh((count) => count + 1), []);
   useEffect(() => {
-    if (!node.props.source) return;
+    if (!source) return;
     let active = true;
     client
-      .executeResource(node.props.source)
+      .executeResource(source)
       .then((result) => active && setData(result))
       .catch(
         (cause) =>
@@ -113,7 +106,8 @@ export function ResourceTable({
     return () => {
       active = false;
     };
-  }, [client, node.props.source]);
+  }, [client, source]);
+  if (node.kind !== "table") return null;
   if (error)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
@@ -177,37 +171,4 @@ export function ResourceTable({
   );
 }
 
-export function ResourceKeyValue({
-  client,
-  node,
-}: {
-  client: RendererClient;
-  node: Extract<PageNode, { kind: "key-value" }>;
-}) {
-  const [data, setData] = useState<Record<string, unknown> | undefined>(
-    node.props.data,
-  );
-  useEffect(() => {
-    if (!node.props.source) return;
-    let active = true;
-    client.executeResource(node.props.source).then((result) => {
-      if (
-        active &&
-        result &&
-        typeof result === "object" &&
-        !Array.isArray(result)
-      )
-        setData(result as Record<string, unknown>);
-    });
-    return () => {
-      active = false;
-    };
-  }, [client, node.props.source]);
-  return data ? (
-    <KeyValueList title={node.props.title} values={data} />
-  ) : (
-    <Surface className="p-4 text-[12px] text-secondary">
-      Loading details…
-    </Surface>
-  );
-}
+registerView("table", TableView);

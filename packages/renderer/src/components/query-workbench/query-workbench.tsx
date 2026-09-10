@@ -1,11 +1,10 @@
-import type { PageNode } from "@northgraindata/dsui-core";
 import { Button } from "@northgraindata/dsui-ui";
 import { useCallback, useRef, useState } from "react";
-import { QueryResults } from "./QueryResults";
+import { type RegistryViewProps, registerView } from "../../registry";
+import { WorkbenchIcon } from "../icons";
 import { parseQueryResult, type QueryResultView } from "./query-result";
-import { SqlEditor } from "./SqlEditor";
-import type { RendererClient } from "./types";
-import { WorkbenchIcon } from "./WorkbenchIcon";
+import { QueryResults } from "./results";
+import { SqlEditor } from "./sql-editor";
 
 export function selectFromRelation(labels: string[]): string {
   return (
@@ -21,17 +20,15 @@ type QueryTab = {
   error?: string;
   running: boolean;
 };
-export function QueryWorkbench({
-  client,
-  node,
-}: {
-  client: RendererClient;
-  node: Extract<PageNode, { kind: "query-workbench" }>;
-}) {
+export function QueryWorkbench({ client, node }: RegistryViewProps) {
+  const initialSql =
+    node.kind === "query-workbench" ? (node.props.value ?? "") : "";
+  const action =
+    node.kind === "query-workbench" ? node.props.action : undefined;
   const sequence = useRef(1);
   const inFlight = useRef(new Set<number>());
   const [tabs, setTabs] = useState<QueryTab[]>([
-    { id: 1, sql: node.props.value ?? "", running: false },
+    { id: 1, sql: initialSql, running: false },
   ]);
   const [activeId, setActiveId] = useState(1);
   const tab = tabs.find((item) => item.id === activeId) ?? tabs[0];
@@ -45,14 +42,14 @@ export function QueryWorkbench({
     [activeId, updateTab],
   );
   const run = useCallback(async () => {
-    if (!tab?.sql.trim() || inFlight.current.has(tab.id)) return;
+    if (!action || !tab?.sql.trim() || inFlight.current.has(tab.id)) return;
     const id = tab.id;
     inFlight.current.add(id);
     updateTab(id, { running: true, error: undefined, result: undefined });
     const started = performance.now();
     try {
       const response = await client.executeAction({
-        ...node.props.action,
+        ...action,
         input: { sql: tab.sql },
       });
       if (response.status !== "success")
@@ -72,7 +69,8 @@ export function QueryWorkbench({
       inFlight.current.delete(id);
       updateTab(id, { running: false });
     }
-  }, [client, node.props.action, tab, updateTab]);
+  }, [client, action, tab, updateTab]);
+  if (node.kind !== "query-workbench") return null;
   if (!tab) return null;
   return (
     <section className="query-workspace" aria-label="Query workspace">
@@ -169,3 +167,5 @@ export function QueryWorkbench({
     </section>
   );
 }
+
+registerView("query-workbench", QueryWorkbench);

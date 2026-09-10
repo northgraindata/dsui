@@ -14,8 +14,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { WorkbenchIcon } from "./components/icons";
 import type { RendererClient } from "./types";
-import { WorkbenchIcon } from "./WorkbenchIcon";
 
 export function EntityIcon({
   name = "layers",

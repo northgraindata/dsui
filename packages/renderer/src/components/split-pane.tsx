@@ -1,18 +1,9 @@
-import type { PageNode } from "@northgraindata/dsui-core";
-import type { ReactNode } from "react";
 import { useState } from "react";
-import type { RendererClient } from "./types";
+import { type RegistryViewProps, registerView } from "../registry";
 
-export function SplitPaneView({
-  client,
-  node,
-  renderNode,
-}: {
-  client: RendererClient;
-  node: Extract<PageNode, { kind: "split-pane" }>;
-  renderNode(client: RendererClient, node: PageNode): ReactNode;
-}) {
+export function SplitPaneView({ client, node, renderNode }: RegistryViewProps) {
   const [open, setOpen] = useState(true);
+  if (node.kind !== "split-pane") return null;
   return (
     <section
       className={`explorer-layout ${node.props.inspector?.length ? "explorer-layout--inspector" : ""}`}
@@ -44,3 +35,5 @@ export function SplitPaneView({
     </section>
   );
 }
+
+registerView("split-pane", SplitPaneView);

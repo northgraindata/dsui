@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { PageNodeRenderer } from "./PageNodeRenderer";
+import { PageNodeRenderer } from "./page-node-renderer";
 import type { DeclarativePageRendererProps } from "./types";
 
 export function DeclarativePageRenderer({

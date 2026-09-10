@@ -269,6 +269,14 @@ export function serializeNode(node: ComponentNode): PageNode {
       throw new UnserializablePageError(
         "Code editor nodes require a browser-state protocol",
       );
+    case "custom":
+      return {
+        kind: node.kind,
+        props: {
+          component: node.props.component,
+          ...(node.props.props ? { props: { ...node.props.props } } : {}),
+        },
+      };
     case "stat-grid":
       return {
         kind: node.kind,
