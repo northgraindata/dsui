@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { Service } from "../api";
-import { Icon } from "./Icon";
-import { ServiceMark } from "./ServiceMark";
+import { Icon } from "./icon";
+import { ServiceMark } from "./service-mark";
 
 export function HomeDashboard({
   services,

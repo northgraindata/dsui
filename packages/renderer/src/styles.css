@@ -1,3 +1,5 @@
+@source "./";
+
 .query-workspace {
   display: grid;
   gap: 22px;

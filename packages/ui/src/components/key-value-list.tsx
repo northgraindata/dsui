@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Surface } from "./Surface";
+import { Surface } from "./surface";
 
 export function KeyValueList({
   title,

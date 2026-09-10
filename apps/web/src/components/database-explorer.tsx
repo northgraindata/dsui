@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { runOperation, type Service } from "../api";
 import { rowsToRecords } from "../result-data";
 import type { ServiceView } from "../workspace-navigation";
-import { Icon } from "./Icon";
-import { TableWorkspace } from "./TableWorkspace";
+import { Icon } from "./icon";
+import { TableWorkspace } from "./table-workspace";
 
 type ExplorerConfig = NonNullable<ServiceView["databaseExplorer"]>;
 type Selection = { database: string; objectName: string; tabId: string };
