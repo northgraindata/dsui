@@ -78,6 +78,48 @@ for fixed content. External data always goes through `source`
 bindings, because only bindings get execution, refresh, and
 invalidation.
 
+## Compose overview pages
+
+`Section` groups one panel: a heading, an optional description and
+link, and nested content. `StatGrid` reads one record (like
+`KeyValue`) and renders value/label cards from its fields.
+`CardList` renders entity cards from card-shaped resource rows or a
+static `cards` array, and `ActionList` renders quick actions with
+display-only keyboard hints:
+
+```ts title="duckdb/pages/databases.ts"
+Section({
+  title: "Attached databases",
+  description: "Databases available in this instance.",
+  link: { label: "Attach", path: "/databases" },
+  content: CardList({ source: databases() }),
+});
+StatGrid({
+  source: overviewStats(),
+  items: [{ icon: "database", field: "size", label: "Database size" }],
+});
+ActionList({
+  items: [{ icon: "play", title: "New query", link: "/query", kbd: "⌘N" }],
+});
+```
+
+`PageHeader` also takes a status `badge`, a `meta` line, and header
+`actions`. `Button` accepts either an `action` binding or a page
+`link`; paths are absolute adapter routes in both cases. Pair panels
+side by side with `Columns` (weighted columns, collapsing on narrow
+screens). Fix a card grid to N columns with `CardList({ columns: 2 })`,
+and show byte breakdowns with `Meter`:
+
+```ts title="duckdb/pages/databases.ts"
+Columns({
+  columns: [
+    { weight: 2, content: Section({ title: "Attached", content: cards }) },
+    { weight: 1, content: Section({ title: "Quick", content: actions }) },
+  ],
+});
+Meter({ source: storageMeter() });
+```
+
 ## Collect input
 
 Text inputs, selects, and the code editor bind store state directly.
