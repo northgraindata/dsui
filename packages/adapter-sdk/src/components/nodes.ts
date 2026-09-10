@@ -640,8 +640,6 @@ export interface ActionListNode {
  * on the renderer side.
  */
 export type ComponentNode =
-  | import("./entities").EntityCatalogNode
-  | import("./entities").EntityDetailNode
   | PageHeaderNode
   | TableNode
   | ButtonNode

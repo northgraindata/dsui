@@ -267,21 +267,3 @@ export function validateManifest(
   return parsed;
 }
 
-export type {
-  CatalogFilter,
-  EntityAction,
-  EntityBadge,
-  EntityDetail as EntityDetailDocument,
-  EntityFact,
-  EntityItem,
-  EntityLink,
-  EntityPanel,
-  EntityTone,
-} from "@northgraindata/dsui-core";
-export {
-  EntityCatalog,
-  type EntityCatalogNode,
-  type EntityCatalogProps,
-  EntityDetail,
-  type EntityDetailNode,
-} from "./components/entities";

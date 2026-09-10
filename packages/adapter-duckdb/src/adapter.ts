@@ -5,7 +5,6 @@ import {
   installExtension,
   loadExtension,
   resetSetting,
-  restartExtension,
   setSetting,
 } from "./actions/config.js";
 import { cancelQuery, runQuery } from "./actions/run-query.js";
@@ -75,10 +74,6 @@ import {
   secrets,
   settings,
 } from "./resources/config.js";
-import {
-  extensionCatalog,
-  extensionProfileResource,
-} from "./resources/extensions";
 import { queryHistory } from "./resources/history.js";
 import {
   activityFiltersStore,
@@ -151,8 +146,6 @@ export function createDuckDbAdapter(
       extensions,
       extensionCards,
       extensionDetails,
-      extensionCatalog,
-      extensionProfileResource,
       settings,
       secrets,
       queryHistory,
@@ -173,7 +166,6 @@ export function createDuckDbAdapter(
       importData,
       installExtension,
       loadExtension,
-      restartExtension,
       setSetting,
       resetSetting,
       createSecret,

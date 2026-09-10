@@ -1,12 +1,5 @@
 export { defineComponent } from "./custom";
 export {
-  EntityCatalog,
-  type EntityCatalogNode,
-  type EntityCatalogProps,
-  EntityDetail,
-  type EntityDetailNode,
-} from "./entities";
-export {
   ActionList,
   type ActionListItem,
   type ActionListNode,

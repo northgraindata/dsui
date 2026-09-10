@@ -85,16 +85,6 @@ function nodes(
 /** Converts static SDK page nodes into the browser-safe page protocol. */
 export function serializeNode(node: ComponentNode): PageNode {
   switch (node.kind) {
-    case "entity-catalog":
-      return {
-        kind: node.kind,
-        props: { ...node.props, source: resource(node.props.source) },
-      };
-    case "entity-detail":
-      return {
-        kind: node.kind,
-        props: { source: resource(node.props.source) },
-      };
     case "page-header":
       return {
         kind: node.kind,
