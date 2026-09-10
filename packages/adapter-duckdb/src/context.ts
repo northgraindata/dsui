@@ -126,9 +126,37 @@ export interface QueryResult {
 export interface DuckDbOverview {
   version: string;
   databases: number;
+  schemas: number;
   tables: number;
   views: number;
   extensions: number;
+  threads: number;
+  totalSizeBytes: number;
+  totalSize: string;
+}
+
+export interface DatabaseStats {
+  database: string;
+  schemas: number;
+  tables: number;
+  views: number;
+}
+
+export interface TableRowCount {
+  database: string;
+  schema: string;
+  name: string;
+  rows: number;
+}
+
+export interface StorageSummary {
+  database: string;
+  path: string | null;
+  sizeBytes: number;
+  size: string;
+  freeBytes: number;
+  free: string;
+  diskBytes: number;
 }
 
 export interface TableInfo {
@@ -236,6 +264,16 @@ export interface DuckDbClient {
   interrupt(): void;
   // Catalog
   getOverview(): Promise<DuckDbOverview>;
+  databaseStats(): Promise<DatabaseStats[]>;
+  countRows(database: string, schema: string, table: string): Promise<number>;
+  /**
+   * Measured table allocation in bytes: distinct storage blocks referenced
+   * by persistent tables times the block size. An estimate — indexes,
+   * catalog metadata, WAL, and free pages are not attributed — never a
+   * replacement for the file size.
+   */
+  tableDataBytes(database?: string): Promise<number>;
+  storageSummary(database?: string): Promise<StorageSummary>;
   listDatabases(): Promise<DatabaseInfo[]>;
   getDatabase(database: string): Promise<DatabaseInfo | null>;
   databaseSize(database?: string): Promise<QueryResult>;
