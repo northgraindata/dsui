@@ -1,12 +1,12 @@
 import type {
-  PageNode,
   ResourceReference,
   ResourceTreeBranchDocument,
   TableRowLink,
 } from "@northgraindata/dsui-core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { RendererClient } from "./types";
-import { WorkbenchIcon } from "./WorkbenchIcon";
+import { type RegistryViewProps, registerView } from "../registry";
+import type { RendererClient } from "../types";
+import { WorkbenchIcon } from "./icons";
 
 export function resolveTreeTemplate(
   value: unknown,
@@ -265,29 +265,25 @@ export function ResourceTreeView({
   client,
   node,
   onLeafSelect,
-}: {
-  client: RendererClient;
-  node: Extract<PageNode, { kind: "resource-tree" }>;
-  onLeafSelect?(labels: string[]): void;
-}) {
+}: RegistryViewProps & { onLeafSelect?(labels: string[]): void }) {
+  const stateKey =
+    node.kind === "resource-tree" ? node.props.stateKey : undefined;
   const [search, setSearch] = useState("");
-  const [expanded, setExpandedState] = useState(() =>
-    readExpanded(node.props.stateKey),
-  );
+  const [expanded, setExpandedState] = useState(() => readExpanded(stateKey));
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (scrollRef.current)
-      scrollRef.current.scrollTop = readScroll(node.props.stateKey);
-  }, [node.props.stateKey]);
+    if (scrollRef.current) scrollRef.current.scrollTop = readScroll(stateKey);
+  }, [stateKey]);
+  const branch = useMemo(
+    () => (node.kind === "resource-tree" ? node.props.branch : undefined),
+    [node],
+  );
+  if (node.kind !== "resource-tree" || !branch) return null;
   const setExpanded = (next: Set<string>) => {
     setExpandedState(next);
-    if (node.props.stateKey && typeof sessionStorage !== "undefined")
-      sessionStorage.setItem(
-        `${node.props.stateKey}:expanded`,
-        JSON.stringify([...next]),
-      );
+    if (stateKey && typeof sessionStorage !== "undefined")
+      sessionStorage.setItem(`${stateKey}:expanded`, JSON.stringify([...next]));
   };
-  const branch = useMemo(() => node.props.branch, [node.props.branch]);
   return (
     <section
       className="resource-tree flex min-h-0 flex-col"
@@ -299,12 +295,12 @@ export function ResourceTreeView({
       <div className="border-b border-border p-2.5">
         <label
           className="sr-only"
-          htmlFor={`${node.props.stateKey ?? "resource-tree"}-search`}
+          htmlFor={`${stateKey ?? "resource-tree"}-search`}
         >
           Search data objects
         </label>
         <input
-          id={`${node.props.stateKey ?? "resource-tree"}-search`}
+          id={`${stateKey ?? "resource-tree"}-search`}
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -316,9 +312,9 @@ export function ResourceTreeView({
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-auto p-2"
         onScroll={(event) => {
-          if (node.props.stateKey && typeof sessionStorage !== "undefined")
+          if (stateKey && typeof sessionStorage !== "undefined")
             sessionStorage.setItem(
-              `${node.props.stateKey}:scroll`,
+              `${stateKey}:scroll`,
               String(event.currentTarget.scrollTop),
             );
         }}
@@ -339,3 +335,5 @@ export function ResourceTreeView({
     </section>
   );
 }
+
+registerView("resource-tree", ResourceTreeView);

@@ -117,6 +117,15 @@ export type MeterData = {
 
 export type PageNode =
   | {
+      kind: "custom";
+      props: {
+        /** Registry id, e.g. `"duckdb/table-card"`. */
+        component: string;
+        /** JSON-serializable props for the component. */
+        props?: Record<string, unknown>;
+      };
+    }
+  | {
       kind: "page-header";
       props: {
         title: string;

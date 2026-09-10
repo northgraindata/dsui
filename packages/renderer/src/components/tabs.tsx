@@ -1,16 +1,9 @@
-import type { PageNode } from "@northgraindata/dsui-core";
 import { useState } from "react";
-import { PageNodeRenderer } from "./PageNodeRenderer";
-import type { RendererClient } from "./types";
+import { type RegistryViewProps, registerView } from "../registry";
 
-export function Tabs({
-  client,
-  node,
-}: {
-  client: RendererClient;
-  node: Extract<PageNode, { kind: "tabs" }>;
-}) {
+export function Tabs({ client, node, renderNode }: RegistryViewProps) {
   const [selected, setSelected] = useState(0);
+  if (node.kind !== "tabs") return null;
   const item = node.props.items[selected];
   return (
     <div className="workspace-tabs">
@@ -29,14 +22,10 @@ export function Tabs({
         ))}
       </div>
       <div className="grid gap-4">
-        {item?.content.map((child) => (
-          <PageNodeRenderer
-            key={JSON.stringify(child)}
-            client={client}
-            node={child}
-          />
-        ))}
+        {item?.content.map((child) => renderNode(client, child))}
       </div>
     </div>
   );
 }
+
+registerView("tabs", Tabs);
