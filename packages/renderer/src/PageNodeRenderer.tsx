@@ -1,13 +1,75 @@
 import type { PageNode } from "@northgraindata/dsui-core";
 import { Button, Input } from "@northgraindata/dsui-ui";
+import { useState } from "react";
 import { ActionForm } from "./ActionForm";
+import { ActionIcon } from "./ActionIcon";
 import { DependencyGraphView } from "./DependencyGraphView";
 import { QueryWorkbench } from "./QueryWorkbench";
 import { ResourceTreeView } from "./ResourceTree";
-import { ResourceKeyValue, ResourceTable } from "./ResourceViews";
+import {
+  ResourceKeyValue,
+  ResourceTable,
+  resolveActionSuccessLink,
+} from "./ResourceViews";
 import { SplitPaneView } from "./SplitPane";
 import { Tabs } from "./Tabs";
 import type { RendererClient } from "./types";
+
+function PageActionButton({
+  client,
+  node,
+}: {
+  client: RendererClient;
+  node: Extract<PageNode, { kind: "button" }>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant={
+          node.props.variant === "primary" ? "default" : node.props.variant
+        }
+        disabled={busy}
+        aria-busy={busy}
+        title={error}
+        onClick={() => {
+          if (!node.props.action) return;
+          setBusy(true);
+          setError(undefined);
+          client
+            .executeAction(node.props.action)
+            .then((result) => {
+              if (result.status === "error")
+                setError(result.message ?? "Action failed");
+              else if (node.props.successLink) {
+                const destination = resolveActionSuccessLink(
+                  node.props.successLink,
+                  result.data,
+                );
+                if (destination) client.navigate(destination);
+                else setError("Action returned no navigation target");
+              }
+            })
+            .catch((cause) =>
+              setError(
+                cause instanceof Error ? cause.message : "Action failed",
+              ),
+            )
+            .finally(() => setBusy(false));
+        }}
+      >
+        {node.props.icon ? <ActionIcon name={node.props.icon} /> : null}
+        {busy ? `${node.props.label}…` : node.props.label}
+      </Button>
+      {error ? (
+        <span role="alert" className="text-[11px] text-unavailable">
+          {error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export function PageNodeRenderer({
   client,
@@ -55,18 +117,7 @@ export function PageNodeRenderer({
         />
       );
     case "button":
-      return (
-        <Button
-          variant={
-            node.props.variant === "primary" ? "default" : node.props.variant
-          }
-          onClick={() =>
-            node.props.action && client.executeAction(node.props.action)
-          }
-        >
-          {node.props.label}
-        </Button>
-      );
+      return <PageActionButton client={client} node={node} />;
     case "tabs":
       return <Tabs client={client} node={node} />;
     case "form":

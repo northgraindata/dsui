@@ -2,6 +2,7 @@ import type { PageNode, TableRowLink } from "@northgraindata/dsui-core";
 import { cn, Surface } from "@northgraindata/dsui-ui";
 import {
   Fragment,
+  memo,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -22,6 +23,7 @@ import {
   restingOffset,
 } from "./graph-layout";
 import { resolveLink } from "./ResourceViews";
+import { watchResource } from "./resource-refresh";
 import type { RendererClient } from "./types";
 
 const ZOOM_STEPS = [0.6, 0.75, 0.9, 1, 1.15, 1.35] as const;
@@ -251,7 +253,61 @@ function NodeInspector({
   );
 }
 
-function GraphNodeCard({
+function getTaskStateConfig(state: string | undefined) {
+  const s = state?.trim().toLowerCase();
+  switch (s) {
+    case "success":
+      return {
+        bg: "bg-healthy/15",
+        text: "text-healthy",
+        dot: "bg-healthy",
+        border: "border-healthy/30",
+        pulse: false,
+      };
+    case "failed":
+    case "upstream_failed":
+      return {
+        bg: "bg-unavailable/15",
+        text: "text-unavailable",
+        dot: "bg-unavailable",
+        border: "border-unavailable/30",
+        pulse: false,
+      };
+    case "running":
+    case "restarting":
+      return {
+        bg: "bg-accent/15",
+        text: "text-accent",
+        dot: "bg-accent",
+        border: "border-accent/40",
+        pulse: true,
+      };
+    case "queued":
+    case "scheduled":
+    case "deferred":
+    case "up_for_retry":
+    case "up_for_reschedule":
+      return {
+        bg: "bg-warning/15",
+        text: "text-warning",
+        dot: "bg-warning",
+        border: "border-warning/30",
+        pulse: false,
+      };
+    case "awaiting":
+    case "none":
+    default:
+      return {
+        bg: "bg-unknown/15",
+        text: "text-muted",
+        dot: "bg-unknown",
+        border: "border-unknown/30",
+        pulse: false,
+      };
+  }
+}
+
+const GraphNodeCard = memo(function GraphNodeCard({
   node,
   state,
   selected,
@@ -263,19 +319,24 @@ function GraphNodeCard({
   node: GraphLaidOutNode;
   state: "active" | "linked" | "idle" | "dimmed";
   selected: boolean;
-  onActivate: () => void;
-  onEnter: () => void;
+  onActivate: (id: string) => void;
+  onEnter: (id: string) => void;
   onLeave: () => void;
-  onFocus: () => void;
+  onFocus: (node: GraphLaidOutNode) => void;
 }) {
   const glyph = node.detail?.trim().charAt(0).toUpperCase();
+  const normalizedState = node.state?.trim().toLowerCase();
+  const stateConfig = getTaskStateConfig(node.state);
+  const isRunning =
+    normalizedState === "running" || normalizedState === "restarting";
+
   return (
     <button
       type="button"
-      onClick={onActivate}
-      onMouseEnter={onEnter}
+      onClick={() => onActivate(node.id)}
+      onMouseEnter={() => onEnter(node.id)}
       onMouseLeave={onLeave}
-      onFocus={onFocus}
+      onFocus={() => onFocus(node)}
       onBlur={onLeave}
       aria-pressed={selected}
       title={`${node.label} — show details`}
@@ -286,8 +347,9 @@ function GraphNodeCard({
         height: GRAPH_NODE_HEIGHT,
       }}
       className={cn(
-        "absolute flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-md border pr-3 pl-4 text-left transition-colors duration-150 focus-visible:outline focus-visible:outline-accent motion-reduce:transition-none",
+        "absolute flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-md border pr-3 pl-4 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-accent motion-reduce:transition-none",
         selected && "ring-1 ring-accent",
+        isRunning && "border-accent/50 shadow-[0_0_8px_rgba(107,138,255,0.15)]",
         state === "active"
           ? "border-accent bg-surface-hover shadow-[0_0_0_1px_var(--color-accent)]"
           : state === "linked"
@@ -303,14 +365,16 @@ function GraphNodeCard({
           "absolute inset-y-0 left-0 w-[3px] transition-colors",
           state === "active" || state === "linked"
             ? "bg-accent"
-            : "bg-border-strong",
+            : node.state
+              ? stateConfig.dot
+              : "bg-border-strong",
         )}
       />
       {glyph ? (
         <span
           aria-hidden="true"
           className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center border font-mono text-[11px] transition-colors",
+            "grid h-7 w-7 shrink-0 place-items-center rounded border font-mono text-[11px] transition-colors",
             state === "active" || state === "linked"
               ? "border-accent/50 text-accent"
               : "border-border text-muted",
@@ -319,19 +383,42 @@ function GraphNodeCard({
           {glyph}
         </span>
       ) : null}
-      <span className="grid min-w-0 gap-0.5">
+      <span className="grid min-w-0 flex-1 gap-0.5">
         <span className="truncate text-[12.5px] font-medium text-primary">
           {node.label}
         </span>
-        {node.detail ? (
-          <span className="truncate font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted">
-            {node.detail}
-          </span>
-        ) : null}
+        <span className="flex min-w-0 items-center gap-2">
+          {node.state ? (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[9px] lowercase leading-none",
+                stateConfig.bg,
+                stateConfig.text,
+                stateConfig.border,
+              )}
+            >
+              <i
+                aria-hidden="true"
+                className={cn(
+                  "size-1.5 rounded-full shrink-0",
+                  stateConfig.dot,
+                  stateConfig.pulse &&
+                    "animate-pulse motion-reduce:animate-none",
+                )}
+              />
+              {node.state.replaceAll("_", " ")}
+            </span>
+          ) : null}
+          {node.detail ? (
+            <span className="truncate font-mono text-[9px] uppercase tracking-[0.08em] text-muted">
+              {node.detail}
+            </span>
+          ) : null}
+        </span>
       </span>
     </button>
   );
-}
+});
 
 /**
  * Free-moving board: the canvas never scrolls, the graph is translated
@@ -467,32 +554,49 @@ function GraphBoard({
    * Pans a node into the free area of the canvas: there is no scroll
    * container to fall back on, and the inspector covers the right edge.
    */
-  const reveal = (node: GraphLaidOutNode, inspected: boolean) => {
-    if (!size) return;
-    const left = node.x * zoom;
-    const top = node.y * zoom;
-    const right = left + GRAPH_NODE_WIDTH * zoom;
-    const bottom = top + GRAPH_NODE_HEIGHT * zoom;
-    const edge =
-      size.width -
-      REVEAL_MARGIN -
-      (inspected ? Math.min(PANEL_WIDTH, size.width) : 0);
-    setOffset((current) => {
-      let { x, y } = current;
-      if (right + x > edge) x = edge - right;
-      if (left + x < REVEAL_MARGIN) x = REVEAL_MARGIN - left;
-      if (bottom + y > size.height - REVEAL_MARGIN)
-        y = size.height - REVEAL_MARGIN - bottom;
-      if (top + y < REVEAL_MARGIN) y = REVEAL_MARGIN - top;
-      return x === current.x && y === current.y ? current : { x, y };
-    });
-  };
+  const reveal = useCallback(
+    (node: GraphLaidOutNode, inspected: boolean) => {
+      if (!size) return;
+      const left = node.x * zoom;
+      const top = node.y * zoom;
+      const right = left + GRAPH_NODE_WIDTH * zoom;
+      const bottom = top + GRAPH_NODE_HEIGHT * zoom;
+      const edge =
+        size.width -
+        REVEAL_MARGIN -
+        (inspected ? Math.min(PANEL_WIDTH, size.width) : 0);
+      setOffset((current) => {
+        let { x, y } = current;
+        if (right + x > edge) x = edge - right;
+        if (left + x < REVEAL_MARGIN) x = REVEAL_MARGIN - left;
+        if (bottom + y > size.height - REVEAL_MARGIN)
+          y = size.height - REVEAL_MARGIN - bottom;
+        if (top + y < REVEAL_MARGIN) y = REVEAL_MARGIN - top;
+        return x === current.x && y === current.y ? current : { x, y };
+      });
+    },
+    [size, zoom],
+  );
 
-  const inspect = (id: string) => {
-    setSelectedId(id);
-    const target = layout.nodes.find((candidate) => candidate.id === id);
-    if (target) reveal(target, true);
-  };
+  const inspect = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      const target = layout.nodes.find((candidate) => candidate.id === id);
+      if (target) reveal(target, true);
+    },
+    [layout.nodes, reveal],
+  );
+
+  const handleActivate = useCallback((id: string) => inspect(id), [inspect]);
+  const handleEnter = useCallback((id: string) => setHovered(id), []);
+  const handleLeave = useCallback(() => setHovered(undefined), []);
+  const handleFocus = useCallback(
+    (node: GraphLaidOutNode) => {
+      setHovered(node.id);
+      reveal(node, !!selectedId);
+    },
+    [reveal, selectedId],
+  );
 
   const onPointerDown = (event: ReactPointerEvent) => {
     if (event.button !== 0) return;
@@ -526,13 +630,69 @@ function GraphBoard({
     return linked.has(id) ? ("linked" as const) : ("dimmed" as const);
   };
 
+  const stateSummary = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const node of layout.nodes) {
+      if (!node.state) continue;
+      const s = node.state.trim().toLowerCase();
+      counts.set(s, (counts.get(s) ?? 0) + 1);
+    }
+    const order = [
+      "running",
+      "success",
+      "failed",
+      "upstream_failed",
+      "queued",
+      "scheduled",
+      "awaiting",
+    ];
+    return Array.from(counts.entries()).sort(([a], [b]) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [layout.nodes]);
+
   return (
     <Surface className="overflow-hidden p-0">
-      <div className="flex items-center gap-3 border-b border-border bg-surface-raised px-4 py-2">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-raised px-4 py-2">
         <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
           {plural(layout.nodes.length, "task")} ·{" "}
           {plural(layout.edges.length, "dependency")}
         </span>
+        {stateSummary.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {stateSummary.map(([st, count]) => {
+              const cfg = getTaskStateConfig(st);
+              return (
+                <span
+                  key={st}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[9.5px] lowercase leading-none",
+                    cfg.bg,
+                    cfg.text,
+                    cfg.border,
+                  )}
+                >
+                  <i
+                    aria-hidden="true"
+                    className={cn(
+                      "size-1.5 rounded-full shrink-0",
+                      cfg.dot,
+                      cfg.pulse && "animate-pulse motion-reduce:animate-none",
+                    )}
+                  />
+                  <span>
+                    {count} {st.replaceAll("_", " ")}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
         <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted/70">
           drag to move
         </span>
@@ -646,13 +806,10 @@ function GraphBoard({
               node={node}
               state={stateOf(node.id)}
               selected={node.id === selectedId}
-              onActivate={() => inspect(node.id)}
-              onEnter={() => setHovered(node.id)}
-              onLeave={() => setHovered(undefined)}
-              onFocus={() => {
-                setHovered(node.id);
-                reveal(node, !!selectedId);
-              }}
+              onActivate={handleActivate}
+              onEnter={handleEnter}
+              onLeave={handleLeave}
+              onFocus={handleFocus}
             />
           ))}
         </div>
@@ -692,22 +849,93 @@ export function DependencyGraphView({
 }) {
   const [data, setData] = useState<unknown>(node.props.data);
   const [error, setError] = useState<string>();
+  const cachedLayoutRef = useRef<{
+    topologyKey: string;
+    baseLayout: GraphLayout;
+  } | null>(null);
+
   useEffect(() => {
     if (!node.props.source) return;
-    let running = true;
-    client
-      .executeResource(node.props.source)
-      .then((result) => running && setData(result))
-      .catch(
-        (cause) =>
-          running &&
-          setError(cause instanceof Error ? cause.message : "Could not load"),
-      );
-    return () => {
-      running = false;
-    };
+    return watchResource(
+      node.props.source,
+      (reference) => client.executeResource(reference),
+      (result) => {
+        setData(result);
+        setError(undefined);
+      },
+      (cause) =>
+        setError(cause instanceof Error ? cause.message : "Could not load"),
+    );
   }, [client, node.props.source]);
-  if (error)
+
+  const { parsed, rows } = useMemo(() => {
+    const source = Array.isArray(data)
+      ? data.filter(
+          (row): row is Record<string, unknown> =>
+            !!row && typeof row === "object" && !Array.isArray(row),
+        )
+      : [];
+    const rowsMap = new Map<string, Record<string, unknown>>();
+    const parsedNodes = source.flatMap((row) => {
+      const graphNode = graphNodeFromRow(row, node.props);
+      if (!graphNode) return [];
+      rowsMap.set(graphNode.id, row);
+      return [graphNode];
+    });
+    return { parsed: parsedNodes, rows: rowsMap };
+  }, [data, node.props]);
+
+  const layout = useMemo(() => {
+    if (!parsed.length) return null;
+    const topologyKey = parsed
+      .map((n) => `${n.id}:${n.dependsOn.join(",")}`)
+      .join(";");
+
+    if (
+      !cachedLayoutRef.current ||
+      cachedLayoutRef.current.topologyKey !== topologyKey
+    ) {
+      cachedLayoutRef.current = {
+        topologyKey,
+        baseLayout: layoutDependencyGraph(parsed),
+      };
+      return cachedLayoutRef.current.baseLayout;
+    }
+
+    const base = cachedLayoutRef.current.baseLayout;
+    const nodeLookup = new Map(parsed.map((n) => [n.id, n]));
+    let anyChanged = false;
+
+    const nextNodes = base.nodes.map((baseNode) => {
+      const updated = nodeLookup.get(baseNode.id);
+      if (!updated) return baseNode;
+      if (
+        baseNode.state === updated.state &&
+        baseNode.label === updated.label &&
+        baseNode.detail === updated.detail
+      ) {
+        return baseNode;
+      }
+      anyChanged = true;
+      return {
+        ...baseNode,
+        state: updated.state,
+        label: updated.label,
+        detail: updated.detail,
+      };
+    });
+
+    if (!anyChanged) {
+      return base;
+    }
+
+    return {
+      ...base,
+      nodes: nextNodes,
+    };
+  }, [parsed]);
+
+  if (error && !data)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
         {error}
@@ -719,33 +947,27 @@ export function DependencyGraphView({
         Loading graph…
       </Surface>
     );
-  const source = Array.isArray(data)
-    ? data.filter(
-        (row): row is Record<string, unknown> =>
-          !!row && typeof row === "object" && !Array.isArray(row),
-      )
-    : [];
-  const rows = new Map<string, Record<string, unknown>>();
-  const parsed = source.flatMap((row) => {
-    const graphNode = graphNodeFromRow(row, node.props);
-    if (!graphNode) return [];
-    rows.set(graphNode.id, row);
-    return [graphNode];
-  });
-  if (!parsed.length)
+  if (!layout || !parsed.length)
     return (
       <Surface className="p-5 text-[12px] text-secondary">
         No dependencies.
       </Surface>
     );
   return (
-    <GraphBoard
-      client={client}
-      layout={layoutDependencyGraph(parsed)}
-      rows={rows}
-      rowLink={node.props.rowLink}
-      // The inspector shows these as its heading and relation lists already.
-      hiddenFields={new Set([node.props.idField, node.props.dependsOnField])}
-    />
+    <div className="grid gap-2">
+      {error ? (
+        <p className="m-0 text-[11px] text-unavailable" role="alert">
+          Live refresh failed: {error}
+        </p>
+      ) : null}
+      <GraphBoard
+        client={client}
+        layout={layout}
+        rows={rows}
+        rowLink={node.props.rowLink}
+        // The inspector shows these as its heading and relation lists already.
+        hiddenFields={new Set([node.props.idField, node.props.dependsOnField])}
+      />
+    </div>
   );
 }

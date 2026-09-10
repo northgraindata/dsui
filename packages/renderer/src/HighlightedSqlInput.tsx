@@ -19,6 +19,7 @@ export function HighlightedSqlInput({
     <div className="highlighted-sql-input">
       <div className="sql-line-numbers" ref={numbers} aria-hidden="true">
         {Array.from({ length: value.split("\n").length }, (_, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: line numbers are positional
           <div key={`line-${index + 1}`}>{index + 1}</div>
         ))}
       </div>

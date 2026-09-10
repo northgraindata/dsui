@@ -128,6 +128,30 @@ test("reads label, detail, and dependency fields from an adapter row", () => {
   });
 });
 
+test("reads an optional task state from an adapter row", () => {
+  expect(
+    graphNodeFromRow(
+      {
+        taskId: "extract_events",
+        upstreamTaskIds: [],
+        name: "Extract events",
+        state: "running",
+      },
+      {
+        idField: "taskId",
+        dependsOnField: "upstreamTaskIds",
+        labelField: "name",
+        stateField: "state",
+      },
+    ),
+  ).toEqual({
+    id: "extract_events",
+    label: "Extract events",
+    state: "running",
+    dependsOn: [],
+  });
+});
+
 test("falls back to the id and skips rows without one", () => {
   const fields = { idField: "taskId", dependsOnField: "upstreamTaskIds" };
   expect(graphNodeFromRow({ taskId: "solo" }, fields)).toEqual({

@@ -3,6 +3,7 @@ export interface GraphInputNode {
   id: string;
   label: string;
   detail?: string;
+  state?: string;
   dependsOn: readonly string[];
 }
 
@@ -179,6 +180,7 @@ export function graphNodeFromRow(
     dependsOnField: string;
     labelField?: string;
     detailField?: string;
+    stateField?: string;
   },
 ): GraphInputNode | null {
   const id = row[fields.idField];
@@ -186,12 +188,16 @@ export function graphNodeFromRow(
   const dependsOn = row[fields.dependsOnField];
   const label = fields.labelField ? row[fields.labelField] : undefined;
   const detail = fields.detailField ? row[fields.detailField] : undefined;
+  const state = fields.stateField ? row[fields.stateField] : undefined;
   return {
     id: String(id),
     label: label === null || label === undefined ? String(id) : String(label),
     ...(detail === null || detail === undefined || detail === ""
       ? {}
       : { detail: String(detail) }),
+    ...(state === null || state === undefined || state === ""
+      ? {}
+      : { state: String(state) }),
     dependsOn: Array.isArray(dependsOn)
       ? dependsOn
           .filter((value) => value !== null && value !== undefined)

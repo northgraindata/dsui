@@ -1,4 +1,8 @@
-import type { PageNode, TableRowAction } from "@northgraindata/dsui-core";
+import type {
+  PageNode,
+  TableRowAction,
+  TableRowLink,
+} from "@northgraindata/dsui-core";
 import {
   Button,
   DataTable,
@@ -6,6 +10,8 @@ import {
   Surface,
 } from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useState } from "react";
+import { ActionIcon } from "./ActionIcon";
+import { watchResource } from "./resource-refresh";
 import type { RendererClient } from "./types";
 
 /** Fills :param placeholders from row fields; null when a field is missing. */
@@ -21,6 +27,15 @@ export function resolveLink(
     resolved = resolved.replace(`:${param}`, encodeURIComponent(String(value)));
   }
   return resolved;
+}
+
+/** Resolves navigation only from object-shaped successful action data. */
+export function resolveActionSuccessLink(
+  link: TableRowLink,
+  data: unknown,
+): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  return resolveLink(link.path, link.params, data as Record<string, unknown>);
 }
 
 function matchesWhen(
@@ -55,6 +70,7 @@ function RowActionButton({
           spec.variant === "primary" ? "default" : (spec.variant ?? "secondary")
         }
         disabled={busy}
+        aria-busy={busy}
         title={error}
         onClick={() => {
           const input: Record<string, unknown> = {};
@@ -66,8 +82,13 @@ function RowActionButton({
           client
             .executeAction({ actionId: spec.action.actionId, input })
             .then((result) => {
-              if (result.status === "success") onDone();
-              else setError(result.message ?? "Action failed");
+              if (result.status === "success") {
+                const destination = spec.successLink
+                  ? resolveActionSuccessLink(spec.successLink, result.data)
+                  : null;
+                if (destination) client.navigate(destination);
+                else onDone();
+              } else setError(result.message ?? "Action failed");
             })
             .catch((cause) =>
               setError(
@@ -77,10 +98,13 @@ function RowActionButton({
             .finally(() => setBusy(false));
         }}
       >
-        {spec.label}
+        {spec.icon ? <ActionIcon name={spec.icon} size={13} /> : null}
+        {busy ? `${spec.label}…` : spec.label}
       </Button>
       {error ? (
-        <span className="text-[10px] text-unavailable">{error}</span>
+        <span role="alert" className="text-[10px] text-unavailable">
+          {error}
+        </span>
       ) : null}
     </span>
   );
@@ -99,21 +123,20 @@ export function ResourceTable({
   const reload = useCallback(() => setRefresh((count) => count + 1), []);
   useEffect(() => {
     if (!node.props.source) return;
-    let active = true;
-    client
-      .executeResource(node.props.source)
-      .then((result) => active && setData(result))
-      .catch(
-        (cause) =>
-          active &&
-          setError(
-            cause instanceof Error ? cause.message : "Could not load records",
-          ),
-      );
-    return () => {
-      active = false;
-    };
-  }, [client, node.props.source]);
+    void _refresh;
+    return watchResource(
+      node.props.source,
+      (reference) => client.executeResource(reference),
+      (result) => {
+        setData(result);
+        setError(undefined);
+      },
+      (cause) =>
+        setError(
+          cause instanceof Error ? cause.message : "Could not load records",
+        ),
+    );
+  }, [client, node.props.source, _refresh]);
   if (error)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
@@ -189,19 +212,16 @@ export function ResourceKeyValue({
   );
   useEffect(() => {
     if (!node.props.source) return;
-    let active = true;
-    client.executeResource(node.props.source).then((result) => {
-      if (
-        active &&
-        result &&
-        typeof result === "object" &&
-        !Array.isArray(result)
-      )
-        setData(result as Record<string, unknown>);
-    });
-    return () => {
-      active = false;
-    };
+    return watchResource(
+      node.props.source,
+      (reference) => client.executeResource(reference),
+      (result) => {
+        if (result && typeof result === "object" && !Array.isArray(result)) {
+          setData(result as Record<string, unknown>);
+        }
+      },
+      () => {},
+    );
   }, [client, node.props.source]);
   return data ? (
     <KeyValueList title={node.props.title} values={data} />
