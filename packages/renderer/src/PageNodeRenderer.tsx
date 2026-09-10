@@ -1,6 +1,14 @@
 import type { PageNode } from "@northgraindata/dsui-core";
 import { Button, Input } from "@northgraindata/dsui-ui";
 import { ActionForm } from "./ActionForm";
+import {
+  ActionListView,
+  CardListView,
+  ColumnsView,
+  MeterView,
+  SectionView,
+  StatGridView,
+} from "./OverviewViews";
 import { QueryWorkbench } from "./QueryWorkbench";
 import { ResourceTreeView } from "./ResourceTree";
 import { ResourceKeyValue, ResourceTable } from "./ResourceViews";
@@ -18,14 +26,47 @@ export function PageNodeRenderer({
   switch (node.kind) {
     case "page-header":
       return (
-        <header>
-          <h1 className="m-0 text-[17px] font-semibold text-primary">
-            {node.props.title}
-          </h1>
-          {node.props.description ? (
-            <p className="mt-1 text-[12px] text-secondary">
-              {node.props.description}
-            </p>
+        <header className="ov-page-header">
+          <div className="ov-page-identity">
+            <h1 className="m-0 text-[17px] font-semibold text-primary">
+              {node.props.title}
+              {node.props.badge ? (
+                <span
+                  className="ov-badge ov-page-badge"
+                  data-tone={node.props.badge.tone ?? "info"}
+                >
+                  {node.props.badge.label}
+                </span>
+              ) : null}
+            </h1>
+            {node.props.description ? (
+              <p className="mt-1 text-[12px] text-secondary">
+                {node.props.description}
+              </p>
+            ) : null}
+            {node.props.meta ? (
+              <p className="ov-page-meta">{node.props.meta}</p>
+            ) : null}
+          </div>
+          {node.props.actions?.length ? (
+            <div className="ov-page-actions">
+              {node.props.actions.map((spec) => (
+                <Button
+                  key={spec.label}
+                  variant={
+                    spec.variant === "primary"
+                      ? "default"
+                      : (spec.variant ?? "secondary")
+                  }
+                  onClick={() => {
+                    if (spec.link) client.navigate(spec.link);
+                    else if (spec.action) client.executeAction(spec.action);
+                  }}
+                >
+                  {spec.label}
+                </Button>
+              ))}
+            </div>
           ) : null}
         </header>
       );
@@ -57,9 +98,10 @@ export function PageNodeRenderer({
           variant={
             node.props.variant === "primary" ? "default" : node.props.variant
           }
-          onClick={() =>
-            node.props.action && client.executeAction(node.props.action)
-          }
+          onClick={() => {
+            if (node.props.link) client.navigate(node.props.link);
+            else if (node.props.action) client.executeAction(node.props.action);
+          }}
         >
           {node.props.label}
         </Button>
@@ -88,6 +130,42 @@ export function PageNodeRenderer({
           type={node.props.secret ? "password" : "text"}
           defaultValue={node.props.value}
           placeholder={node.props.placeholder}
+        />
+      );
+    case "stat-grid":
+      return <StatGridView client={client} node={node} />;
+    case "section":
+      return (
+        <SectionView
+          client={client}
+          node={node}
+          renderNode={(nextClient, child) => (
+            <PageNodeRenderer
+              key={JSON.stringify(child)}
+              client={nextClient}
+              node={child}
+            />
+          )}
+        />
+      );
+    case "card-list":
+      return <CardListView client={client} node={node} />;
+    case "action-list":
+      return <ActionListView client={client} node={node} />;
+    case "meter":
+      return <MeterView client={client} node={node} />;
+    case "columns":
+      return (
+        <ColumnsView
+          client={client}
+          node={node}
+          renderNode={(nextClient, child) => (
+            <PageNodeRenderer
+              key={JSON.stringify(child)}
+              client={nextClient}
+              node={child}
+            />
+          )}
         />
       );
   }

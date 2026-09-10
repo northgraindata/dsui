@@ -154,12 +154,12 @@ export function QueryWorkbench({
             </Button>
           </div>
         </div>
-          <SqlEditor
-            value={tab.sql}
-            onChange={setSql}
-            onRun={run}
-            placeholder={`Write ${node.props.language.toUpperCase()}…`}
-          />
+        <SqlEditor
+          value={tab.sql}
+          onChange={setSql}
+          onRun={run}
+          placeholder={`Write ${node.props.language.toUpperCase()}…`}
+        />
       </div>
       <QueryResults
         result={tab.result}
