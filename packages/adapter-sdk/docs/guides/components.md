@@ -184,6 +184,33 @@ export const SessionBar = defineComponent<SessionBarProps, readonly ComponentNod
 Use composites for repeated adapter chrome: session bars, context
 displays, standard detail headers. One definition, every page.
 
+## Browser components
+
+Composites return builtin nodes evaluated on the server. When a custom
+visual is genuinely needed, `defineComponent` also accepts a `path`
+pointing at the tsx module (relative to the adapter package) instead
+of `render`:
+
+```ts
+export const TableCard = defineComponent<{ table: string }>({
+  id: "duckdb/table-card",
+  path: "./components/TableCard.tsx",
+});
+```
+
+Calling it returns a `"custom"` node carrying the component id and
+JSON-serializable props — no browser code crosses the server boundary.
+The renderer resolves the id from its component registry and
+lazy-loads the module; unknown ids render an explicit fallback, never
+a blank screen. Props are validated against the optional `props`
+schema at authoring time, like action inputs.
+
+Custom components compose the generic layer: import primitives and
+views from the shared packages rather than reimplementing them. The
+tsx must be resolvable by the host build (dev glob, prod manifest
+entries), so an adapter installed after the build needs a rebuild
+before its components render.
+
 ## What to read next
 
 - [Pages](./pages) for composing nodes into routes

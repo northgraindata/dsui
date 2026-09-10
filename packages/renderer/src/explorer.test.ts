@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
-import { selectFromRelation } from "./QueryWorkbench";
-import { resolveTreeLink, resolveTreeTemplate } from "./ResourceTree";
+import { selectFromRelation } from "./components/query-workbench/query-workbench";
+import {
+  resolveTreeLink,
+  resolveTreeTemplate,
+} from "./components/resource-tree";
 
 test("resolves a child resource input from its parent row", () => {
   expect(

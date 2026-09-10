@@ -1,13 +1,13 @@
 import { Button } from "@northgraindata/dsui-ui";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useRef, useState } from "react";
+import { WorkbenchIcon } from "../icons";
 import {
   cellText,
   elapsedLabel,
   type QueryResultView,
   queryCsv,
 } from "./query-result";
-import { WorkbenchIcon } from "./WorkbenchIcon";
 
 function columnIcon(type?: string) {
   return type && /DATE|TIME/.test(type) ? "calendar" : "hash";
