@@ -133,7 +133,7 @@ export function HomeDashboard({
                   <p title={service.endpoint}>
                     {service.endpoint || service.adapter}
                   </p>
-                  <small>
+                  <small title={service.detail ?? undefined}>
                     {service.detail ??
                       (service.latencyMs !== undefined
                         ? `${service.latencyMs} ms response time`
@@ -154,7 +154,6 @@ export function HomeDashboard({
           <section className="activity-panel">
             <header>
               <h2>Recent activity</h2>
-              <Link to="/activity">View all →</Link>
             </header>
             <div className="activity-empty">
               <span className="greeting-icon">
@@ -180,11 +179,6 @@ export function HomeDashboard({
               Browse data
               <Icon name="chevron" size={13} />
             </Link>
-            <Link to="/activity">
-              <Icon name="play" />
-              View recent activity
-              <Icon name="chevron" size={13} />
-            </Link>
             <Link to="/services/new">
               <Icon name="gear" />
               Manage adapters
@@ -193,32 +187,6 @@ export function HomeDashboard({
           </section>
         </aside>
       </div>
-    </div>
-  );
-}
-
-export function ActivityPage() {
-  return (
-    <div className="home-dashboard">
-      <header className="home-heading">
-        <div>
-          <h1>Activity</h1>
-          <p>One place for everything happening in your data stack.</p>
-        </div>
-        <span className="coming-soon">Coming soon</span>
-      </header>
-      <section className="activity-panel activity-page-empty">
-        <Icon name="activity" size={32} />
-        <h2>A timeline for your workspace</h2>
-        <p>
-          Unified activity is on its way. Open an adapter's Activity page to see
-          its query history.
-        </p>
-        <Link to="/services" className="outline-action">
-          Browse adapters
-          <Icon name="chevron" />
-        </Link>
-      </section>
     </div>
   );
 }

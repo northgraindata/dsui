@@ -3,7 +3,6 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { ActivityPage } from "./components/HomeDashboard";
 import {
   AddService,
   AppShell,
@@ -33,11 +32,6 @@ const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
   component: Settings,
-});
-const activityRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/activity",
-  component: ActivityPage,
 });
 const addRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -78,7 +72,6 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   servicesRoute,
   settingsRoute,
-  activityRoute,
   addRoute,
   detailRoute,
   viewRoute,
