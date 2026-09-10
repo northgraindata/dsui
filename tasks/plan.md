@@ -117,3 +117,72 @@ counts. Runtime tests dispose scopes and instances in `finally` blocks.
 ## Open Questions
 
 None. The capability map and all seven module specifications are approved.
+
+## Airflow 2.10 extension
+
+1. Add the versioned connection/authentication contract and failing transport
+   tests for `/api/v1` with Basic authentication.
+2. Normalize Airflow 2 DAG, task, run, task-instance, log, and dataset responses
+   into the existing domain models, with focused client tests after each slice.
+3. Update adapter wiring and user documentation, then run package and root
+   verification and inspect the final diff.
+
+The primary risk is accepting one version's payload as another's. Separate Zod
+schemas at the HTTP boundary and fixtures taken from Airflow 2.10's stable OpenAPI
+mitigate it. No SDK/core/renderer changes or new dependencies are required.
+
+## Airflow action presentation extension
+
+### Dependency graph
+
+```text
+Optional semantic icon contract in core
+              ↓
+SDK authoring type and serialization
+              ↓
+Renderer icon and busy-state presentation
+              ↓
+Airflow page columns, descriptions, and action declarations
+              ↓
+Browser accessibility and responsive verification
+```
+
+### Vertical slices
+
+1. Record the additive wire-contract decision, then add optional semantic icons
+   to button and table-row action documents and prove SDK serialization.
+2. Render the allowlisted icons with visible labels and compact in-progress action
+   controls; existing iconless adapter pages remain unchanged.
+3. Curate Airflow page descriptions, detail titles, table columns, button variants,
+   and icons for DAG, run, task, asset, and event workflows.
+4. Update documentation and run focused package checks, browser verification at
+   320px, 768px, 1024px, and 1440px, root checks, build, and final diff review.
+
+### Risks and mitigations
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| Icon contract becomes an SVG injection surface | High | Serialize only a closed semantic-name union; renderer owns every path. |
+| Action density harms accessibility | Medium | Keep visible labels, native buttons, focus styles, and non-color state cues. |
+| Airflow page polish leaks provider logic into React | High | Airflow declares generic page props; renderer never branches on adapter or action ids. |
+| Narrow tables overflow | Medium | Curate columns and preserve the existing horizontal-scroll container. |
+
+The extension is additive: existing nodes omit `icon` and render as before. No new
+page-node kind, dependency, route, or provider-specific browser component is added.
+
+## Airflow live run graph extension
+
+1. Extend the page contract additively with polling resource metadata,
+   successful-action destinations, and graph state fields; prove serialization
+   and safe result-link resolution first.
+2. Join bounded DAG topology and task-instance reads in the Airflow adapter, then
+   make the run page's first tab a state-aware graph.
+3. Render state text and semantic cues, poll serially every two seconds while the
+   graph is mounted, preserve the last good result on refresh failure, and cancel
+   the next poll on unmount.
+4. Verify focused packages, the real server boundary against a local fake Airflow
+   API, root checks, build, and final diff.
+
+The browser remains provider-neutral: Airflow mapping stays in the adapter, while
+navigation, scheduling, cleanup, graph layout, and status presentation stay in the
+renderer. Optional fields preserve existing adapter behavior.
