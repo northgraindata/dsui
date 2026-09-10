@@ -17,7 +17,6 @@ import {
 import {
   type FormEvent,
   Fragment,
-  type MouseEvent,
   type ReactElement,
   useCallback,
   useEffect,
@@ -25,15 +24,8 @@ import {
   useState,
 } from "react";
 import {
-  type Adapter,
-  type ConnectionMethod,
-  type ConnectionTopEntry,
-  connectionTopEntries,
-  createService,
   executeAction,
   executeResource,
-  firstLeaf,
-  getAdapters,
   getPage,
   getServicePages,
   getServices,
@@ -44,13 +36,12 @@ import {
   runOperation,
   type Service,
   setupOwner,
-  testService,
   titleFor,
 } from "./api";
+import { AdapterMarketplace } from "./components/AdapterMarketplace";
 import { AdapterWorkspace } from "./components/AdapterWorkspace";
 import { AppChrome } from "./components/AppChrome";
 import { AuthFrame, authCardInput } from "./components/AuthFrame";
-import { CornerReveal } from "./components/CornerReveal";
 import { DatabaseExplorer } from "./components/DatabaseExplorer";
 import { HomeDashboard } from "./components/HomeDashboard";
 import { Icon } from "./components/Icon";
@@ -62,7 +53,6 @@ import {
 } from "./components/Page";
 import { ServiceMark } from "./components/ServiceMark";
 import { usePolling } from "./hooks/usePolling";
-import { connectionTestMessage } from "./service-pages";
 
 const _nav = [
   { icon: "grid", label: "Stack", to: "/" },
@@ -229,7 +219,7 @@ export function Dashboard() {
 }
 
 export function Services() {
-  return <Dashboard />;
+  return <AdapterMarketplace />;
 }
 
 export function Settings() {
@@ -256,364 +246,7 @@ export function Settings() {
 }
 
 export function AddService() {
-  const nav = useNavigate();
-  const [adapters, setAdapters] = useState<Adapter[]>([]);
-  const [selected, setSelected] = useState<Adapter | null>(null);
-  const [adapterViewVisible, setAdapterViewVisible] = useState(true);
-  const [leaving, setLeaving] = useState(false);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [activeTop, setActiveTop] = useState<string | null>(null);
-  const [activeMethod, setActiveMethod] = useState<string | null>(null);
-  const [message, setMessage] = useState<string>();
-  const [loadError, setLoadError] = useState<string>();
-  const [busy, setBusy] = useState(false);
-  const adapterTransitionTimer = useRef<number | undefined>(undefined);
-  const leaveTimer = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    getAdapters()
-      .then(setAdapters)
-      .catch((e) =>
-        setLoadError(
-          e instanceof Error ? e.message : "Could not load adapters.",
-        ),
-      );
-  }, []);
-  const update = (key: string, value: string) =>
-    setValues((x) => ({ ...x, [key]: value }));
-  const keepName = (name?: string) => ({ name: name ?? "" });
-  const selectAdapter = (adapter: Adapter) => {
-    window.clearTimeout(adapterTransitionTimer.current);
-    setAdapterViewVisible(false);
-    adapterTransitionTimer.current = window.setTimeout(() => {
-      setSelected(adapter);
-      setValues({ name: adapter.name });
-      const tops = connectionTopEntries(adapter.connectionMethods);
-      const first = tops[0];
-      setActiveTop(
-        first ? (first.kind === "group" ? first.id : first.method.id) : null,
-      );
-      setActiveMethod(firstLeaf(first)?.id ?? null);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setAdapterViewVisible(true));
-      });
-    }, 220);
-  };
-  const selectTop = (top: ConnectionTopEntry) => {
-    const id = top.kind === "group" ? top.id : top.method.id;
-    setActiveTop(id);
-    setActiveMethod(firstLeaf(top)?.id ?? null);
-    setValues((previous) => keepName(previous.name));
-  };
-  const selectMethod = (method: ConnectionMethod) => {
-    setActiveMethod(method.id);
-    setValues((previous) => keepName(previous.name));
-  };
-  useEffect(
-    () => () => {
-      window.clearTimeout(adapterTransitionTimer.current);
-      window.clearTimeout(leaveTimer.current);
-    },
-    [],
-  );
-  const backToServices = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
-      return;
-    event.preventDefault();
-    setLeaving(true);
-    leaveTimer.current = window.setTimeout(() => nav({ to: "/" }), 220);
-  };
-  const tops = connectionTopEntries(selected?.connectionMethods);
-  const top =
-    tops.find((entry) =>
-      entry.kind === "group"
-        ? entry.id === activeTop
-        : entry.method.id === activeTop,
-    ) ?? tops[0];
-  const topMethods = top
-    ? top.kind === "group"
-      ? top.methods
-      : [top.method]
-    : [];
-  const method =
-    topMethods.find((candidate) => candidate.id === activeMethod) ??
-    topMethods[0];
-  const connectionFields = method ? method.fields : (selected?.fields ?? []);
-  const input = selected
-    ? {
-        adapter: selected.id,
-        name: values.name || selected.name,
-        connection: method ? { method: method.id, ...values } : values,
-      }
-    : null;
-  async function test() {
-    if (!input) return;
-    setBusy(true);
-    setMessage(undefined);
-    try {
-      const status = await testService(input);
-      setMessage(connectionTestMessage(status));
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Connection test failed",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (!input) return;
-    setBusy(true);
-    try {
-      const service = await createService(input);
-      nav({ to: "/services/$serviceId", params: { serviceId: service.id } });
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Could not save service",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div
-      className={cn(
-        pageClass,
-        "transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:duration-150",
-        selected ? "max-w-3xl" : "max-w-6xl",
-        leaving
-          ? "pointer-events-none -translate-y-1 scale-[0.99] opacity-0"
-          : "translate-y-0 scale-100 opacity-100",
-      )}
-    >
-      <Link
-        to="/"
-        className="mb-4 inline-block font-mono text-[11px] text-secondary no-underline hover:text-primary"
-        onClick={backToServices}
-      >
-        ← Back to services
-      </Link>
-      <div
-        className={cn(
-          "transition-[opacity,transform] duration-[220ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:duration-150",
-          adapterViewVisible
-            ? "translate-y-0 opacity-100"
-            : "pointer-events-none -translate-y-1 opacity-0",
-        )}
-      >
-        <PageHeading
-          title={selected ? `Connect ${selected.name}` : "Choose an adapter"}
-          detail={
-            selected
-              ? selected.description
-              : "Select the service you want dsui to connect to."
-          }
-        />
-        {loadError ? (
-          <UnavailableState detail={loadError} />
-        ) : !selected ? (
-          <div className="grid gap-px border-y border-border bg-border sm:grid-cols-2 xl:grid-cols-3">
-            {adapters.map((adapter) => (
-              <button
-                type="button"
-                key={adapter.id}
-                className="group relative grid min-h-44 content-between bg-surface p-4 text-left transition-colors hover:bg-surface-hover focus-visible:z-10 focus-visible:outline-accent"
-                onClick={() => selectAdapter(adapter)}
-              >
-                <CornerReveal className="border-accent" />
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <ServiceMark
-                      adapter={adapter.id}
-                      logo={adapter.logo}
-                      size={30}
-                      variant="bare"
-                    />
-                    <div>
-                      <b className="block text-[13px] font-medium text-primary">
-                        {adapter.name}
-                      </b>
-                      <span className="mt-1 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted">
-                        {adapter.category}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-muted transition-colors group-hover:text-accent">
-                    <Icon name="chevron" />
-                  </span>
-                </div>
-                <div className="mt-5 border-t border-border pt-3">
-                  <p className="m-0 max-w-sm text-[11px] leading-relaxed text-secondary">
-                    {adapter.description}
-                  </p>
-                  <span className="mt-3 block font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted transition-colors group-hover:text-accent">
-                    Select adapter →
-                  </span>
-                </div>
-              </button>
-            ))}
-            <div className="relative grid min-h-44 content-between bg-canvas p-4">
-              <span className="pointer-events-none absolute inset-y-0 left-0 w-px bg-border-strong" />
-              <span className="font-mono text-[20px] leading-none text-muted">
-                &gt;<span className="animate-blink text-accent">_</span>
-              </span>
-              <div className="mt-5 border-t border-dashed border-border pt-3">
-                <b className="block text-[13px] font-medium text-secondary">
-                  More coming soon
-                </b>
-                <p className="mt-2 mb-0 text-[11px] leading-relaxed text-secondary">
-                  More data stack adapters are being prepared.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={save}>
-            <div className="overflow-hidden border-y border-border bg-surface">
-              <div className="flex items-center gap-4 border-b border-border bg-surface-raised px-5 py-4">
-                <ServiceMark
-                  adapter={selected.id}
-                  logo={selected.logo}
-                  size={34}
-                  variant="bare"
-                />
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
-                    {selected.category}
-                  </p>
-                  <p className="mt-1 text-[13px] font-medium text-primary">
-                    {selected.name}
-                  </p>
-                </div>
-              </div>
-              {tops.length > 1 ? (
-                <div className="flex gap-px border-b border-border bg-border">
-                  {tops.map((entry) => {
-                    const id =
-                      entry.kind === "group" ? entry.id : entry.method.id;
-                    const label =
-                      entry.kind === "group" ? entry.label : entry.method.label;
-                    return (
-                      <button
-                        type="button"
-                        key={id}
-                        onClick={() => selectTop(entry)}
-                        className={cn(
-                          "px-4 py-2.5 text-[12px] transition-colors",
-                          id === activeTop
-                            ? "bg-canvas font-medium text-primary"
-                            : "bg-surface text-secondary hover:text-primary",
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-              {top?.kind === "group" ? (
-                <div className="flex gap-px border-b border-border bg-border">
-                  {top.methods.map((sub) => (
-                    <button
-                      type="button"
-                      key={sub.id}
-                      onClick={() => selectMethod(sub)}
-                      className={cn(
-                        "px-3 py-2 text-[11px] transition-colors",
-                        sub.id === activeMethod
-                          ? "bg-canvas font-medium text-primary"
-                          : "bg-surface text-secondary hover:text-primary",
-                      )}
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {method?.description ? (
-                <p className="border-b border-border px-5 py-2.5 text-[11px] leading-relaxed text-secondary">
-                  {method.description}
-                </p>
-              ) : null}
-              <div className="grid gap-4 p-5 sm:grid-cols-2">
-                <Field label="Service name" hint="Shown in your service list.">
-                  <Input
-                    value={values.name ?? ""}
-                    onChange={(e) => update("name", e.target.value)}
-                    required
-                  />
-                </Field>
-                {connectionFields.map((field) => (
-                  <Field key={field.key} label={field.label}>
-                    {field.type === "boolean" || field.type === "select" ? (
-                      <select
-                        value={values[field.key] ?? ""}
-                        onChange={(event) =>
-                          update(field.key, event.target.value)
-                        }
-                        required={field.required ?? false}
-                        className="h-9 w-full border border-border bg-canvas px-2.5 text-[12px] text-primary outline-none focus:border-accent"
-                      >
-                        <option value="">Select…</option>
-                        {(field.type === "boolean"
-                          ? [
-                              { label: "Yes", value: "true" },
-                              { label: "No", value: "false" },
-                            ]
-                          : (field.options ?? [])
-                        ).map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <Input
-                        type={
-                          field.type === "list"
-                            ? "text"
-                            : (field.type ?? "text")
-                        }
-                        value={values[field.key] ?? ""}
-                        placeholder={field.placeholder}
-                        onChange={(e) => update(field.key, e.target.value)}
-                        required={field.required ?? false}
-                      />
-                    )}
-                  </Field>
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-dashed border-border px-5 py-4">
-                {message && (
-                  <span
-                    className={cn(
-                      "mr-auto font-mono text-[11px]",
-                      message.startsWith("Connection healthy")
-                        ? "text-healthy"
-                        : "text-unavailable",
-                    )}
-                  >
-                    {message}
-                  </span>
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={test}
-                  disabled={busy}
-                >
-                  Test connection
-                </Button>
-                <Button type="submit" disabled={busy}>
-                  Save service
-                </Button>
-              </div>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  );
+  return <AdapterMarketplace />;
 }
 
 type ServiceViewDefinition = Manifest["views"][number];
@@ -829,7 +462,7 @@ function ServiceScreen({
         <DeclarativePageRenderer
           nodes={page.nodes}
           client={{
-            connection: { name: service.name, endpoint: service.endpoint },
+            connection: { name: service.name, endpoint: service.endpoint ?? "" },
             executeResource: async (reference) =>
               (
                 await executeResource(

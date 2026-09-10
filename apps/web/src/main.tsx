@@ -13,3 +13,4 @@ if (rootElement)
   );
 
 import "./workspace.css";
+import "./connections.css";

@@ -60,7 +60,7 @@ export function AdapterWorkspace({
       <aside className="adapter-sidebar">
         <Link to="/services" className="adapter-back">
           <Icon name="chevron" size={14} />
-          Adapters
+          Back to home
         </Link>
         <div className="adapter-identity">
           <ServiceMark
@@ -98,6 +98,11 @@ export function AdapterWorkspace({
             <small>Coming soon</small>
           </div>
         </section>
+        <Link to="/services/$serviceId/$" params={{ serviceId: service.id, _splat: "" }} className="adapter-connection-card">
+          <Icon name="database" size={22} />
+          <span><strong>{service.endpoint?.split("/").at(-1) || service.name}</strong><small>{service.endpoint || "No endpoint provided"}</small></span>
+          <Icon name="chevron" size={14} />
+        </Link>
       </aside>
       <div className="adapter-main">
         <header className="adapter-heading">
