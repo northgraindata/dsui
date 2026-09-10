@@ -27,7 +27,8 @@ export const duckdbConnectionMethods = {
   },
   file: {
     label: "Local file",
-    description: "A .duckdb file on the server's filesystem.",
+    description:
+      "A .duckdb file on the server's filesystem. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
     schema: z.object({
       path: z.string().min(1),
       readOnly: booleanish.default(false),
@@ -39,7 +40,8 @@ export const duckdbConnectionMethods = {
     methods: {
       s3: {
         label: "S3 / S3-compatible",
-        description: "S3, MinIO, and other S3-API storage via httpfs.",
+        description:
+          "S3, MinIO, and other S3-API storage via httpfs. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
@@ -52,7 +54,8 @@ export const duckdbConnectionMethods = {
       },
       gcs: {
         label: "Google Cloud Storage",
-        description: "GCS buckets via the S3 API (HMAC keys).",
+        description:
+          "GCS buckets via the S3 API (HMAC keys). Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
@@ -62,7 +65,8 @@ export const duckdbConnectionMethods = {
       },
       r2: {
         label: "Cloudflare R2",
-        description: "R2 buckets via the S3 API.",
+        description:
+          "R2 buckets via the S3 API. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
@@ -73,7 +77,8 @@ export const duckdbConnectionMethods = {
       },
       azure: {
         label: "Azure Blob Storage",
-        description: "Azure Blob containers via the azure extension.",
+        description:
+          "Azure Blob containers via the azure extension. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
