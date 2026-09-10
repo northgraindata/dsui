@@ -7,12 +7,17 @@ export interface PageDocument {
 export type ResourceReference = {
   resourceId: string;
   input?: unknown;
+  /** Present only for resources that should refresh while rendered. */
+  refresh?: { kind: "poll"; intervalMs: number };
 };
 
 export type ActionReference = {
   actionId: string;
   input?: unknown;
 };
+
+/** Renderer-owned visual cue for an action; never an asset or markup payload. */
+export type ActionIcon = "play" | "pause" | "resume" | "retry" | "clear";
 
 export interface QueryExplorerDocument {
   source: ResourceReference;
@@ -37,12 +42,15 @@ export type TableRowLink = {
 
 export type TableRowAction = {
   label: string;
+  icon?: ActionIcon;
   variant?: "primary" | "secondary" | "danger";
   /** Action id plus input template (action-input field -> row field). */
   action: {
     actionId: string;
     input?: Record<string, string>;
   };
+  /** Adapter page opened from fields in successful action data. */
+  successLink?: TableRowLink;
   /** Show only when the row matches every present clause. */
   when?: {
     field: string;
@@ -76,6 +84,8 @@ export type PageNode =
         labelField?: string;
         /** Row field rendered under the title, e.g. an operator name. */
         detailField?: string;
+        /** Row field rendered as the node's current execution state. */
+        stateField?: string;
         rowLink?: TableRowLink;
       };
     }
@@ -83,8 +93,11 @@ export type PageNode =
       kind: "button";
       props: {
         label: string;
+        icon?: ActionIcon;
         variant?: "primary" | "secondary" | "danger";
         action?: ActionReference;
+        /** Adapter page opened from fields in successful action data. */
+        successLink?: TableRowLink;
       };
     }
   | {

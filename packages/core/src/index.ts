@@ -68,6 +68,7 @@ export interface PublicService {
 }
 
 export type {
+  ActionIcon,
   ActionReference,
   PageDocument,
   PageNode,
