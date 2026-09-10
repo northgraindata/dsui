@@ -47,6 +47,7 @@
   html {
     background: var(--color-canvas);
     color-scheme: dark;
+    scrollbar-gutter: stable;
   }
   body {
     margin: 0;

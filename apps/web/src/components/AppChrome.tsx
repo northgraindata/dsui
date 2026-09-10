@@ -6,7 +6,6 @@ import { Wordmark } from "./Wordmark";
 const destinations = [
   { to: "/", label: "Home", icon: "home" },
   { to: "/services", label: "Adapters", icon: "plug" },
-  { to: "/activity", label: "Activity", icon: "activity" },
   { to: "/settings", label: "Settings", icon: "gear" },
 ];
 
@@ -49,17 +48,14 @@ export function AppChrome({
       </a>
       <header className={`app-topbar${topbarHidden ? " is-hidden" : ""}`}>
         <Wordmark />
-        {inAdapter && (
-          <nav aria-label="Main navigation" className="app-topnav">
-            {navigation}
-          </nav>
-        )}
-        <div className="app-topbar-actions">
+        <div className="app-topbar-search">
           <button type="button" className="app-search" onClick={openSearch}>
             <Icon name="search" />
-            <span>{inAdapter ? "Search…" : "Search anything…"}</span>
+            <span>Search anything…</span>
             <kbd>⌘ K</kbd>
           </button>
+        </div>
+        <div className="app-topbar-actions">
           <Link
             to="/settings"
             className="app-avatar"
@@ -74,15 +70,6 @@ export function AppChrome({
           <aside className="app-sidebar">
             <nav aria-label="Main navigation">{navigation}</nav>
             <div className="app-sidebar-bottom">
-              <div className="workspace-note">
-                <Icon name="sparkle" />
-                <span>Local workspace</span>
-                <p>
-                  Your data stack.
-                  <br />
-                  One lightweight interface.
-                </p>
-              </div>
               <Link to="/settings" className="workspace-profile">
                 <span className="app-avatar">DS</span>
                 <span>
