@@ -1,0 +1,12 @@
+adapters:
+  airflow:
+    package: "@northgraindata/dsui-adapter-airflow"
+
+services:
+  - id: airflow-local
+    adapter: airflow
+    name: Airflow (local test)
+    connection:
+      method: airflow
+      baseUrl: http://localhost:8080
+      token: ${AIRFLOW_TOKEN}

@@ -1,5 +1,6 @@
 export { CustomView } from "./components/custom";
 export {
+export { DependencyGraphView } from "./components/dependency-graph/dependency-graph";
   EntityCatalogView,
   EntityDetailView,
 } from "./components/entity/entity-views";

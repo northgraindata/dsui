@@ -1,0 +1,36 @@
+# Single-container Airflow 3 for exercising the DSUI Airflow adapter by hand.
+# Not for production: the simple auth manager and SQLite are dev-only.
+services:
+  airflow:
+    image: apache/airflow:3.0.3
+    container_name: dsui-airflow-test
+    ports:
+      - "8080:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # DAGs start unpaused so runs, task instances, and logs exist right away.
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+      # Fixed so issued API tokens keep working across restarts.
+      AIRFLOW__API_AUTH__JWT_SECRET: "dsui-airflow-test-jwt-secret"
+      AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "10"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - airflow-home:/opt/airflow
+    # The password file must exist before the API server reads it, otherwise
+    # the simple auth manager invents a random one on every boot.
+    command:
+      - bash
+      - -lc
+      - |
+        echo '{"admin": "admin"}' > /opt/airflow/simple_auth_manager_passwords.json.generated
+        exec airflow standalone
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  airflow-home:

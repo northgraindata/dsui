@@ -4,6 +4,7 @@ import {
   EntityCatalogView,
   EntityDetailView,
 } from "../components/entity/entity-views";
+import { DependencyGraphView } from "../components/dependency-graph/dependency-graph";
 import { ActionForm } from "../components/form";
 import { KeyValueView } from "../components/key-value";
 import {
@@ -76,8 +77,17 @@ const columnsView: ComponentType<RegistryViewProps> = ({
 const meterView: ComponentType<RegistryViewProps> = ({ client, node }) =>
   node.kind === "meter" ? <MeterView client={client} node={node} /> : null;
 
+const dependencyGraphView: ComponentType<RegistryViewProps> = ({
+  client,
+  node,
+}) =>
+  node.kind === "dependency-graph" ? (
+    <DependencyGraphView client={client} node={node} />
+  ) : null;
+
 const firstPartyViews: readonly [string, ComponentType<RegistryViewProps>][] = [
   ["button", ButtonView],
+  ["dependency-graph", dependencyGraphView],
   ["form", ActionForm],
   ["key-value", KeyValueView],
   ["page-header", PageHeaderView],
