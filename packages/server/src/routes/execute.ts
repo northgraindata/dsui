@@ -48,6 +48,7 @@ export function registerExecuteRoutes(
         context.req.param("resourceId"),
         connectionFor(deps.cipher, source),
         body.input,
+        source.service.id,
       );
       return context.json(result);
     } catch (error) {
@@ -78,6 +79,7 @@ export function registerExecuteRoutes(
         connectionFor(deps.cipher, source),
         body.input,
         actionSignal(context.req.raw.signal),
+        source.service.id,
       );
       deps.audit(principal.id, "action.execute", source.service.id, {
         action: context.req.param("actionId"),

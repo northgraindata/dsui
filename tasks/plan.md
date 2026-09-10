@@ -1,27 +1,24 @@
-# Shared engineering guidelines
+# Extensions list, details, and managed sessions
 
-Apply the researched contributor standards to humans and agents through one
-canonical set of repository documents. The approved scope is coding guidance;
-runtime redesigns need their own contract decisions and implementation changes.
+Approved scope: both supplied visual references, generic presentation components,
+and restart-backed Unload/Reload with explicit destructive-state confirmation.
+The user approved restart semantics on 2026-09-09.
 
-## Sequence
+## Build order
 
-1. Document coding, testing, review, and architecture rules with examples and
-   explicit enforcement. Separate current behavior from required direction.
-2. Link contributor and agent entry points, add the PR template, and expose the
-   formatter check through the same script locally and in CI.
-3. Verify commands and local documentation links, review the diff, and record
-   remaining enforcement work without claiming it has shipped.
+1. Generic service session ownership: retain SDK instances by service ID, serialize
+   operations, bound session count, dispose on removal/config change/shutdown.
+   Preserve isolated one-shot calls when no service ID is supplied.
+2. DuckDB restart action: require confirmation, reject built-ins, reopen the
+   instance, restore other loaded extensions, verify the selected result.
+3. Generic catalog/detail presentation contract and SDK serialization, then
+   renderer components with filtering, tabs, copy, and confirmation dialogs.
+4. DuckDB metadata and page composition; reference-matched scoped chrome/styles.
+5. Browser comparison and interaction checks, focused tests, root checks, review.
 
-Track acceptance and verification in [todo.md](todo.md). Existing user-added
-skills and the skill lockfile are outside this change.
+Local and subprocess execution must share session semantics. Unknown or lost
+sessions must not silently pretend to preserve temporary database state.
+No arbitrary extension downloads are required for tests; use existing fixtures
+and installed extensions where possible.
 
-## Decisions and risks
-
-- Human-readable standards are canonical; agent skills cannot silently introduce
-  a second product policy or toolchain.
-- Architecture documentation must identify the current gap between SDK page
-  composition and the host/browser protocol.
-- Do not freeze today's SDK surface as the ideal design or change it in a
-  documentation rollout.
-- CI configuration does not prove GitHub merge protection is enabled.
+Tasks and checkpoints: [todo.md](todo.md).

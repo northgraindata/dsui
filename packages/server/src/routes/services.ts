@@ -175,6 +175,9 @@ export function registerServiceRoutes(
         throw new Error(
           "Configuration-managed services cannot be deleted here",
         );
+      await deps.registry
+        .get(source.service.adapter)
+        .backend.closeSession?.(source.service.id);
       deps.database.deleteUiService(source.service.id);
       deps.audit(principal.id, "service.delete", source.service.id, {
         adapter: source.service.adapter,
@@ -218,6 +221,7 @@ export function registerServiceRoutes(
         await adapter.backend.renderPage(
           connectionFor(deps.cipher, source),
           path,
+          source.service.id,
         ),
       );
     } catch (error) {

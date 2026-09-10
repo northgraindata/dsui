@@ -1,6 +1,7 @@
 import type { PageNode } from "@northgraindata/dsui-core";
 import { Button, Input } from "@northgraindata/dsui-ui";
 import { ActionForm } from "./ActionForm";
+import { EntityCatalogView, EntityDetailView } from "./EntityViews";
 import { QueryWorkbench } from "./QueryWorkbench";
 import { ResourceTreeView } from "./ResourceTree";
 import { ResourceKeyValue, ResourceTable } from "./ResourceViews";
@@ -16,6 +17,10 @@ export function PageNodeRenderer({
   node: PageNode;
 }) {
   switch (node.kind) {
+    case "entity-catalog":
+      return <EntityCatalogView client={client} node={node} />;
+    case "entity-detail":
+      return <EntityDetailView client={client} node={node} />;
     case "page-header":
       return (
         <header>

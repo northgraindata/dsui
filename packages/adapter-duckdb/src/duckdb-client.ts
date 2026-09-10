@@ -1,4 +1,4 @@
-import { statfsSync } from "node:fs";
+import { statfsSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import type { DuckDBConnection } from "@duckdb/node-api";
 import { DuckDBInstance } from "@duckdb/node-api";
@@ -65,6 +65,9 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
   const history: QueryHistoryEntry[] = [];
   let historySeq = 0;
   const rowCounts = new Map<string, { rows: number; at: number }>();
+  const loadedAt = new Map<string, string>();
+  const startupExtensions = new Set<string>();
+  let disableAutoload = false;
 
   const qualifier = (database: string, schema: string): string =>
     `${quote(database)}.${quote(schema)}`;
@@ -75,10 +78,17 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     if (connection) return connection;
     const options: Record<string, string> = {};
     if (config.readOnly) options.access_mode = "READ_ONLY";
+    if (disableAutoload) options.autoload_known_extensions = "false";
     const target = config.path ?? config.url ?? ":memory:";
     try {
       instance = await DuckDBInstance.create(target, options);
-    connection = await instance.connect();
+      connection = await instance.connect();
+      startupExtensions.clear();
+      const startup = await connection.runAndReadAll(
+        "SELECT extension_name FROM duckdb_extensions() WHERE loaded",
+      );
+      for (const row of startup.getRowObjectsJson())
+        startupExtensions.add(String(row.extension_name));
     } catch (error) {
       const guidance = lockConflictMessage(error);
       if (guidance) throw new Error(guidance);
@@ -472,15 +482,107 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     },
     async listExtensions() {
       const result = await read(
-        `SELECT extension_name, loaded, installed, extension_version, description FROM duckdb_extensions() ORDER BY extension_name`,
+        `SELECT extension_name, loaded, installed, extension_version, description, install_mode, installed_from, install_path FROM duckdb_extensions() ORDER BY extension_name`,
       );
-      return result.rows.map((row) => ({
-        name: String(row.extension_name),
-        loaded: Boolean(row.loaded),
-        installed: Boolean(row.installed),
-        version: String(row.extension_version ?? ""),
-        description: String(row.description ?? ""),
-      }));
+      return result.rows.map((row) => {
+        let sizeBytes: number | undefined;
+        if (
+          row.installed &&
+          typeof row.install_path === "string" &&
+          row.install_path.startsWith("/")
+        ) {
+          try {
+            sizeBytes = statSync(row.install_path).size;
+          } catch (error) {
+            if (
+              !error ||
+              typeof error !== "object" ||
+              !("code" in error) ||
+              error.code !== "ENOENT"
+            )
+              throw error;
+          }
+        }
+        const name = String(row.extension_name);
+        const restartRestriction =
+          row.install_mode === "STATICALLY_LINKED"
+            ? "This built-in extension is part of DuckDB and cannot be unloaded or reloaded."
+            : startupExtensions.has(name)
+              ? "DuckDB loads this extension at startup; restarting would load it again."
+              : config.url
+                ? "Restart extension actions require a local database connection."
+                : undefined;
+        return {
+          name: String(row.extension_name),
+          loaded: Boolean(row.loaded),
+          installed: Boolean(row.installed),
+          version: String(row.extension_version ?? ""),
+          description: String(row.description ?? ""),
+          installationMode: String(row.install_mode ?? ""),
+          repository: String(row.installed_from ?? ""),
+          sizeBytes,
+          loadedAt: row.loaded ? loadedAt.get(name) : undefined,
+          restartRestriction,
+        };
+      });
+    },
+    async restartExtension(name, mode) {
+      const rows = (
+        await read(
+          "SELECT extension_name, loaded, install_mode FROM duckdb_extensions()",
+        )
+      ).rows;
+      const target = rows.find((row) => row.extension_name === name);
+      if (!target) throw new Error(`Extension not found: ${name}`);
+      if (target.install_mode === "STATICALLY_LINKED")
+        throw new Error(
+          "This built-in extension cannot be unloaded or reloaded",
+        );
+      if (startupExtensions.has(name))
+        throw new Error(
+          "DuckDB loads this extension at startup; restarting would load it again",
+        );
+      if (config.url)
+        throw new Error(
+          "Restart extension actions require a local database connection",
+        );
+      if (!target.loaded) throw new Error("The extension is not loaded");
+      const restore = rows
+        .filter(
+          (row) =>
+            row.loaded &&
+            row.install_mode !== "STATICALLY_LINKED" &&
+            (mode === "reload" || row.extension_name !== name),
+        )
+        .map((row) => String(row.extension_name));
+      connection?.closeSync();
+      connection = undefined;
+      instance?.closeSync();
+      instance = undefined;
+      loadedAt.clear();
+      rowCounts.clear();
+      disableAutoload = true;
+      try {
+        await connect();
+        for (const extension of restore) {
+          await run(`LOAD ${quote(extension)}`);
+          loadedAt.set(extension, new Date().toISOString());
+        }
+        const final = (
+          await read(
+            "SELECT loaded FROM duckdb_extensions() WHERE extension_name = ?",
+            [name],
+          )
+        ).rows[0];
+        if (Boolean(final?.loaded) !== (mode === "reload"))
+          throw new Error(
+            "The resulting extension state did not match the requested action",
+          );
+      } catch (error) {
+        throw new Error(
+          `The database session restarted, but extension restoration failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
     },
     async installExtension(name, repository) {
       const target = repository ? `FROM '${escapeString(repository)}'` : "";
@@ -488,6 +590,7 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     },
     async loadExtension(name) {
       await run(`LOAD ${quote(name)}`);
+      loadedAt.set(name, new Date().toISOString());
     },
     async listSettings(search) {
       const sql = search

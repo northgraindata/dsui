@@ -7,7 +7,123 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
-import { assertAdapterDefinition } from "./adapters/loader.js";
+import {
+  assertAdapterDefinition,
+  catalogFromDefinition,
+  LocalBackend,
+} from "./adapters/loader.js";
+
+async function runSession(
+  definition: ReturnType<typeof assertAdapterDefinition>,
+): Promise<number> {
+  const backend = new LocalBackend(definition);
+  let buffer = "";
+  const decoder = new TextDecoder();
+  try {
+    for await (const chunk of Bun.stdin.stream()) {
+      buffer += decoder.decode(chunk, { stream: true });
+      if (Buffer.byteLength(buffer) > 256 * 1024)
+        throw new Error("Host request exceeds input limit");
+      let end = buffer.indexOf("\n");
+      while (end !== -1) {
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 1);
+        let id: string | number | null = null;
+        try {
+          const request: unknown = JSON.parse(line);
+          if (
+            !request ||
+            typeof request !== "object" ||
+            !("jsonrpc" in request) ||
+            request.jsonrpc !== "2.0" ||
+            !("id" in request) ||
+            (typeof request.id !== "string" &&
+              typeof request.id !== "number") ||
+            !("method" in request) ||
+            !("params" in request) ||
+            !request.params ||
+            typeof request.params !== "object"
+          )
+            throw new Error("Invalid JSON-RPC request");
+          id = request.id;
+          const params = request.params;
+          const connection = "connection" in params ? params.connection : {};
+          const input = "input" in params ? params.input : undefined;
+          const target = "target" in params ? params.target : undefined;
+          switch (request.method) {
+            case "describe":
+              reply(id, {
+                ...catalogFromDefinition(definition),
+                metadata: definition.metadata,
+                sdkVersion: definition.sdkVersion,
+              });
+              break;
+            case "health":
+              reply(id, await backend.checkHealth(connection));
+              break;
+            case "page": {
+              if (
+                !input ||
+                typeof input !== "object" ||
+                !("path" in input) ||
+                typeof input.path !== "string" ||
+                !input.path.startsWith("/")
+              )
+                throw new Error("Page path must be an absolute path");
+              reply(
+                id,
+                await backend.renderPage(connection, input.path, "service"),
+              );
+              break;
+            }
+            case "resource": {
+              if (typeof target !== "string")
+                throw new Error("Resource target is required");
+              reply(
+                id,
+                await backend.executeResource(
+                  target,
+                  connection,
+                  input,
+                  "service",
+                ),
+              );
+              break;
+            }
+            case "action": {
+              if (typeof target !== "string")
+                throw new Error("Action target is required");
+              reply(
+                id,
+                await backend.executeAction(
+                  target,
+                  connection,
+                  input,
+                  undefined,
+                  "service",
+                ),
+              );
+              break;
+            }
+            default:
+              throw new Error("Unknown host method");
+          }
+        } catch (error) {
+          reply(
+            id,
+            undefined,
+            error instanceof Error ? error.message : "Adapter host failed",
+          );
+        }
+        end = buffer.indexOf("\n");
+      }
+    }
+    if (buffer.trim()) throw new Error("Incomplete host request");
+    return 0;
+  } finally {
+    await backend.dispose();
+  }
+}
 
 type HostMethod = "describe" | "health" | "page" | "resource" | "action";
 
@@ -83,6 +199,7 @@ export async function runAdapterHost(): Promise<number> {
       `Could not load adapter bundle: ${error instanceof Error ? error.message : "invalid bundle"}`,
     );
   }
+  if (process.argv.includes("--session")) return runSession(definition);
   let request: HostRequest;
   try {
     const text = await new Response(Bun.stdin.stream()).text();

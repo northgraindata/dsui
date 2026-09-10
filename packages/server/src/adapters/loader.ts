@@ -13,6 +13,7 @@ import type { HealthStatus, PageDocument } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
 import { AdapterHostClient } from "./host.js";
 import { type AdapterFetch, ExternalAdapterManager } from "./installer.js";
+import { SessionPool } from "./sessions.js";
 import type {
   AdapterBackend,
   AdapterCatalog,
@@ -28,12 +29,18 @@ export interface AdapterLoadOptions {
   offline?: boolean;
   /** Subprocess host factory; tests inject fakes. */
   spawnHost?: (bundlePath: string) => {
-    request(request: {
-      method: "describe" | "health" | "page" | "resource" | "action";
-      connection?: unknown;
-      target?: string;
-      input?: unknown;
-    }): Promise<unknown>;
+    request(
+      request: {
+        method: "describe" | "health" | "page" | "resource" | "action";
+        connection?: unknown;
+        target?: string;
+        input?: unknown;
+        sessionId?: string;
+      },
+      signal?: AbortSignal,
+    ): Promise<unknown>;
+    closeSession?(id: string): Promise<void>;
+    dispose?(): Promise<void>;
   };
   /** Host call budget in ms (actions run long). */
   hostTimeoutMs?: number;
@@ -150,8 +157,35 @@ function unhealthy(started: number, error: unknown): HealthStatus {
   };
 }
 
-class LocalBackend implements AdapterBackend {
-  constructor(private readonly definition: AdapterDefinition) {}
+export class LocalBackend implements AdapterBackend {
+  private readonly sessions;
+  constructor(private readonly definition: AdapterDefinition) {
+    this.sessions = new SessionPool(
+      (connection) => createAdapterInstance(definition, connection),
+      (instance) => instance.dispose(),
+    );
+  }
+  closeSession(id: string) {
+    return this.sessions.close(id);
+  }
+  dispose() {
+    return this.sessions.dispose();
+  }
+  private async withInstance<T>(
+    connection: unknown,
+    sessionId: string | undefined,
+    run: (
+      instance: Awaited<ReturnType<typeof createAdapterInstance>>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    if (sessionId) return this.sessions.run(sessionId, connection, run);
+    const instance = await createAdapterInstance(this.definition, connection);
+    try {
+      return await run(instance);
+    } finally {
+      await instance.dispose();
+    }
+  }
 
   validateConnection(connection: unknown): unknown {
     return this.definition.connectionSchema?.parse(connection) ?? connection;
@@ -171,44 +205,40 @@ class LocalBackend implements AdapterBackend {
     }
   }
 
-  async renderPage(connection: unknown, path: string): Promise<PageDocument> {
-    const instance = await createAdapterInstance(this.definition, connection);
-    try {
+  async renderPage(
+    connection: unknown,
+    path: string,
+    sessionId?: string,
+  ): Promise<PageDocument> {
+    return this.withInstance(connection, sessionId, async (instance) => {
       const scope = instance.createPageScope(path);
       try {
         return { path, nodes: serializeNodes(scope.render()) };
       } finally {
         scope.dispose();
       }
-    } finally {
-      await instance.dispose();
-    }
+    });
   }
 
   async executeResource(
     resourceId: string,
     connection: unknown,
     input: unknown,
+    sessionId?: string,
   ): Promise<{ data: unknown }> {
     const resource = findMember(
       this.definition.resources,
       "resource",
       resourceId,
     );
-    const instance = await createAdapterInstance(this.definition, connection);
-    try {
-      const binding = (resource as unknown as CallableResource)(input);
-      const result = await instance.executeResource(binding);
-      if (result.status === "error") throw result.error;
-      return { data: result.data };
-    } catch (error) {
-      if (error instanceof AdapterExecutionError) throw error;
-      throw new AdapterExecutionError(
-        error instanceof Error ? error.message : "Resource execution failed",
+    return this.withInstance(connection, sessionId, async (instance) => {
+      const result = await instance.executeResource(
+        (resource as unknown as CallableResource)(input),
       );
-    } finally {
-      await instance.dispose();
-    }
+      if (result.status === "error")
+        throw new AdapterExecutionError(result.error.message);
+      return { data: result.data };
+    });
   }
 
   async executeAction(
@@ -216,20 +246,21 @@ class LocalBackend implements AdapterBackend {
     connection: unknown,
     input: unknown,
     signal?: AbortSignal,
+    sessionId?: string,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   > {
     const action = findMember(this.definition.actions, "action", actionId);
-    const instance = await createAdapterInstance(this.definition, connection);
-    try {
-      const binding = (action as unknown as CallableAction)(input);
-      const result = await instance.executeAction(binding, { signal });
-      if (result.status === "error")
-        return { status: "error", message: result.error.message };
-      return { status: "success", data: result.data };
-    } finally {
-      await instance.dispose();
-    }
+    return this.withInstance(connection, sessionId, async (instance) => {
+      signal?.throwIfAborted();
+      const result = await instance.executeAction(
+        (action as unknown as CallableAction)(input),
+        { signal },
+      );
+      return result.status === "error"
+        ? { status: "error", message: result.error.message }
+        : { status: "success", data: result.data };
+    });
   }
 }
 
@@ -253,14 +284,27 @@ function assertHealthStatus(value: unknown, from: string): HealthStatus {
 class RemoteBackend implements AdapterBackend {
   constructor(
     private readonly host: {
-      request(request: {
-        method: "describe" | "health" | "page" | "resource" | "action";
-        connection?: unknown;
-        target?: string;
-        input?: unknown;
-      }): Promise<unknown>;
+      request(
+        request: {
+          method: "describe" | "health" | "page" | "resource" | "action";
+          connection?: unknown;
+          target?: string;
+          input?: unknown;
+          sessionId?: string;
+        },
+        signal?: AbortSignal,
+      ): Promise<unknown>;
+      closeSession?(id: string): Promise<void>;
+      dispose?(): Promise<void>;
     },
   ) {}
+
+  async closeSession(id: string) {
+    await this.host.closeSession?.(id);
+  }
+  async dispose() {
+    await this.host.dispose?.();
+  }
 
   validateConnection(connection: unknown): unknown {
     // Remote schemas live in the bundle; the host validates per call.
@@ -280,11 +324,16 @@ class RemoteBackend implements AdapterBackend {
     }
   }
 
-  async renderPage(connection: unknown, path: string): Promise<PageDocument> {
+  async renderPage(
+    connection: unknown,
+    path: string,
+    sessionId?: string,
+  ): Promise<PageDocument> {
     const result = await this.host.request({
       method: "page",
       connection,
       input: { path },
+      sessionId,
     });
     if (!result || typeof result !== "object")
       throw new AdapterExecutionError("Adapter host returned an invalid page");
@@ -295,6 +344,7 @@ class RemoteBackend implements AdapterBackend {
     resourceId: string,
     connection: unknown,
     input: unknown,
+    sessionId?: string,
   ): Promise<{ data: unknown }> {
     try {
       const result = (await this.host.request({
@@ -302,6 +352,7 @@ class RemoteBackend implements AdapterBackend {
         connection,
         target: resourceId,
         input,
+        sessionId,
       })) as { data?: unknown };
       return { data: result?.data };
     } catch (error) {
@@ -315,15 +366,21 @@ class RemoteBackend implements AdapterBackend {
     actionId: string,
     connection: unknown,
     input: unknown,
+    signal?: AbortSignal,
+    sessionId?: string,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   > {
-    const result = (await this.host.request({
-      method: "action",
-      connection,
-      target: actionId,
-      input,
-    })) as
+    const result = (await this.host.request(
+      {
+        method: "action",
+        connection,
+        target: actionId,
+        input,
+        sessionId,
+      },
+      signal,
+    )) as
       | { status: "success"; data: unknown }
       | { status: "error"; message: string };
     if (!result || typeof result !== "object" || !("status" in result))

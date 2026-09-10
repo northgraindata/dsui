@@ -62,17 +62,24 @@ export interface AdapterHealth extends HealthStatus {}
  * on adapter origin.
  */
 export interface AdapterBackend {
+  closeSession?(id: string): Promise<void>;
+  dispose?(): Promise<void>;
   /** Validate a connection object; returns the parsed value. */
   validateConnection(connection: unknown): unknown;
   /** Probe: instantiate (and dispose) against a connection. */
   checkHealth(connection: unknown): Promise<HealthStatus>;
   /** Renders and validates an adapter page for a concrete path. */
-  renderPage(connection: unknown, path: string): Promise<PageDocument>;
+  renderPage(
+    connection: unknown,
+    path: string,
+    sessionId?: string,
+  ): Promise<PageDocument>;
   /** Execute one resource query; throws AdapterExecutionError on failure. */
   executeResource(
     resourceId: string,
     connection: unknown,
     input: unknown,
+    sessionId?: string,
   ): Promise<{ data: unknown }>;
   /** Execute one action; cancellable in-process, timeout-bound remotely. */
   executeAction(
@@ -80,6 +87,7 @@ export interface AdapterBackend {
     connection: unknown,
     input: unknown,
     signal?: AbortSignal,
+    sessionId?: string,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   >;

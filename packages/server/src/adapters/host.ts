@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { HostSession } from "./host-session";
+import { SessionPool } from "./sessions";
 
 /**
  * Transport to an `adapter-host` subprocess. One request per process:
@@ -17,6 +19,7 @@ export interface AdapterHostRequest {
   /** Resource or action id for `resource`/`action` methods. */
   target?: string;
   input?: unknown;
+  sessionId?: string;
 }
 
 interface JsonRpcResponse {
@@ -65,9 +68,40 @@ async function readStreamLimited(
 }
 
 export class AdapterHostClient {
-  constructor(private readonly options: AdapterHostClientOptions) {}
+  private readonly sessions;
+  constructor(private readonly options: AdapterHostClientOptions) {
+    this.sessions = new SessionPool(
+      async () => new HostSession(options),
+      (session) => session.dispose(),
+    );
+  }
 
-  async request(request: AdapterHostRequest): Promise<unknown> {
+  closeSession(id: string) {
+    return this.sessions.close(id);
+  }
+  dispose() {
+    return this.sessions.dispose();
+  }
+
+  async request(
+    request: AdapterHostRequest,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    if (request.sessionId) {
+      const result = await this.sessions.run(
+        request.sessionId,
+        request.connection,
+        (session) => session.request(request, signal),
+      );
+      if (
+        result &&
+        typeof result === "object" &&
+        "sessionError" in result &&
+        typeof result.sessionError === "string"
+      )
+        throw new AdapterHostError(result.sessionError);
+      return result;
+    }
     const max = this.options.maxOutputBytes ?? 256 * 1024;
     const timeoutMs = this.options.timeoutMs ?? 10_000;
     const input = `${JSON.stringify({
@@ -86,12 +120,15 @@ export class AdapterHostClient {
       [this.options.command, ...(this.options.args ?? [])],
       { stdin: new Blob([input]).stream(), stdout: "pipe", stderr: "pipe" },
     );
-    const timed = new Promise<never>((_, reject) =>
-      setTimeout(() => {
+    const timer = {
+      value: undefined as ReturnType<typeof setTimeout> | undefined,
+    };
+    const timed = new Promise<never>((_, reject) => {
+      timer.value = setTimeout(() => {
         child.kill();
         reject(new AdapterHostError("Adapter host timed out"));
-      }, timeoutMs),
-    );
+      }, timeoutMs);
+    });
     try {
       const [stdout, stderr, code] = await Promise.race([
         Promise.all([
@@ -126,6 +163,7 @@ export class AdapterHostClient {
         );
       return response.result;
     } finally {
+      clearTimeout(timer.value);
       child.kill();
     }
   }

@@ -196,6 +196,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
    * are ignored by the registry. A local installation with no
    * `adapters:` section includes bundled adapters.
    */
+  const adapterCache = new Map<
+    string,
+    { source: string; adapter: LoadedAdapter }
+  >();
   const syncAdapters = async (loaded: DsuiConfig) => {
     const next: LoadedAdapter[] = [];
     readiness.clear();
@@ -217,18 +221,27 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       );
     for (const [id, source] of sources) {
       try {
-        const loadedAdapter = await loadAdapter(
-          id,
-          "version" in source
-            ? {
-                package: source.package,
-                version: source.version,
-                integrity: source.integrity,
-                ...(source.entry ? { entry: source.entry } : {}),
-              }
-            : { package: source.package },
-          loaderOptions,
-        );
+        const fingerprint = JSON.stringify(source);
+        const cached = adapterCache.get(id);
+        if (cached && cached.source !== fingerprint) {
+          await cached.adapter.backend.dispose?.();
+          adapterCache.delete(id);
+        }
+        const loadedAdapter =
+          (cached?.source === fingerprint ? cached.adapter : undefined) ??
+          (await loadAdapter(
+            id,
+            "version" in source
+              ? {
+                  package: source.package,
+                  version: source.version,
+                  integrity: source.integrity,
+                  ...(source.entry ? { entry: source.entry } : {}),
+                }
+              : { package: source.package },
+            loaderOptions,
+          ));
+        adapterCache.set(id, { source: fingerprint, adapter: loadedAdapter });
         next.push(loadedAdapter);
         readiness.set(id, {
           status: "ok",
@@ -241,12 +254,18 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         });
       }
     }
+    for (const [id, cached] of adapterCache) {
+      if (!sources.some(([nextId]) => nextId === id)) {
+        await cached.adapter.backend.dispose?.();
+        adapterCache.delete(id);
+      }
+    }
     registry.reset(next);
     for (const [id, override] of Object.entries(loaded.adapters ?? {}))
       if (!isAdapterSource(override)) registry.applyMetadata(id, override);
   };
 
-  const refreshConfig = async () => {
+  const refresh = async () => {
     const loaded = options.config ?? (await loadConfig(configPath));
     const duplicates = loaded.services
       .filter((service) =>
@@ -257,11 +276,27 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       throw new Error(
         `Service IDs are managed twice; remove them from one source: ${duplicates.join(", ")}`,
       );
+    for (const previous of config.services) {
+      const replacement = loaded.services.find(
+        (service) => service.id === previous.id,
+      );
+      if (JSON.stringify(previous) !== JSON.stringify(replacement))
+        await adapterCache
+          .get(previous.adapter)
+          ?.adapter.backend.closeSession?.(previous.id);
+    }
     await syncAdapters(loaded);
     config = loaded;
     return config;
   };
 
+  let refreshing: Promise<DsuiConfig> | undefined;
+  const refreshConfig = () => {
+    refreshing ??= refresh().finally(() => {
+      refreshing = undefined;
+    });
+    return refreshing;
+  };
   const getConfig = () => config;
   const audit = (
     actor: string,
@@ -325,6 +360,17 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     database,
     registry,
     refreshConfig,
-    close: () => database.close(),
+    close: async () => {
+      await refreshing;
+      try {
+        await Promise.all(
+          [...adapterCache.values()].map(({ adapter }) =>
+            adapter.backend.dispose?.(),
+          ),
+        );
+      } finally {
+        database.close();
+      }
+    },
   };
 }

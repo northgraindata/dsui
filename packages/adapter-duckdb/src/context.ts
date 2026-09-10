@@ -231,6 +231,11 @@ export interface ExtensionInfo {
   installed: boolean;
   version: string;
   description: string;
+  installationMode?: string;
+  repository?: string;
+  sizeBytes?: number;
+  loadedAt?: string;
+  restartRestriction?: string;
 }
 
 export interface SettingInfo {
@@ -305,6 +310,8 @@ export interface DuckDbClient {
   listTypes(): Promise<TypeInfo[]>;
   // Configuration
   listExtensions(): Promise<ExtensionInfo[]>;
+  /** Restarts the database instance; discards all temporary/session state. */
+  restartExtension(name: string, mode: "unload" | "reload"): Promise<void>;
   installExtension(name: string, repository?: string): Promise<void>;
   loadExtension(name: string): Promise<void>;
   listSettings(search?: string): Promise<SettingInfo[]>;

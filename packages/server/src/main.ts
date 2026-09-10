@@ -30,6 +30,16 @@ async function serve(): Promise<never> {
     port: Number(process.env.DSUI_PORT ?? 4192),
   });
   console.log(`dsui listening on http://${server.hostname}:${server.port}`);
+  let stopping = false;
+  const stop = async () => {
+    if (stopping) return;
+    stopping = true;
+    await server.stop();
+    await runtime.close();
+    process.exit(0);
+  };
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
   await new Promise<never>(() => undefined);
   throw new Error("unreachable");
 }
