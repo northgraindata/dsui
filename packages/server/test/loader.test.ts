@@ -82,6 +82,10 @@ describe("adapter loading", () => {
       "memory",
       "file",
       "s3",
+      "gcs",
+      "r2",
+      "azure",
+      "quack",
     ]);
     expect(loaded.connectionMethods?.[0]?.label).toBe("In-memory");
     expect(loaded.connectionMethods?.[0]?.schema).toMatchObject({

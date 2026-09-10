@@ -90,6 +90,12 @@ describe("services API", () => {
           id: "airflow",
           schema: expect.objectContaining({ required: ["baseUrl", "token"] }),
         }),
+        expect.objectContaining({
+          id: "airflow-2",
+          schema: expect.objectContaining({
+            required: ["baseUrl", "username", "password"],
+          }),
+        }),
       ]);
       expect(
         adapters.find((adapter) => adapter.id === "airflow")?.iconUrl,
