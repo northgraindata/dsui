@@ -453,7 +453,8 @@ export function createAirflowClient(
         },
         redirect: "error",
         signal: combinedSignal,
-      },
+        verbose: true,
+      } as RequestInit,
     );
     if (!response.ok) {
       await response.body?.cancel();
