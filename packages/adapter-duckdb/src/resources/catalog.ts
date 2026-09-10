@@ -29,6 +29,188 @@ export const overview = defineResource({
   query: (_input: undefined, ctx: DuckDbContext) => ctx.client.getOverview(),
 });
 
+export const databaseStats = defineResource({
+  id: "database-stats",
+  query: (_input: undefined, ctx: DuckDbContext) => ctx.client.databaseStats(),
+  refresh: poll("30s"),
+});
+
+export const tableRowCounts = defineResource({
+  id: "table-row-counts",
+  input: z.object({
+    database: z.string(),
+    schema: z.string(),
+    table: z.string(),
+  }),
+  query: async ({ database, schema, table }, ctx: DuckDbContext) => ({
+    database,
+    schema,
+    name: table,
+    rows: await ctx.client.countRows(database, schema, table),
+  }),
+});
+
+export const storageMeter = defineResource({
+  id: "storage-meter",
+  input: z.object({ database: z.string().optional() }),
+  query: async ({ database }, ctx: DuckDbContext) => {
+    const [summary, tableBytes] = await Promise.all([
+      ctx.client.storageSummary(database),
+      ctx.client.tableDataBytes(database),
+    ]);
+    const table = Math.min(tableBytes, summary.sizeBytes);
+    return {
+      segments: [
+        { label: "Table data", value: table, tone: "info" },
+        {
+          label: "Indexes, metadata & free pages",
+          value: Math.max(0, summary.sizeBytes - table),
+          tone: "muted",
+        },
+      ],
+    };
+  },
+});
+
+export const recentTables = defineResource({
+  id: "recent-tables",
+  input: z.object({ limit: z.number().int().min(1).max(25).default(5) }),
+  query: async ({ limit }, ctx: DuckDbContext) => {
+    const databases = (await ctx.client.listDatabases()).filter(
+      (database) => database.name !== "system" && database.name !== "temp",
+    );
+    const perDatabase = await Promise.all(
+      databases.map(async (database) => {
+        const schemas = await ctx.client.listSchemas(database.name);
+        const perSchema = await Promise.all(
+          schemas.map(async (schema) => {
+            const tables = await ctx.client.listTables(
+              database.name,
+              schema.name,
+            );
+            return Promise.all(
+              tables.map(async (table) => ({
+                database: database.name,
+                schema: schema.name,
+                name: table.name,
+                relationType: "tables",
+                relation: table.name,
+                rows: await ctx.client.countRows(
+                  database.name,
+                  schema.name,
+                  table.name,
+                ),
+              })),
+            );
+          }),
+        );
+        return perSchema.flat();
+      }),
+    );
+    return perDatabase
+      .flat()
+      .sort((left, right) => right.rows - left.rows)
+      .slice(0, limit);
+  },
+  refresh: poll("60s"),
+});
+
+function ageLabel(startedAt: string): string {
+  const seconds = Math.max(
+    0,
+    Math.round((Date.now() - Date.parse(startedAt)) / 1000),
+  );
+  if (seconds < 60) return `${seconds} sec ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+export const databaseCards = defineResource({
+  id: "database-cards",
+  query: async (_input: undefined, ctx: DuckDbContext) => {
+    const [databases, stats] = await Promise.all([
+      ctx.client.listDatabases(),
+      ctx.client.databaseStats(),
+    ]);
+    const byName = new Map(stats.map((entry) => [entry.database, entry]));
+    const visible = databases.filter(
+      (database) => database.name !== "system" && database.name !== "temp",
+    );
+    const isPrimary = (database: { name: string; path: string | null }) =>
+      ctx.config.method === "memory"
+        ? database.name === "memory"
+        : database.path != null && database.path === ctx.config.path;
+    const primaryMatched = visible.some(isPrimary);
+    return visible.map((database, index) => {
+      const counts = byName.get(database.name);
+      const primary = primaryMatched ? isPrimary(database) : index === 0;
+      const remote = !database.internal && !database.path;
+      return {
+        name: database.name,
+        icon: "database",
+        title: database.name,
+        description:
+          database.path ?? (primary ? "Local database" : "Attached database"),
+        ...(primary
+          ? { badge: "Primary" }
+          : remote
+            ? { badge: "Attached" }
+            : {}),
+        meta: [
+          `${counts?.schemas ?? 0} schemas`,
+          `${counts?.tables ?? 0} tables`,
+          `${counts?.views ?? 0} views`,
+        ],
+        link: { path: "/data/:database", params: { database: "name" } },
+      };
+    });
+  },
+  refresh: poll("30s"),
+});
+
+export const extensionCards = defineResource({
+  id: "extension-cards",
+  query: async (_input: undefined, ctx: DuckDbContext) => {
+    const extensions = await ctx.client.listExtensions();
+    return extensions
+      .filter((extension) => extension.installed)
+      .map((extension) => ({
+        name: extension.name,
+        icon: "layers",
+        title: extension.name,
+        description: extension.description || `Version ${extension.version}`,
+        badge: extension.loaded ? "Loaded" : "Available",
+        badgeTone: extension.loaded ? "healthy" : "info",
+        link: {
+          path: "/extensions/:extension",
+          params: { extension: "name" },
+        },
+      }));
+  },
+  refresh: poll("60s"),
+});
+
+export const recentQueries = defineResource({
+  id: "recent-queries",
+  input: z.object({ limit: z.number().int().min(1).max(25).default(5) }),
+  query: async ({ limit }, ctx: DuckDbContext) => {
+    const entries = await ctx.client.listQueryHistory({
+      search: "",
+      status: "SUCCESS",
+    });
+    return entries.slice(0, limit).map((entry) => ({
+      query: entry.sql.length > 48 ? `${entry.sql.slice(0, 47)}…` : entry.sql,
+      age: ageLabel(entry.startedAt),
+      duration: `${entry.elapsedMs} ms`,
+    }));
+  },
+  refresh: poll("10s"),
+});
+
 export const databaseDetails = defineResource({
   id: "database-details",
   input: z.object({ database: z.string() }),

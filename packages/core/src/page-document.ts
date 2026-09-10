@@ -117,6 +117,20 @@ export type MeterData = {
 
 export type PageNode =
   | {
+      kind: "entity-catalog";
+      props: {
+        source: ResourceReference;
+        title: string;
+        subtitle?: string;
+        description?: string;
+        icon?: string;
+        filters?: import("./entity-document").CatalogFilter[];
+        createLabel?: string;
+        searchPlaceholder?: string;
+      };
+    }
+  | { kind: "entity-detail"; props: { source: ResourceReference } }
+  | {
       kind: "page-header";
       props: {
         title: string;

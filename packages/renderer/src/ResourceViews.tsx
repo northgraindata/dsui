@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { RendererClient } from "./types";
 
 /** Fills :param placeholders from row fields; null when a field is missing. */
-function resolveLink(
+export function resolveLink(
   path: string,
   params: Record<string, string>,
   row: Record<string, unknown>,

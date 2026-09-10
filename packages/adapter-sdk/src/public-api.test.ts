@@ -12,6 +12,8 @@ const EXPECTED_EXPORTS = [
   "CardList",
   "CodeEditor",
   "Columns",
+  "EntityCatalog",
+  "EntityDetail",
   "Form",
   "InvalidDefinitionError",
   "KeyValue",

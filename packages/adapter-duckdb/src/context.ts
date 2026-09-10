@@ -27,8 +27,7 @@ export const duckdbConnectionMethods = {
   },
   file: {
     label: "Local file",
-    description:
-      "A .duckdb file on the server's filesystem. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
+    description: "A .duckdb file on the server's filesystem.",
     schema: z.object({
       path: z.string().min(1),
       readOnly: booleanish.default(false),
@@ -40,8 +39,7 @@ export const duckdbConnectionMethods = {
     methods: {
       s3: {
         label: "S3 / S3-compatible",
-        description:
-          "S3, MinIO, and other S3-API storage via httpfs. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
+        description: "S3, MinIO, and other S3-API storage via httpfs.",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
@@ -54,8 +52,7 @@ export const duckdbConnectionMethods = {
       },
       gcs: {
         label: "Google Cloud Storage",
-        description:
-          "GCS buckets via the S3 API (HMAC keys). Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
+        description: "GCS buckets via the S3 API (HMAC keys).",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
@@ -65,8 +62,7 @@ export const duckdbConnectionMethods = {
       },
       r2: {
         label: "Cloudflare R2",
-        description:
-          "R2 buckets via the S3 API. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
+        description: "R2 buckets via the S3 API.",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
@@ -77,8 +73,7 @@ export const duckdbConnectionMethods = {
       },
       azure: {
         label: "Azure Blob Storage",
-        description:
-          "Azure Blob containers via the azure extension. Concurrent access to the same file can conflict — see https://duckdb.org/docs/stable/connect/concurrency.",
+        description: "Azure Blob containers via the azure extension.",
         schema: z.object({
           url: z.string().min(1),
           readOnly: booleanish.default(false),
@@ -131,9 +126,37 @@ export interface QueryResult {
 export interface DuckDbOverview {
   version: string;
   databases: number;
+  schemas: number;
   tables: number;
   views: number;
   extensions: number;
+  threads: number;
+  totalSizeBytes: number;
+  totalSize: string;
+}
+
+export interface DatabaseStats {
+  database: string;
+  schemas: number;
+  tables: number;
+  views: number;
+}
+
+export interface TableRowCount {
+  database: string;
+  schema: string;
+  name: string;
+  rows: number;
+}
+
+export interface StorageSummary {
+  database: string;
+  path: string | null;
+  sizeBytes: number;
+  size: string;
+  freeBytes: number;
+  free: string;
+  diskBytes: number;
 }
 
 export interface TableInfo {
@@ -208,6 +231,11 @@ export interface ExtensionInfo {
   installed: boolean;
   version: string;
   description: string;
+  installationMode?: string;
+  repository?: string;
+  sizeBytes?: number;
+  loadedAt?: string;
+  restartRestriction?: string;
 }
 
 export interface SettingInfo {
@@ -241,6 +269,16 @@ export interface DuckDbClient {
   interrupt(): void;
   // Catalog
   getOverview(): Promise<DuckDbOverview>;
+  databaseStats(): Promise<DatabaseStats[]>;
+  countRows(database: string, schema: string, table: string): Promise<number>;
+  /**
+   * Measured table allocation in bytes: distinct storage blocks referenced
+   * by persistent tables times the block size. An estimate — indexes,
+   * catalog metadata, WAL, and free pages are not attributed — never a
+   * replacement for the file size.
+   */
+  tableDataBytes(database?: string): Promise<number>;
+  storageSummary(database?: string): Promise<StorageSummary>;
   listDatabases(): Promise<DatabaseInfo[]>;
   getDatabase(database: string): Promise<DatabaseInfo | null>;
   databaseSize(database?: string): Promise<QueryResult>;
@@ -272,6 +310,8 @@ export interface DuckDbClient {
   listTypes(): Promise<TypeInfo[]>;
   // Configuration
   listExtensions(): Promise<ExtensionInfo[]>;
+  /** Restarts the database instance; discards all temporary/session state. */
+  restartExtension(name: string, mode: "unload" | "reload"): Promise<void>;
   installExtension(name: string, repository?: string): Promise<void>;
   loadExtension(name: string): Promise<void>;
   listSettings(search?: string): Promise<SettingInfo[]>;
