@@ -1,6 +1,6 @@
-import { Button } from "@northgraindata/dsui-ui";
+import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
 import { Link, useRouter } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { deleteService, type Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
@@ -41,6 +41,7 @@ export function AdapterWorkspace({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const [showConfirmRemove, setShowConfirmRemove] = useState(false);
   const pages = navigablePagePaths(paths);
   const query = path === "/query";
   const active = (item: string) =>
@@ -59,10 +60,8 @@ export function AdapterWorkspace({
   );
 
   const handleRemove = async () => {
-    if (confirm(`Are you sure you want to remove ${service.name}?`)) {
-      await deleteService(service.id);
-      router.navigate({ to: "/" });
-    }
+    await deleteService(service.id);
+    router.navigate({ to: "/" });
   };
 
   return (
@@ -131,9 +130,30 @@ export function AdapterWorkspace({
               </p>
             </div>
           </div>
-          <Button variant="danger" onClick={handleRemove}>
-            Remove connection
-          </Button>
+          <Dialog.Root
+            open={showConfirmRemove}
+            onOpenChange={setShowConfirmRemove}
+          >
+            <Dialog.Trigger asChild>
+              <Button variant="danger">Remove connection</Button>
+            </Dialog.Trigger>
+            <DialogContent
+              title="Remove connection"
+              description={`Are you sure you want to remove ${service.name}?`}
+            >
+              <div className="flex justify-end gap-3 pt-5">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowConfirmRemove(false)}
+                >
+                  Cancel
+                </Button>
+                <Button variant="danger" onClick={handleRemove}>
+                  Yes, remove
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog.Root>
         </header>
         {children}
       </div>
