@@ -1,5 +1,5 @@
 import { Input } from "@northgraindata/dsui-ui";
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 export function TextInputView({ node }: RegistryViewProps) {
   if (node.kind !== "text-input") return null;
@@ -12,5 +12,3 @@ export function TextInputView({ node }: RegistryViewProps) {
     />
   );
 }
-
-registerView("text-input", TextInputView);

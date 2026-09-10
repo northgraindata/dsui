@@ -4,7 +4,7 @@ import type {
   ResourceReference,
 } from "@northgraindata/dsui-core";
 import { useCallback, useEffect, useState } from "react";
-import type { RendererClient } from "./types";
+import type { RendererClient } from "../../types/renderer-types";
 
 export function filterEntities(
   items: EntityItem[],

@@ -385,7 +385,7 @@ test("lists recent successful queries with age and duration", async () => {
   await instance.dispose();
 });
 
-test("the query page exposes a serializable query workbench", async () => {
+test("the query page exposes a serializable query editor", async () => {
   const instance = await createAdapterInstance(duckdbAdapter, MEMORY);
   const scope = instance.createPageScope("/query");
   const nodes = scope.render();
@@ -393,7 +393,7 @@ test("the query page exposes a serializable query workbench", async () => {
 
   expect(list.map((node) => node.kind)).toEqual([
     "page-header",
-    "query-workbench",
+    "query-editor",
   ]);
 
   scope.dispose();

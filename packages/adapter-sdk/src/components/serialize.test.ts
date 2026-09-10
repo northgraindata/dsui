@@ -8,7 +8,7 @@ import {
   Columns,
   Meter,
   PageHeader,
-  QueryWorkbench,
+  QueryEditor,
   ResourceTree,
   Section,
   SplitPane,
@@ -64,7 +64,7 @@ test("serializes declarative row links and row actions", () => {
   ]);
 });
 
-test("serializes a browser-owned query workbench", () => {
+test("serializes a browser-owned query editor", () => {
   const runQuery = { kind: "action", id: "run-query" } as const;
   const databases = defineResource({ id: "databases", query: () => [] });
   const schemas = defineResource({
@@ -74,7 +74,7 @@ test("serializes a browser-owned query workbench", () => {
   });
   expect(
     serializeNodes(
-      QueryWorkbench({
+      QueryEditor({
         language: "sql",
         value: "SELECT 42",
         action: runQuery,
@@ -86,7 +86,7 @@ test("serializes a browser-owned query workbench", () => {
     ),
   ).toEqual([
     {
-      kind: "query-workbench",
+      kind: "query-editor",
       props: {
         language: "sql",
         value: "SELECT 42",

@@ -81,7 +81,7 @@ follow the links into the guides; for hover docs, read TSDoc in source
 | `Tabs` / `KeyValue` | functions | Grouped content, record details. |
 | `CodeEditor` / `Select` / `TextInput` | functions | Store-bound inputs. |
 | `Form` | function | Schema-shared submit form. |
-| `defineComponent(options)` | function | Named builtin composites. |
+| `defineComponent(options)` | function | Common definition mechanism for shared factories, adapter composites, and browser custom components. |
 | `ComponentNode` + `*Node` / `*Props` | types | Discriminated union and props. |
 
 ## Runtime

@@ -163,8 +163,11 @@ by construction.
 
 ## Reuse composites
 
-`defineComponent` names a composite of builtins for reuse across
-pages. It carries no browser code and needs no renderer changes:
+`defineComponent` is the common definition mechanism behind the standard
+component factories and adapter-owned components. Adapter authors normally
+import standard primitives directly; use `defineComponent` when naming a
+reusable adapter composite. A render-mode component carries no browser code and
+needs no renderer changes:
 
 ```ts title="snowflake/components/session-bar.ts"
 export const SessionBar = defineComponent<SessionBarProps, readonly ComponentNode[]>({

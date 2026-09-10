@@ -1,6 +1,6 @@
 import { Surface } from "@northgraindata/dsui-ui";
 import { lazy, Suspense, useMemo } from "react";
-import { type RegistryViewProps, resolveView } from "../registry";
+import { type RegistryViewProps, resolveView } from "../registry/view-registry";
 
 /**
  * Renders a `"custom"` node through the component registry. Unknown ids

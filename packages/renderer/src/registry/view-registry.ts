@@ -1,6 +1,6 @@
 import type { PageNode } from "@northgraindata/dsui-core";
 import type { ComponentType, ReactNode } from "react";
-import type { RendererClient } from "./types";
+import type { RendererClient } from "../types/renderer-types";
 
 /**
  * Props every registry view receives. Views ignore what they do not

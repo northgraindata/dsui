@@ -20,6 +20,12 @@ test("entity nodes serialize resource identity without live bindings", () => {
     props: { source: { resourceId: "catalog" } },
   });
 });
+test("entity components use the shared component definition metadata", () => {
+  expect(EntityCatalog.kind).toBe("component");
+  expect(EntityCatalog.id).toBe("entity-catalog");
+  expect(EntityDetail.kind).toBe("component");
+  expect(EntityDetail.id).toBe("entity-detail");
+});
 test("catalog rejects malformed records, duplicate IDs and unsafe navigation", () => {
   const item = { id: "item", title: "Item", description: "Description" };
   expect(parseEntityCatalog([item])).toEqual([expect.objectContaining(item)]);

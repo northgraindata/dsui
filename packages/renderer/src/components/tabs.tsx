@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 export function Tabs({ client, node, renderNode }: RegistryViewProps) {
   const [selected, setSelected] = useState(0);
@@ -27,5 +27,3 @@ export function Tabs({ client, node, renderNode }: RegistryViewProps) {
     </div>
   );
 }
-
-registerView("tabs", Tabs);

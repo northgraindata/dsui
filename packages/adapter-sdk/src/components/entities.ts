@@ -1,5 +1,6 @@
 import type { CatalogFilter } from "@northgraindata/dsui-core";
 import type { DataSource } from "../resource/index";
+import { defineComponent } from "./custom";
 
 export interface EntityCatalogProps {
   source: DataSource;
@@ -22,23 +23,36 @@ export interface EntityDetailNode {
 }
 
 /** A searchable, filterable catalog of resource-supplied entity records. */
-export function EntityCatalog(props: EntityCatalogProps): EntityCatalogNode {
-  if (!props.title.trim()) throw new Error("EntityCatalog requires a title");
-  if (!props.source?.resourceId)
-    throw new Error("EntityCatalog requires a resource binding");
-  if (
-    props.filters?.some(
-      (filter) =>
-        !filter.label ||
-        (filter.field !== undefined && filter.equals === undefined),
+export const EntityCatalog = defineComponent<
+  EntityCatalogProps,
+  EntityCatalogNode
+>({
+  id: "entity-catalog",
+  render: (props) => {
+    if (!props.title.trim()) throw new Error("EntityCatalog requires a title");
+    if (!props.source?.resourceId)
+      throw new Error("EntityCatalog requires a resource binding");
+    if (
+      props.filters?.some(
+        (filter) =>
+          !filter.label ||
+          (filter.field !== undefined && filter.equals === undefined),
+      )
     )
-  )
-    throw new Error("Catalog filters require a label and comparison value");
-  return { kind: "entity-catalog", props };
-}
+      throw new Error("Catalog filters require a label and comparison value");
+    return { kind: "entity-catalog", props: { ...props } };
+  },
+});
+
 /** A resource-supplied entity header, tabs, and composable content panels. */
-export function EntityDetail(props: { source: DataSource }): EntityDetailNode {
-  if (!props.source?.resourceId)
-    throw new Error("EntityDetail requires a resource binding");
-  return { kind: "entity-detail", props };
-}
+export const EntityDetail = defineComponent<
+  { source: DataSource },
+  EntityDetailNode
+>({
+  id: "entity-detail",
+  render: (props) => {
+    if (!props.source?.resourceId)
+      throw new Error("EntityDetail requires a resource binding");
+    return { kind: "entity-detail", props: { ...props } };
+  },
+});

@@ -21,7 +21,7 @@ const EXPECTED_EXPORTS = [
   "Meter",
   "PageHeader",
   "PollingRefreshPolicy",
-  "QueryWorkbench",
+  "QueryEditor",
   "RefreshPolicy",
   "ResourceTree",
   "SdkError",

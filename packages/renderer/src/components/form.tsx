@@ -1,6 +1,6 @@
 import { Button, Field, Input, Surface } from "@northgraindata/dsui-ui";
 import { type FormEvent, useState } from "react";
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 export function ActionForm({ client, node }: RegistryViewProps) {
   const fields = (node.kind === "form" ? node.props.fields : []).filter(
@@ -83,5 +83,3 @@ export function ActionForm({ client, node }: RegistryViewProps) {
     </Surface>
   );
 }
-
-registerView("form", ActionForm);

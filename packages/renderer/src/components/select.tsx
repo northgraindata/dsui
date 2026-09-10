@@ -1,4 +1,4 @@
-import { type RegistryViewProps, registerView } from "../registry";
+import type { RegistryViewProps } from "../registry/view-registry";
 
 export function SelectView({ node }: RegistryViewProps) {
   if (node.kind !== "select") return null;
@@ -15,5 +15,3 @@ export function SelectView({ node }: RegistryViewProps) {
     </select>
   );
 }
-
-registerView("select", SelectView);

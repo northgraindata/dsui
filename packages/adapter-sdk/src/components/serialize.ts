@@ -46,9 +46,9 @@ function action(
 }
 
 function explorer(
-  value: NonNullable<import("./nodes").QueryWorkbenchProps["explorer"]>,
+  value: NonNullable<import("./nodes").QueryEditorProps["explorer"]>,
 ): NonNullable<
-  Extract<PageNode, { kind: "query-workbench" }>["props"]["explorer"]
+  Extract<PageNode, { kind: "query-editor" }>["props"]["explorer"]
 > {
   return {
     source: resource(value.source),
@@ -174,7 +174,7 @@ export function serializeNode(node: ComponentNode): PageNode {
           ...(node.props.data ? { data: { ...node.props.data } } : {}),
         },
       };
-    case "query-workbench":
+    case "query-editor":
       return {
         kind: node.kind,
         props: {

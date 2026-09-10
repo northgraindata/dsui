@@ -233,7 +233,7 @@ export type PageNode =
       };
     }
   | {
-      kind: "query-workbench";
+      kind: "query-editor";
       props: {
         language: string;
         value?: string;
