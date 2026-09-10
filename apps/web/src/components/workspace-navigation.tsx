@@ -6,7 +6,7 @@ import {
   type ServiceView,
   type WorkspaceArea,
 } from "../workspace-navigation";
-import { Icon } from "./Icon";
+import { Icon } from "./icon";
 
 const navLink =
   "group relative flex h-8 items-center gap-2.5 px-2.5 text-[12px] no-underline transition-colors hover:bg-surface-hover hover:text-primary";

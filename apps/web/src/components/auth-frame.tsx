@@ -1,6 +1,6 @@
 import { Surface } from "@northgraindata/dsui-ui";
 import type { ReactNode } from "react";
-import { Wordmark } from "./Wordmark";
+import { Wordmark } from "./wordmark";
 
 export const authCardInput =
   "grid gap-4 border-t border-dashed border-border px-5 py-4";

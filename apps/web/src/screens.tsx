@@ -38,20 +38,20 @@ import {
   setupOwner,
   titleFor,
 } from "./api";
-import { AdapterMarketplace } from "./components/AdapterMarketplace";
-import { AdapterWorkspace } from "./components/AdapterWorkspace";
-import { AppChrome } from "./components/AppChrome";
-import { AuthFrame, authCardInput } from "./components/AuthFrame";
-import { DatabaseExplorer } from "./components/DatabaseExplorer";
-import { HomeDashboard } from "./components/HomeDashboard";
-import { Icon } from "./components/Icon";
+import { AdapterMarketplace } from "./components/adapter-marketplace";
+import { AdapterWorkspace } from "./components/adapter-workspace";
+import { AppChrome } from "./components/app-chrome";
+import { AuthFrame, authCardInput } from "./components/auth-frame";
+import { DatabaseExplorer } from "./components/database-explorer";
+import { HomeDashboard } from "./components/home-dashboard";
+import { Icon } from "./components/icon";
 import {
   EmptyState,
   PageHeading,
   pageClass,
   UnavailableState,
-} from "./components/Page";
-import { ServiceMark } from "./components/ServiceMark";
+} from "./components/page";
+import { ServiceMark } from "./components/service-mark";
 import { usePolling } from "./hooks/usePolling";
 
 const _nav = [

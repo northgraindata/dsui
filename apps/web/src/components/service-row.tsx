@@ -1,8 +1,8 @@
 import { cn, Status } from "@northgraindata/dsui-ui";
 import { Link } from "@tanstack/react-router";
 import type { Service } from "../api";
-import { Icon } from "./Icon";
-import { ServiceMark } from "./ServiceMark";
+import { Icon } from "./icon";
+import { ServiceMark } from "./service-mark";
 
 const rowGrid =
   "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[minmax(0,1fr)_130px_170px_16px] md:gap-4";

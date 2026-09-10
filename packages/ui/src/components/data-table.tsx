@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Surface } from "./Surface";
+import { Surface } from "./surface";
 
 export function DataTable({
   columns,

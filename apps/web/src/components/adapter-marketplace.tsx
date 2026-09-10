@@ -1,8 +1,8 @@
 import { Button } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
 import { type Adapter, getAdapters } from "../api";
-import { ConnectionDialog } from "./ConnectionDialog";
-import { ServiceMark } from "./ServiceMark";
+import { ConnectionDialog } from "./connection-dialog";
+import { ServiceMark } from "./service-mark";
 
 export function AdapterMarketplace() {
   const [adapters, setAdapters] = useState<Adapter[]>([]);

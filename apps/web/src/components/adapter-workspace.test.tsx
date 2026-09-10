@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
-import { AdapterWorkspace } from "./AdapterWorkspace";
+import { AdapterWorkspace } from "./adapter-workspace";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => <a href="/">{children}</a>,

@@ -1,7 +1,7 @@
 import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Icon } from "./Icon";
-import { Wordmark } from "./Wordmark";
+import { Icon } from "./icon";
+import { Wordmark } from "./wordmark";
 
 const destinations = [
   { to: "/", label: "Home", icon: "home" },
