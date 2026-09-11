@@ -878,7 +878,9 @@ export function DependencyGraphView({
     return null;
   const graphNode = node as DependencyGraphNode;
   const sourceKey = JSON.stringify(graphNode.props.props?.source ?? null);
-  return <DependencyGraphContent key={sourceKey} client={client} node={graphNode} />;
+  return (
+    <DependencyGraphContent key={sourceKey} client={client} node={graphNode} />
+  );
 }
 
 function DependencyGraphContent({
@@ -888,7 +890,10 @@ function DependencyGraphContent({
   client: RendererClient;
   node: DependencyGraphNode;
 }) {
-  const props = node.props.props ?? { idField: "id", dependsOnField: "dependsOn" };
+  const props = node.props.props ?? {
+    idField: "id",
+    dependsOnField: "dependsOn",
+  };
   const [data, setData] = useState<unknown>(props.data);
   const [error, setError] = useState<string>();
   const cachedLayoutRef = useRef<{
