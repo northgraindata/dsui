@@ -1,4 +1,4 @@
-import type { PageNode } from "@northgraindata/dsui-core";
+import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { Surface } from "@northgraindata/dsui-ui";
 import { CustomView } from "../components/custom";
 import { registerFirstPartyViews } from "../registry/first-party-registry";
@@ -15,20 +15,23 @@ registerFirstPartyViews();
 export function PageNodeRenderer({
   client,
   node,
+  context,
 }: {
   client: RendererClient;
   node: PageNode;
+  context?: Record<string, unknown>;
 }) {
   if (node.kind === "custom")
     return (
       <CustomView
         client={client}
         node={node}
-        renderNode={(nextClient, child) => (
+        renderNode={(nextClient, child, childContext = context) => (
           <PageNodeRenderer
             key={JSON.stringify(child)}
             client={nextClient}
             node={child}
+            context={childContext}
           />
         )}
       />
@@ -45,11 +48,13 @@ export function PageNodeRenderer({
     <View
       client={client}
       node={node}
-      renderNode={(nextClient, child) => (
+      context={context}
+      renderNode={(nextClient, child, childContext = context) => (
         <PageNodeRenderer
           key={JSON.stringify(child)}
           client={nextClient}
           node={child}
+          context={childContext}
         />
       )}
     />

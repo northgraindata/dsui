@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "./entities.css";
 @source "./";
 
 @theme {

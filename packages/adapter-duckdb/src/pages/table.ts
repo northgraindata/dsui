@@ -25,7 +25,7 @@ export const relationPage = definePage({
       table: params.relation,
     };
     const commonTabs = [
-      { label: "Preview", content: Table({ source: tablePreview(input) }) },
+      { label: "Preview", content: Table({ variant: "data", source: tablePreview(input), columnsSource: tableColumns(input) }) },
       { label: "Schema", content: Table({ source: tableColumns(input) }) },
       {
         label: "Details",

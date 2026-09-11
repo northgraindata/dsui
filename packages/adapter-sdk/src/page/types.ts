@@ -1,4 +1,4 @@
-import type { ComponentNode } from "../components/index";
+import type { PageNode } from "../components/index";
 import type { AnyStoreDefinition, StoreDefinition } from "../store/index";
 
 type ExtractParams<Path extends string> = Path extends `${string}:${infer Rest}`
@@ -91,5 +91,5 @@ export interface AnyPageDefinition {
   readonly render: (ctx: {
     params: Record<string, string>;
     stores: StoreAccessor;
-  }) => ComponentNode | readonly ComponentNode[];
+  }) => PageNode | readonly PageNode[];
 }

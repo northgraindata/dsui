@@ -1,7 +1,5 @@
-import type { RefreshStrategy } from "./types";
-
 /**
- * Runtime behavior behind a {@link RefreshStrategy} descriptor.
+ * Runtime behavior behind a refresh descriptor.
  *
  * The runtime owns exactly one policy per watched resource binding: it
  * calls {@link start} when the first watcher subscribes and {@link stop}
@@ -9,24 +7,10 @@ import type { RefreshStrategy } from "./types";
  * initial fetch is always driven by the runtime itself, never by the
  * policy. Policies manage background refreshing only.
  *
- * Add new strategies by subclassing (e.g. a future streaming policy)
- * without touching resources or the runtime core.
- *
- * @example
- * ```ts
- * const policy = new PollingRefreshPolicy(5000);
- * policy.start(() => reload());
- * // ...later, on unmount:
- * policy.stop();
- * ```
+ * Add new strategies (e.g. a future streaming policy) by implementing this
+ * interface without touching resources or the runtime core.
  */
-export abstract class RefreshPolicy {
-  /**
-   * Serializable descriptor this policy was built from. Carries no
-   * timers or callbacks, so it can cross process boundaries.
-   */
-  abstract readonly spec: RefreshStrategy;
-
+export interface RefreshPolicy {
   /**
    * Begin background refreshing. Must be safe to call more than once;
    * restarting replaces any previous schedule.
@@ -34,8 +18,8 @@ export abstract class RefreshPolicy {
    * @param reload - Re-executes the watched binding. Never throws
    * synchronously; failures surface as error results.
    */
-  abstract start(reload: () => void): void;
+  start(reload: () => void): void;
 
   /** Stop background refreshing and release timers or subscriptions. */
-  abstract stop(): void;
+  stop(): void;
 }

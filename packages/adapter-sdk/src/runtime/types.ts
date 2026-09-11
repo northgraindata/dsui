@@ -1,6 +1,6 @@
 import type { ActionBinding, ActionResult } from "../action/index";
 import type { AdapterDefinition } from "../adapter/index";
-import type { ComponentNode } from "../components/index";
+import type { PageNode } from "../components/index";
 import type { AnyPageDefinition, StoreAccessor } from "../page/index";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
 import type { StoreDefinition, StoreInstance } from "../store/index";
@@ -68,7 +68,7 @@ export interface PageScope {
    * Renders the component tree. Reactive: re-call after `onUpdate`
    * fires to pick up store-driven changes.
    */
-  render(): ComponentNode | readonly ComponentNode[];
+  render(): PageNode | readonly PageNode[];
   /**
    * Subscribes to store changes affecting this scope.
    *

@@ -23,6 +23,12 @@ export interface ActionTarget {
   readonly input: unknown;
 }
 
+/** Browser-safe action reference used after page serialization. */
+export interface ActionReference {
+  readonly actionId: string;
+  readonly input?: unknown;
+}
+
 /**
  * An action definition bound to concrete input.
  *

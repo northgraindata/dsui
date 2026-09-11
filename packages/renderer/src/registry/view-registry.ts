@@ -1,4 +1,4 @@
-import type { PageNode } from "@northgraindata/dsui-core";
+import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { ComponentType, ReactNode } from "react";
 import type { RendererClient } from "../types/renderer-types";
 
@@ -9,7 +9,12 @@ import type { RendererClient } from "../types/renderer-types";
 export interface RegistryViewProps {
   client: RendererClient;
   node: PageNode;
-  renderNode: (client: RendererClient, node: PageNode) => ReactNode;
+  renderNode: (
+    client: RendererClient,
+    node: PageNode,
+    context?: Record<string, unknown>,
+  ) => ReactNode;
+  context?: Record<string, unknown>;
 }
 
 type ViewLoader = () => Promise<{
@@ -46,9 +51,4 @@ export function registerLazyView(id: string, loader: ViewLoader): void {
 /** Resolves a registered id, or null when nothing registered it. */
 export function resolveView(id: string): RegistryEntry | null {
   return entries.get(id) ?? null;
-}
-
-/** Clears the registry; tests only. */
-export function clearViews(): void {
-  entries.clear();
 }

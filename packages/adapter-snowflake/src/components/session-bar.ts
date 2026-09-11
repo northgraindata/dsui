@@ -1,5 +1,5 @@
 import {
-  type ComponentNode,
+  type PageNode,
   defineComponent,
   Select,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -28,7 +28,7 @@ const options = (values: readonly string[]) =>
 
 export const SessionBar = defineComponent<
   SessionBarProps,
-  readonly ComponentNode[]
+  readonly PageNode[]
 >({
   id: "session-bar",
   render: (props) => [
