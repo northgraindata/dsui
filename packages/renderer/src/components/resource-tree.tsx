@@ -1,8 +1,8 @@
 import type {
   ResourceReference,
   ResourceTreeBranchDocument,
-  TableRowLink,
-} from "@northgraindata/dsui-core";
+  PageTableRowLink as TableRowLink,
+} from "@northgraindata/dsui-adapter-sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RegistryViewProps } from "../registry/view-registry";
 import type { RendererClient } from "../types/renderer-types";

@@ -1,4 +1,4 @@
-import type { PageNode } from "@northgraindata/dsui-core";
+import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { useMemo } from "react";
 import type { DeclarativePageRendererProps } from "../types/renderer-types";
 import { PageNodeRenderer } from "./page-node-renderer";
@@ -9,7 +9,7 @@ export function DeclarativePageRenderer({
 }: DeclarativePageRendererProps) {
   const content = useMemo(() => {
     const elements: React.ReactNode[] = [];
-    let currentButtons: Extract<PageNode, { kind: "button" }>[] = [];
+    let currentButtons: PageNode[] = [];
 
     const flushButtons = () => {
       if (!currentButtons.length) return;

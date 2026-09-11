@@ -7,7 +7,7 @@ export function SelectView({ node }: RegistryViewProps) {
       aria-label={node.props.label ?? node.props.name}
       className="min-h-[34px] border border-border-strong bg-background px-2.5 text-primary"
     >
-      {node.props.options.map((option) => (
+      {node.props.options.map((option: any) => (
         <option key={option.value} value={option.value}>
           {option.label}
         </option>

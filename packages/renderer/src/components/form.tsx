@@ -4,11 +4,11 @@ import type { RegistryViewProps } from "../registry/view-registry";
 
 export function ActionForm({ client, node }: RegistryViewProps) {
   const fields = (node.kind === "form" ? node.props.fields : []).filter(
-    (field) => field.kind === "text-input" || field.kind === "select",
+    (field: any) => field.kind === "text-input" || field.kind === "select",
   );
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      fields.flatMap((field) => {
+      fields.flatMap((field: any) => {
         const value = field.props.value;
         return value == null ? [] : [[field.props.name, value]];
       }),
@@ -31,7 +31,7 @@ export function ActionForm({ client, node }: RegistryViewProps) {
   return (
     <Surface className="p-4">
       <form className="grid gap-3" onSubmit={submit}>
-        {fields.map((field) => (
+        {fields.map((field: any) => (
           <Field
             key={field.props.name}
             label={field.props.label ?? field.props.name}
@@ -50,7 +50,7 @@ export function ActionForm({ client, node }: RegistryViewProps) {
                 {field.props.placeholder ? (
                   <option value="">{field.props.placeholder}</option>
                 ) : null}
-                {field.props.options.map((option) => (
+                {field.props.options.map((option: any) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

@@ -1,7 +1,8 @@
 /**
- * Contracts shared by dsui's server and web app. This package is
- * browser-safe by construction: types and constants only, no node APIs,
- * no framework imports. Neither side imports the other; both import here.
+ * HTTP contracts shared by the DSUI server and web app.
+ *
+ * This package intentionally contains only browser-safe types. Adapter
+ * protocol and component contracts belong to the adapter SDK.
  */
 
 export type ServiceHealth = "healthy" | "warning" | "unavailable" | "unknown";
@@ -11,13 +12,6 @@ export interface HealthStatus {
   checkedAt: string;
   latencyMs?: number;
   detail?: string;
-}
-
-export type AuthorizationClass = "inspect" | "execute";
-
-/** Every API error response. */
-export interface ApiError {
-  message: string;
 }
 
 /** One named connection method as served by GET /api/v1/adapters. */
@@ -66,35 +60,3 @@ export interface PublicService {
   actions: string[];
   logo?: string;
 }
-
-export type {
-  CatalogFilter,
-  EntityAction,
-  EntityBadge,
-  EntityDetail,
-  EntityFact,
-  EntityItem,
-  EntityLink,
-  EntityPanel,
-  EntityTone,
-} from "./entity-document";
-export { parseEntityCatalog, parseEntityDetail } from "./entity-document";
-export type {
-  ActionIcon,
-  ActionListItem,
-  ActionReference,
-  MeterData,
-  MeterSegment,
-  OverviewCard,
-  PageDocument,
-  PageHeaderAction,
-  PageHeaderBadge,
-  PageNode,
-  QueryExplorerDocument,
-  ResourceReference,
-  ResourceTreeBranchDocument,
-  SectionLink,
-  StatGridItem,
-  TableRowAction,
-  TableRowLink,
-} from "./page-document.js";

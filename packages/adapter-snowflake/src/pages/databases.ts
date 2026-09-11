@@ -161,7 +161,14 @@ export const tablePage = definePage({
       PageHeader({ title }),
       Tabs({
         items: [
-          { label: "Preview", content: Table({ source: tablePreview(input) }) },
+          {
+            label: "Preview",
+            content: Table({
+              variant: "data",
+              source: tablePreview(input),
+              columnsSource: tableColumns(input),
+            }),
+          },
           { label: "Columns", content: Table({ source: tableColumns(input) }) },
           {
             label: "Details",

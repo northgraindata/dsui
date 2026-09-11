@@ -7,11 +7,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@northgraindata/dsui-core": "workspace:*",
     "zod": "^3.24.2"
   }
 }

@@ -22,6 +22,12 @@ export interface DataSource {
   readonly refresh?: RefreshStrategy;
 }
 
+/** Browser-safe resource reference used after page serialization. */
+export interface ResourceReference {
+  readonly resourceId: string;
+  readonly input?: unknown;
+}
+
 /**
  * A resource definition bound to concrete input.
  *

@@ -1,6 +1,6 @@
+import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import type {
   HealthStatus,
-  PageDocument,
   PublicAdapter,
   PublicService,
 } from "@northgraindata/dsui-core";

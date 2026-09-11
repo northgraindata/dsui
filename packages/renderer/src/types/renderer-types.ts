@@ -2,7 +2,7 @@ import type {
   ActionReference,
   PageNode,
   ResourceReference,
-} from "@northgraindata/dsui-core";
+} from "@northgraindata/dsui-adapter-sdk";
 
 export interface RendererClient {
   /** Already-public connection details for presentation; never credentials. */

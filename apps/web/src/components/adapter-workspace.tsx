@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { deleteService, type Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
@@ -107,20 +107,6 @@ export function AdapterWorkspace({
             <small>Coming soon</small>
           </div>
         </section>
-        <Link
-          to="/services/$serviceId/$"
-          params={{ serviceId: service.id, _splat: "" }}
-          className="adapter-connection-card"
-        >
-          <Icon name="database" size={22} />
-          <span>
-            <strong>
-              {service.endpoint?.split("/").at(-1) || service.name}
-            </strong>
-            <small>{service.endpoint || "No endpoint provided"}</small>
-          </span>
-          <Icon name="chevron" size={14} />
-        </Link>
       </aside>
       <div className="adapter-main">
         <header className="adapter-heading flex items-center justify-between">

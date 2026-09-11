@@ -1,4 +1,7 @@
-import type { PageNode, TableRowLink } from "@northgraindata/dsui-core";
+import type {
+  DependencyGraphNode,
+  TableRowLink,
+} from "@northgraindata/dsui-adapter-sdk";
 import { cn, Surface } from "@northgraindata/dsui-ui";
 import {
   Fragment,
@@ -848,7 +851,7 @@ export function DependencyGraphView({
   node,
 }: {
   client: RendererClient;
-  node: Extract<PageNode, { kind: "dependency-graph" }>;
+  node: DependencyGraphNode;
 }) {
   const sourceKey = JSON.stringify(node.props.source ?? null);
   return <DependencyGraphContent key={sourceKey} client={client} node={node} />;
@@ -859,7 +862,7 @@ function DependencyGraphContent({
   node,
 }: {
   client: RendererClient;
-  node: Extract<PageNode, { kind: "dependency-graph" }>;
+  node: DependencyGraphNode;
 }) {
   const [data, setData] = useState<unknown>(node.props.data);
   const [error, setError] = useState<string>();

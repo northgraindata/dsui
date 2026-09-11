@@ -1,6 +1,5 @@
 import { InvalidDefinitionError } from "../shared/errors";
-import { RefreshPolicy } from "./policy";
-import type { RefreshStrategy } from "./types";
+import type { RefreshPolicy } from "./policy";
 
 /**
  * Polling refresh policy: re-runs the watched binding on a fixed interval.
@@ -17,23 +16,20 @@ import type { RefreshStrategy } from "./types";
  * policy.stop();
  * ```
  */
-export class PollingRefreshPolicy extends RefreshPolicy {
-  /** Serializable descriptor: `{ kind: "poll", intervalMs }`. */
-  readonly spec: Extract<RefreshStrategy, { kind: "poll" }>;
-
+export class PollingRefreshPolicy implements RefreshPolicy {
   /**
    * @param intervalMs - Positive, finite milliseconds between reloads.
    * @throws {@link InvalidDefinitionError} for non-positive intervals.
    */
   constructor(intervalMs: number) {
-    super();
     if (!Number.isFinite(intervalMs) || intervalMs <= 0)
       throw new InvalidDefinitionError(
         `Invalid poll interval: ${String(intervalMs)}`,
       );
-    this.spec = { kind: "poll", intervalMs };
+    this.intervalMs = intervalMs;
   }
 
+  private readonly intervalMs: number;
   private timer: ReturnType<typeof setInterval> | undefined;
 
   /**
@@ -46,7 +42,7 @@ export class PollingRefreshPolicy extends RefreshPolicy {
     this.stop();
     const timer: ReturnType<typeof setInterval> = setInterval(
       reload,
-      this.spec.intervalMs,
+      this.intervalMs,
     );
     this.timer = timer;
     if (typeof timer === "object" && timer !== null && "unref" in timer)

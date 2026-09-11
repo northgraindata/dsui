@@ -22,14 +22,14 @@ export function SplitPaneView({ client, node, renderNode }: RegistryViewProps) {
       <aside
         className={`explorer-tree-panel ${open ? "block" : "hidden"} md:block`}
       >
-        {node.props.sidebar.map((child) => renderNode(client, child))}
+        {node.props.sidebar.map((child: any) => renderNode(client, child))}
       </aside>
       <div className="explorer-content">
-        {node.props.content.map((child) => renderNode(client, child))}
+        {node.props.content.map((child: any) => renderNode(client, child))}
       </div>
       {node.props.inspector?.length ? (
         <aside className="explorer-inspector" aria-label="Object details">
-          {node.props.inspector.map((child) => renderNode(client, child))}
+          {node.props.inspector.map((child: any) => renderNode(client, child))}
         </aside>
       ) : null}
     </section>

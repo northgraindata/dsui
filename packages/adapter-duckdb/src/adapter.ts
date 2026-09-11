@@ -1,13 +1,12 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
+import { resetSetting, setSetting } from "./actions/config.js";
 import {
-  createSecret,
-  dropSecret,
   installExtension,
   loadExtension,
-  resetSetting,
+  reloadExtension,
   restartExtension,
-  setSetting,
-} from "./actions/config.js";
+  unloadExtension,
+} from "./actions/extensions.js";
 import { cancelQuery, runQuery } from "./actions/run-query.js";
 import {
   attachDatabase,
@@ -22,6 +21,7 @@ import {
   dropView,
   importData,
 } from "./actions/schema.js";
+import { createSecret, dropSecret } from "./actions/secrets.js";
 import {
   createContext,
   type DuckDbClient,
@@ -67,17 +67,15 @@ import {
   viewDdl,
   views,
 } from "./resources/catalog.js";
-import {
-  extensionDetails,
-  extensions,
-  secrets,
-  settings,
-} from "./resources/config.js";
+import { settings } from "./resources/config.js";
 import {
   extensionCatalog,
+  extensionDetails,
   extensionProfileResource,
-} from "./resources/extensions";
+  extensions,
+} from "./resources/extensions.js";
 import { queryHistory } from "./resources/history.js";
+import { secrets } from "./resources/secrets.js";
 import {
   activityFiltersStore,
   dataExplorerStore,
@@ -171,6 +169,8 @@ export function createDuckDbAdapter(
       importData,
       installExtension,
       loadExtension,
+      unloadExtension,
+      reloadExtension,
       restartExtension,
       setSetting,
       resetSetting,

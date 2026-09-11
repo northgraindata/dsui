@@ -31,10 +31,6 @@ export const dagRunDetailPage = definePage({
         icon: "play",
         variant: "primary",
         action: triggerDag({ dagId: params.dagId, conf: {} }),
-        successLink: {
-          path: "/dags/:dagId/runs/:dagRunId",
-          params: { dagId: "dagId", dagRunId: "dagRunId" },
-        },
       }),
       Tabs({
         items: [
@@ -86,7 +82,6 @@ export const dagRunDetailPage = definePage({
               rowActions: [
                 {
                   label: "Retry",
-                  icon: "retry",
                   action: retryTask,
                   input: {
                     dagId: "dagId",
@@ -99,7 +94,6 @@ export const dagRunDetailPage = definePage({
                 },
                 {
                   label: "Clear",
-                  icon: "clear",
                   action: clearTask,
                   input: {
                     dagId: "dagId",

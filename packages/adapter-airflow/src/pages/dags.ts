@@ -11,11 +11,6 @@ import { pauseDag, triggerDag, unpauseDag } from "../actions/dags.js";
 import { dagDetails, dags, dagTasks } from "../resources/dags.js";
 import { dagRuns } from "../resources/runs.js";
 
-const triggeredRunLink = {
-  path: "/dags/:dagId/runs/:dagRunId",
-  params: { dagId: "dagId", dagRunId: "dagRunId" },
-};
-
 export const dagListPage = definePage({
   path: "/dags",
   render: () => [
@@ -36,22 +31,18 @@ export const dagListPage = definePage({
       rowActions: [
         {
           label: "Trigger",
-          icon: "play",
           variant: "primary",
           action: triggerDag,
           input: { dagId: "dagId" },
-          successLink: triggeredRunLink,
         },
         {
           label: "Pause",
-          icon: "pause",
           action: pauseDag,
           input: { dagId: "dagId" },
           when: { field: "isPaused", equals: false },
         },
         {
           label: "Unpause",
-          icon: "resume",
           action: unpauseDag,
           input: { dagId: "dagId" },
           when: { field: "isPaused", equals: true },
@@ -70,24 +61,18 @@ export const dagDetailPage = definePage({
     }),
     Button({
       label: "Trigger",
-      icon: "play",
       variant: "primary",
       action: triggerDag({ dagId: params.dagId, conf: {} }),
-      successLink: triggeredRunLink,
     }),
     Button({
       label: "Pause",
-      icon: "pause",
       variant: "secondary",
       action: pauseDag({ dagId: params.dagId }),
-      successLink: { path: "/dags/:dagId", params: { dagId: "dagId" } },
     }),
     Button({
       label: "Unpause",
-      icon: "resume",
       variant: "secondary",
       action: unpauseDag({ dagId: params.dagId }),
-      successLink: { path: "/dags/:dagId", params: { dagId: "dagId" } },
     }),
     Tabs({
       items: [

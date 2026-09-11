@@ -1,3 +1,4 @@
+import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { Surface } from "@northgraindata/dsui-ui";
 import { lazy, Suspense, useMemo } from "react";
 import { type RegistryViewProps, resolveView } from "../registry/view-registry";
@@ -12,10 +13,7 @@ export function CustomView({
   renderNode,
 }: {
   client: RegistryViewProps["client"];
-  node: Extract<
-    import("@northgraindata/dsui-core").PageNode,
-    { kind: "custom" }
-  >;
+  node: PageNode;
   renderNode: RegistryViewProps["renderNode"];
 }) {
   const entry = resolveView(node.props.component);

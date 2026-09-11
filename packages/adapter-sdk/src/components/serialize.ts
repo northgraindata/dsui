@@ -1,22 +1,26 @@
-import type {
-  ActionReference,
-  PageNode,
-  ResourceReference,
-} from "@northgraindata/dsui-core";
-import type { ActionTarget } from "../action/index";
+import type { ActionReference, ActionTarget } from "../action/index";
+import type { ResourceReference } from "../resource";
 import type { DataSource } from "../resource/index";
-import type { ButtonNode, ComponentNode } from "./nodes";
-
-function pageButton(
-  button: ButtonNode,
-): import("@northgraindata/dsui-core").PageHeaderAction {
-  return {
-    label: button.props.label,
-    ...(button.props.variant ? { variant: button.props.variant } : {}),
-    ...(button.props.action ? { action: action(button.props.action) } : {}),
-    ...(button.props.link ? { link: button.props.link } : {}),
-  };
-}
+import type { PageNode } from "./nodes";
+import type { CardProps } from "./primitives/card";
+import type { CollectionProps } from "./primitives/collection";
+import type { ColumnsColumn } from "./primitives/columns";
+import type { FlexProps } from "./primitives/flex";
+import type { GridProps } from "./primitives/grid";
+import type { MeterSegment } from "./primitives/meter";
+import type {
+  QueryEditorProps,
+  QueryExplorerDocument,
+} from "./primitives/query-editor";
+import type { ResourceProps } from "./primitives/resource";
+import type {
+  ResourceTreeBranchDocument,
+  ResourceTreeBranchProps,
+} from "./primitives/resource-tree";
+import type { StackProps } from "./primitives/stack";
+import type { TableColumn, TableRowAction } from "./primitives/table";
+import type { TabsItem } from "./primitives/tabs";
+import type { ValueProps } from "./primitives/value";
 
 /** Thrown when a live SDK node cannot cross the server/browser boundary. */
 export class UnserializablePageError extends Error {
@@ -30,7 +34,6 @@ function resource(source: DataSource): ResourceReference {
   return {
     resourceId: source.resourceId,
     ...(source.input === undefined ? {} : { input: source.input }),
-    ...(source.refresh?.kind === "poll" ? { refresh: source.refresh } : {}),
   };
 }
 
@@ -38,22 +41,19 @@ function action(
   target:
     | ActionTarget
     | { readonly kind: "action"; readonly id: string }
+    | { readonly field: string }
     | string,
-): ActionReference {
+): ActionReference | { readonly field: string } {
   if (typeof target === "string") return { actionId: target };
+  if ("field" in target) return target;
   return target.kind === "action-binding"
-    ? {
-        actionId: target.actionId,
-        ...(target.input === undefined ? {} : { input: target.input }),
-      }
+    ? { actionId: target.actionId, input: target.input }
     : { actionId: target.id };
 }
 
 function explorer(
-  value: NonNullable<import("./nodes").QueryEditorProps["explorer"]>,
-): NonNullable<
-  Extract<PageNode, { kind: "query-editor" }>["props"]["explorer"]
-> {
+  value: NonNullable<QueryEditorProps["explorer"]>,
+): QueryExplorerDocument {
   return {
     source: resource(value.source),
     ...(value.nameField ? { nameField: value.nameField } : {}),
@@ -62,8 +62,8 @@ function explorer(
 }
 
 function treeBranch(
-  value: import("./nodes").ResourceTreeBranchProps,
-): import("@northgraindata/dsui-core").ResourceTreeBranchDocument {
+  value: ResourceTreeBranchProps,
+): ResourceTreeBranchDocument {
   return {
     source: resource(value.source),
     ...(value.nameField ? { nameField: value.nameField } : {}),
@@ -80,25 +80,13 @@ function treeBranch(
   };
 }
 
-function nodes(
-  value: ComponentNode | readonly ComponentNode[],
-): readonly PageNode[] {
+function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return (Array.isArray(value) ? value : [value]).map(serializeNode);
 }
 
 /** Converts static SDK page nodes into the browser-safe page protocol. */
-export function serializeNode(node: ComponentNode): PageNode {
+export function serializeNode(node: PageNode): PageNode {
   switch (node.kind) {
-    case "entity-catalog":
-      return {
-        kind: node.kind,
-        props: { ...node.props, source: resource(node.props.source) },
-      };
-    case "entity-detail":
-      return {
-        kind: node.kind,
-        props: { source: resource(node.props.source) },
-      };
     case "page-header":
       return {
         kind: node.kind,
@@ -109,9 +97,9 @@ export function serializeNode(node: ComponentNode): PageNode {
             : {}),
           ...(node.props.badge ? { badge: { ...node.props.badge } } : {}),
           ...(node.props.meta ? { meta: node.props.meta } : {}),
-          ...(node.props.actions?.length
-            ? { actions: node.props.actions.map(pageButton) }
-            : {}),
+          ...(node.props.variant ? { variant: node.props.variant } : {}),
+          ...(node.props.tags ? { tags: nodes(node.props.tags) } : {}),
+          ...(node.props.actions ? { actions: nodes(node.props.actions) } : {}),
         },
       };
     case "table":
@@ -119,8 +107,22 @@ export function serializeNode(node: ComponentNode): PageNode {
         kind: node.kind,
         props: {
           ...(node.props.source ? { source: resource(node.props.source) } : {}),
+          ...(node.props.columnsSource
+            ? { columnsSource: resource(node.props.columnsSource) }
+            : {}),
           ...(node.props.data ? { data: node.props.data } : {}),
-          ...(node.props.columns ? { columns: node.props.columns } : {}),
+          ...(node.props.variant ? { variant: node.props.variant } : {}),
+          ...(node.props.columns
+            ? {
+                columns: node.props.columns.map((column: TableColumn) => ({
+                  id: column.id,
+                  label: column.label,
+                  ...(column.renderCell
+                    ? { renderCell: nodes(column.renderCell) }
+                    : {}),
+                })),
+              }
+            : {}),
           ...(node.props.rowLink
             ? {
                 rowLink: {
@@ -131,29 +133,30 @@ export function serializeNode(node: ComponentNode): PageNode {
             : {}),
           ...(node.props.rowActions
             ? {
-                rowActions: node.props.rowActions.map((rowAction) => ({
-                  label: rowAction.label,
-                  ...(rowAction.icon ? { icon: rowAction.icon } : {}),
-                  ...(rowAction.variant ? { variant: rowAction.variant } : {}),
-                  action: {
-                    actionId:
-                      typeof rowAction.action === "string"
-                        ? rowAction.action
-                        : rowAction.action.id,
-                    ...(rowAction.input
-                      ? { input: { ...rowAction.input } }
+                rowActions: node.props.rowActions.map(
+                  (rowAction: TableRowAction) => ({
+                    label: rowAction.label,
+                    ...(rowAction.variant
+                      ? { variant: rowAction.variant }
                       : {}),
-                  },
-                  ...(rowAction.successLink
-                    ? {
-                        successLink: {
-                          path: rowAction.successLink.path,
-                          params: { ...rowAction.successLink.params },
-                        },
-                      }
-                    : {}),
-                  ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
-                })),
+                    action: {
+                      actionId:
+                        typeof rowAction.action === "string"
+                          ? rowAction.action
+                          : rowAction.action.id,
+                      ...(rowAction.input
+                        ? { input: { ...rowAction.input } }
+                        : {}),
+                    },
+                    ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
+                    ...(rowAction.disabledWhen
+                      ? { disabledWhen: { ...rowAction.disabledWhen } }
+                      : {}),
+                    ...(rowAction.confirmation
+                      ? { confirmation: { ...rowAction.confirmation } }
+                      : {}),
+                  }),
+                ),
               }
             : {}),
         },
@@ -191,24 +194,40 @@ export function serializeNode(node: ComponentNode): PageNode {
         props: {
           label: node.props.label,
           ...(node.props.icon ? { icon: node.props.icon } : {}),
+          ...(node.props.description
+            ? { description: node.props.description }
+            : {}),
+          ...(node.props.kbd ? { kbd: node.props.kbd } : {}),
           ...(node.props.variant ? { variant: node.props.variant } : {}),
           ...(node.props.action ? { action: action(node.props.action) } : {}),
-          ...(node.props.successLink
-            ? {
-                successLink: {
-                  path: node.props.successLink.path,
-                  params: { ...node.props.successLink.params },
-                },
-              }
-            : {}),
           ...(node.props.link ? { link: node.props.link } : {}),
+          ...(node.props.confirmation
+            ? { confirmation: node.props.confirmation }
+            : {}),
+        },
+      };
+    case "icon":
+      return {
+        kind: node.kind,
+        props: {
+          name: node.props.name,
+          ...(node.props.size ? { size: node.props.size } : {}),
+        },
+      };
+    case "badge":
+      return {
+        kind: node.kind,
+        props: {
+          label: node.props.label,
+          ...(node.props.tone ? { tone: node.props.tone } : {}),
+          ...(node.props.dot ? { dot: true } : {}),
         },
       };
     case "tabs":
       return {
         kind: node.kind,
         props: {
-          items: node.props.items.map((item) => ({
+          items: node.props.items.map((item: TabsItem) => ({
             label: item.label,
             content: nodes(item.content),
           })),
@@ -254,6 +273,20 @@ export function serializeNode(node: ComponentNode): PageNode {
             : {}),
         },
       };
+    case "resource": {
+      const props = node.props as ResourceProps;
+      return {
+        kind: node.kind,
+        props: {
+          ...(props.source ? { source: resource(props.source) } : {}),
+          content: nodes(props.content),
+        },
+      };
+    }
+    case "link":
+      return { kind: node.kind, props: { ...node.props } };
+    case "code-block":
+      return { kind: node.kind, props: { ...node.props } };
     case "split-pane":
       return {
         kind: node.kind,
@@ -326,15 +359,6 @@ export function serializeNode(node: ComponentNode): PageNode {
           ...(node.props.props ? { props: { ...node.props.props } } : {}),
         },
       };
-    case "stat-grid":
-      return {
-        kind: node.kind,
-        props: {
-          ...(node.props.source ? { source: resource(node.props.source) } : {}),
-          ...(node.props.data ? { data: { ...node.props.data } } : {}),
-          items: node.props.items.map((item) => ({ ...item })),
-        },
-      };
     case "section":
       return {
         kind: node.kind,
@@ -347,56 +371,90 @@ export function serializeNode(node: ComponentNode): PageNode {
           content: nodes(node.props.content),
         },
       };
-    case "card-list":
+    case "card": {
+      const props = node.props as CardProps;
       return {
         kind: node.kind,
         props: {
-          ...(node.props.source ? { source: resource(node.props.source) } : {}),
-          ...(node.props.columns !== undefined
-            ? { columns: node.props.columns }
-            : {}),
-          ...(node.props.cards
-            ? {
-                cards: node.props.cards.map((card) => ({
-                  ...card,
-                  ...(card.meta ? { meta: [...card.meta] } : {}),
-                  ...(card.link
-                    ? {
-                        link: {
-                          path: card.link.path,
-                          params: { ...card.link.params },
-                        },
-                      }
-                    : {}),
-                })),
-              }
-            : {}),
+          ...(props.title ? { title: props.title } : {}),
+          ...(props.description ? { description: props.description } : {}),
+          ...(props.icon ? { icon: props.icon } : {}),
+          ...(props.badge ? { badge: props.badge } : {}),
+          ...(props.badgeTone ? { badgeTone: props.badgeTone } : {}),
+          ...(props.link ? { link: { ...props.link } } : {}),
+          ...(props.variant ? { variant: props.variant } : {}),
+          ...(props.content ? { content: nodes(props.content) } : {}),
         },
       };
-    case "action-list":
+    }
+    case "collection": {
+      const props = node.props as CollectionProps;
       return {
         kind: node.kind,
         props: {
-          items: node.props.items.map((item) => ({
-            ...(item.icon ? { icon: item.icon } : {}),
-            title: item.title,
-            ...(item.description ? { description: item.description } : {}),
-            ...(item.kbd ? { kbd: item.kbd } : {}),
-            ...(item.link ? { link: item.link } : {}),
-            ...(item.action ? { action: action(item.action) } : {}),
-          })),
+          ...(props.source ? { source: resource(props.source) } : {}),
+          ...(props.field ? { field: props.field } : {}),
+          content: nodes(props.content),
         },
       };
+    }
+    case "flex": {
+      const props = node.props as FlexProps;
+      return {
+        kind: node.kind,
+        props: {
+          direction: props.direction,
+          ...(props.gap ? { gap: props.gap } : {}),
+          ...(props.align ? { align: props.align } : {}),
+          ...(props.justify ? { justify: props.justify } : {}),
+          ...(props.wrap ? { wrap: true } : {}),
+          content: nodes(props.content),
+        },
+      };
+    }
     case "columns":
       return {
         kind: node.kind,
         props: {
-          columns: node.props.columns.map((column) => ({
+          columns: node.props.columns.map((column: ColumnsColumn) => ({
             ...(column.weight !== undefined ? { weight: column.weight } : {}),
             content: nodes(column.content),
           })),
         },
       };
+    case "grid": {
+      const props = node.props as GridProps;
+      return {
+        kind: node.kind,
+        props: {
+          ...(props.columns !== undefined ? { columns: props.columns } : {}),
+          ...(props.gap ? { gap: props.gap } : {}),
+          content: nodes(props.content),
+        },
+      };
+    }
+    case "stack": {
+      const props = node.props as StackProps;
+      return {
+        kind: node.kind,
+        props: {
+          ...(props.gap ? { gap: props.gap } : {}),
+          content: nodes(props.content),
+        },
+      };
+    }
+    case "value": {
+      const props = node.props as ValueProps;
+      return {
+        kind: node.kind,
+        props: {
+          ...(props.source ? { source: resource(props.source) } : {}),
+          field: props.field,
+          ...(props.format ? { format: props.format } : {}),
+          ...(props.fallback ? { fallback: props.fallback } : {}),
+        },
+      };
+    }
     case "meter":
       return {
         kind: node.kind,
@@ -405,9 +463,11 @@ export function serializeNode(node: ComponentNode): PageNode {
           ...(node.props.data
             ? {
                 data: {
-                  segments: node.props.data.segments.map((segment) => ({
-                    ...segment,
-                  })),
+                  segments: node.props.data.segments.map(
+                    (segment: MeterSegment) => ({
+                      ...segment,
+                    }),
+                  ),
                   ...(node.props.data.footer
                     ? { footer: node.props.data.footer }
                     : {}),
@@ -416,11 +476,15 @@ export function serializeNode(node: ComponentNode): PageNode {
             : {}),
         },
       };
+    default:
+      throw new UnserializablePageError(
+        `Unsupported component kind: ${node.kind}`,
+      );
   }
 }
 
 export function serializeNodes(
-  value: ComponentNode | readonly ComponentNode[],
+  value: PageNode | readonly PageNode[],
 ): readonly PageNode[] {
   return nodes(value);
 }
