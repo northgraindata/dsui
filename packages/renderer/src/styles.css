@@ -1,5 +1,70 @@
 @source "./";
 
+@keyframes dependency-graph-border-flow {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+.dependency-graph__node {
+  border-color: var(--color-unknown);
+}
+
+.dependency-graph__node:is(
+  [data-task-state="success"],
+  [data-task-state="healthy"]
+) {
+  border-color: var(--color-healthy);
+}
+
+.dependency-graph__node:is(
+  [data-task-state="failed"],
+  [data-task-state="error"],
+  [data-task-state="upstream_failed"],
+  [data-task-state="unavailable"]
+) {
+  border-color: var(--color-unavailable);
+}
+
+.dependency-graph__node:is(
+  [data-task-state="running"],
+  [data-task-state="active"]
+) {
+  border-color: var(--color-accent);
+}
+
+.dependency-graph__node:is(
+  [data-task-state="queued"],
+  [data-task-state="scheduled"],
+  [data-task-state="deferred"],
+  [data-task-state="pending"],
+  [data-task-state="warning"],
+  [data-task-state="waiting"],
+  [data-task-state="up_for_retry"],
+  [data-task-state="up_for_reschedule"]
+) {
+  border-color: var(--color-warning);
+}
+
+.dependency-graph__running-border {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 20 80;
+  animation: dependency-graph-border-flow 1.8s linear infinite;
+  filter: drop-shadow(0 0 3px var(--color-accent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dependency-graph__running-border {
+    animation: none;
+    stroke-dasharray: none;
+    filter: none;
+    opacity: 0.8;
+  }
+}
+
 .query-workspace {
   display: grid;
   gap: 22px;

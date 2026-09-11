@@ -259,49 +259,47 @@ function getNodeStateConfig(state: string | undefined) {
     case "success":
     case "healthy":
       return {
-        bg: "bg-healthy/15",
         text: "text-healthy",
         dot: "bg-healthy",
-        border: "border-healthy/30",
-        pulse: false,
+        running: false,
       };
     case "failed":
     case "error":
+    case "upstream_failed":
     case "unavailable":
       return {
-        bg: "bg-unavailable/15",
         text: "text-unavailable",
         dot: "bg-unavailable",
-        border: "border-unavailable/30",
-        pulse: false,
+        running: false,
       };
     case "running":
-    case "active":
       return {
-        bg: "bg-accent/15",
         text: "text-accent",
         dot: "bg-accent",
-        border: "border-accent/40",
-        pulse: true,
+        running: true,
+      };
+    case "active":
+      return {
+        text: "text-accent",
+        dot: "bg-accent",
+        running: false,
       };
     case "queued":
+    case "scheduled":
+    case "deferred":
     case "pending":
     case "warning":
     case "waiting":
       return {
-        bg: "bg-warning/15",
         text: "text-warning",
         dot: "bg-warning",
-        border: "border-warning/30",
-        pulse: false,
+        running: false,
       };
     default:
       return {
-        bg: "bg-unknown/15",
         text: "text-muted",
         dot: "bg-unknown",
-        border: "border-unknown/30",
-        pulse: false,
+        running: false,
       };
   }
 }
@@ -324,9 +322,8 @@ const GraphNodeCard = memo(function GraphNodeCard({
   onFocus: (node: GraphLaidOutNode) => void;
 }) {
   const glyph = node.detail?.trim().charAt(0).toUpperCase();
-  const normalizedState = node.state?.trim().toLowerCase();
   const stateConfig = getNodeStateConfig(node.state);
-  const isRunning = stateConfig.pulse;
+  const isRunning = stateConfig.running;
 
   return (
     <button
@@ -337,6 +334,7 @@ const GraphNodeCard = memo(function GraphNodeCard({
       onFocus={() => onFocus(node)}
       onBlur={onLeave}
       aria-pressed={selected}
+      data-task-state={node.state?.trim().toLowerCase() ?? "unknown"}
       title={`${node.label} — show details`}
       style={{
         left: node.x,
@@ -345,22 +343,40 @@ const GraphNodeCard = memo(function GraphNodeCard({
         height: GRAPH_NODE_HEIGHT,
       }}
       className={cn(
-        "absolute flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-md border pr-3 pl-4 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-accent motion-reduce:transition-none",
+        "dependency-graph__node absolute flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-md border px-3 text-left transition-[background-color,border-color,box-shadow,opacity] duration-150 focus-visible:outline focus-visible:outline-accent motion-reduce:transition-none",
         selected && "ring-1 ring-accent",
-        isRunning && "border-accent/50 shadow-[0_0_8px_rgba(107,138,255,0.15)]",
         state === "active"
-          ? "border-accent bg-surface-hover shadow-[0_0_0_1px_var(--color-accent)]"
+          ? "bg-surface-hover shadow-[0_0_0_1px_var(--color-accent)]"
           : state === "linked"
-            ? "border-accent/45 bg-surface-raised"
+            ? "bg-surface-raised"
             : state === "dimmed"
-              ? "border-border bg-surface-raised opacity-45"
-              : "border-border bg-surface-raised hover:border-border-strong",
+              ? "bg-surface-raised opacity-45"
+              : "bg-surface-raised hover:bg-surface-hover",
       )}
     >
+      {isRunning ? (
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10"
+          width={GRAPH_NODE_WIDTH}
+          height={GRAPH_NODE_HEIGHT}
+          viewBox={`0 0 ${GRAPH_NODE_WIDTH} ${GRAPH_NODE_HEIGHT}`}
+        >
+          <rect
+            className="dependency-graph__running-border"
+            x="0.75"
+            y="0.75"
+            width={GRAPH_NODE_WIDTH - 1.5}
+            height={GRAPH_NODE_HEIGHT - 1.5}
+            rx="5"
+            pathLength="100"
+          />
+        </svg>
+      ) : null}
       <span
         aria-hidden="true"
         className={cn(
-          "absolute inset-y-0 left-0 w-[3px] transition-colors",
+          "absolute inset-y-2 left-0 w-0.5 transition-colors",
           state === "active" || state === "linked"
             ? "bg-accent"
             : node.state
@@ -389,19 +405,15 @@ const GraphNodeCard = memo(function GraphNodeCard({
           {node.state ? (
             <span
               className={cn(
-                "inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[9px] lowercase leading-none",
-                stateConfig.bg,
+                "inline-flex shrink-0 items-center gap-1.5 font-mono text-[9px] uppercase leading-none tracking-[0.07em]",
                 stateConfig.text,
-                stateConfig.border,
               )}
             >
               <i
                 aria-hidden="true"
                 className={cn(
-                  "size-1.5 rounded-full shrink-0",
+                  "size-1.5 shrink-0 rounded-[1px]",
                   stateConfig.dot,
-                  stateConfig.pulse &&
-                    "animate-pulse motion-reduce:animate-none",
                 )}
               />
               {node.state.replaceAll("_", " ")}
@@ -627,7 +639,6 @@ function GraphBoard({
     if (id === active) return "active" as const;
     return linked.has(id) ? ("linked" as const) : ("dimmed" as const);
   };
-
   const stateSummary = useMemo(() => {
     const counts = new Map<string, number>();
     for (const node of layout.nodes) {
@@ -669,19 +680,13 @@ function GraphBoard({
                 <span
                   key={st}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[9.5px] lowercase leading-none",
-                    cfg.bg,
+                    "inline-flex items-center gap-1.5 border-l border-border-strong pl-2 font-mono text-[9px] uppercase leading-none tracking-[0.06em]",
                     cfg.text,
-                    cfg.border,
                   )}
                 >
                   <i
                     aria-hidden="true"
-                    className={cn(
-                      "size-1.5 rounded-full shrink-0",
-                      cfg.dot,
-                      cfg.pulse && "animate-pulse motion-reduce:animate-none",
-                    )}
+                    className={cn("size-1.5 shrink-0 rounded-[1px]", cfg.dot)}
                   />
                   <span>
                     {count} {st.replaceAll("_", " ")}
@@ -757,7 +762,7 @@ function GraphBoard({
           }}
         >
           <svg
-            className="pointer-events-none absolute inset-0"
+            className="pointer-events-none absolute inset-0 text-muted"
             width={layout.width}
             height={layout.height}
             role="presentation"
@@ -789,10 +794,10 @@ function GraphBoard({
                   className={cn(
                     "transition-colors",
                     lit
-                      ? "text-accent"
+                      ? "text-muted"
                       : active
-                        ? "text-border"
-                        : "text-muted",
+                        ? "text-border-strong"
+                        : "text-muted/60",
                   )}
                 />
               );
@@ -839,6 +844,17 @@ function GraphBoard({
 }
 
 export function DependencyGraphView({
+  client,
+  node,
+}: {
+  client: RendererClient;
+  node: Extract<PageNode, { kind: "dependency-graph" }>;
+}) {
+  const sourceKey = JSON.stringify(node.props.source ?? null);
+  return <DependencyGraphContent key={sourceKey} client={client} node={node} />;
+}
+
+function DependencyGraphContent({
   client,
   node,
 }: {
