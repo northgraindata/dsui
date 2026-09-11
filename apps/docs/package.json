@@ -8,8 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check",
-    "lint": "biome check .",
-    "test": "bun test --pass-with-no-tests"
+    "lint": "biome check ."
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",

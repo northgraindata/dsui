@@ -47,8 +47,3 @@ export function registerLazyView(id: string, loader: ViewLoader): void {
 export function resolveView(id: string): RegistryEntry | null {
   return entries.get(id) ?? null;
 }
-
-/** Clears the registry; tests only. */
-export function clearViews(): void {
-  entries.clear();
-}

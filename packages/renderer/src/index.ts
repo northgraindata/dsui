@@ -15,7 +15,6 @@ export { PageHeaderView } from "./components/page-header";
 export { ResourceTreeView } from "./components/resource-tree";
 export { DeclarativePageRenderer } from "./page/declarative-page-renderer";
 export {
-  clearViews,
   type RegistryViewProps,
   registerLazyView,
   registerView,

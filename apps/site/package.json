@@ -15,8 +15,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check",
-    "lint": "biome check .",
-    "test": "bun test --pass-with-no-tests"
+    "lint": "biome check ."
   },
   "type": "module",
   "devDependencies": {

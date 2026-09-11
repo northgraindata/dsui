@@ -26,7 +26,7 @@ export interface AdapterLoadOptions {
   dataDir?: string;
   fetch?: AdapterFetch;
   offline?: boolean;
-  /** Subprocess host factory; tests inject fakes. */
+  /** Subprocess host factory; callers can inject a controlled host. */
   spawnHost?: (bundlePath: string) => {
     request(request: {
       method: "describe" | "health" | "page" | "resource" | "action";
@@ -313,7 +313,7 @@ class RemoteBackend implements AdapterBackend {
  * Command that runs one adapter-host subprocess for a verified bundle.
  * Source checkouts execute adapter-host.ts directly; the compiled binary
  * re-enters itself in adapter-host mode. Never inferred from argv, which
- * cannot distinguish `bun run` from `bun test`.
+ * cannot distinguish normal CLI execution from adapter-host mode.
  */
 export function defaultHostCommand(bundlePath: string): {
   command: string;
