@@ -1,4 +1,4 @@
-import type { PageNode } from "@northgraindata/dsui-core";
+import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { ComponentType, ReactNode } from "react";
 import type { RendererClient } from "../types/renderer-types";
 
@@ -9,7 +9,12 @@ import type { RendererClient } from "../types/renderer-types";
 export interface RegistryViewProps {
   client: RendererClient;
   node: PageNode;
-  renderNode: (client: RendererClient, node: PageNode) => ReactNode;
+  renderNode: (
+    client: RendererClient,
+    node: PageNode,
+    context?: Record<string, unknown>,
+  ) => ReactNode;
+  context?: Record<string, unknown>;
 }
 
 type ViewLoader = () => Promise<{
