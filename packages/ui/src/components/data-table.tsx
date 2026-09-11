@@ -5,15 +5,21 @@ export function DataTable({
   columns,
   rows,
   onRowClick,
+  renderCell,
   renderRowActions,
 }: {
   columns: readonly { id: string; label: string }[];
   rows: readonly Record<string, unknown>[];
   onRowClick?: (row: Record<string, unknown>) => void;
+  renderCell?: (
+    columnId: string,
+    value: unknown,
+    row: Record<string, unknown>,
+  ) => ReactNode;
   renderRowActions?: (row: Record<string, unknown>) => ReactNode;
 }) {
   return (
-    <Surface className="overflow-x-auto">
+    <Surface className="dsui-data-table-shell overflow-x-auto">
       <table className="dsui-data-table w-full border-collapse text-left text-[12px]">
         <thead className="border-b border-border bg-surface-raised text-secondary">
           <tr>
@@ -44,12 +50,16 @@ export function DataTable({
                     <button
                       type="button"
                       onClick={() => onRowClick(row)}
-                      className="cursor-pointer bg-transparent p-0 text-left text-accent hover:underline"
+                      className="dsui-data-table-cell-link cursor-pointer bg-transparent p-0 text-left"
                     >
-                      {formatCell(row[column.id])}
+                      {renderCell
+                        ? renderCell(column.id, row[column.id], row)
+                        : formatCell(row[column.id])}
                     </button>
                   ) : (
-                    formatCell(row[column.id])
+                    renderCell
+                      ? renderCell(column.id, row[column.id], row)
+                      : formatCell(row[column.id])
                   )}
                 </td>
               ))}
