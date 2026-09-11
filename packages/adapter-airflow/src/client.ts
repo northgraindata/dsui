@@ -370,7 +370,9 @@ function normalizeBaseUrl(value: string): URL {
     throw new Error(
       "Airflow base URL must use HTTP(S) without credentials, query, or fragment",
     );
-  url.pathname = `${url.pathname.replace(/\/+$/, "")}/`;
+  url.pathname = `${url.pathname
+    .replace(/\/api\/v[12]\/?$/, "")
+    .replace(/\/+$/, "")}/`;
   return url;
 }
 
@@ -457,8 +459,31 @@ export function createAirflowClient(
       } as RequestInit,
     );
     if (!response.ok) {
-      await response.body?.cancel();
-      throw new Error(`Airflow request failed (HTTP ${response.status})`);
+      let detail = "";
+      try {
+        const body = await readJson(response, combinedSignal);
+        if (body && typeof body === "object" && !Array.isArray(body)) {
+          const value = (body as Record<string, unknown>).detail;
+          if (typeof value === "string") detail = value;
+          else if (Array.isArray(value)) {
+            detail = value
+              .flatMap((item) =>
+                item && typeof item === "object" && !Array.isArray(item)
+                  ? [(item as Record<string, unknown>).msg]
+                  : [],
+              )
+              .filter(
+                (message): message is string => typeof message === "string",
+              )
+              .join("; ");
+          }
+        }
+      } catch {
+        await response.body?.cancel();
+      }
+      throw new Error(
+        `Airflow request failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`,
+      );
     }
     const body = await readJson(response, combinedSignal);
     const parsed = schema.safeParse(body);
@@ -489,7 +514,7 @@ export function createAirflowClient(
     getDag: async (dagId, signal): Promise<DagDetails> => {
       if (isAirflow2) {
         const result = await request(
-          `dags/${encodeURIComponent(dagId)}/details`,
+          `dags/${encodeURIComponent(dagId)}`,
           airflow2DagDetailsSchema,
           signal,
         );
@@ -620,7 +645,9 @@ export function createAirflowClient(
         ),
       ),
     setDagPaused: async (dagId, isPaused, signal): Promise<DagSummary> => {
-      const path = `dags/${encodeURIComponent(dagId)}?update_mask=is_paused`;
+      const path = `dags/${encodeURIComponent(dagId)}${
+        isAirflow2 ? "" : "?update_mask=is_paused"
+      }`;
       const init = {
         method: "PATCH",
         body: JSON.stringify({ is_paused: isPaused }),

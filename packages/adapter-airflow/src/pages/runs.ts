@@ -1,4 +1,5 @@
 import {
+  Button,
   DependencyGraph,
   definePage,
   KeyValue,
@@ -6,6 +7,7 @@ import {
   Table,
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
+import { triggerDag } from "../actions/dags.js";
 import { clearTask, retryTask } from "../actions/tasks.js";
 import {
   dagRunDetails,
@@ -23,6 +25,16 @@ export const dagRunDetailPage = definePage({
       PageHeader({
         title: params.dagRunId,
         description: "Review run state and manage individual task instances.",
+      }),
+      Button({
+        label: "Trigger new run",
+        icon: "play",
+        variant: "primary",
+        action: triggerDag({ dagId: params.dagId, conf: {} }),
+        successLink: {
+          path: "/dags/:dagId/runs/:dagRunId",
+          params: { dagId: "dagId", dagRunId: "dagRunId" },
+        },
       }),
       Tabs({
         items: [

@@ -55,6 +55,7 @@ export function buildTaskInstanceGraph(
   instances: readonly TaskInstance[],
   dagId?: string,
   dagRunId?: string,
+  runState?: string,
 ) {
   const byTask = new Map<string, TaskInstance[]>();
   for (const instance of instances) {
@@ -68,6 +69,12 @@ export function buildTaskInstanceGraph(
       return upstream?.length ? upstream.map(graphId) : [taskId];
     });
   const knownTasks = new Set(tasks.map((task) => task.taskId));
+  const missingInstanceState =
+    runState === "queued"
+      ? "queued"
+      : runState === "running"
+        ? "scheduled"
+        : "awaiting";
   const rows = tasks.flatMap((task) => {
     const taskInstances = byTask.get(task.taskId);
     if (!taskInstances?.length)
@@ -82,13 +89,17 @@ export function buildTaskInstanceGraph(
           tryNumber: 0,
           name: task.name,
           operator: task.operator,
-          state: "awaiting",
+          state: missingInstanceState,
         },
       ];
     return taskInstances.map((instance) => ({
       ...instance,
       dagId: instance.dagId || dagId || "",
       dagRunId: instance.dagRunId || dagRunId || "",
+      name:
+        instance.mapIndex >= 0
+          ? `${instance.name} [${instance.mapIndex}]`
+          : instance.name,
       state: normalizeGraphState(instance.state),
       graphId: graphId(instance),
       upstreamGraphIds: dependencyIds(task),
@@ -107,30 +118,18 @@ export function buildTaskInstanceGraph(
   ];
 }
 
-const tasksCache = new Map<string, { tasks: DagTask[]; expiresAt: number }>();
-
-async function getDagTasksCached(
-  dagId: string,
-  ctx: AirflowContext,
-): Promise<DagTask[]> {
-  const cached = tasksCache.get(dagId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.tasks;
-  }
-  const tasks = await ctx.client.listDagTasks(dagId);
-  tasksCache.set(dagId, { tasks, expiresAt: Date.now() + 60_000 });
-  return tasks;
-}
-
 export const taskInstanceGraph = defineResource({
   id: "task-instance-graph",
   input: dagRunInput,
   query: async ({ dagId, dagRunId }, ctx: AirflowContext) => {
-    const [tasks, instances] = await Promise.all([
-      getDagTasksCached(dagId, ctx),
+    const [tasks, instances, run] = await Promise.all([
+      // DAG ids are only unique within one Airflow service. A module-level cache
+      // keyed by dagId leaks task definitions between configured services.
+      ctx.client.listDagTasks(dagId),
       ctx.client.listTaskInstances(dagId, dagRunId),
+      ctx.client.getDagRun(dagId, dagRunId),
     ]);
-    return buildTaskInstanceGraph(tasks, instances, dagId, dagRunId);
+    return buildTaskInstanceGraph(tasks, instances, dagId, dagRunId, run.state);
   },
   refresh: poll("2s"),
 });

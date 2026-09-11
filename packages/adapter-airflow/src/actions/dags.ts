@@ -17,7 +17,10 @@ export const triggerDag = defineAction({
   id: "trigger-dag",
   input: triggerDagInput,
   run: async ({ dagId, conf }, ctx: Ctx) => {
+    const dag = await ctx.client.getDag(dagId, ctx.signal);
+    if (dag.isPaused) await ctx.client.setDagPaused(dagId, false, ctx.signal);
     const run = await ctx.client.triggerDag(dagId, conf, ctx.signal);
+    ctx.invalidate(dags);
     ctx.invalidate(dagRuns, { dagId });
     ctx.invalidate(dagDetails, { dagId });
     return run;
