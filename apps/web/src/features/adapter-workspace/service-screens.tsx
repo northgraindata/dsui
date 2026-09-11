@@ -20,8 +20,7 @@ export function ServiceObjectView() {
   return (
     <ServiceScreen
       serviceId={serviceId}
-      viewId={viewId}
-      objectSelection={{ database, objectName, tabId }}
+      pagePath={`/${viewId}/${database}/${objectName}/${tabId}`}
     />
   );
 }
