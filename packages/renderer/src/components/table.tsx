@@ -1,6 +1,7 @@
 import type {
   TableColumn,
   PageTableRowAction as TableRowAction,
+  TableRowMenuAction,
 } from "@northgraindata/dsui-adapter-sdk";
 import {
   Button,
@@ -169,6 +170,7 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
   }
   const rowLink = node.props.rowLink;
   const rowActions = node.props.rowActions;
+  const menuActions = node.props.actions;
   const columns: readonly TableColumn[] =
     node.props.columns ?? Object.keys(rows[0]).map((id) => ({ id, label: id }));
   return (
@@ -218,7 +220,77 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
             )
           : undefined
       }
+      renderRowMenu={
+        menuActions?.length
+          ? (row) =>
+              menuActions
+                .filter((spec: TableRowMenuAction) =>
+                  matchesWhen(row, spec.when),
+                )
+                .map((spec: TableRowMenuAction) => (
+                  <MenuAction
+                    key={spec.label}
+                    client={client}
+                    spec={spec}
+                    row={row}
+                    onDone={reload}
+                  />
+                ))
+          : undefined
+      }
     />
+  );
+}
+
+function MenuAction({
+  client,
+  spec,
+  row,
+  onDone,
+}: {
+  client: RendererClient;
+  spec: TableRowMenuAction;
+  row: Record<string, unknown>;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const action =
+    typeof spec.action === "object" && spec.action !== null
+      ? (spec.action as { actionId?: string; input?: Record<string, string> })
+      : undefined;
+  return (
+    <button
+      type="button"
+      className="dsui-data-table-menu-item"
+      disabled={busy}
+      onClick={() => {
+        if (
+          spec.confirmation &&
+          !window.confirm(
+            `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
+          )
+        )
+          return;
+        if (spec.link) {
+          const href = resolveLink(spec.link.path, spec.link.params, row);
+          if (href) client.navigate(href);
+          return;
+        }
+        if (!action?.actionId) return;
+        const input: Record<string, unknown> = {};
+        for (const [key, field] of Object.entries(action.input ?? {}))
+          input[key] = row[field];
+        setBusy(true);
+        client
+          .executeAction({ actionId: action.actionId, input })
+          .then((result) => {
+            if (result.status === "success") onDone();
+          })
+          .finally(() => setBusy(false));
+      }}
+    >
+      {spec.label}
+    </button>
   );
 }
 

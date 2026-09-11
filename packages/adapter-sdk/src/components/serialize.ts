@@ -18,7 +18,11 @@ import type {
   ResourceTreeBranchProps,
 } from "./primitives/resource-tree";
 import type { StackProps } from "./primitives/stack";
-import type { TableColumn, TableRowAction } from "./primitives/table";
+import type {
+  TableColumn,
+  TableRowAction,
+  TableRowMenuAction,
+} from "./primitives/table";
 import type { TabsItem } from "./primitives/tabs";
 import type { ValueProps } from "./primitives/value";
 
@@ -152,6 +156,40 @@ export function serializeNode(node: PageNode): PageNode {
                     ...(rowAction.disabledWhen
                       ? { disabledWhen: { ...rowAction.disabledWhen } }
                       : {}),
+                    ...(rowAction.confirmation
+                      ? { confirmation: { ...rowAction.confirmation } }
+                      : {}),
+                  }),
+                ),
+              }
+            : {}),
+          ...(node.props.actions
+            ? {
+                actions: node.props.actions.map(
+                  (rowAction: TableRowMenuAction) => ({
+                    label: rowAction.label,
+                    ...(rowAction.link
+                      ? {
+                          link: {
+                            path: rowAction.link.path,
+                            params: { ...rowAction.link.params },
+                          },
+                        }
+                      : {}),
+                    ...(rowAction.action
+                      ? {
+                          action: {
+                            actionId:
+                              typeof rowAction.action === "string"
+                                ? rowAction.action
+                                : rowAction.action.id,
+                            ...(rowAction.input
+                              ? { input: { ...rowAction.input } }
+                              : {}),
+                          },
+                        }
+                      : {}),
+                    ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
                     ...(rowAction.confirmation
                       ? { confirmation: { ...rowAction.confirmation } }
                       : {}),

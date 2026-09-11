@@ -20,6 +20,7 @@ const versionResponseSchema = z.object({
 });
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
+const nullableString = z.string().nullable().optional();
 const tagSchema = z.object({ name: z.string() });
 const dagSchema = z.object({
   dag_id: z.string().min(1),
@@ -31,6 +32,7 @@ const dagSchema = z.object({
   last_parsed_time: z.string().nullable().optional(),
   owners: z.array(z.string()).optional(),
   tags: z.array(tagSchema).optional(),
+  next_dagrun_create_after: nullableString,
 });
 const dagCollectionSchema = z.object({
   dags: z.array(dagSchema).max(100),
@@ -49,6 +51,7 @@ const airflow2DagSchema = z.object({
   last_parsed_time: z.string().nullable().optional(),
   owners: z.array(z.string()).optional(),
   tags: z.array(tagSchema).nullable().optional(),
+  next_dagrun_create_after: nullableString,
 });
 const airflow2DagCollectionSchema = z.object({
   dags: z.array(airflow2DagSchema).max(100),
@@ -83,7 +86,6 @@ const airflow2TaskSchema = z.object({
 const airflow2TaskCollectionSchema = z.object({
   tasks: z.array(airflow2TaskSchema).max(100),
 });
-const nullableString = z.string().nullable().optional();
 const dagRunSchema = z
   .object({
     dag_run_id: z.string().min(1).optional(),
@@ -241,6 +243,7 @@ function mapDag(dag: DagPayload): DagSummary {
     lastParsedTime: dag.last_parsed_time ?? "",
     owners: (dag.owners ?? []).join(", "),
     tags: (dag.tags ?? []).map((tag) => tag.name).join(", "),
+    nextRun: dag.next_dagrun_create_after ?? "",
   };
 }
 
@@ -255,6 +258,7 @@ function mapAirflow2Dag(dag: z.output<typeof airflow2DagSchema>): DagSummary {
     lastParsedTime: dag.last_parsed_time ?? "",
     owners: (dag.owners ?? []).join(", "),
     tags: (dag.tags ?? []).map((tag) => tag.name).join(", "),
+    nextRun: dag.next_dagrun_create_after ?? "",
   };
 }
 

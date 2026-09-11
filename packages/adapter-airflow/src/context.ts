@@ -36,6 +36,7 @@ export interface DagSummary {
   lastParsedTime: string;
   owners: string;
   tags: string;
+  nextRun: string;
 }
 
 export interface DagDetails extends DagSummary {

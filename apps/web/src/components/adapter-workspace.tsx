@@ -114,7 +114,7 @@ export function AdapterWorkspace({
             <ServiceMark
               adapter={service.adapter}
               logo={service.logo}
-              size={50}
+              size={64}
             />
             <div>
               <h1>{service.name}</h1>

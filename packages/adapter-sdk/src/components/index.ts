@@ -107,6 +107,7 @@ export type {
   TableProps,
   TableRowAction,
   TableRowLink,
+  TableRowMenuAction,
 } from "./primitives/table";
 export { Table } from "./primitives/table";
 export type { TabsItem, TabsNode, TabsProps } from "./primitives/tabs";

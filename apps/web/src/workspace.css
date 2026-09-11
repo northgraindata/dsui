@@ -388,7 +388,7 @@
   );
 }
 .adapter-heading .service-mark {
-  border-radius: 50%;
+  border-radius: 12px;
 }
 @media (max-width: 1200px) {
   .app-topbar-actions {
