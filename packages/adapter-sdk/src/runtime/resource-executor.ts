@@ -1,4 +1,3 @@
-import { ManualRefreshPolicy } from "../refresh/manual";
 import type { RefreshPolicy } from "../refresh/policy";
 import { PollingRefreshPolicy } from "../refresh/polling";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
@@ -7,7 +6,7 @@ import type { ResourceResult } from "./types";
 interface WatchedEntry {
   binding: ResourceBinding<unknown, unknown, unknown>;
   listeners: Set<(result: ResourceResult<unknown>) => void>;
-  policy: RefreshPolicy;
+  policy: RefreshPolicy | undefined;
   lastResult: ResourceResult<unknown> | undefined;
   executive: number;
 }
@@ -76,7 +75,7 @@ export class ResourceExecutor<TContext> {
     return () => {
       entry.listeners.delete(wrapped);
       if (entry.listeners.size === 0) {
-        entry.policy.stop();
+        entry.policy?.stop();
         entry.executive++;
         this.watchers.delete(bindingKey(entry.binding));
       }
@@ -111,7 +110,7 @@ export class ResourceExecutor<TContext> {
   dispose(): void {
     this.disposed = true;
     for (const entry of this.watchers.values()) {
-      entry.policy.stop();
+      entry.policy?.stop();
       entry.executive++;
       entry.listeners.clear();
     }
@@ -128,7 +127,7 @@ export class ResourceExecutor<TContext> {
     const policy =
       refresh.kind === "poll"
         ? new PollingRefreshPolicy(refresh.intervalMs)
-        : new ManualRefreshPolicy();
+        : undefined;
     const entry: WatchedEntry = {
       binding,
       listeners: new Set(),
@@ -137,7 +136,7 @@ export class ResourceExecutor<TContext> {
       executive: 0,
     };
     this.watchers.set(key, entry);
-    if (!this.disposed)
+    if (!this.disposed && policy)
       policy.start(() => {
         void this.run(entry);
       });

@@ -20,6 +20,12 @@ export interface DataSource {
   readonly input: unknown;
 }
 
+/** Browser-safe resource reference used after page serialization. */
+export interface ResourceReference {
+  readonly resourceId: string;
+  readonly input?: unknown;
+}
+
 /**
  * A resource definition bound to concrete input.
  *
