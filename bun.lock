@@ -53,6 +53,7 @@
       "name": "@northgraindata/dsui-web",
       "version": "0.0.0",
       "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
         "@northgraindata/dsui-renderer": "workspace:*",
         "@northgraindata/dsui-ui": "workspace:*",
@@ -82,7 +83,6 @@
       "name": "@northgraindata/dsui-adapter-sdk",
       "version": "0.0.0",
       "dependencies": {
-        "@northgraindata/dsui-core": "workspace:*",
         "zod": "^3.24.2",
       },
     },
@@ -101,7 +101,7 @@
       "name": "@northgraindata/dsui-renderer",
       "version": "0.0.0",
       "dependencies": {
-        "@northgraindata/dsui-core": "workspace:*",
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-ui": "workspace:*",
         "@tanstack/react-virtual": "^3.14.11",
         "modern-monaco": "^0.4.2",

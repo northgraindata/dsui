@@ -1,4 +1,4 @@
-import type { PageDocument } from "@northgraindata/dsui-core";
+import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";

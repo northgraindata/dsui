@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
     "@northgraindata/dsui-core": "workspace:*",
     "@northgraindata/dsui-renderer": "workspace:*",
     "@northgraindata/dsui-ui": "workspace:*",
