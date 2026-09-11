@@ -4,6 +4,7 @@ export type {
   ActionDefinition,
   ActionExecutionStatus,
   ActionFailure,
+  ActionReference,
   ActionResult,
   ActionRuntimeContext,
   ActionSuccess,
