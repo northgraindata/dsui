@@ -3,7 +3,9 @@ import { resetSetting, setSetting } from "./actions/config.js";
 import {
   installExtension,
   loadExtension,
+  reloadExtension,
   restartExtension,
+  unloadExtension,
 } from "./actions/extensions.js";
 import { cancelQuery, runQuery } from "./actions/run-query.js";
 import {
@@ -167,6 +169,8 @@ export function createDuckDbAdapter(
       importData,
       installExtension,
       loadExtension,
+      unloadExtension,
+      reloadExtension,
       restartExtension,
       setSetting,
       resetSetting,
