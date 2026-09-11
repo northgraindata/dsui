@@ -1,4 +1,3 @@
-import type { DependencyGraphNode } from "@northgraindata/dsui-adapter-sdk";
 import type { ComponentType } from "react";
 import { BadgeView } from "../components/badge";
 import { ButtonView } from "../components/button";
@@ -49,14 +48,6 @@ const columnsView: ComponentType<RegistryViewProps> = ({
 const meterView: ComponentType<RegistryViewProps> = ({ client, node }) =>
   node.kind === "meter" ? <MeterView client={client} node={node} /> : null;
 
-const dependencyGraphView: ComponentType<RegistryViewProps> = ({
-  client,
-  node,
-}) =>
-  node.kind === "dependency-graph" ? (
-    <DependencyGraphView client={client} node={node as DependencyGraphNode} />
-  ) : null;
-
 const firstPartyViews: readonly [string, ComponentType<RegistryViewProps>][] = [
   ["button", ButtonView],
   ["badge", BadgeView],
@@ -83,7 +74,7 @@ const firstPartyViews: readonly [string, ComponentType<RegistryViewProps>][] = [
   ["section", sectionView],
   ["columns", columnsView],
   ["meter", meterView],
-  ["dependency-graph", dependencyGraphView],
+  ["airflow/dependency-graph", DependencyGraphView],
 ];
 
 export function registerFirstPartyViews(): void {

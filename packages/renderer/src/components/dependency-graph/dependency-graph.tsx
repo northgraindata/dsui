@@ -1,7 +1,4 @@
-import type {
-  DependencyGraphNode,
-  TableRowLink,
-} from "@northgraindata/dsui-adapter-sdk";
+import type { PageNode, TableRowLink } from "@northgraindata/dsui-adapter-sdk";
 import { cn, Surface } from "@northgraindata/dsui-ui";
 import {
   Fragment,
@@ -14,7 +11,6 @@ import {
   useState,
 } from "react";
 import type { RendererClient } from "../../types/renderer-types";
-import { watchResource } from "../resource-refresh";
 import { resolveLink } from "../table";
 import {
   clampOffset,
@@ -43,6 +39,28 @@ const PAN_THRESHOLD = 4;
 const REVEAL_MARGIN = 24;
 /** Inspector drawer, kept clear of the node it describes. */
 const PANEL_WIDTH = 320;
+
+interface DependencyGraphProps {
+  source?: {
+    resourceId: string;
+    input?: Record<string, unknown>;
+  };
+  data?: readonly Record<string, unknown>[];
+  idField: string;
+  dependsOnField: string;
+  labelField?: string;
+  detailField?: string;
+  stateField?: string;
+  rowLink?: TableRowLink;
+}
+
+interface DependencyGraphNode {
+  readonly kind: "custom";
+  readonly props: {
+    component: "airflow/dependency-graph";
+    props?: DependencyGraphProps;
+  };
+}
 
 /** Dotted canvas grid, drawn from the same border token as every panel. */
 const CANVAS_GRID = {
@@ -851,10 +869,16 @@ export function DependencyGraphView({
   node,
 }: {
   client: RendererClient;
-  node: DependencyGraphNode;
+  node: PageNode;
 }) {
-  const sourceKey = JSON.stringify(node.props.source ?? null);
-  return <DependencyGraphContent key={sourceKey} client={client} node={node} />;
+  if (
+    node.kind !== "custom" ||
+    node.props.component !== "airflow/dependency-graph"
+  )
+    return null;
+  const graphNode = node as DependencyGraphNode;
+  const sourceKey = JSON.stringify(graphNode.props.props?.source ?? null);
+  return <DependencyGraphContent key={sourceKey} client={client} node={graphNode} />;
 }
 
 function DependencyGraphContent({
@@ -864,7 +888,8 @@ function DependencyGraphContent({
   client: RendererClient;
   node: DependencyGraphNode;
 }) {
-  const [data, setData] = useState<unknown>(node.props.data);
+  const props = node.props.props ?? { idField: "id", dependsOnField: "dependsOn" };
+  const [data, setData] = useState<unknown>(props.data);
   const [error, setError] = useState<string>();
   const cachedLayoutRef = useRef<{
     topologyKey: string;
@@ -872,18 +897,23 @@ function DependencyGraphContent({
   } | null>(null);
 
   useEffect(() => {
-    if (!node.props.source) return;
-    return watchResource(
-      node.props.source,
-      (reference) => client.executeResource(reference),
-      (result) => {
+    if (!props.source) return;
+    let active = true;
+    client
+      .executeResource(props.source)
+      .then((result) => {
+        if (!active) return;
         setData(result);
         setError(undefined);
-      },
-      (cause) =>
-        setError(cause instanceof Error ? cause.message : "Could not load"),
-    );
-  }, [client, node.props.source]);
+      })
+      .catch((cause) => {
+        if (active)
+          setError(cause instanceof Error ? cause.message : "Could not load");
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, props.source]);
 
   const { parsed, rows } = useMemo(() => {
     const source = Array.isArray(data)
@@ -894,13 +924,13 @@ function DependencyGraphContent({
       : [];
     const rowsMap = new Map<string, Record<string, unknown>>();
     const parsedNodes = source.flatMap((row) => {
-      const graphNode = graphNodeFromRow(row, node.props);
+      const graphNode = graphNodeFromRow(row, props);
       if (!graphNode) return [];
       rowsMap.set(graphNode.id, row);
       return [graphNode];
     });
     return { parsed: parsedNodes, rows: rowsMap };
-  }, [data, node.props]);
+  }, [data, props]);
 
   const layout = useMemo(() => {
     if (!parsed.length) return null;
@@ -981,9 +1011,9 @@ function DependencyGraphContent({
         client={client}
         layout={layout}
         rows={rows}
-        rowLink={node.props.rowLink}
+        rowLink={props.rowLink}
         // The inspector shows these as its heading and relation lists already.
-        hiddenFields={new Set([node.props.idField, node.props.dependsOnField])}
+        hiddenFields={new Set([props.idField, props.dependsOnField])}
       />
     </div>
   );

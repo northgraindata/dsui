@@ -161,33 +161,6 @@ export function serializeNode(node: PageNode): PageNode {
             : {}),
         },
       };
-    case "dependency-graph":
-      return {
-        kind: node.kind,
-        props: {
-          ...(node.props.source ? { source: resource(node.props.source) } : {}),
-          ...(node.props.data ? { data: node.props.data } : {}),
-          idField: node.props.idField,
-          dependsOnField: node.props.dependsOnField,
-          ...(node.props.labelField
-            ? { labelField: node.props.labelField }
-            : {}),
-          ...(node.props.detailField
-            ? { detailField: node.props.detailField }
-            : {}),
-          ...(node.props.stateField
-            ? { stateField: node.props.stateField }
-            : {}),
-          ...(node.props.rowLink
-            ? {
-                rowLink: {
-                  path: node.props.rowLink.path,
-                  params: { ...node.props.rowLink.params },
-                },
-              }
-            : {}),
-        },
-      };
     case "button":
       return {
         kind: node.kind,

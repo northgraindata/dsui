@@ -1,6 +1,5 @@
 import {
   Button,
-  DependencyGraph,
   definePage,
   KeyValue,
   PageHeader,
@@ -8,6 +7,7 @@ import {
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
 import { pauseDag, triggerDag, unpauseDag } from "../actions/dags.js";
+import { DependencyGraph } from "../components/dependency-graph.js";
 import { dagDetails, dags, dagTasks } from "../resources/dags.js";
 import { dagRuns } from "../resources/runs.js";
 

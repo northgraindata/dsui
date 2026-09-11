@@ -32,11 +32,6 @@ export type {
   ColumnsProps,
 } from "./primitives/columns";
 export { Columns } from "./primitives/columns";
-export {
-  DependencyGraph,
-  type DependencyGraphNode,
-  type DependencyGraphProps,
-} from "./primitives/dependency-graph";
 export type {
   FlexAlign,
   FlexDirection,
