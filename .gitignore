@@ -11,15 +11,3 @@ coverage/
 .env.*
 !.env.example
 data/
-!data/
-data/*
-!data/airflow-v2/
-!data/airflow-v2/**
-!data/airflow-v3/
-!data/airflow-v3/**
-data/airflow-v2/logs/*
-!data/airflow-v2/logs/.gitkeep
-data/airflow-v3/logs/*
-!data/airflow-v3/logs/.gitkeep
-data/airflow-v2/**/__pycache__/
-data/airflow-v3/**/__pycache__/
