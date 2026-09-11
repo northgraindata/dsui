@@ -6,7 +6,7 @@ import {
 import {
   extensionCatalog,
   extensionProfileResource,
-} from "../resources/extensions";
+} from "../resources/extensions.js";
 
 export const extensionsPage = definePage({
   path: "/extensions",

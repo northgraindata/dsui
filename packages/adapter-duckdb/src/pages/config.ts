@@ -7,23 +7,29 @@ import {
   TextInput,
 } from "@northgraindata/dsui-adapter-sdk";
 import {
-  createSecret,
-  createSecretInput,
-  dropSecret,
-  installExtension,
-  installExtensionInput,
-  loadExtension,
   resetSetting,
   setSetting,
   setSettingInput,
 } from "../actions/config.js";
 import {
+  installExtension,
+  installExtensionInput,
+  loadExtension,
+} from "../actions/extensions.js";
+import {
   attachDatabase,
   attachInput,
   detachDatabase,
 } from "../actions/schema.js";
+import {
+  createSecret,
+  createSecretInput,
+  dropSecret,
+} from "../actions/secrets.js";
 import { databases, functions, types } from "../resources/catalog.js";
-import { extensions, secrets, settings } from "../resources/config.js";
+import { settings } from "../resources/config.js";
+import { extensions } from "../resources/extensions.js";
+import { secrets } from "../resources/secrets.js";
 
 export const settingsPage = definePage({
   path: "/admin",

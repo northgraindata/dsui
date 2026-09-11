@@ -8,8 +8,8 @@ import {
   installExtension,
   loadExtension,
   restartExtension,
-} from "./actions/config";
-import type { ExtensionInfo, SettingInfo } from "./context";
+} from "./actions/extensions.js";
+import type { ExtensionInfo, SettingInfo } from "./context.js";
 
 // Purpose and core membership: https://duckdb.org/docs/current/core_extensions/overview
 const descriptions: Record<
