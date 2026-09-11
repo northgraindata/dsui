@@ -6,7 +6,6 @@ import {
   definePage,
   Grid,
   Meter,
-  PageHeader,
   Section,
   Stack,
   Table,
@@ -24,16 +23,6 @@ import {
 export const overviewPage = definePage({
   path: "/",
   render: () => [
-    PageHeader({
-      title: "DuckDB",
-      description: "Fast, in-process analytics database.",
-      badge: { label: "Connected", tone: "healthy" },
-      actions: [
-        Button({ label: "New query", variant: "primary", link: "/query" }),
-        Button({ label: "Browse data", link: "/data" }),
-        Button({ label: "Attach database", link: "/admin" }),
-      ],
-    }),
     Grid({
       content: [
         Card({
