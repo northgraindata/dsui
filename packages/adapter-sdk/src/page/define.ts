@@ -1,4 +1,4 @@
-import type { ComponentNode } from "../components/index";
+import type { PageNode } from "../components/index";
 import { InvalidDefinitionError } from "../shared/errors";
 import type { AnyStoreDefinition } from "../store/index";
 import type { AnyPageDefinition, PageRenderContext } from "./types";
@@ -29,7 +29,7 @@ export function definePage<TPath extends string>(options: {
   stores?: readonly AnyStoreDefinition[];
   render: (
     ctx: PageRenderContext<TPath>,
-  ) => ComponentNode | readonly ComponentNode[];
+  ) => PageNode | readonly PageNode[];
 }): AnyPageDefinition & { readonly path: TPath } {
   if (!options.path.startsWith("/"))
     throw new InvalidDefinitionError(
