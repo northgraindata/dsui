@@ -6,6 +6,7 @@ import {
 import type { DuckDbContext } from "../context.js";
 import { overview } from "../resources/catalog.js";
 import {
+  extensionCatalog,
   extensionDetails,
   extensions as extensionsResource,
 } from "../resources/extensions.js";
@@ -23,6 +24,7 @@ export const installExtension = defineAction({
   run: async ({ name, repository }, ctx: Ctx) => {
     await ctx.client.installExtension(name, repository);
     ctx.invalidate(extensionsResource);
+    ctx.invalidate(extensionCatalog);
     ctx.invalidate(extensionDetails);
     ctx.invalidate(overview);
     return { name, installed: true };
@@ -37,6 +39,7 @@ export const loadExtension = defineAction({
   run: async ({ name }, ctx: Ctx) => {
     await ctx.client.loadExtension(name);
     ctx.invalidate(extensionsResource);
+    ctx.invalidate(extensionCatalog);
     ctx.invalidate(extensionDetails);
     return { name, loaded: true };
   },
@@ -53,8 +56,35 @@ export const restartExtension = defineAction({
     ctx.signal?.throwIfAborted();
     await ctx.client.restartExtension(name, mode);
     ctx.invalidate(extensionsResource);
+    ctx.invalidate(extensionCatalog);
     ctx.invalidate(extensionDetails);
     ctx.invalidate(overview);
     return { name, loaded: mode === "reload", restarted: true };
   },
+});
+
+const restartExtensionFromTable = async (
+  name: string,
+  mode: "unload" | "reload",
+  ctx: Ctx,
+) => {
+  ctx.signal?.throwIfAborted();
+  await ctx.client.restartExtension(name, mode);
+  ctx.invalidate(extensionsResource);
+  ctx.invalidate(extensionCatalog);
+  ctx.invalidate(extensionDetails);
+  ctx.invalidate(overview);
+  return { name, loaded: mode === "reload", restarted: true };
+};
+
+export const unloadExtension = defineAction({
+  id: "unload-extension",
+  input: z.object({ name: z.string().min(1) }),
+  run: ({ name }, ctx: Ctx) => restartExtensionFromTable(name, "unload", ctx),
+});
+
+export const reloadExtension = defineAction({
+  id: "reload-extension",
+  input: z.object({ name: z.string().min(1) }),
+  run: ({ name }, ctx: Ctx) => restartExtensionFromTable(name, "reload", ctx),
 });
