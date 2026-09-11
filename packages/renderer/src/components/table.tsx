@@ -1,8 +1,12 @@
-import type { TableRowAction } from "@northgraindata/dsui-core";
-import { Button, DataTable, Surface } from "@northgraindata/dsui-ui";
+import type {
+  PageTableRowAction as TableRowAction,
+  TableColumn,
+} from "@northgraindata/dsui-adapter-sdk";
+import { Button, DataTable as CatalogTable, Surface } from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useState } from "react";
 import type { RegistryViewProps } from "../registry/view-registry";
 import type { RendererClient } from "../types/renderer-types";
+import { DataTable as DataGrid } from "./data-table";
 
 /** Fills :param placeholders from row fields; null when a field is missing. */
 export function resolveLink(
@@ -21,7 +25,7 @@ export function resolveLink(
 
 function matchesWhen(
   row: Record<string, unknown>,
-  when: TableRowAction["when"],
+  when: TableRowAction["when"] | TableRowAction["disabledWhen"],
 ): boolean {
   if (!when) return true;
   const value = row[when.field];
@@ -43,16 +47,26 @@ function RowActionButton({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const disabled = !matchesWhen(row, spec.disabledWhen);
   return (
     <span className="inline-flex flex-col gap-1">
       <Button
         size="small"
+        className="table-row-action"
         variant={
           spec.variant === "primary" ? "default" : (spec.variant ?? "secondary")
         }
-        disabled={busy}
-        title={error}
+        disabled={busy || disabled}
+        title={error ?? (disabled ? String(row.restartRestriction ?? "") : undefined)}
         onClick={() => {
+          if (
+            disabled ||
+            spec.confirmation &&
+            !window.confirm(
+              `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
+            )
+          )
+            return;
           const input: Record<string, unknown> = {};
           for (const [key, field] of Object.entries(spec.action.input ?? {})) {
             input[key] = row[field];
@@ -82,20 +96,29 @@ function RowActionButton({
   );
 }
 
-export function TableView({ client, node }: RegistryViewProps) {
+export function TableView({ client, node, renderNode }: RegistryViewProps) {
   const source = node.kind === "table" ? node.props.source : undefined;
+  const columnsSource = node.kind === "table" ? node.props.columnsSource : undefined;
   const [data, setData] = useState<unknown>(
     node.kind === "table" ? node.props.data : undefined,
   );
+  const [columnData, setColumnData] = useState<unknown>();
   const [error, setError] = useState<string>();
-  const [_refresh, setRefresh] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const reload = useCallback(() => setRefresh((count) => count + 1), []);
   useEffect(() => {
-    if (!source) return;
+    if (!source && !columnsSource) return;
     let active = true;
-    client
-      .executeResource(source)
-      .then((result) => active && setData(result))
+    setError(undefined);
+    Promise.all([
+      source ? client.executeResource(source) : Promise.resolve(data),
+      columnsSource ? client.executeResource(columnsSource) : Promise.resolve(undefined),
+    ])
+      .then(([result, columns]) => {
+        if (!active) return;
+        setData(result);
+        setColumnData(columns);
+      })
       .catch(
         (cause) =>
           active &&
@@ -106,7 +129,7 @@ export function TableView({ client, node }: RegistryViewProps) {
     return () => {
       active = false;
     };
-  }, [client, source]);
+  }, [client, source, columnsSource, refresh]);
   if (node.kind !== "table") return null;
   if (error)
     return (
@@ -131,15 +154,34 @@ export function TableView({ client, node }: RegistryViewProps) {
     return (
       <Surface className="p-5 text-[12px] text-secondary">No records.</Surface>
     );
+  if (node.props.variant === "data") {
+    const columns = node.props.columns ?? columnsFrom(columnData, rows[0]);
+    return <DataGrid columns={columns} rows={rows} />;
+  }
   const rowLink = node.props.rowLink;
   const rowActions = node.props.rowActions;
+  const columns: readonly TableColumn[] =
+    node.props.columns ?? Object.keys(rows[0]).map((id) => ({ id, label: id }));
   return (
-    <DataTable
-      columns={
-        node.props.columns ??
-        Object.keys(rows[0]).map((id) => ({ id, label: id }))
-      }
+    <CatalogTable
+      columns={columns}
       rows={rows}
+      renderCell={(columnId, value, row) => {
+        const column = columns.find((candidate) => candidate.id === columnId);
+        if (!column?.renderCell) return formatCell(value);
+        const cells = Array.isArray(column.renderCell)
+          ? column.renderCell
+          : [column.renderCell];
+        return (
+          <>
+            {cells.map((cell, index) => (
+              <span key={`${cell.kind}-${index}`}>
+                {renderNode(client, cell, row)}
+              </span>
+            ))}
+          </>
+        );
+      }}
       onRowClick={
         rowLink
           ? (row) => {
@@ -153,8 +195,8 @@ export function TableView({ client, node }: RegistryViewProps) {
           ? (row) => (
               <>
                 {rowActions
-                  .filter((spec) => matchesWhen(row, spec.when))
-                  .map((spec) => (
+                  .filter((spec: any) => matchesWhen(row, spec.when))
+                  .map((spec: any) => (
                     <RowActionButton
                       key={`${spec.label}:${spec.action.actionId}`}
                       client={client}
@@ -169,4 +211,28 @@ export function TableView({ client, node }: RegistryViewProps) {
       }
     />
   );
+}
+
+function columnsFrom(
+  value: unknown,
+  firstRow: Record<string, unknown>,
+): { name: string; type?: string }[] {
+  if (Array.isArray(value)) {
+    const metadata = value.filter(
+      (entry): entry is Record<string, unknown> =>
+        entry !== null && typeof entry === "object" && !Array.isArray(entry),
+    );
+    if (metadata.length > 0) {
+      return metadata.map((column) => ({
+        name: String(column.name ?? column.id ?? column.label),
+        ...(column.type ? { type: String(column.type) } : {}),
+      }));
+    }
+  }
+  return Object.keys(firstRow).map((name) => ({ name }));
+}
+
+function formatCell(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  return typeof value === "object" ? JSON.stringify(value) : String(value);
 }

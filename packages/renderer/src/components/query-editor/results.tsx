@@ -1,17 +1,12 @@
 import { Button } from "@northgraindata/dsui-ui";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { WorkbenchIcon } from "../icons";
+import { DataTable } from "../data-table";
 import {
-  cellText,
   elapsedLabel,
   type QueryResultView,
   queryCsv,
 } from "./query-result";
-
-function columnIcon(type?: string) {
-  return type && /DATE|TIME/.test(type) ? "calendar" : "hash";
-}
 
 export function QueryResults({
   result,
@@ -25,26 +20,6 @@ export function QueryResults({
   const [tab, setTab] = useState("results");
   const [displayError, setDisplayError] = useState<string>();
   const container = useRef<HTMLElement>(null);
-  const scrollContainer = useRef<HTMLDivElement>(null);
-  const rowCount = result && !error ? result.rows.length : 0;
-  const resultRows = result?.rows;
-  // Rows have a fixed height (31px td, border-box, nowrap cells), so the
-  // estimate is exact; measureElement self-corrects if CSS drifts.
-  const rowVirtualizer = useVirtualizer({
-    count: rowCount,
-    getScrollElement: () => scrollContainer.current,
-    estimateSize: () => 31,
-    overscan: 10,
-  });
-  useEffect(() => {
-    if (resultRows) scrollContainer.current?.scrollTo({ top: 0 });
-  }, [resultRows]);
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const paddingTop = virtualRows[0]?.start ?? 0;
-  const lastVirtualRow = virtualRows[virtualRows.length - 1];
-  const paddingBottom = lastVirtualRow
-    ? rowVirtualizer.getTotalSize() - lastVirtualRow.end
-    : 0;
   const exportCsv = () => {
     if (!result) return;
     const url = URL.createObjectURL(
@@ -149,71 +124,9 @@ export function QueryResults({
           role="tabpanel"
           aria-labelledby="query-results-tab"
         >
-          <div className="query-table-scroll" ref={scrollContainer}>
+          <div className="query-table-scroll">
             {result && !error ? (
-              <table
-                className="query-data-table"
-                aria-rowcount={result.rows.length + 1}
-              >
-                <thead>
-                  <tr>
-                    {result.columns.map((column) => (
-                      <th key={column.name}>
-                        <div>
-                          <WorkbenchIcon
-                            name={columnIcon(column.type)}
-                            size={18}
-                          />
-                          <span>
-                            {column.name}
-                            <small>{column.type ?? "TYPE UNAVAILABLE"}</small>
-                          </span>
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {paddingTop > 0 ? (
-                    <tr className="query-virtual-spacer">
-                      <td
-                        colSpan={result.columns.length || 1}
-                        style={{ height: paddingTop }}
-                      />
-                    </tr>
-                  ) : null}
-                  {virtualRows.map((virtualRow) => {
-                    const row = result.rows[virtualRow.index];
-                    return (
-                      // SQL results may contain identical rows and have no stable key; each result replaces the entire stateless table.
-                      <tr
-                        key={`${virtualRow.index}:${JSON.stringify(row)}`}
-                        data-index={virtualRow.index}
-                        ref={rowVirtualizer.measureElement}
-                        aria-rowindex={virtualRow.index + 2}
-                      >
-                        {result.columns.map((column) => (
-                          <td key={column.name}>
-                            {row[column.name] === null ? (
-                              <span className="null-cell">NULL</span>
-                            ) : (
-                              cellText(row[column.name])
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                  {paddingBottom > 0 ? (
-                    <tr className="query-virtual-spacer">
-                      <td
-                        colSpan={result.columns.length || 1}
-                        style={{ height: paddingBottom }}
-                      />
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+              <DataTable columns={result.columns} rows={result.rows} />
             ) : (
               <div className="query-empty">
                 <WorkbenchIcon name="play" size={28} />
