@@ -81,25 +81,27 @@ invalidation.
 ## Compose overview pages
 
 `Section` groups one panel: a heading, an optional description and
-link, and nested content. `StatGrid` reads one record (like
-`KeyValue`) and renders value/label cards from its fields.
-`CardList` renders entity cards from card-shaped resource rows or a
-static `cards` array, and `ActionList` renders quick actions with
-display-only keyboard hints:
+link, and nested content. `Card` renders a composable panel or metric
+card. `Collection` repeats a node template for resource rows, and
+`Button` also supports the `list-item` variant for quick actions with icons,
+descriptions, and keyboard hints:
 
 ```ts title="duckdb/pages/databases.ts"
 Section({
   title: "Attached databases",
   description: "Databases available in this instance.",
   link: { label: "Attach", path: "/databases" },
-  content: CardList({ source: databases() }),
+  content: Collection({
+    source: databases(),
+    content: Card({ title: { field: "name" } }),
+  }),
 });
-StatGrid({
-  source: overviewStats(),
-  items: [{ icon: "database", field: "size", label: "Database size" }],
-});
-ActionList({
-  items: [{ icon: "play", title: "New query", link: "/query", kbd: "⌘N" }],
+Button({
+  variant: "list-item",
+  icon: "play",
+  label: "New query",
+  link: "/query",
+  kbd: "⌘N",
 });
 ```
 
@@ -107,7 +109,8 @@ ActionList({
 `actions`. `Button` accepts either an `action` binding or a page
 `link`; paths are absolute adapter routes in both cases. Pair panels
 side by side with `Columns` (weighted columns, collapsing on narrow
-screens). Fix a card grid to N columns with `CardList({ columns: 2 })`,
+screens). Put a collection inside `Grid({ columns: 2 })` when its items
+should use two equal columns,
 and show byte breakdowns with `Meter`:
 
 ```ts title="duckdb/pages/databases.ts"
