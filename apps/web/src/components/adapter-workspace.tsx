@@ -1,6 +1,7 @@
-import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import type { Service } from "../api";
+import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
+import { Link, useRouter } from "@tanstack/react-router";
+import { useState, type ReactNode } from "react";
+import { deleteService, type Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
@@ -39,6 +40,8 @@ export function AdapterWorkspace({
   path?: string;
   children: ReactNode;
 }) {
+  const router = useRouter();
+  const [showConfirmRemove, setShowConfirmRemove] = useState(false);
   const pages = navigablePagePaths(paths);
   const query = path === "/query";
   const active = (item: string) =>
@@ -55,6 +58,12 @@ export function AdapterWorkspace({
       {pageLabel(item)}
     </Link>
   );
+
+  const handleRemove = async () => {
+    await deleteService(service.id);
+    router.navigate({ to: "/" });
+  };
+
   return (
     <div className="adapter-layout">
       <aside className="adapter-sidebar">
@@ -114,7 +123,7 @@ export function AdapterWorkspace({
         </Link>
       </aside>
       <div className="adapter-main">
-        <header className="adapter-heading">
+        <header className="adapter-heading flex items-center justify-between">
           <div className="adapter-heading-identity">
             <ServiceMark
               adapter={service.adapter}
@@ -130,6 +139,30 @@ export function AdapterWorkspace({
               </p>
             </div>
           </div>
+          <Dialog.Root
+            open={showConfirmRemove}
+            onOpenChange={setShowConfirmRemove}
+          >
+            <Dialog.Trigger asChild>
+              <Button variant="danger">Remove connection</Button>
+            </Dialog.Trigger>
+            <DialogContent
+              title="Remove connection"
+              description={`Are you sure you want to remove ${service.name}?`}
+            >
+              <div className="flex justify-end gap-3 pt-5">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowConfirmRemove(false)}
+                >
+                  Cancel
+                </Button>
+                <Button variant="danger" onClick={handleRemove}>
+                  Yes, remove
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog.Root>
         </header>
         {children}
       </div>
