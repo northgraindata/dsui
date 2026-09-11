@@ -175,13 +175,7 @@ export const extensionsPage = definePage({
           when: { field: "installed", equals: false },
         },
       ],
-    }),
-    Form({
-      schema: installExtensionInput,
-      fields: [TextInput({ name: "name", label: "Extension" })],
-      onSubmit: installExtension,
-      submitLabel: "Install extension",
-    }),
+    })
   ],
 });
 
