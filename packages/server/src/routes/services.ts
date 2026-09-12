@@ -62,7 +62,21 @@ export async function publicService(
 ): Promise<PublicService> {
   const source = serviceSource(deps.getConfig(), deps.database, id);
   if (!source) throw new Error("Service not found");
-  const adapter = deps.registry.get(source.service.adapter);
+  let adapter: ReturnType<AdapterRegistry["get"]>;
+  try {
+    adapter = deps.registry.get(source.service.adapter);
+  } catch (error) {
+    return {
+      id: source.service.id,
+      name: source.service.name ?? source.service.adapter,
+      adapter: source.service.adapter,
+      health: "unavailable",
+      detail: error instanceof Error ? error.message : "Adapter unavailable",
+      managedBy: source.managedBy,
+      resources: [],
+      actions: [],
+    };
+  }
   const connection = connectionFor(deps.cipher, source);
   const health = await adapter.backend.checkHealth(connection);
   return {
