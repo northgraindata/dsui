@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Surface } from "./surface";
 
 export function DataTable({
@@ -7,6 +8,7 @@ export function DataTable({
   onRowClick,
   renderCell,
   renderRowActions,
+  renderRowMenu,
 }: {
   columns: readonly { id: string; label: string }[];
   rows: readonly Record<string, unknown>[];
@@ -17,6 +19,7 @@ export function DataTable({
     row: Record<string, unknown>,
   ) => ReactNode;
   renderRowActions?: (row: Record<string, unknown>) => ReactNode;
+  renderRowMenu?: (row: Record<string, unknown>) => ReactNode;
 }) {
   return (
     <Surface className="dsui-data-table-shell overflow-x-auto">
@@ -28,7 +31,7 @@ export function DataTable({
                 {column.label}
               </th>
             ))}
-            {renderRowActions !== undefined ? (
+            {renderRowActions !== undefined || renderRowMenu !== undefined ? (
               <th key="__actions" className="px-3 py-2 font-medium">
                 Actions
               </th>
@@ -70,11 +73,99 @@ export function DataTable({
                   </span>
                 </td>
               ) : null}
+              {renderRowMenu !== undefined ? (
+                <td key="__menu" className="px-3 py-2">
+                  <RowMenu>{renderRowMenu(row)}</RowMenu>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
       </table>
     </Surface>
+  );
+}
+
+function RowMenu({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      )
+        setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = 136;
+    const gap = 4;
+    const left = Math.max(
+      8,
+      Math.min(rect.right - width, window.innerWidth - width - 8),
+    );
+    const top =
+      rect.bottom + 180 > window.innerHeight
+        ? Math.max(8, rect.top - 180 - gap)
+        : rect.bottom + gap;
+    setPosition({ top, left });
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="dsui-data-table-menu-trigger"
+        aria-label="Row actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={toggle}
+      >
+        ⋯
+      </button>
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              className="dsui-data-table-menu-popover"
+              role="menu"
+              style={{ top: position.top, left: position.left }}
+              onClick={() => setOpen(false)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ")
+                  setOpen(false);
+              }}
+            >
+              {children}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

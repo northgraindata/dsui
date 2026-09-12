@@ -5,7 +5,12 @@ export const dagInput = z.object({ dagId: z.string().min(1) });
 
 export const dags = defineResource({
   id: "dags",
-  query: (_, ctx: AirflowContext) => ctx.client.listDags(),
+  query: async (_, ctx: AirflowContext) =>
+    (await ctx.client.listDags()).map((dag) => ({
+      ...dag,
+      status: dag.isPaused ? "paused" : "active",
+      statusTone: dag.isPaused ? "muted" : "healthy",
+    })),
   refresh: poll("5s"),
 });
 

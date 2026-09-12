@@ -134,6 +134,7 @@ export {
   type TableProps,
   type TableRowAction,
   type TableRowLink,
+  type TableRowMenuAction,
   Tabs,
   type TabsItem,
   type TabsNode,

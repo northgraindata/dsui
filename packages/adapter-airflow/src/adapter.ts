@@ -12,9 +12,11 @@ import {
 } from "./context.js";
 import { assetDetailPage, assetListPage } from "./pages/assets.js";
 import { dagDetailPage, dagListPage } from "./pages/dags.js";
+import { overviewPage } from "./pages/overview.js";
 import { dagRunDetailPage, taskInstanceDetailPage } from "./pages/runs.js";
 import { assetDetails, assetEvents, assets } from "./resources/assets.js";
 import { dagDetails, dags, dagTasks } from "./resources/dags.js";
+import { overview, overviewDags } from "./resources/overview.js";
 import {
   dagRunDetails,
   dagRuns,
@@ -35,7 +37,7 @@ export function createAirflowAdapter(
       name: "Airflow",
       version: "1.0.0",
       author: "DSUI",
-      iconUrl: "https://airflow.apache.org/images/airflow-logo-dark.svg",
+      iconUrl: "https://airflow.apache.org/images/airflow-icon.svg",
       description: "Browse and operate Apache Airflow DAGs, runs, and assets.",
     },
     connectionMethods: {
@@ -66,6 +68,8 @@ export function createAirflowAdapter(
     },
     disposeContext: (ctx) => ctx.client.dispose(),
     resources: [
+      overview,
+      overviewDags,
       dags,
       dagDetails,
       dagTasks,
@@ -81,6 +85,7 @@ export function createAirflowAdapter(
     ],
     actions: [triggerDag, pauseDag, unpauseDag, retryTask, clearTask],
     pages: [
+      overviewPage,
       dagListPage,
       dagDetailPage,
       dagRunDetailPage,
