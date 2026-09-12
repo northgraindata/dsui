@@ -54,7 +54,7 @@ export function createAirflowAdapter(
         schema: airflow2ConnectionSchema,
       },
     },
-    context: (config: AirflowConfig) => {
+    context: async (config: AirflowConfig) => {
       const clientConfig: AirflowHttpConfig =
         config.method === "airflow-2"
           ? {
@@ -64,7 +64,14 @@ export function createAirflowAdapter(
               password: config.password,
             }
           : config;
-      return createContext(createClient(clientConfig), config);
+      const client = createClient(clientConfig);
+      try {
+        await client.getVersion();
+        return createContext(client, config);
+      } catch (error) {
+        client.dispose();
+        throw error;
+      }
     },
     disposeContext: (ctx) => ctx.client.dispose(),
     resources: [

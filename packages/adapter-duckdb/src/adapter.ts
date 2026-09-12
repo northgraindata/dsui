@@ -107,8 +107,16 @@ export function createDuckDbAdapter(
         "https://pbs.twimg.com/profile_images/1274363897676521474/qgbqYYuV_400x400.jpg",
     },
     connectionMethods: duckdbConnectionMethods,
-    context: (config: DuckDbConfig): DuckDbContext =>
-      createContext(createClient(config), config),
+    context: async (config: DuckDbConfig): Promise<DuckDbContext> => {
+      const client = createClient(config);
+      try {
+        await client.version();
+        return createContext(client, config);
+      } catch (error) {
+        client.dispose();
+        throw error;
+      }
+    },
     disposeContext: (ctx) => ctx.client.dispose(),
     stores: [
       sessionStore,
