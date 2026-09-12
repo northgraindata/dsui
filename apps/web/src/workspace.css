@@ -140,6 +140,76 @@
 .app-topnav .app-nav-link[aria-current="page"] {
   background: radial-gradient(ellipse, #10204675, transparent 75%);
 }
+.app-sidebar-bottom {
+  margin-top: auto;
+}
+.sidebar-star-banner {
+  position: relative;
+  display: flex;
+  min-height: 88px;
+  margin: 0 4px;
+  overflow: hidden;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 14, 27, 0.98) 0%,
+      rgba(8, 14, 27, 0.82) 52%,
+      rgba(8, 14, 27, 0.2) 100%
+    ),
+    url("./assets/sidebar-star-banner.png") center / cover;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.sidebar-star-banner:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+.sidebar-star-banner__copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.sidebar-star-banner strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+.sidebar-star-banner__copy > span:last-child {
+  max-width: 145px;
+  color: var(--color-secondary);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.sidebar-star-banner > svg {
+  flex-shrink: 0;
+  color: var(--color-secondary);
+}
+.workspace-profile {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--color-primary);
+  text-decoration: none;
+  margin: 12px 4px 0;
+  font-size: 12px;
+}
+.workspace-profile small {
+  display: block;
+  color: var(--color-muted);
+  margin-top: 4px;
+}
+.workspace-profile > svg {
+  margin-left: auto;
+  color: var(--color-muted);
+}
 .app-content {
   min-width: 0;
   flex: 1;
@@ -410,6 +480,12 @@
     padding: 10px;
     gap: 8px;
     font-size: 12px;
+  }
+  .app-sidebar-bottom {
+    display: none;
+  }
+  .sidebar-star-banner {
+    display: none;
   }
   .adapter-layout {
     display: block;

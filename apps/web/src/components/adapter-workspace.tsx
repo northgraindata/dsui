@@ -40,7 +40,6 @@ export function AdapterWorkspace({
   children: ReactNode;
 }) {
   const pages = navigablePagePaths(paths);
-  const query = path === "/query";
   const active = (item: string) =>
     item === path || (item !== "/" && path?.startsWith(`${item}/`));
   const pageLink = (item: string, icons: boolean) => (
@@ -91,11 +90,7 @@ export function AdapterWorkspace({
             />
             <div>
               <h1>{service.name}</h1>
-              <p>
-                {query
-                  ? `Query, explore and analyze your data with ${service.name}.`
-                  : "Explore your data, browse schemas, tables and files."}
-              </p>
+              <p>Explore your data, browse schemas, tables and files.</p>
             </div>
           </div>
         </header>
