@@ -93,10 +93,6 @@ export function HomeDashboard({
               <h2>Your data stack</h2>
               <p>All connected services in one place.</p>
             </div>
-            <Link to="/services/new" className="outline-action">
-              <Icon name="plus" />
-              Add adapter
-            </Link>
           </header>
           <div className="stack-cards" aria-busy={loading}>
             {loading && (

@@ -43,7 +43,6 @@ export function AdapterWorkspace({
   const router = useRouter();
   const [showConfirmRemove, setShowConfirmRemove] = useState(false);
   const pages = navigablePagePaths(paths);
-  const query = path === "/query";
   const active = (item: string) =>
     item === path || (item !== "/" && path?.startsWith(`${item}/`));
   const pageLink = (item: string, icons: boolean) => (
@@ -88,25 +87,6 @@ export function AdapterWorkspace({
         <nav className="adapter-pages" aria-label="Adapter pages">
           {pages.map((item) => pageLink(item, true))}
         </nav>
-        <section className="adapter-recent">
-          <header>
-            <h2>{query ? "Recent queries" : "Recent"}</h2>
-            {pages.includes("/activity") && (
-              <Link
-                to="/services/$serviceId/$viewId"
-                params={{ serviceId: service.id, viewId: "activity" }}
-              >
-                View all
-              </Link>
-            )}
-          </header>
-          <p>Open Activity to browse query history for this connection.</p>
-          <div className="notebook-preview">
-            <Icon name="file" />
-            <span>Notebooks</span>
-            <small>Coming soon</small>
-          </div>
-        </section>
       </aside>
       <div className="adapter-main">
         <header className="adapter-heading flex items-center justify-between">
@@ -118,11 +98,7 @@ export function AdapterWorkspace({
             />
             <div>
               <h1>{service.name}</h1>
-              <p>
-                {query
-                  ? `Query, explore and analyze your data with ${service.name}.`
-                  : "Explore your data, browse schemas, tables and files."}
-              </p>
+              <p>Explore your data, browse schemas, tables and files.</p>
             </div>
           </div>
           <Dialog.Root

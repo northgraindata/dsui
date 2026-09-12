@@ -55,23 +55,25 @@ export function AppChrome({
             <kbd>⌘ K</kbd>
           </button>
         </div>
-        <div className="app-topbar-actions">
-          <Link
-            to="/settings"
-            className="app-avatar"
-            aria-label="Workspace settings"
-          >
-            DS
-          </Link>
-        </div>
       </header>
       <div className="app-body">
         {!inAdapter && (
           <aside className="app-sidebar">
             <nav aria-label="Main navigation">{navigation}</nav>
             <div className="app-sidebar-bottom">
+              <a
+                className="sidebar-star-banner"
+                href="https://github.com/northgraindata/dsui"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span className="sidebar-star-banner__copy">
+                  <strong>Leave a star ⭐</strong>
+                  <span>Help dsui reach more builders.</span>
+                </span>
+                <Icon name="chevron" size={14} />
+              </a>
               <Link to="/settings" className="workspace-profile">
-                <span className="app-avatar">DS</span>
                 <span>
                   My workspace<small>Manage settings</small>
                 </span>

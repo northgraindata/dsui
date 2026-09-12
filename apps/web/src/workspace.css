@@ -90,20 +90,6 @@
   font-size: 11px;
   color: var(--color-muted);
 }
-.app-avatar {
-  display: inline-flex;
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border: 1px solid #1d3463;
-  border-radius: 50%;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #103787, #06112c);
-  color: var(--color-primary);
-  font-size: 12px;
-  text-decoration: none;
-}
 .app-body {
   display: flex;
   min-height: calc(100dvh - 70px);
@@ -162,13 +148,62 @@
 .app-sidebar-bottom {
   margin-top: auto;
 }
+.sidebar-star-banner {
+  position: relative;
+  display: flex;
+  min-height: 88px;
+  margin: 0 4px;
+  overflow: hidden;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 14, 27, 0.98) 0%,
+      rgba(8, 14, 27, 0.82) 52%,
+      rgba(8, 14, 27, 0.2) 100%
+    ),
+    url("./assets/sidebar-star-banner.png") center / cover;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.sidebar-star-banner:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+.sidebar-star-banner__copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.sidebar-star-banner strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+.sidebar-star-banner__copy > span:last-child {
+  max-width: 145px;
+  color: var(--color-secondary);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.sidebar-star-banner > svg {
+  flex-shrink: 0;
+  color: var(--color-secondary);
+}
 .workspace-profile {
   display: flex;
   gap: 12px;
   align-items: center;
   color: var(--color-primary);
   text-decoration: none;
-  margin-top: 26px;
+  margin: 12px 4px 0;
   font-size: 12px;
 }
 .workspace-profile small {
@@ -456,10 +491,6 @@
   .app-search kbd {
     display: none;
   }
-  .app-avatar {
-    width: 32px;
-    height: 32px;
-  }
   .app-topnav .app-nav-link {
     font-size: 11px;
     padding: 8px;
@@ -488,6 +519,9 @@
     font-size: 12px;
   }
   .app-sidebar-bottom {
+    display: none;
+  }
+  .sidebar-star-banner {
     display: none;
   }
   .adapter-layout {
