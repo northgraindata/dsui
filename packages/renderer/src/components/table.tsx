@@ -1,8 +1,13 @@
 import type {
-  PageTableRowAction as TableRowAction,
   TableColumn,
+  PageTableRowAction as TableRowAction,
+  TableRowMenuAction,
 } from "@northgraindata/dsui-adapter-sdk";
-import { Button, DataTable as CatalogTable, Surface } from "@northgraindata/dsui-ui";
+import {
+  Button,
+  DataTable as CatalogTable,
+  Surface,
+} from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useState } from "react";
 import type { RegistryViewProps } from "../registry/view-registry";
 import type { RendererClient } from "../types/renderer-types";
@@ -57,14 +62,16 @@ function RowActionButton({
           spec.variant === "primary" ? "default" : (spec.variant ?? "secondary")
         }
         disabled={busy || disabled}
-        title={error ?? (disabled ? String(row.restartRestriction ?? "") : undefined)}
+        title={
+          error ?? (disabled ? String(row.restartRestriction ?? "") : undefined)
+        }
         onClick={() => {
           if (
             disabled ||
-            spec.confirmation &&
-            !window.confirm(
-              `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
-            )
+            (spec.confirmation &&
+              !window.confirm(
+                `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
+              ))
           )
             return;
           const input: Record<string, unknown> = {};
@@ -98,7 +105,8 @@ function RowActionButton({
 
 export function TableView({ client, node, renderNode }: RegistryViewProps) {
   const source = node.kind === "table" ? node.props.source : undefined;
-  const columnsSource = node.kind === "table" ? node.props.columnsSource : undefined;
+  const columnsSource =
+    node.kind === "table" ? node.props.columnsSource : undefined;
   const [data, setData] = useState<unknown>(
     node.kind === "table" ? node.props.data : undefined,
   );
@@ -112,7 +120,9 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
     setError(undefined);
     Promise.all([
       source ? client.executeResource(source) : Promise.resolve(data),
-      columnsSource ? client.executeResource(columnsSource) : Promise.resolve(undefined),
+      columnsSource
+        ? client.executeResource(columnsSource)
+        : Promise.resolve(undefined),
     ])
       .then(([result, columns]) => {
         if (!active) return;
@@ -160,6 +170,7 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
   }
   const rowLink = node.props.rowLink;
   const rowActions = node.props.rowActions;
+  const menuActions = node.props.actions;
   const columns: readonly TableColumn[] =
     node.props.columns ?? Object.keys(rows[0]).map((id) => ({ id, label: id }));
   return (
@@ -209,7 +220,77 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
             )
           : undefined
       }
+      renderRowMenu={
+        menuActions?.length
+          ? (row) =>
+              menuActions
+                .filter((spec: TableRowMenuAction) =>
+                  matchesWhen(row, spec.when),
+                )
+                .map((spec: TableRowMenuAction) => (
+                  <MenuAction
+                    key={spec.label}
+                    client={client}
+                    spec={spec}
+                    row={row}
+                    onDone={reload}
+                  />
+                ))
+          : undefined
+      }
     />
+  );
+}
+
+function MenuAction({
+  client,
+  spec,
+  row,
+  onDone,
+}: {
+  client: RendererClient;
+  spec: TableRowMenuAction;
+  row: Record<string, unknown>;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const action =
+    typeof spec.action === "object" && spec.action !== null
+      ? (spec.action as { actionId?: string; input?: Record<string, string> })
+      : undefined;
+  return (
+    <button
+      type="button"
+      className="dsui-data-table-menu-item"
+      disabled={busy}
+      onClick={() => {
+        if (
+          spec.confirmation &&
+          !window.confirm(
+            `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
+          )
+        )
+          return;
+        if (spec.link) {
+          const href = resolveLink(spec.link.path, spec.link.params, row);
+          if (href) client.navigate(href);
+          return;
+        }
+        if (!action?.actionId) return;
+        const input: Record<string, unknown> = {};
+        for (const [key, field] of Object.entries(action.input ?? {}))
+          input[key] = row[field];
+        setBusy(true);
+        client
+          .executeAction({ actionId: action.actionId, input })
+          .then((result) => {
+            if (result.status === "success") onDone();
+          })
+          .finally(() => setBusy(false));
+      }}
+    >
+      {spec.label}
+    </button>
   );
 }
 

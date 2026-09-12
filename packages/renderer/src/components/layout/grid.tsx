@@ -1,12 +1,17 @@
-import type { CSSProperties } from "react";
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
+import type { CSSProperties } from "react";
 import type { RegistryViewProps } from "../../registry/view-registry";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
 }
 
-export function GridView({ client, node, renderNode, context }: RegistryViewProps) {
+export function GridView({
+  client,
+  node,
+  renderNode,
+  context,
+}: RegistryViewProps) {
   if (node.kind !== "grid") return null;
   const columns = node.props.columns;
   const style: CSSProperties | undefined = columns
@@ -21,7 +26,9 @@ export function GridView({ client, node, renderNode, context }: RegistryViewProp
     >
       {nodes(node.props.content).map((child, index) => (
         <div
-          className={child.kind === "collection" ? "layout-transparent" : undefined}
+          className={
+            child.kind === "collection" ? "layout-transparent" : undefined
+          }
           key={`${child.kind}-${index}`}
         >
           {renderNode(client, child, context)}

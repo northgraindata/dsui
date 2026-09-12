@@ -1,12 +1,8 @@
 import { Button } from "@northgraindata/dsui-ui";
 import { useRef, useState } from "react";
-import { WorkbenchIcon } from "../icons";
 import { DataTable } from "../data-table";
-import {
-  elapsedLabel,
-  type QueryResultView,
-  queryCsv,
-} from "./query-result";
+import { WorkbenchIcon } from "../icons";
+import { elapsedLabel, type QueryResultView, queryCsv } from "./query-result";
 
 export function QueryResults({
   result,

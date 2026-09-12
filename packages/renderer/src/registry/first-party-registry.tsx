@@ -1,29 +1,30 @@
 import type { ComponentType } from "react";
-import { ButtonView } from "../components/button";
 import { BadgeView } from "../components/badge";
+import { ButtonView } from "../components/button";
+import { CodeBlockView } from "../components/code-block";
+import { CollectionView } from "../components/collection";
+import { DependencyGraphView } from "../components/dependency-graph/dependency-graph";
 import { ActionForm } from "../components/form";
+import { IconView } from "../components/icon";
 import { KeyValueView } from "../components/key-value";
 import { CardView } from "../components/layout/card";
-import { GridView } from "../components/layout/grid";
-import { FlexView } from "../components/layout/flex";
-import { StackView } from "../components/layout/stack";
-import { ValueView } from "../components/value";
-import { IconView } from "../components/icon";
-import { CollectionView } from "../components/collection";
 import { ColumnsView } from "../components/layout/columns";
+import { FlexView } from "../components/layout/flex";
+import { GridView } from "../components/layout/grid";
 import { MeterView } from "../components/layout/meter";
 import { SectionView } from "../components/layout/section";
+import { StackView } from "../components/layout/stack";
+import { LinkView } from "../components/link";
 import { PageHeaderView } from "../components/page-header";
 import { QueryEditorView } from "../components/query-editor/query-editor";
-import { ResourceTreeView } from "../components/resource-tree";
 import { ResourceView } from "../components/resource";
-import { LinkView } from "../components/link";
-import { CodeBlockView } from "../components/code-block";
+import { ResourceTreeView } from "../components/resource-tree";
 import { SelectView } from "../components/select";
 import { SplitPaneView } from "../components/split-pane";
 import { TableView } from "../components/table";
 import { Tabs } from "../components/tabs";
 import { TextInputView } from "../components/text-input";
+import { ValueView } from "../components/value";
 import { type RegistryViewProps, registerView } from "./view-registry";
 
 const sectionView: ComponentType<RegistryViewProps> = ({
@@ -73,6 +74,7 @@ const firstPartyViews: readonly [string, ComponentType<RegistryViewProps>][] = [
   ["section", sectionView],
   ["columns", columnsView],
   ["meter", meterView],
+  ["airflow/dependency-graph", DependencyGraphView],
 ];
 
 export function registerFirstPartyViews(): void {

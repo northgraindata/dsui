@@ -17,5 +17,6 @@ export function DeclarativePageRenderer({
       )),
     [client, nodes],
   );
+
   return <div className="grid gap-4">{content}</div>;
 }

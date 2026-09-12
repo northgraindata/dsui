@@ -1,5 +1,5 @@
-import { Button } from "@northgraindata/dsui-ui";
 import type { ActionReference } from "@northgraindata/dsui-adapter-sdk";
+import { Button } from "@northgraindata/dsui-ui";
 import type { RegistryViewProps } from "../registry/view-registry";
 import { WorkbenchIcon } from "./icons";
 
@@ -21,11 +21,15 @@ export function ButtonView({ client, node, context }: RegistryViewProps) {
             ? "ghost"
             : node.props.variant
       }
-      className={node.props.variant === "list-item" ? "button-list-item" : undefined}
+      className={
+        node.props.variant === "list-item" ? "button-list-item" : undefined
+      }
       onClick={() => {
         if (
           confirmation &&
-          !window.confirm(`${confirmation.title}\n\n${confirmation.description}`)
+          !window.confirm(
+            `${confirmation.title}\n\n${confirmation.description}`,
+          )
         )
           return;
         if (link) client.navigate(link);
@@ -67,7 +71,10 @@ function resolveConfirmation(
     : undefined;
 }
 
-function resolve(value: unknown, context: Record<string, unknown> | undefined): string | undefined {
+function resolve(
+  value: unknown,
+  context: Record<string, unknown> | undefined,
+): string | undefined {
   if (typeof value === "string") return value;
   const result = resolveField(value, context);
   return result === undefined || result === null ? undefined : String(result);
@@ -87,7 +94,10 @@ function resolveObject(
   return isRecord(result) ? result : undefined;
 }
 
-function resolveField(value: unknown, context: Record<string, unknown> | undefined): unknown {
+function resolveField(
+  value: unknown,
+  context: Record<string, unknown> | undefined,
+): unknown {
   if (!isRecord(value) || typeof value.field !== "string") return value;
   return value.field.split(".").reduce<unknown>((current, key) => {
     if (isRecord(current)) return current[key];
@@ -100,7 +110,8 @@ function resolveAction(
   context: Record<string, unknown> | undefined,
 ) {
   const result = resolveField(value, context);
-  if (!isRecord(result) || typeof result.actionId !== "string") return undefined;
+  if (!isRecord(result) || typeof result.actionId !== "string")
+    return undefined;
   return {
     actionId: result.actionId,
     ...(Object.hasOwn(result, "input") ? { input: result.input } : {}),

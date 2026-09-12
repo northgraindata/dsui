@@ -29,9 +29,7 @@ export function DataTable({
   const virtualRows = virtualizer.getVirtualItems();
   const paddingTop = virtualRows[0]?.start ?? 0;
   const lastRow = virtualRows[virtualRows.length - 1];
-  const paddingBottom = lastRow
-    ? virtualizer.getTotalSize() - lastRow.end
-    : 0;
+  const paddingBottom = lastRow ? virtualizer.getTotalSize() - lastRow.end : 0;
   return (
     <div className={`data-table-scroll ${className}`} ref={scrollRef}>
       <table className="data-table">
@@ -53,7 +51,10 @@ export function DataTable({
         <tbody>
           {paddingTop > 0 ? (
             <tr className="data-table-virtual-spacer">
-              <td colSpan={columns.length || 1} style={{ height: paddingTop }} />
+              <td
+                colSpan={columns.length || 1}
+                style={{ height: paddingTop }}
+              />
             </tr>
           ) : null}
           {virtualRows.map((virtualRow) => {
@@ -77,7 +78,10 @@ export function DataTable({
           })}
           {paddingBottom > 0 ? (
             <tr className="data-table-virtual-spacer">
-              <td colSpan={columns.length || 1} style={{ height: paddingBottom }} />
+              <td
+                colSpan={columns.length || 1}
+                style={{ height: paddingBottom }}
+              />
             </tr>
           ) : null}
         </tbody>

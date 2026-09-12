@@ -38,7 +38,10 @@ export function ValueView({ client, node, context }: RegistryViewProps) {
         }
       })
       .catch((cause) => {
-        if (active) setError(cause instanceof Error ? cause.message : "Could not load value");
+        if (active)
+          setError(
+            cause instanceof Error ? cause.message : "Could not load value",
+          );
       });
     return () => {
       active = false;
@@ -55,15 +58,27 @@ export function ValueView({ client, node, context }: RegistryViewProps) {
     );
   }
   if (error)
-    return <span className="text-unavailable" role="alert">{error}</span>;
+    return (
+      <span className="text-unavailable" role="alert">
+        {error}
+      </span>
+    );
   if (value === undefined)
-    return <Surface className="p-0 text-[12px] text-secondary" aria-busy="true">Loading…</Surface>;
+    return (
+      <Surface className="p-0 text-[12px] text-secondary" aria-busy="true">
+        Loading…
+      </Surface>
+    );
   return <span>{formatValue(value, node.props.format)}</span>;
 }
 
-function resolve(context: Record<string, unknown> | undefined, field: string): unknown {
+function resolve(
+  context: Record<string, unknown> | undefined,
+  field: string,
+): unknown {
   return field.split(".").reduce<unknown>((current, key) => {
-    if (current && typeof current === "object") return (current as Record<string, unknown>)[key];
+    if (current && typeof current === "object")
+      return (current as Record<string, unknown>)[key];
     return undefined;
   }, context);
 }

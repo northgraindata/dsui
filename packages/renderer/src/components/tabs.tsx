@@ -6,7 +6,10 @@ export function Tabs({ client, node, renderNode, context }: RegistryViewProps) {
   if (node.kind !== "tabs") return null;
   const item = node.props.items[selected];
   return (
-    <div className="workspace-tabs" data-variant={node.props.variant ?? "default"}>
+    <div
+      className="workspace-tabs"
+      data-variant={node.props.variant ?? "default"}
+    >
       <div role="tablist" className="mb-4 flex gap-1 border-b border-border">
         {node.props.items.map((tab: any, index: number) => (
           <button

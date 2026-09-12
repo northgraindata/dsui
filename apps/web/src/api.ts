@@ -1,5 +1,9 @@
-import type { HealthStatus, PublicAdapter, PublicService } from "@northgraindata/dsui-core";
 import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
+import type {
+  HealthStatus,
+  PublicAdapter,
+  PublicService,
+} from "@northgraindata/dsui-core";
 
 /** Canonical server contracts. New code uses these; see legacy aliases below. */
 export type { HealthStatus, PageDocument, PublicAdapter, PublicService };

@@ -175,7 +175,7 @@ export const extensionsPage = definePage({
           when: { field: "installed", equals: false },
         },
       ],
-    })
+    }),
   ],
 });
 

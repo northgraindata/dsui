@@ -5,7 +5,12 @@ function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
 }
 
-export function FlexView({ client, node, renderNode, context }: RegistryViewProps) {
+export function FlexView({
+  client,
+  node,
+  renderNode,
+  context,
+}: RegistryViewProps) {
   if (node.kind !== "flex") return null;
   return (
     <div
@@ -18,7 +23,9 @@ export function FlexView({ client, node, renderNode, context }: RegistryViewProp
     >
       {nodes(node.props.content).map((child, index) => (
         <div
-          className={child.kind === "collection" ? "layout-transparent" : undefined}
+          className={
+            child.kind === "collection" ? "layout-transparent" : undefined
+          }
           key={`${child.kind}-${index}`}
         >
           {renderNode(client, child, context)}

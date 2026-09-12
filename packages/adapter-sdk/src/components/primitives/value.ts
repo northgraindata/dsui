@@ -1,5 +1,5 @@
-import { defineComponent } from "../define";
 import type { DataSource } from "../../resource";
+import { defineComponent } from "../define";
 
 export type ValueFormat = "text" | "number" | "bytes";
 

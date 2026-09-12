@@ -1,7 +1,6 @@
-import { defineComponent } from "../define";
 import type { AnyActionDefinition } from "../../action";
-import type { DataSource } from "../../resource";
-import type { ResourceReference } from "../../resource";
+import type { DataSource, ResourceReference } from "../../resource";
+import { defineComponent } from "../define";
 
 export interface QueryEditorProps {
   language: string;

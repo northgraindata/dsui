@@ -1,6 +1,6 @@
-import { defineComponent } from "../define";
 import type { AnyActionDefinition } from "../../action";
 import type { DataSource } from "../../resource";
+import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
 
 export interface TableColumn {
@@ -30,6 +30,23 @@ export interface TableRowAction {
     notEquals?: string | number | boolean;
   };
   disabledWhen?: {
+    field: string;
+    equals?: string | number | boolean;
+    notEquals?: string | number | boolean;
+  };
+}
+
+export interface TableRowMenuAction {
+  label: string;
+  action?: AnyActionDefinition | string;
+  input?: Record<string, string>;
+  link?: TableRowLink;
+  confirmation?: {
+    title: string;
+    description: string;
+    confirmLabel?: string;
+  };
+  when?: {
     field: string;
     equals?: string | number | boolean;
     notEquals?: string | number | boolean;
@@ -74,6 +91,7 @@ export interface TableProps {
   variant?: "default" | "data";
   rowLink?: TableRowLink;
   rowActions?: readonly TableRowAction[];
+  actions?: readonly TableRowMenuAction[];
 }
 
 export interface TableNode {
@@ -86,6 +104,12 @@ export const Table = defineComponent<TableProps, TableNode>({
   render: (props) => {
     if (props.rowLink && !props.rowLink.path.startsWith("/"))
       throw new Error("Table rowLink path must be absolute");
+    for (const action of props.actions ?? []) {
+      if (Boolean(action.action) === Boolean(action.link))
+        throw new Error("Table action requires exactly one action or link");
+      if (action.link && !action.link.path.startsWith("/"))
+        throw new Error("Table action link path must be absolute");
+    }
     return { kind: "table", props: { ...props } };
   },
 });

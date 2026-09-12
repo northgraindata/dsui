@@ -1,24 +1,30 @@
 import type { ActionReference, ActionTarget } from "../action/index";
+import type { ResourceReference } from "../resource";
 import type { DataSource } from "../resource/index";
 import type { PageNode } from "./nodes";
-import type { ColumnsColumn } from "./primitives/columns";
 import type { CardProps } from "./primitives/card";
 import type { CollectionProps } from "./primitives/collection";
-import type { GridProps } from "./primitives/grid";
+import type { ColumnsColumn } from "./primitives/columns";
 import type { FlexProps } from "./primitives/flex";
+import type { GridProps } from "./primitives/grid";
 import type { MeterSegment } from "./primitives/meter";
-import type { QueryEditorProps } from "./primitives/query-editor";
-import type { QueryExplorerDocument } from "./primitives/query-editor";
-import type { ResourceReference } from "../resource";
+import type {
+  QueryEditorProps,
+  QueryExplorerDocument,
+} from "./primitives/query-editor";
+import type { ResourceProps } from "./primitives/resource";
 import type {
   ResourceTreeBranchDocument,
   ResourceTreeBranchProps,
 } from "./primitives/resource-tree";
-import type { ResourceProps } from "./primitives/resource";
 import type { StackProps } from "./primitives/stack";
-import type { ValueProps } from "./primitives/value";
-import type { TableColumn, TableRowAction } from "./primitives/table";
+import type {
+  TableColumn,
+  TableRowAction,
+  TableRowMenuAction,
+} from "./primitives/table";
 import type { TabsItem } from "./primitives/tabs";
+import type { ValueProps } from "./primitives/value";
 
 /** Thrown when a live SDK node cannot cross the server/browser boundary. */
 export class UnserializablePageError extends Error {
@@ -78,9 +84,7 @@ function treeBranch(
   };
 }
 
-function nodes(
-  value: PageNode | readonly PageNode[],
-): readonly PageNode[] {
+function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return (Array.isArray(value) ? value : [value]).map(serializeNode);
 }
 
@@ -133,26 +137,64 @@ export function serializeNode(node: PageNode): PageNode {
             : {}),
           ...(node.props.rowActions
             ? {
-                rowActions: node.props.rowActions.map((rowAction: TableRowAction) => ({
-                  label: rowAction.label,
-                  ...(rowAction.variant ? { variant: rowAction.variant } : {}),
-                  action: {
-                    actionId:
-                      typeof rowAction.action === "string"
-                        ? rowAction.action
-                        : rowAction.action.id,
-                    ...(rowAction.input
-                      ? { input: { ...rowAction.input } }
+                rowActions: node.props.rowActions.map(
+                  (rowAction: TableRowAction) => ({
+                    label: rowAction.label,
+                    ...(rowAction.variant
+                      ? { variant: rowAction.variant }
                       : {}),
-                  },
-                  ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
-                  ...(rowAction.disabledWhen
-                    ? { disabledWhen: { ...rowAction.disabledWhen } }
-                    : {}),
-                  ...(rowAction.confirmation
-                    ? { confirmation: { ...rowAction.confirmation } }
-                    : {}),
-                })),
+                    action: {
+                      actionId:
+                        typeof rowAction.action === "string"
+                          ? rowAction.action
+                          : rowAction.action.id,
+                      ...(rowAction.input
+                        ? { input: { ...rowAction.input } }
+                        : {}),
+                    },
+                    ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
+                    ...(rowAction.disabledWhen
+                      ? { disabledWhen: { ...rowAction.disabledWhen } }
+                      : {}),
+                    ...(rowAction.confirmation
+                      ? { confirmation: { ...rowAction.confirmation } }
+                      : {}),
+                  }),
+                ),
+              }
+            : {}),
+          ...(node.props.actions
+            ? {
+                actions: node.props.actions.map(
+                  (rowAction: TableRowMenuAction) => ({
+                    label: rowAction.label,
+                    ...(rowAction.link
+                      ? {
+                          link: {
+                            path: rowAction.link.path,
+                            params: { ...rowAction.link.params },
+                          },
+                        }
+                      : {}),
+                    ...(rowAction.action
+                      ? {
+                          action: {
+                            actionId:
+                              typeof rowAction.action === "string"
+                                ? rowAction.action
+                                : rowAction.action.id,
+                            ...(rowAction.input
+                              ? { input: { ...rowAction.input } }
+                              : {}),
+                          },
+                        }
+                      : {}),
+                    ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
+                    ...(rowAction.confirmation
+                      ? { confirmation: { ...rowAction.confirmation } }
+                      : {}),
+                  }),
+                ),
               }
             : {}),
         },
@@ -163,7 +205,9 @@ export function serializeNode(node: PageNode): PageNode {
         props: {
           label: node.props.label,
           ...(node.props.icon ? { icon: node.props.icon } : {}),
-          ...(node.props.description ? { description: node.props.description } : {}),
+          ...(node.props.description
+            ? { description: node.props.description }
+            : {}),
           ...(node.props.kbd ? { kbd: node.props.kbd } : {}),
           ...(node.props.variant ? { variant: node.props.variant } : {}),
           ...(node.props.action ? { action: action(node.props.action) } : {}),
@@ -430,9 +474,11 @@ export function serializeNode(node: PageNode): PageNode {
           ...(node.props.data
             ? {
                 data: {
-                  segments: node.props.data.segments.map((segment: MeterSegment) => ({
-                    ...segment,
-                  })),
+                  segments: node.props.data.segments.map(
+                    (segment: MeterSegment) => ({
+                      ...segment,
+                    }),
+                  ),
                   ...(node.props.data.footer
                     ? { footer: node.props.data.footer }
                     : {}),

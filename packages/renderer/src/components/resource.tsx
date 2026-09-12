@@ -1,6 +1,6 @@
+import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { Surface } from "@northgraindata/dsui-ui";
 import { Fragment, useEffect, useState } from "react";
-import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { RegistryViewProps } from "../registry/view-registry";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
@@ -23,16 +23,26 @@ export function ResourceView({ client, node, renderNode }: RegistryViewProps) {
       })
       .catch((cause) => {
         if (active)
-          setError(cause instanceof Error ? cause.message : "Could not load resource");
+          setError(
+            cause instanceof Error ? cause.message : "Could not load resource",
+          );
       });
     return () => {
       active = false;
     };
   }, [client, node.props.source]);
   if (error)
-    return <Surface className="p-4 text-[12px] text-unavailable" role="alert">{error}</Surface>;
+    return (
+      <Surface className="p-4 text-[12px] text-unavailable" role="alert">
+        {error}
+      </Surface>
+    );
   if (!data)
-    return <Surface className="p-5 text-[12px] text-secondary" aria-busy="true">Loading…</Surface>;
+    return (
+      <Surface className="p-5 text-[12px] text-secondary" aria-busy="true">
+        Loading…
+      </Surface>
+    );
   return (
     <>
       {nodes(node.props.content).map((child, index) => (

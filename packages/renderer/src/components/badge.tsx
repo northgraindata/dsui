@@ -21,10 +21,16 @@ function resolve(
   context: Record<string, unknown> | undefined,
 ): string | undefined {
   if (typeof value === "string") return value;
-  if (!value || typeof value !== "object" || !("field" in value)) return undefined;
-  const resolved = String(value.field).split(".").reduce<unknown>((current, key) => {
-    if (current && typeof current === "object") return (current as Record<string, unknown>)[key];
+  if (!value || typeof value !== "object" || !("field" in value))
     return undefined;
-  }, context);
-  return resolved === undefined || resolved === null ? undefined : String(resolved);
+  const resolved = String(value.field)
+    .split(".")
+    .reduce<unknown>((current, key) => {
+      if (current && typeof current === "object")
+        return (current as Record<string, unknown>)[key];
+      return undefined;
+    }, context);
+  return resolved === undefined || resolved === null
+    ? undefined
+    : String(resolved);
 }

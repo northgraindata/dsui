@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import {
   type ActionBinding,
   type AdapterDefinition,
@@ -9,7 +10,6 @@ import {
   serializeNodes,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
-import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import zodToJsonSchema from "zod-to-json-schema";
 import { assertAdapterDefinition } from "./definition.js";
 import { AdapterHostClient } from "./host.js";

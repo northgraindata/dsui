@@ -1,12 +1,11 @@
 import {
   Button,
   Card,
-  Columns,
   Collection,
+  Columns,
   definePage,
   Grid,
   Meter,
-  PageHeader,
   Section,
   Stack,
   Table,
@@ -24,53 +23,67 @@ import {
 export const overviewPage = definePage({
   path: "/",
   render: () => [
-    PageHeader({
-      title: "DuckDB",
-      description: "Fast, in-process analytics database.",
-      badge: { label: "Connected", tone: "healthy" },
-      actions: [
-        Button({ label: "New query", variant: "primary", link: "/query" }),
-        Button({ label: "Browse data", link: "/data" }),
-        Button({ label: "Attach database", link: "/admin" }),
-      ],
-    }),
     Grid({
       content: [
         Card({
           variant: "metric",
           icon: "database",
           title: "Database size",
-          content: Value({ source: overview(), field: "totalSize", format: "bytes" }),
+          content: Value({
+            source: overview(),
+            field: "totalSize",
+            format: "bytes",
+          }),
         }),
         Card({
           variant: "metric",
           icon: "grid",
           title: "Schemas",
-          content: Value({ source: overview(), field: "schemas", format: "number" }),
+          content: Value({
+            source: overview(),
+            field: "schemas",
+            format: "number",
+          }),
         }),
         Card({
           variant: "metric",
           icon: "table",
           title: "Tables",
-          content: Value({ source: overview(), field: "tables", format: "number" }),
+          content: Value({
+            source: overview(),
+            field: "tables",
+            format: "number",
+          }),
         }),
         Card({
           variant: "metric",
           icon: "eye",
           title: "Views",
-          content: Value({ source: overview(), field: "views", format: "number" }),
+          content: Value({
+            source: overview(),
+            field: "views",
+            format: "number",
+          }),
         }),
         Card({
           variant: "metric",
           icon: "layers",
           title: "Extensions",
-          content: Value({ source: overview(), field: "extensions", format: "number" }),
+          content: Value({
+            source: overview(),
+            field: "extensions",
+            format: "number",
+          }),
         }),
         Card({
           variant: "metric",
           icon: "cpu",
           title: "Threads",
-          content: Value({ source: overview(), field: "threads", format: "number" }),
+          content: Value({
+            source: overview(),
+            field: "threads",
+            format: "number",
+          }),
         }),
       ],
     }),

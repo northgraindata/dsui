@@ -1,9 +1,9 @@
 import type {
   AdapterDefinition,
   AdapterInfo,
+  PageDocument,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
-import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 
 /**
  * Where an adapter comes from. Every adapter — the default Snowflake

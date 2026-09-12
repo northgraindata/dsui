@@ -7,7 +7,12 @@ function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
 }
 
-export function CardView({ client, node, renderNode, context }: RegistryViewProps) {
+export function CardView({
+  client,
+  node,
+  renderNode,
+  context,
+}: RegistryViewProps) {
   if (node.kind !== "card") return null;
   const title = field(node.props.title, context);
   const description = field(node.props.description, context);
@@ -30,12 +35,12 @@ export function CardView({ client, node, renderNode, context }: RegistryViewProp
         <div className="layout-card-metric">
           <strong className="layout-card-value">
             {content.map((child, index) => (
-              <span key={`${child.kind}-${index}`}>{renderNode(client, child, context)}</span>
+              <span key={`${child.kind}-${index}`}>
+                {renderNode(client, child, context)}
+              </span>
             ))}
           </strong>
-          {title ? (
-            <small className="layout-card-label">{title}</small>
-          ) : null}
+          {title ? <small className="layout-card-label">{title}</small> : null}
         </div>
       </section>
     );
@@ -50,15 +55,18 @@ export function CardView({ client, node, renderNode, context }: RegistryViewProp
             </span>
           )}
           <div className="layout-card-interactive-body">
-            {title && (href ? (
-              <button
-                type="button"
-                className="layout-card-title"
-                onClick={() => client.navigate(href)}
-              >
-                {title}
-              </button>
-            ) : <h3>{title}</h3>)}
+            {title &&
+              (href ? (
+                <button
+                  type="button"
+                  className="layout-card-title"
+                  onClick={() => client.navigate(href)}
+                >
+                  {title}
+                </button>
+              ) : (
+                <h3>{title}</h3>
+              ))}
             {description && <p>{description}</p>}
           </div>
           {badge && (
@@ -70,7 +78,9 @@ export function CardView({ client, node, renderNode, context }: RegistryViewProp
         {content.length > 0 && (
           <div className="layout-card-content">
             {content.map((child, index) => (
-              <div key={`${child.kind}-${index}`}>{renderNode(client, child, context)}</div>
+              <div key={`${child.kind}-${index}`}>
+                {renderNode(client, child, context)}
+              </div>
             ))}
           </div>
         )}
@@ -94,29 +104,45 @@ export function CardView({ client, node, renderNode, context }: RegistryViewProp
       )}
       {(title || description || badge) && (
         <header className="layout-card-header">
-          {title && (href ? (
-            <button type="button" onClick={() => client.navigate(href)}>{title}</button>
-          ) : <h3>{title}</h3>)}
+          {title &&
+            (href ? (
+              <button type="button" onClick={() => client.navigate(href)}>
+                {title}
+              </button>
+            ) : (
+              <h3>{title}</h3>
+            ))}
           {description && <p>{description}</p>}
-          {badge && <span className="layout-card-badge" data-tone={badgeTone}>{badge}</span>}
+          {badge && (
+            <span className="layout-card-badge" data-tone={badgeTone}>
+              {badge}
+            </span>
+          )}
         </header>
       )}
       <div className="layout-card-content">
         {content.map((child, index) => (
-          <div key={`${child.kind}-${index}`}>{renderNode(client, child, context)}</div>
+          <div key={`${child.kind}-${index}`}>
+            {renderNode(client, child, context)}
+          </div>
         ))}
       </div>
     </section>
   );
 }
 
-function field(value: unknown, context: Record<string, unknown> | undefined): string | undefined {
+function field(
+  value: unknown,
+  context: Record<string, unknown> | undefined,
+): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value === "object" && "field" in value) {
     const fieldName = value.field;
     if (typeof fieldName !== "string") return undefined;
     const resolved = context?.[fieldName];
-    return resolved === undefined || resolved === null ? undefined : String(resolved);
+    return resolved === undefined || resolved === null
+      ? undefined
+      : String(resolved);
   }
   return String(value);
 }

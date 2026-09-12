@@ -9,7 +9,12 @@ export function LinkView({ node, context, client }: RegistryViewProps) {
   const external = node.props.external ?? /^https?:\/\//i.test(href);
   return external ? (
     <a href={href} target="_blank" rel="noreferrer">
-      {node.props.icon ? <WorkbenchIcon name={resolve(node.props.icon, context) ?? "file"} size={16} /> : null}
+      {node.props.icon ? (
+        <WorkbenchIcon
+          name={resolve(node.props.icon, context) ?? "file"}
+          size={16}
+        />
+      ) : null}
       {label}
     </a>
   ) : (
@@ -19,12 +24,19 @@ export function LinkView({ node, context, client }: RegistryViewProps) {
   );
 }
 
-function resolve(value: unknown, context: Record<string, unknown> | undefined): string | undefined {
+function resolve(
+  value: unknown,
+  context: Record<string, unknown> | undefined,
+): string | undefined {
   if (typeof value === "string") return value;
-  if (!value || typeof value !== "object" || !("field" in value)) return undefined;
-  const result = String(value.field).split(".").reduce<unknown>((current, key) => {
-    if (current && typeof current === "object") return (current as Record<string, unknown>)[key];
+  if (!value || typeof value !== "object" || !("field" in value))
     return undefined;
-  }, context);
+  const result = String(value.field)
+    .split(".")
+    .reduce<unknown>((current, key) => {
+      if (current && typeof current === "object")
+        return (current as Record<string, unknown>)[key];
+      return undefined;
+    }, context);
   return result === undefined || result === null ? undefined : String(result);
 }

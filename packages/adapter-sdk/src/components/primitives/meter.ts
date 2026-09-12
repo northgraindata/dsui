@@ -1,5 +1,5 @@
-import { defineComponent } from "../define";
 import type { DataSource } from "../../resource";
+import { defineComponent } from "../define";
 
 export interface MeterSegment {
   label: string;
@@ -35,7 +35,9 @@ export const Meter = defineComponent<MeterProps, MeterNode>({
       for (const segment of props.data.segments) {
         if (!segment.label) throw new Error("Meter segments require a label");
         if (!Number.isFinite(segment.value) || segment.value < 0)
-          throw new Error("Meter segment values must be finite and non-negative");
+          throw new Error(
+            "Meter segment values must be finite and non-negative",
+          );
       }
     }
     return {

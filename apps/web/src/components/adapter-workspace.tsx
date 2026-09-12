@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { deleteService, type Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
