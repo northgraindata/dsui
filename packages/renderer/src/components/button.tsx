@@ -1,9 +1,13 @@
 import type { ActionReference } from "@northgraindata/dsui-adapter-sdk";
 import { Button } from "@northgraindata/dsui-ui";
+import { useState } from "react";
 import type { RegistryViewProps } from "../registry/view-registry";
 import { WorkbenchIcon } from "./icons";
+import { resolveActionSuccessLink } from "./table";
 
 export function ButtonView({ client, node, context }: RegistryViewProps) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
   if (node.kind !== "button") return null;
   const label = resolve(node.props.label, context) ?? "";
   const icon = resolve(node.props.icon, context);
@@ -13,48 +17,81 @@ export function ButtonView({ client, node, context }: RegistryViewProps) {
   const action = resolveAction(node.props.action, context);
   const confirmation = resolveConfirmation(node.props.confirmation, context);
   return (
-    <Button
-      variant={
-        node.props.variant === "primary"
-          ? "default"
-          : node.props.variant === "list-item"
-            ? "ghost"
-            : node.props.variant
-      }
-      className={
-        node.props.variant === "list-item" ? "button-list-item" : undefined
-      }
-      onClick={() => {
-        if (
-          confirmation &&
-          !window.confirm(
-            `${confirmation.title}\n\n${confirmation.description}`,
+    <span className="inline-flex flex-col gap-1">
+      <Button
+        variant={
+          node.props.variant === "primary"
+            ? "default"
+            : node.props.variant === "list-item"
+              ? "ghost"
+              : node.props.variant
+        }
+        className={
+          node.props.variant === "list-item" ? "button-list-item" : undefined
+        }
+        disabled={busy}
+        aria-busy={busy}
+        title={error}
+        onClick={() => {
+          if (
+            confirmation &&
+            !window.confirm(
+              `${confirmation.title}\n\n${confirmation.description}`,
+            )
           )
-        )
-          return;
-        if (link) client.navigate(link);
-        else if (action) client.executeAction(action);
-      }}
-    >
-      {icon && (
-        <span className="button-list-icon">
-          <WorkbenchIcon name={icon} size={20} />
-        </span>
-      )}
-      <span className="button-list-text">
-        <strong>{label}</strong>
-        {description && (
-          <small className="button-list-description">{description}</small>
+            return;
+          if (link) {
+            client.navigate(link);
+            return;
+          }
+          if (!action) return;
+          setBusy(true);
+          setError(undefined);
+          client
+            .executeAction(action)
+            .then((result) => {
+              if (result.status !== "success") {
+                setError(result.message ?? "Action failed");
+                return;
+              }
+              const destination = node.props.successLink
+                ? resolveActionSuccessLink(node.props.successLink, result.data)
+                : null;
+              if (destination) client.navigate(destination);
+            })
+            .catch((cause) =>
+              setError(
+                cause instanceof Error ? cause.message : "Action failed",
+              ),
+            )
+            .finally(() => setBusy(false));
+        }}
+      >
+        {icon && (
+          <span className="button-list-icon">
+            <WorkbenchIcon name={icon} size={20} />
+          </span>
         )}
-      </span>
-      {kbd ? (
-        <kbd className="button-list-kbd">{kbd}</kbd>
-      ) : node.props.variant === "list-item" ? (
-        <span className="button-list-chevron" aria-hidden="true">
-          →
+        <span className="button-list-text">
+          <strong>{busy ? `${label}…` : label}</strong>
+          {description && (
+            <small className="button-list-description">{description}</small>
+          )}
+        </span>
+        {kbd ? (
+          <kbd className="button-list-kbd">{kbd}</kbd>
+        ) : node.props.variant === "list-item" ? (
+          <span className="button-list-chevron" aria-hidden="true">
+            →
+          </span>
+        ) : null}
+      </Button>
+      {error ? (
+        <span role="alert" className="text-[10px] text-unavailable">
+          {error}
         </span>
       ) : null}
-    </Button>
+    </span>
   );
 }
 
