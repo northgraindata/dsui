@@ -1,16 +1,17 @@
 import {
-  Button,
+  CodeBlock,
+  Collection,
   definePage,
   KeyValue,
   PageHeader,
   Table,
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
-import { triggerDag } from "../actions/dags.js";
 import { clearTask, retryTask } from "../actions/tasks.js";
 import { DependencyGraph } from "../components/dependency-graph.js";
 import {
   dagRunDetails,
+  dagRunLogs,
   taskInstanceDetails,
   taskInstanceGraph,
   taskInstances,
@@ -25,12 +26,6 @@ export const dagRunDetailPage = definePage({
       PageHeader({
         title: params.dagRunId,
         description: "Review run state and manage individual task instances.",
-      }),
-      Button({
-        label: "Trigger new run",
-        icon: "play",
-        variant: "primary",
-        action: triggerDag({ dagId: params.dagId, conf: {} }),
       }),
       Tabs({
         items: [
@@ -61,6 +56,17 @@ export const dagRunDetailPage = definePage({
             }),
           },
           {
+            label: "Logs",
+            content: Collection({
+              source: dagRunLogs(input),
+              content: CodeBlock({
+                label: { field: "label" },
+                value: { field: "content" },
+                language: "text",
+              }),
+            }),
+          },
+          {
             label: "Tasks",
             content: Table({
               source: taskInstances(input),
@@ -68,7 +74,7 @@ export const dagRunDetailPage = definePage({
                 { id: "name", label: "Task" },
                 { id: "state", label: "State" },
                 { id: "tryNumber", label: "Try" },
-                { id: "duration", label: "Duration (s)" },
+                { id: "durationDisplay", label: "Duration (s)" },
                 { id: "operator", label: "Operator" },
               ],
               rowLink: {
@@ -114,7 +120,7 @@ export const dagRunDetailPage = definePage({
 
 export const taskInstanceDetailPage = definePage({
   path: "/dags/:dagId/runs/:dagRunId/tasks/:taskId/:mapIndex/:tryNumber",
-  render: ({ params }) => {
+  render: ({ params, query }) => {
     const input = {
       dagId: params.dagId,
       dagRunId: params.dagRunId,
@@ -127,9 +133,11 @@ export const taskInstanceDetailPage = definePage({
         description: "Inspect task metadata and logs for this attempt.",
       }),
       Tabs({
+        defaultIndex: query.get("tab") === "log" ? 1 : 0,
         items: [
           {
             label: "Details",
+            link: `/dags/${encodeURIComponent(params.dagId)}/runs/${encodeURIComponent(params.dagRunId)}/tasks/${encodeURIComponent(params.taskId)}/${params.mapIndex}/${params.tryNumber}`,
             content: KeyValue({
               title: "Task details",
               source: taskInstanceDetails(input),
@@ -137,6 +145,7 @@ export const taskInstanceDetailPage = definePage({
           },
           {
             label: `Log (try ${params.tryNumber})`,
+            link: `/dags/${encodeURIComponent(params.dagId)}/runs/${encodeURIComponent(params.dagRunId)}/tasks/${encodeURIComponent(params.taskId)}/${params.mapIndex}/${params.tryNumber}?tab=log`,
             content: Table({
               source: taskLog({
                 ...input,
