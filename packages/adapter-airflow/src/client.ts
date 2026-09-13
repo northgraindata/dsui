@@ -18,6 +18,9 @@ import type {
 const versionResponseSchema = z.object({
   version: z.string().min(1),
 });
+const tokenResponseSchema = z.object({
+  access_token: z.string().min(1),
+});
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 const nullableString = z.string().nullable().optional();
@@ -59,6 +62,10 @@ const airflow2DagCollectionSchema = z.object({
 });
 const airflow2DagDetailsSchema = airflow2DagSchema.extend({
   fileloc: z.string().optional().default(""),
+  file_token: z.string().min(1).optional(),
+});
+const dagSourceSchema = z.object({
+  content: z.string(),
 });
 const taskSchema = z.object({
   task_id: z.string().min(1),
@@ -387,11 +394,12 @@ export function createAirflowClient(
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const apiVersion = config.apiVersion ?? "v2";
   const isAirflow2 = apiVersion === "v1";
-  const authorization =
-    config.apiVersion === "v1"
-      ? `Basic ${Buffer.from(`${config.username}:${config.password}`, "utf8").toString("base64")}`
-      : `Bearer ${config.token}`;
+  const basicAuthorization = isAirflow2
+    ? `Basic ${Buffer.from(`${config.username}:${config.password}`, "utf8").toString("base64")}`
+    : undefined;
   const lifetime = new AbortController();
+  let accessToken: string | undefined;
+  let tokenRequest: Promise<string> | undefined;
 
   async function readJson(
     response: Response,
@@ -447,9 +455,8 @@ export function createAirflowClient(
       ...(signal ? [signal] : []),
     ]);
     combinedSignal.throwIfAborted();
-    const response = await fetchFn(
-      new URL(`api/${apiVersion}/${path}`, baseUrl),
-      {
+    const send = async (authorization: string) =>
+      fetchFn(new URL(`api/${apiVersion}/${path}`, baseUrl), {
         ...init,
         headers: {
           Authorization: authorization,
@@ -460,8 +467,17 @@ export function createAirflowClient(
         redirect: "error",
         signal: combinedSignal,
         verbose: true,
-      } as RequestInit,
-    );
+      } as RequestInit);
+    let authorization = basicAuthorization;
+    if (!authorization)
+      authorization = `Bearer ${await getAccessToken(signal)}`;
+    let response = await send(authorization);
+    if (!isAirflow2 && response.status === 401) {
+      await response.body?.cancel();
+      if (`Bearer ${accessToken}` === authorization) accessToken = undefined;
+      authorization = `Bearer ${await getAccessToken(signal)}`;
+      response = await send(authorization);
+    }
     if (!response.ok) {
       let detail = "";
       try {
@@ -493,6 +509,47 @@ export function createAirflowClient(
     const parsed = schema.safeParse(body);
     if (!parsed.success) throw new Error("Invalid Airflow response");
     return parsed.data;
+  }
+
+  async function getAccessToken(signal?: AbortSignal): Promise<string> {
+    if (!accessToken) {
+      tokenRequest ??= requestAccessToken().finally(() => {
+        tokenRequest = undefined;
+      });
+      accessToken = await tokenRequest;
+    }
+    signal?.throwIfAborted();
+    return accessToken;
+  }
+
+  async function requestAccessToken(): Promise<string> {
+    lifetime.signal.throwIfAborted();
+    const response = await fetchFn(new URL("auth/token", baseUrl), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "dsui-airflow/0.1",
+      },
+      body: JSON.stringify({
+        username: config.username,
+        password: config.password,
+      }),
+      redirect: "error",
+      signal: lifetime.signal,
+      verbose: true,
+    } as RequestInit);
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new Error(
+        `Airflow authentication failed (HTTP ${response.status})`,
+      );
+    }
+    const body = await readJson(response, lifetime.signal);
+    const parsed = tokenResponseSchema.safeParse(body);
+    if (!parsed.success)
+      throw new Error("Invalid Airflow authentication response");
+    return parsed.data.access_token;
   }
 
   return {
@@ -530,6 +587,26 @@ export function createAirflowClient(
         signal,
       );
       return { ...mapDag(result), fileLocation: result.fileloc };
+    },
+    getDagSource: async (dagId, signal): Promise<string> => {
+      let sourceId = dagId;
+      if (isAirflow2) {
+        const dag = await request(
+          `dags/${encodeURIComponent(dagId)}`,
+          airflow2DagDetailsSchema,
+          signal,
+        );
+        if (!dag.file_token)
+          throw new Error("Airflow did not provide a DAG source file token");
+        sourceId = dag.file_token;
+      }
+      return (
+        await request(
+          `dagSources/${encodeURIComponent(sourceId)}`,
+          dagSourceSchema,
+          signal,
+        )
+      ).content;
     },
     listDagTasks: async (dagId, signal): Promise<DagTask[]> => {
       if (isAirflow2) {
@@ -662,6 +739,18 @@ export function createAirflowClient(
         );
       return mapDag(await request(path, dagSchema, signal, init));
     },
+    setDagRunState: async (dagId, dagRunId, state, signal): Promise<DagRun> =>
+      mapDagRun(
+        await request(
+          `dags/${encodeURIComponent(dagId)}/dagRuns/${encodeURIComponent(dagRunId)}`,
+          dagRunSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ state }),
+          },
+        ),
+      ),
     clearTaskInstance: async (input, onlyFailed, signal): Promise<void> => {
       if (isAirflow2 && input.mapIndex >= 0)
         throw new Error(
