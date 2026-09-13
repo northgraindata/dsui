@@ -2,7 +2,8 @@ import { z } from "@northgraindata/dsui-adapter-sdk";
 
 export const airflowConnectionSchema = z.object({
   baseUrl: z.string().url(),
-  token: z.string().min(1),
+  username: z.string().min(1),
+  password: z.string().min(1),
 });
 
 export const airflow2ConnectionSchema = z.object({
@@ -117,6 +118,7 @@ export interface AirflowClient {
   getVersion(signal?: AbortSignal): Promise<AirflowVersion>;
   listDags(signal?: AbortSignal): Promise<DagSummary[]>;
   getDag(dagId: string, signal?: AbortSignal): Promise<DagDetails>;
+  getDagSource(dagId: string, signal?: AbortSignal): Promise<string>;
   listDagTasks(dagId: string, signal?: AbortSignal): Promise<DagTask[]>;
   listDagRuns(dagId: string, signal?: AbortSignal): Promise<DagRun[]>;
   getDagRun(
@@ -147,6 +149,12 @@ export interface AirflowClient {
     isPaused: boolean,
     signal?: AbortSignal,
   ): Promise<DagSummary>;
+  setDagRunState(
+    dagId: string,
+    dagRunId: string,
+    state: "failed",
+    signal?: AbortSignal,
+  ): Promise<DagRun>;
   clearTaskInstance(
     input: TaskInstanceRef,
     onlyFailed: boolean,
