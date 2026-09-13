@@ -33,14 +33,17 @@ export function Docs({
         themeSwitch={{ enabled: false }}
         nav={{
           title: (
-            <a
-              href="/"
-              className="inline-flex items-center text-lg font-semibold tracking-tight"
-              aria-label="dsui home"
-            >
+            <span className="docs-brand inline-flex items-center text-lg font-semibold tracking-tight">
+              <img
+                src={`${import.meta.env.BASE_URL}branding/logo-icon.svg`}
+                alt=""
+                width="24"
+                height="24"
+                className="size-6"
+              />
               dsui
-              <span className="nav-subtitle">Data Stack UI</span>
-            </a>
+              <span className="nav-subtitle">Docs</span>
+            </span>
           ),
         }}
         githubUrl="https://github.com/northgraindata/dsui"

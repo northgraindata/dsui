@@ -1,8 +1,9 @@
 ---
 import Footer from "@/components/footer.astro";
+import HowItWorks from "@/components/how-it-works.astro";
 import StarOnGithub from "@/components/ui/button-github.astro";
 import IntegrationsSection from "@/components/ui/integrations-3.astro";
-import NeuralNoise from "@/components/ui/neural-noise.astro";
+import ShaderBackground from "@/components/ui/line-shader-homlu-ui.astro";
 import WhyDsui from "@/components/why-dsui.astro";
 import Base from "../layouts/Base.astro";
 ---
@@ -81,7 +82,7 @@ import Base from "../layouts/Base.astro";
         class="pointer-events-none absolute inset-x-0 top-0 h-dvh overflow-hidden"
         style="-webkit-mask-image: var(--ds-mask-hero); mask-image: var(--ds-mask-hero);"
       >
-        <NeuralNoise />
+        <ShaderBackground class="pointer-events-none absolute inset-0 size-full" />
       </div>
       <div class="relative z-10 w-full max-w-6xl py-32 text-center sm:py-40">
         <div class="mx-auto max-w-4xl">
@@ -166,6 +167,7 @@ import Base from "../layouts/Base.astro";
       </div>
     </section>
     <WhyDsui />
+    <HowItWorks />
     <IntegrationsSection />
     <Footer />
   </main>

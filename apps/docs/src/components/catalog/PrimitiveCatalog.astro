@@ -1,0 +1,12 @@
+---
+import { getPrimitiveDocs } from "../../lib/primitive-catalog";
+import PrimitiveCatalogClient from "./PrimitiveCatalogClient";
+
+const primitives = await getPrimitiveDocs();
+---
+
+<PrimitiveCatalogClient primitives={primitives} client:only="react">
+  <div slot="fallback" class="primitive-catalog-loading" aria-busy="true">
+    Loading component catalog…
+  </div>
+</PrimitiveCatalogClient>

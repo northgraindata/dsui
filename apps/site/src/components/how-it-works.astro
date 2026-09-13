@@ -1,0 +1,199 @@
+---
+import NeuralNoise from "@/components/ui/neural-noise.astro";
+
+const services = [
+  { name: "Trino", detail: "trino:8080" },
+  { name: "Kafka", detail: "kafka:9092" },
+  { name: "MinIO", detail: "minio:9000" },
+] as const;
+
+const dockerCommand =
+  "docker run --rm -p 4192:4192 -v dsui-data:/data ghcr.io/northgraindata/dsui:latest";
+---
+
+<section
+  id="how-it-works"
+  class="relative overflow-clip bg-canvas py-24 text-foreground sm:py-32"
+>
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-0"
+    style="-webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);"
+  >
+    <NeuralNoise grain={0.38} opacity={0.78} speed={0.0007} />
+  </div>
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-0 bg-gradient-to-r from-canvas/75 via-canvas/25 to-canvas/40"
+  >
+  </div>
+
+  <div
+    class="relative z-10 mx-auto grid max-w-6xl gap-16 px-6 lg:grid-cols-[0.72fr_1.28fr] lg:gap-24"
+  >
+    <div class="lg:sticky lg:top-28 lg:self-start">
+      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">
+        HOW IT WORKS
+      </p>
+      <h2
+        class="mt-5 max-w-lg text-balance text-4xl font-semibold tracking-tight sm:text-5xl"
+      >
+        Run it. Connect. Get to work.
+      </h2>
+      <p
+        class="mt-6 max-w-md text-pretty text-base leading-7 text-copy sm:text-lg"
+      >
+        Start one lightweight container, connect a service through the
+        dashboard, and open its workspace.
+      </p>
+      <a
+        class="mt-8 inline-flex min-h-11 items-center text-sm font-semibold text-copy transition-colors hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-4 focus-visible:ring-offset-canvas"
+        href="/docs/getting-started/"
+      >
+        Read the setup guide
+        <span class="ml-2 text-brand-muted" aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <ol class="border-t border-foreground/10">
+      <li
+        class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-b border-foreground/10 py-9 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-6 sm:py-12"
+      >
+        <span class="font-mono text-xs text-brand-muted">01</span>
+        <article>
+          <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">
+            RUN
+          </p>
+          <h3 class="mt-3 text-2xl font-semibold tracking-tight">
+            Start dsui locally.
+          </h3>
+          <p
+            class="mt-3 max-w-xl text-sm leading-6 text-copy-subtle sm:text-base sm:leading-7"
+          >
+            Run the container, then open dsui at
+            <span class="font-mono text-copy">localhost:4192</span>.
+          </p>
+
+          <div
+            class="mt-7 max-w-xl overflow-hidden rounded-lg border border-foreground/10 bg-surface font-mono text-xs"
+            aria-label="Docker command"
+          >
+            <p
+              class="overflow-x-auto px-4 py-4 whitespace-nowrap text-foreground sm:px-5"
+            >
+              <span class="mr-2 text-brand-muted">$</span>{dockerCommand}
+            </p>
+          </div>
+        </article>
+      </li>
+
+      <li
+        class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-b border-foreground/10 py-9 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-6 sm:py-12"
+      >
+        <span class="font-mono text-xs text-brand-muted">02</span>
+        <article>
+          <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">
+            CONNECT
+          </p>
+          <h3 class="mt-3 text-2xl font-semibold tracking-tight">
+            Add a service from the dashboard.
+          </h3>
+          <p
+            class="mt-3 max-w-xl text-sm leading-6 text-copy-subtle sm:text-base sm:leading-7"
+          >
+            Choose <span class="text-copy">Add adapter</span>, select an
+            adapter, enter its connection details, test the connection, and save
+            it.
+          </p>
+
+          <!-- Replace this placeholder with a recording of the Connection → Test → Finish flow. -->
+          <div
+            class="relative mt-7 aspect-video max-w-xl overflow-hidden rounded-lg border border-brand-muted/15 bg-surface"
+            aria-label="Add service dashboard walkthrough video placeholder"
+          >
+            <div
+              aria-hidden="true"
+              class="pointer-events-none absolute inset-0 bg-action-secondary opacity-70"
+            >
+            </div>
+            <div
+              class="absolute inset-4 overflow-hidden rounded-md border border-foreground/10 bg-canvas/90 sm:inset-6"
+            >
+              <div
+                class="flex h-9 items-center border-b border-foreground/8 px-3"
+              >
+                <div class="flex items-center gap-2">
+                  <img src="/branding/logo-icon.svg" alt="" class="size-3.5" />
+                  <span class="text-[10px] font-semibold">Connect adapter</span>
+                </div>
+                <span class="ml-auto font-mono text-[8px] text-copy-faint">
+                  CONNECTION · TEST · FINISH
+                </span>
+              </div>
+              <div class="grid h-[calc(100%-2.25rem)] place-items-center p-4">
+                <div class="text-center">
+                  <span
+                    class="mx-auto grid size-10 place-items-center rounded-full border border-brand-muted/20 bg-brand/12 text-sm text-brand-muted sm:size-12"
+                    aria-hidden="true"
+                  >
+                    ▶
+                  </span>
+                  <p
+                    class="mt-3 font-mono text-[9px] tracking-[0.14em] text-copy-muted sm:text-[10px]"
+                  >
+                    ADD A SERVICE
+                  </p>
+                  <p class="mt-1 text-[10px] text-copy-faint sm:text-xs">
+                    Dashboard walkthrough · 16:9
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </li>
+
+      <li
+        class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-b border-foreground/10 py-9 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-6 sm:py-12"
+      >
+        <span class="font-mono text-xs text-brand-muted">03</span>
+        <article>
+          <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">
+            OPEN
+          </p>
+          <h3 class="mt-3 text-2xl font-semibold tracking-tight">
+            Open the connection workspace.
+          </h3>
+          <p
+            class="mt-3 max-w-xl text-sm leading-6 text-copy-subtle sm:text-base sm:leading-7"
+          >
+            Browse resources and run service-specific workflows from the same
+            compact interface.
+          </p>
+
+          <div
+            class="mt-7 max-w-xl divide-y divide-foreground/8 overflow-hidden rounded-lg border border-foreground/10 bg-surface"
+            aria-label="Connected services"
+          >
+            {
+              services.map((service) => (
+                <div class="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3.5 sm:px-5">
+                  <div>
+                    <p class="text-sm font-medium text-copy">{service.name}</p>
+                    <p class="mt-1 font-mono text-[10px] text-copy-muted">
+                      {service.detail}
+                    </p>
+                  </div>
+                  <p class="flex items-center gap-2 text-xs text-copy-subtle">
+                    <span class="size-1.5 rounded-full bg-emerald-400" />
+                    Connected
+                  </p>
+                </div>
+              ))
+            }
+          </div>
+        </article>
+      </li>
+    </ol>
+  </div>
+</section>

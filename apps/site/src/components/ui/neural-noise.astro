@@ -1,14 +1,16 @@
 ---
 type Props = {
+  grain?: number;
   opacity?: number;
   speed?: number;
 };
 
-const { opacity = 0.95, speed = 0.001 } = Astro.props;
+const { grain = 0, opacity = 0.95, speed = 0.001 } = Astro.props;
 ---
 
 <canvas
   data-neural-noise
+  data-grain={grain}
   data-speed={speed}
   aria-hidden="true"
   tabindex="-1"
@@ -25,10 +27,20 @@ void main() { vUv = 0.5 * (a_position + 1.0); gl_Position = vec4(a_position, 0.0
 `;
 
   const fragmentShaderSource = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec2 vUv;
-uniform float u_time; uniform float u_ratio; uniform vec2 u_pointer_position; uniform vec3 u_color; uniform float u_speed;
+uniform float u_time; uniform float u_ratio; uniform vec2 u_pointer_position; uniform vec3 u_color; uniform float u_speed; uniform float u_grain;
 vec2 rotate(vec2 uv, float th) { return mat2(cos(th), sin(th), -sin(th), cos(th)) * uv; }
+float grainHash(vec2 p) {
+  p = mod(p, 289.0);
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
 float neuro_shape(vec2 uv, float t, float p) {
   vec2 sine_acc = vec2(0.0); vec2 res = vec2(0.0); float scale = 8.0;
   for (int j = 0; j < 15; j++) { uv = rotate(uv, 1.0); sine_acc = rotate(sine_acc, 1.0); vec2 layer = uv * scale + float(j) + sine_acc - t; sine_acc += sin(layer) + 2.4 * p; res += (0.5 + 0.5 * cos(layer)) / scale; scale *= 1.2; }
@@ -38,7 +50,11 @@ void main() {
   vec2 uv = 0.5 * vUv; uv.x *= u_ratio; vec2 pointer = vUv - u_pointer_position; pointer.x *= u_ratio;
   float p = 0.5 * pow(1.0 - clamp(length(pointer), 0.0, 1.0), 2.0); float noise = neuro_shape(uv, u_speed * u_time, p);
   noise = 1.2 * pow(noise, 3.0) + pow(noise, 10.0); noise = max(0.0, noise - 0.5); noise *= (1.0 - length(vUv - 0.5));
-  gl_FragColor = vec4(u_color * noise, noise);
+  float grainSample = grainHash(gl_FragCoord.xy + floor(u_time * 0.024)) - 0.5;
+  float grain = grainSample * u_grain;
+  vec3 color = clamp(u_color * noise + grain, 0.0, 1.0);
+  float grainAlpha = u_grain * (0.24 + abs(grainSample) * 0.5);
+  gl_FragColor = vec4(color, clamp(noise + grainAlpha, 0.0, 1.0));
 }
 `;
 
@@ -100,6 +116,7 @@ void main() {
       .split(/\s+/)
       .map((channel) => Number(channel) / 255);
     const speed = Number(canvas.dataset.speed ?? 0.001);
+    const grain = Number(canvas.dataset.grain ?? 0);
     const pointer = { x: 0.5, y: 0.5, targetX: 0.5, targetY: 0.5 };
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -110,6 +127,7 @@ void main() {
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
     gl.uniform3f(uniforms.u_color, color[0] ?? 0, color[1] ?? 0, color[2] ?? 0);
     gl.uniform1f(uniforms.u_speed, speed);
+    gl.uniform1f(uniforms.u_grain, grain);
 
     const resize = () => {
       const ratio = Math.min(devicePixelRatio, 2);
