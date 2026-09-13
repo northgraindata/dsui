@@ -1,5 +1,10 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
-import { pauseDag, triggerDag, unpauseDag } from "./actions/dags.js";
+import {
+  pauseDag,
+  terminateDagRun,
+  triggerDag,
+  unpauseDag,
+} from "./actions/dags.js";
 import { clearTask, retryTask } from "./actions/tasks.js";
 import { createAirflowClient } from "./client.js";
 import {
@@ -15,11 +20,21 @@ import { dagDetailPage, dagListPage } from "./pages/dags.js";
 import { overviewPage } from "./pages/overview.js";
 import { dagRunDetailPage, taskInstanceDetailPage } from "./pages/runs.js";
 import { assetDetails, assetEvents, assets } from "./resources/assets.js";
-import { dagDetails, dags, dagTasks } from "./resources/dags.js";
+import {
+  dagDetails,
+  dagSource,
+  dagStructurePreview,
+  dags,
+  dagTasks,
+} from "./resources/dags.js";
 import { overview, overviewDags } from "./resources/overview.js";
 import {
+  dagOverview,
   dagRunDetails,
+  dagRunLogs,
   dagRuns,
+  latestDagTaskGraph,
+  recentDagRuns,
   taskInstanceDetails,
   taskInstanceGraph,
   taskInstances,
@@ -44,7 +59,7 @@ export function createAirflowAdapter(
       airflow: {
         label: "Airflow 3",
         description:
-          "Enter the Airflow deployment URL and a JWT access token from your auth manager's /auth/token endpoint.",
+          "Enter the Airflow deployment URL and login credentials. JWT authentication is handled automatically.",
         schema: airflowConnectionSchema,
       },
       "airflow-2": {
@@ -79,18 +94,31 @@ export function createAirflowAdapter(
       overviewDags,
       dags,
       dagDetails,
+      dagSource,
       dagTasks,
+      dagStructurePreview,
+      dagOverview,
       dagRuns,
+      recentDagRuns,
       dagRunDetails,
+      dagRunLogs,
       taskInstances,
       taskInstanceGraph,
+      latestDagTaskGraph,
       taskInstanceDetails,
       taskLog,
       assets,
       assetDetails,
       assetEvents,
     ],
-    actions: [triggerDag, pauseDag, unpauseDag, retryTask, clearTask],
+    actions: [
+      triggerDag,
+      pauseDag,
+      unpauseDag,
+      terminateDagRun,
+      retryTask,
+      clearTask,
+    ],
     pages: [
       overviewPage,
       dagListPage,
