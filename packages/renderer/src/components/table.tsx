@@ -6,12 +6,15 @@ import type {
 import {
   Button,
   DataTable as CatalogTable,
+  Dialog,
+  DialogContent,
   Surface,
 } from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useState } from "react";
 import type { RegistryViewProps } from "../registry/view-registry";
 import type { RendererClient } from "../types/renderer-types";
 import { DataTable as DataGrid } from "./data-table";
+import { WorkbenchIcon } from "./icons";
 
 /** Fills :param placeholders from row fields; null when a field is missing. */
 export function resolveLink(
@@ -26,6 +29,15 @@ export function resolveLink(
     resolved = resolved.replace(`:${param}`, encodeURIComponent(String(value)));
   }
   return resolved;
+}
+
+/** Resolves a destination from object-shaped successful action data. */
+export function resolveActionSuccessLink(
+  link: { path: string; params: Record<string, string> },
+  data: unknown,
+): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  return resolveLink(link.path, link.params, data as Record<string, unknown>);
 }
 
 function matchesWhen(
@@ -52,50 +64,99 @@ function RowActionButton({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const disabled = !matchesWhen(row, spec.disabledWhen);
+  const execute = () => {
+    if (disabled || !spec.action) return;
+    const input: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(spec.action.input ?? {})) {
+      input[key] = row[field];
+    }
+    setBusy(true);
+    setError(undefined);
+    client
+      .executeAction({ actionId: spec.action.actionId, input })
+      .then((result) => {
+        if (result.status !== "success") {
+          setError(result.message ?? "Action failed");
+          return;
+        }
+        const destination = spec.successLink
+          ? resolveActionSuccessLink(spec.successLink, result.data)
+          : null;
+        if (destination) client.navigate(destination);
+        else onDone();
+      })
+      .catch((cause) =>
+        setError(cause instanceof Error ? cause.message : "Action failed"),
+      )
+      .finally(() => setBusy(false));
+  };
   return (
     <span className="inline-flex flex-col gap-1">
       <Button
-        size="small"
-        className="table-row-action"
+        size={spec.icon ? "icon" : "small"}
+        className={
+          spec.icon
+            ? "table-row-action table-row-action--icon"
+            : "table-row-action"
+        }
         variant={
           spec.variant === "primary" ? "default" : (spec.variant ?? "secondary")
         }
         disabled={busy || disabled}
+        aria-label={spec.label}
         title={
           error ?? (disabled ? String(row.restartRestriction ?? "") : undefined)
         }
         onClick={() => {
-          if (
-            disabled ||
-            (spec.confirmation &&
-              !window.confirm(
-                `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
-              ))
-          )
+          if (disabled) return;
+          if (spec.link) {
+            const destination = resolveLink(
+              spec.link.path,
+              spec.link.params,
+              row,
+            );
+            if (destination) client.navigate(destination);
             return;
-          const input: Record<string, unknown> = {};
-          for (const [key, field] of Object.entries(spec.action.input ?? {})) {
-            input[key] = row[field];
           }
-          setBusy(true);
-          setError(undefined);
-          client
-            .executeAction({ actionId: spec.action.actionId, input })
-            .then((result) => {
-              if (result.status === "success") onDone();
-              else setError(result.message ?? "Action failed");
-            })
-            .catch((cause) =>
-              setError(
-                cause instanceof Error ? cause.message : "Action failed",
-              ),
-            )
-            .finally(() => setBusy(false));
+          if (spec.confirmation) {
+            setConfirmOpen(true);
+            return;
+          }
+          execute();
         }}
       >
-        {spec.label}
+        {spec.icon ? <WorkbenchIcon name={spec.icon} size={16} /> : spec.label}
       </Button>
+      {spec.confirmation ? (
+        <Dialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent
+            title={spec.confirmation.title}
+            description={spec.confirmation.description}
+          >
+            <div className="flex justify-end gap-3 pt-5">
+              <Dialog.Close asChild>
+                <Button variant="ghost" disabled={busy}>
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button
+                variant={spec.variant === "danger" ? "danger" : "default"}
+                disabled={busy}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  execute();
+                }}
+              >
+                {busy
+                  ? `${spec.confirmation.confirmLabel ?? spec.label}…`
+                  : (spec.confirmation.confirmLabel ?? spec.label)}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog.Root>
+      ) : null}
       {error ? (
         <span className="text-[10px] text-unavailable">{error}</span>
       ) : null}
@@ -107,19 +168,19 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
   const source = node.kind === "table" ? node.props.source : undefined;
   const columnsSource =
     node.kind === "table" ? node.props.columnsSource : undefined;
-  const [data, setData] = useState<unknown>(
-    node.kind === "table" ? node.props.data : undefined,
-  );
+  const initialData = node.kind === "table" ? node.props.data : undefined;
+  const [data, setData] = useState<unknown>(initialData);
   const [columnData, setColumnData] = useState<unknown>();
   const [error, setError] = useState<string>();
   const [refresh, setRefresh] = useState(0);
   const reload = useCallback(() => setRefresh((count) => count + 1), []);
   useEffect(() => {
     if (!source && !columnsSource) return;
+    void refresh;
     let active = true;
     setError(undefined);
     Promise.all([
-      source ? client.executeResource(source) : Promise.resolve(data),
+      source ? client.executeResource(source) : Promise.resolve(initialData),
       columnsSource
         ? client.executeResource(columnsSource)
         : Promise.resolve(undefined),
@@ -139,7 +200,7 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
     return () => {
       active = false;
     };
-  }, [client, source, columnsSource, refresh]);
+  }, [client, source, columnsSource, initialData, refresh]);
   if (node.kind !== "table") return null;
   if (error)
     return (
@@ -169,7 +230,7 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
     return <DataGrid columns={columns} rows={rows} />;
   }
   const rowLink = node.props.rowLink;
-  const rowActions = node.props.rowActions;
+  const rowActions = (node.props.rowActions ?? []) as readonly TableRowAction[];
   const menuActions = node.props.actions;
   const columns: readonly TableColumn[] =
     node.props.columns ?? Object.keys(rows[0]).map((id) => ({ id, label: id }));
@@ -185,8 +246,8 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
           : [column.renderCell];
         return (
           <>
-            {cells.map((cell, index) => (
-              <span key={`${cell.kind}-${index}`}>
+            {cells.map((cell) => (
+              <span key={`${cell.kind}:${JSON.stringify(cell.props)}`}>
                 {renderNode(client, cell, row)}
               </span>
             ))}
@@ -202,14 +263,14 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
           : undefined
       }
       renderRowActions={
-        rowActions?.length
+        rowActions.length
           ? (row) => (
               <>
                 {rowActions
-                  .filter((spec: any) => matchesWhen(row, spec.when))
-                  .map((spec: any) => (
+                  .filter((spec) => matchesWhen(row, spec.when))
+                  .map((spec) => (
                     <RowActionButton
-                      key={`${spec.label}:${spec.action.actionId}`}
+                      key={`${spec.label}:${spec.action?.actionId ?? spec.link?.path}`}
                       client={client}
                       spec={spec}
                       row={row}
@@ -284,7 +345,12 @@ function MenuAction({
         client
           .executeAction({ actionId: action.actionId, input })
           .then((result) => {
-            if (result.status === "success") onDone();
+            if (result.status !== "success") return;
+            const destination = spec.successLink
+              ? resolveActionSuccessLink(spec.successLink, result.data)
+              : null;
+            if (destination) client.navigate(destination);
+            else onDone();
           })
           .finally(() => setBusy(false));
       }}
