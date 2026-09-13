@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { deleteService, type Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
@@ -19,6 +19,7 @@ function pageIcon(path: string) {
     {
       "/": "home",
       "/query": "play",
+      "/notebooks": "file",
       "/data": "folder",
       "/tables": "table",
       "/schemas": "schema",
@@ -108,50 +109,7 @@ export function AdapterWorkspace({
           </div>
         </section>
       </aside>
-      <div className="adapter-main">
-        <header className="adapter-heading flex items-center justify-between">
-          <div className="adapter-heading-identity">
-            <ServiceMark
-              adapter={service.adapter}
-              logo={service.logo}
-              size={50}
-            />
-            <div>
-              <h1>{service.name}</h1>
-              <p>
-                {query
-                  ? `Query, explore and analyze your data with ${service.name}.`
-                  : "Explore your data, browse schemas, tables and files."}
-              </p>
-            </div>
-          </div>
-          <Dialog.Root
-            open={showConfirmRemove}
-            onOpenChange={setShowConfirmRemove}
-          >
-            <Dialog.Trigger asChild>
-              <Button variant="danger">Remove connection</Button>
-            </Dialog.Trigger>
-            <DialogContent
-              title="Remove connection"
-              description={`Are you sure you want to remove ${service.name}?`}
-            >
-              <div className="flex justify-end gap-3 pt-5">
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowConfirmRemove(false)}
-                >
-                  Cancel
-                </Button>
-                <Button variant="danger" onClick={handleRemove}>
-                  Yes, remove
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog.Root>
-        </header>
-        {children}
-      </div>
+      <div className="adapter-main">{children}</div>
     </div>
   );
 }

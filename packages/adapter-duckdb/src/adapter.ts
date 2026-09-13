@@ -35,6 +35,7 @@ import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
 import { extensionPage, extensionsPage } from "./pages/extensions.js";
 import { filesPage } from "./pages/files.js";
+import { notebooksPage } from "./pages/notebooks.js";
 import { overviewPage } from "./pages/overview.js";
 import { queryPage } from "./pages/query.js";
 import { schemaPage } from "./pages/schema.js";
@@ -184,6 +185,7 @@ export function createDuckDbAdapter(
       schemaPage,
       relationPage,
       queryPage,
+      notebooksPage,
       filesPage,
       extensionsPage,
       extensionPage,
