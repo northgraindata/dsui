@@ -16,9 +16,12 @@ export interface TableRowLink {
 
 export interface TableRowAction {
   label: string;
+  icon?: string;
   variant?: "primary" | "secondary" | "danger";
-  action: AnyActionDefinition | string;
+  action?: AnyActionDefinition | string;
+  link?: TableRowLink;
   input?: Record<string, string>;
+  successLink?: TableRowLink;
   confirmation?: {
     title: string;
     description: string;
@@ -41,6 +44,7 @@ export interface TableRowMenuAction {
   action?: AnyActionDefinition | string;
   input?: Record<string, string>;
   link?: TableRowLink;
+  successLink?: TableRowLink;
   confirmation?: {
     title: string;
     description: string;
@@ -60,11 +64,13 @@ export type PageTableRowLink = {
 
 export type PageTableRowAction = {
   label: string;
+  icon?: string;
   variant?: "primary" | "secondary" | "danger";
-  action: {
+  action?: {
     actionId: string;
     input?: Record<string, string>;
   };
+  link?: PageTableRowLink;
   successLink?: PageTableRowLink;
   confirmation?: {
     title: string;
@@ -109,6 +115,16 @@ export const Table = defineComponent<TableProps, TableNode>({
         throw new Error("Table action requires exactly one action or link");
       if (action.link && !action.link.path.startsWith("/"))
         throw new Error("Table action link path must be absolute");
+      if (action.successLink && !action.successLink.path.startsWith("/"))
+        throw new Error("Table action successLink path must be absolute");
+    }
+    for (const action of props.rowActions ?? []) {
+      if (Boolean(action.action) === Boolean(action.link))
+        throw new Error("Table row action requires exactly one action or link");
+      if (action.link && !action.link.path.startsWith("/"))
+        throw new Error("Table row action link path must be absolute");
+      if (action.successLink && !action.successLink.path.startsWith("/"))
+        throw new Error("Table action successLink path must be absolute");
     }
     return { kind: "table", props: { ...props } };
   },
