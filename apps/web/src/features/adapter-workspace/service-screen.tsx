@@ -114,14 +114,17 @@ export function ServiceScreen({
                 ? { status: "success" as const, data: result.data }
                 : { status: "error" as const, message: result.message };
             },
-            navigate: (destination) =>
-              navigate({
+            navigate: (destination) => {
+              const [path, query = ""] = destination.split("?", 2);
+              return navigate({
                 to: "/services/$serviceId/$",
                 params: {
                   serviceId: service.id,
-                  _splat: decodeURIComponent(destination.slice(1)),
+                  _splat: decodeURIComponent(path.slice(1)),
                 },
-              }),
+                search: Object.fromEntries(new URLSearchParams(query)),
+              });
+            },
           }}
         />
       ) : (

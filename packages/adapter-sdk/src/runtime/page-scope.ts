@@ -27,6 +27,7 @@ export function createPageScope(
   registry: StoreRegistry,
   page: AnyPageDefinition,
   params: Record<string, string> = {},
+  query = new URLSearchParams(),
 ): PageScope {
   const pageStores = new Map<string, AnyStoreInstance>();
   const listeners = new Set<() => void>();
@@ -94,7 +95,8 @@ export function createPageScope(
     page,
     params: { ...params },
     stores: accessor,
-    render: () => page.render({ params: { ...params }, stores: accessor }),
+    render: () =>
+      page.render({ params: { ...params }, query, stores: accessor }),
     onUpdate: (listener) => {
       listeners.add(listener);
       return () => {

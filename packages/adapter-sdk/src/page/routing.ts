@@ -17,7 +17,8 @@ export function matchRoute(
   url: string,
 ): Record<string, string> | null {
   const pathSegments = path.split("/").filter((s) => s.length > 0);
-  const urlSegments = url.split("/").filter((s) => s.length > 0);
+  const urlWithoutQuery = url.split(/[?#]/, 1)[0] ?? url;
+  const urlSegments = urlWithoutQuery.split("/").filter((s) => s.length > 0);
   if (pathSegments.length !== urlSegments.length) return null;
   const params: Record<string, string> = {};
   for (let i = 0; i < pathSegments.length; i++) {

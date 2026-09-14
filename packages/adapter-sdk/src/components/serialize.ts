@@ -20,6 +20,7 @@ import type {
 import type { StackProps } from "./primitives/stack";
 import type {
   TableColumn,
+  TableFilter,
   TableRowAction,
   TableRowMenuAction,
 } from "./primitives/table";
@@ -116,6 +117,17 @@ export function serializeNode(node: PageNode): PageNode {
             : {}),
           ...(node.props.data ? { data: node.props.data } : {}),
           ...(node.props.variant ? { variant: node.props.variant } : {}),
+          ...(node.props.searchable ? { searchable: true } : {}),
+          ...(node.props.filters
+            ? {
+                filters: node.props.filters.map((filter: TableFilter) => ({
+                  field: filter.field,
+                  label: filter.label,
+                  options: filter.options.map((option) => ({ ...option })),
+                })),
+              }
+            : {}),
+          ...(node.props.pageSize ? { pageSize: node.props.pageSize } : {}),
           ...(node.props.columns
             ? {
                 columns: node.props.columns.map((column: TableColumn) => ({
@@ -140,18 +152,39 @@ export function serializeNode(node: PageNode): PageNode {
                 rowActions: node.props.rowActions.map(
                   (rowAction: TableRowAction) => ({
                     label: rowAction.label,
+                    ...(rowAction.icon ? { icon: rowAction.icon } : {}),
                     ...(rowAction.variant
                       ? { variant: rowAction.variant }
                       : {}),
-                    action: {
-                      actionId:
-                        typeof rowAction.action === "string"
-                          ? rowAction.action
-                          : rowAction.action.id,
-                      ...(rowAction.input
-                        ? { input: { ...rowAction.input } }
-                        : {}),
-                    },
+                    ...(rowAction.action
+                      ? {
+                          action: {
+                            actionId:
+                              typeof rowAction.action === "string"
+                                ? rowAction.action
+                                : rowAction.action.id,
+                            ...(rowAction.input
+                              ? { input: { ...rowAction.input } }
+                              : {}),
+                          },
+                        }
+                      : {}),
+                    ...(rowAction.link
+                      ? {
+                          link: {
+                            path: rowAction.link.path,
+                            params: { ...rowAction.link.params },
+                          },
+                        }
+                      : {}),
+                    ...(rowAction.successLink
+                      ? {
+                          successLink: {
+                            path: rowAction.successLink.path,
+                            params: { ...rowAction.successLink.params },
+                          },
+                        }
+                      : {}),
                     ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
                     ...(rowAction.disabledWhen
                       ? { disabledWhen: { ...rowAction.disabledWhen } }
@@ -189,6 +222,14 @@ export function serializeNode(node: PageNode): PageNode {
                           },
                         }
                       : {}),
+                    ...(rowAction.successLink
+                      ? {
+                          successLink: {
+                            path: rowAction.successLink.path,
+                            params: { ...rowAction.successLink.params },
+                          },
+                        }
+                      : {}),
                     ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
                     ...(rowAction.confirmation
                       ? { confirmation: { ...rowAction.confirmation } }
@@ -211,6 +252,14 @@ export function serializeNode(node: PageNode): PageNode {
           ...(node.props.kbd ? { kbd: node.props.kbd } : {}),
           ...(node.props.variant ? { variant: node.props.variant } : {}),
           ...(node.props.action ? { action: action(node.props.action) } : {}),
+          ...(node.props.successLink
+            ? {
+                successLink: {
+                  path: node.props.successLink.path,
+                  params: { ...node.props.successLink.params },
+                },
+              }
+            : {}),
           ...(node.props.link ? { link: node.props.link } : {}),
           ...(node.props.confirmation
             ? { confirmation: node.props.confirmation }
@@ -241,7 +290,12 @@ export function serializeNode(node: PageNode): PageNode {
           items: node.props.items.map((item: TabsItem) => ({
             label: item.label,
             content: nodes(item.content),
+            ...(item.link ? { link: item.link } : {}),
           })),
+          ...(node.props.defaultIndex === undefined
+            ? {}
+            : { defaultIndex: node.props.defaultIndex }),
+          ...(node.props.variant ? { variant: node.props.variant } : {}),
         },
       };
     case "key-value":

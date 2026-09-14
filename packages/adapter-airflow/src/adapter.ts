@@ -1,5 +1,21 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
-import { pauseDag, triggerDag, unpauseDag } from "./actions/dags.js";
+import {
+  createConnection,
+  createPool,
+  createVariable,
+  deleteConnection,
+  deletePool,
+  deleteVariable,
+  updateConnection,
+  updatePool,
+  updateVariable,
+} from "./actions/admin.js";
+import {
+  pauseDag,
+  terminateDagRun,
+  triggerDag,
+  unpauseDag,
+} from "./actions/dags.js";
 import { clearTask, retryTask } from "./actions/tasks.js";
 import { createAirflowClient } from "./client.js";
 import {
@@ -10,16 +26,46 @@ import {
   airflowConnectionSchema,
   createContext,
 } from "./context.js";
+import {
+  connectionsPage,
+  createConnectionPage,
+  createPoolPage,
+  createVariablePage,
+  editConnectionPage,
+  editPoolPage,
+  editVariablePage,
+  eventLogsPage,
+  poolsPage,
+  usersPage,
+  variablesPage,
+} from "./pages/admin.js";
 import { assetDetailPage, assetListPage } from "./pages/assets.js";
 import { dagDetailPage, dagListPage } from "./pages/dags.js";
 import { overviewPage } from "./pages/overview.js";
 import { dagRunDetailPage, taskInstanceDetailPage } from "./pages/runs.js";
+import {
+  connections,
+  eventLogs,
+  pools,
+  users,
+  variables,
+} from "./resources/admin.js";
 import { assetDetails, assetEvents, assets } from "./resources/assets.js";
-import { dagDetails, dags, dagTasks } from "./resources/dags.js";
+import {
+  dagDetails,
+  dagSource,
+  dagStructurePreview,
+  dags,
+  dagTasks,
+} from "./resources/dags.js";
 import { overview, overviewDags } from "./resources/overview.js";
 import {
+  dagOverview,
   dagRunDetails,
+  dagRunLogs,
   dagRuns,
+  latestDagTaskGraph,
+  recentDagRuns,
   taskInstanceDetails,
   taskInstanceGraph,
   taskInstances,
@@ -44,7 +90,7 @@ export function createAirflowAdapter(
       airflow: {
         label: "Airflow 3",
         description:
-          "Enter the Airflow deployment URL and a JWT access token from your auth manager's /auth/token endpoint.",
+          "Enter the Airflow deployment URL and login credentials. JWT authentication is handled automatically.",
         schema: airflowConnectionSchema,
       },
       "airflow-2": {
@@ -79,18 +125,45 @@ export function createAirflowAdapter(
       overviewDags,
       dags,
       dagDetails,
+      dagSource,
       dagTasks,
+      dagStructurePreview,
+      dagOverview,
       dagRuns,
+      recentDagRuns,
       dagRunDetails,
+      dagRunLogs,
       taskInstances,
       taskInstanceGraph,
+      latestDagTaskGraph,
       taskInstanceDetails,
       taskLog,
       assets,
       assetDetails,
       assetEvents,
+      connections,
+      variables,
+      pools,
+      users,
+      eventLogs,
     ],
-    actions: [triggerDag, pauseDag, unpauseDag, retryTask, clearTask],
+    actions: [
+      triggerDag,
+      pauseDag,
+      unpauseDag,
+      terminateDagRun,
+      retryTask,
+      clearTask,
+      createConnection,
+      deleteConnection,
+      createVariable,
+      deleteVariable,
+      createPool,
+      deletePool,
+      updateConnection,
+      updateVariable,
+      updatePool,
+    ],
     pages: [
       overviewPage,
       dagListPage,
@@ -99,6 +172,17 @@ export function createAirflowAdapter(
       taskInstanceDetailPage,
       assetListPage,
       assetDetailPage,
+      connectionsPage,
+      createConnectionPage,
+      editConnectionPage,
+      variablesPage,
+      createVariablePage,
+      editVariablePage,
+      poolsPage,
+      createPoolPage,
+      editPoolPage,
+      usersPage,
+      eventLogsPage,
     ],
   });
 }

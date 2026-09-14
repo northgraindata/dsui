@@ -39,6 +39,7 @@ const PAN_THRESHOLD = 4;
 const REVEAL_MARGIN = 24;
 /** Inspector drawer, kept clear of the node it describes. */
 const PANEL_WIDTH = 320;
+const GRAPH_REFRESH_MS = 2000;
 
 interface DependencyGraphProps {
   source?: {
@@ -282,6 +283,7 @@ function getNodeStateConfig(state: string | undefined) {
       return {
         text: "text-healthy",
         dot: "bg-healthy",
+        border: "color-mix(in srgb, var(--color-healthy) 55%, transparent)",
         running: false,
       };
     case "failed":
@@ -291,18 +293,21 @@ function getNodeStateConfig(state: string | undefined) {
       return {
         text: "text-unavailable",
         dot: "bg-unavailable",
+        border: "color-mix(in srgb, var(--color-unavailable) 55%, transparent)",
         running: false,
       };
     case "running":
       return {
         text: "text-accent",
         dot: "bg-accent",
+        border: "var(--color-accent)",
         running: true,
       };
     case "active":
       return {
         text: "text-accent",
         dot: "bg-accent",
+        border: "color-mix(in srgb, var(--color-accent) 55%, transparent)",
         running: false,
       };
     case "queued":
@@ -314,12 +319,14 @@ function getNodeStateConfig(state: string | undefined) {
       return {
         text: "text-warning",
         dot: "bg-warning",
+        border: "color-mix(in srgb, var(--color-warning) 55%, transparent)",
         running: false,
       };
     default:
       return {
         text: "text-muted",
         dot: "bg-unknown",
+        border: "var(--color-border-strong)",
         running: false,
       };
   }
@@ -362,9 +369,12 @@ const GraphNodeCard = memo(function GraphNodeCard({
         top: node.y,
         width: GRAPH_NODE_WIDTH,
         height: GRAPH_NODE_HEIGHT,
+        borderRadius: 5,
+        borderColor: stateConfig.border,
       }}
       className={cn(
-        "dependency-graph__node absolute flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-md border px-3 text-left transition-[background-color,border-color,box-shadow,opacity] duration-150 focus-visible:outline focus-visible:outline-accent motion-reduce:transition-none",
+        "dependency-graph__node absolute flex cursor-pointer items-center gap-2.5 overflow-hidden rounded-[5px] border px-3 text-left transition-[background-color,border-color,box-shadow,opacity] duration-150 focus-visible:outline focus-visible:outline-accent motion-reduce:transition-none",
+        isRunning && "dependency-graph__node--running",
         selected && "ring-1 ring-accent",
         state === "active"
           ? "bg-surface-hover shadow-[0_0_0_1px_var(--color-accent)]"
@@ -379,16 +389,21 @@ const GraphNodeCard = memo(function GraphNodeCard({
         <svg
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-10"
-          width={GRAPH_NODE_WIDTH}
-          height={GRAPH_NODE_HEIGHT}
-          viewBox={`0 0 ${GRAPH_NODE_WIDTH} ${GRAPH_NODE_HEIGHT}`}
+          width={GRAPH_NODE_WIDTH - 2}
+          height={GRAPH_NODE_HEIGHT - 2}
+          viewBox={`0 0 ${GRAPH_NODE_WIDTH - 2} ${GRAPH_NODE_HEIGHT - 2}`}
         >
           <rect
             className="dependency-graph__running-border"
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray="20 8"
             x="0.75"
             y="0.75"
-            width={GRAPH_NODE_WIDTH - 1.5}
-            height={GRAPH_NODE_HEIGHT - 1.5}
+            width={GRAPH_NODE_WIDTH - 3.5}
+            height={GRAPH_NODE_HEIGHT - 3.5}
             rx="5"
             pathLength="100"
           />
@@ -409,10 +424,10 @@ const GraphNodeCard = memo(function GraphNodeCard({
         <span
           aria-hidden="true"
           className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center rounded border font-mono text-[11px] transition-colors",
+            "grid h-7 w-7 shrink-0 place-items-center rounded font-mono text-[11px] transition-colors",
             state === "active" || state === "linked"
-              ? "border-accent/50 text-accent"
-              : "border-border text-muted",
+              ? "text-accent"
+              : "text-muted",
           )}
         >
           {glyph}
@@ -902,21 +917,27 @@ function DependencyGraphContent({
   } | null>(null);
 
   useEffect(() => {
-    if (!props.source) return;
+    const source = props.source;
+    if (!source) return;
     let active = true;
-    client
-      .executeResource(props.source)
-      .then((result) => {
-        if (!active) return;
-        setData(result);
-        setError(undefined);
-      })
-      .catch((cause) => {
-        if (active)
-          setError(cause instanceof Error ? cause.message : "Could not load");
-      });
+    const load = () => {
+      void client
+        .executeResource(source)
+        .then((result) => {
+          if (!active) return;
+          setData(result);
+          setError(undefined);
+        })
+        .catch((cause) => {
+          if (active)
+            setError(cause instanceof Error ? cause.message : "Could not load");
+        });
+    };
+    load();
+    const timer = window.setInterval(load, GRAPH_REFRESH_MS);
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, [client, props.source]);
 

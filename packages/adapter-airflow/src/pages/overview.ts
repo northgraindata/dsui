@@ -10,7 +10,7 @@ import {
   Table,
   Value,
 } from "@northgraindata/dsui-adapter-sdk";
-import { triggerDag } from "../actions/dags.js";
+import { pauseDag, triggerDag, unpauseDag } from "../actions/dags.js";
 import { overview, overviewDags } from "../resources/overview.js";
 
 export const overviewPage = definePage({
@@ -41,7 +41,7 @@ export const overviewPage = definePage({
         }),
         Card({
           variant: "metric",
-          icon: "check",
+          icon: "pause",
           title: "Paused",
           content: Value({
             source: overview(),
@@ -87,18 +87,30 @@ export const overviewPage = definePage({
                 },
               ],
               rowLink: { path: "/dags/:dagId", params: { dagId: "dagId" } },
-              actions: [
+              rowActions: [
                 {
-                  label: "View DAG",
-                  link: {
-                    path: "/dags/:dagId",
-                    params: { dagId: "dagId" },
+                  action: triggerDag,
+                  label: "Trigger",
+                  icon: "play",
+                  input: { dagId: "dagId" },
+                  successLink: {
+                    path: "/dags/:dagId?tab=graph&runId=:dagRunId",
+                    params: { dagId: "dagId", dagRunId: "dagRunId" },
                   },
                 },
                 {
-                  label: "Trigger DAG",
-                  action: triggerDag,
+                  label: "Pause",
+                  icon: "pause",
+                  action: pauseDag,
                   input: { dagId: "dagId" },
+                  when: { field: "isPaused", equals: false },
+                },
+                {
+                  label: "Unpause",
+                  icon: "reload",
+                  action: unpauseDag,
+                  input: { dagId: "dagId" },
+                  when: { field: "isPaused", equals: true },
                 },
               ],
             }),

@@ -130,6 +130,7 @@ export {
   serializeNodes,
   Table,
   type TableColumn,
+  type TableFilter,
   type TableNode,
   type TableProps,
   type TableRowAction,
