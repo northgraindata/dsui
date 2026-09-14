@@ -1,4 +1,5 @@
 import {
+  Button,
   definePage,
   Form,
   PageHeader,
@@ -29,6 +30,11 @@ export const connectionsPage = definePage({
           title: "Connections",
           description:
             "Manage connection records in the connected Airflow instance.",
+          actions: Button({
+            label: "Add connection",
+            link: "/connections/new",
+            variant: "primary",
+          }),
         }),
         Table({
           source: connections(),
@@ -52,6 +58,25 @@ export const connectionsPage = definePage({
               },
             },
           ],
+        }),
+      ],
+    }),
+});
+
+export const createConnectionPage = definePage({
+  path: "/connections/new",
+  render: () =>
+    Stack({
+      gap: "md",
+      content: [
+        PageHeader({
+          title: "Add connection",
+          description:
+            "Create a connection record in the connected Airflow instance.",
+          actions: Button({
+            label: "Back to connections",
+            link: "/connections",
+          }),
         }),
         Form({
           schema: createConnectionInput,
@@ -83,6 +108,11 @@ export const variablesPage = definePage({
           title: "Variables",
           description:
             "Manage values stored by the connected Airflow instance.",
+          actions: Button({
+            label: "Add variable",
+            link: "/variables/new",
+            variant: "primary",
+          }),
         }),
         Table({
           source: variables(),
@@ -104,6 +134,21 @@ export const variablesPage = definePage({
               },
             },
           ],
+        }),
+      ],
+    }),
+});
+
+export const createVariablePage = definePage({
+  path: "/variables/new",
+  render: () =>
+    Stack({
+      gap: "md",
+      content: [
+        PageHeader({
+          title: "Add variable",
+          description: "Create a variable in the connected Airflow instance.",
+          actions: Button({ label: "Back to variables", link: "/variables" }),
         }),
         Form({
           schema: createVariableInput,
@@ -129,6 +174,11 @@ export const poolsPage = definePage({
           title: "Pools",
           description:
             "Control concurrency pools in the connected Airflow instance.",
+          actions: Button({
+            label: "Add pool",
+            link: "/pools/new",
+            variant: "primary",
+          }),
         }),
         Table({
           source: pools(),
@@ -152,6 +202,22 @@ export const poolsPage = definePage({
               },
             },
           ],
+        }),
+      ],
+    }),
+});
+
+export const createPoolPage = definePage({
+  path: "/pools/new",
+  render: () =>
+    Stack({
+      gap: "md",
+      content: [
+        PageHeader({
+          title: "Add pool",
+          description:
+            "Create a concurrency pool in the connected Airflow instance.",
+          actions: Button({ label: "Back to pools", link: "/pools" }),
         }),
         Form({
           schema: createPoolInput,

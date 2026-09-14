@@ -25,6 +25,9 @@ import {
 } from "./context.js";
 import {
   connectionsPage,
+  createConnectionPage,
+  createPoolPage,
+  createVariablePage,
   poolsPage,
   usersPage,
   variablesPage,
@@ -153,8 +156,11 @@ export function createAirflowAdapter(
       assetListPage,
       assetDetailPage,
       connectionsPage,
+      createConnectionPage,
       variablesPage,
+      createVariablePage,
       poolsPage,
+      createPoolPage,
       usersPage,
     ],
   });
