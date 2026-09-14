@@ -89,6 +89,10 @@ export {
   type MeterSegment,
   Notebook,
   type NotebookBlock,
+  NotebookCatalog,
+  type NotebookCatalogItem,
+  type NotebookCatalogNode,
+  type NotebookCatalogProps,
   type NotebookNode,
   type NotebookProps,
   type PageDocument,
@@ -194,12 +198,18 @@ export {
 } from "./shared/errors";
 export {
   type AnyStoreDefinition,
+  type CreateStoreInstanceOptions,
   createStoreInstance,
   defineStore,
+  MemoryStorePersistenceProvider,
   type StoreDefinition,
   type StoreHelpers,
   type StoreInstance,
+  type StorePersistence,
+  type StorePersistenceProvider,
+  type StorePersistenceRequest,
   type StoreScope,
+  type StoreStatus,
 } from "./store/index";
 export { z };
 

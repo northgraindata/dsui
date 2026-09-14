@@ -265,9 +265,54 @@ export function serializeNode(node: PageNode): PageNode {
       return {
         kind: node.kind,
         props: {
+          ...(node.props.id ? { id: node.props.id } : {}),
           title: node.props.title,
           ...(node.props.description
             ? { description: node.props.description }
+            : {}),
+          ...(node.props.notebooks
+            ? {
+                notebooks: node.props.notebooks.map(
+                  (item: { id: string; title: string }) => ({ ...item }),
+                ),
+              }
+            : {}),
+          ...(node.props.openTabs
+            ? {
+                openTabs: node.props.openTabs.map(
+                  (item: { id: string; title: string }) => ({ ...item }),
+                ),
+              }
+            : {}),
+          ...(node.props.metadata
+            ? { metadata: { ...node.props.metadata } }
+            : {}),
+          ...(node.props.actions
+            ? {
+                actions: {
+                  ...(node.props.actions.save
+                    ? { save: action(node.props.actions.save) }
+                    : {}),
+                  ...(node.props.actions.select
+                    ? { select: action(node.props.actions.select) }
+                    : {}),
+                  ...(node.props.actions.create
+                    ? { create: action(node.props.actions.create) }
+                    : {}),
+                  ...(node.props.actions.delete
+                    ? { delete: action(node.props.actions.delete) }
+                    : {}),
+                  ...(node.props.actions.duplicate
+                    ? { duplicate: action(node.props.actions.duplicate) }
+                    : {}),
+                  ...(node.props.actions.import
+                    ? { import: action(node.props.actions.import) }
+                    : {}),
+                  ...(node.props.actions.close
+                    ? { close: action(node.props.actions.close) }
+                    : {}),
+                },
+              }
             : {}),
           blocks: node.props.blocks.map((block: NotebookBlock) =>
             block.kind === "code"
@@ -277,6 +322,35 @@ export function serializeNode(node: PageNode): PageNode {
                 }
               : { ...block },
           ),
+        },
+      };
+    case "notebook-catalog":
+      return {
+        kind: node.kind,
+        props: {
+          notebooks: node.props.notebooks.map(
+            (item: {
+              id: string;
+              title: string;
+              description?: string;
+              environment?: string;
+              location?: string;
+              updatedAt?: string;
+              lastViewedAt?: string;
+            }) => ({ ...item }),
+          ),
+          ...(node.props.actions
+            ? {
+                actions: {
+                  ...(node.props.actions.create
+                    ? { create: action(node.props.actions.create) }
+                    : {}),
+                  ...(node.props.actions.import
+                    ? { import: action(node.props.actions.import) }
+                    : {}),
+                },
+              }
+            : {}),
         },
       };
     case "split-pane":

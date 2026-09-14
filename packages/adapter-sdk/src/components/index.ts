@@ -66,6 +66,12 @@ export type {
 } from "./primitives/notebook";
 export { Notebook } from "./primitives/notebook";
 export type {
+  NotebookCatalogItem,
+  NotebookCatalogNode,
+  NotebookCatalogProps,
+} from "./primitives/notebook-catalog";
+export { NotebookCatalog } from "./primitives/notebook-catalog";
+export type {
   PageHeaderAction,
   PageHeaderBadge,
   PageHeaderNode,
