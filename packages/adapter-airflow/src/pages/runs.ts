@@ -70,6 +70,20 @@ export const dagRunDetailPage = definePage({
             label: "Tasks",
             content: Table({
               source: taskInstances(input),
+              searchable: true,
+              pageSize: 25,
+              filters: [
+                {
+                  field: "state",
+                  label: "State",
+                  options: [
+                    { label: "Running", value: "running" },
+                    { label: "Failed", value: "failed" },
+                    { label: "Success", value: "success" },
+                    { label: "Queued", value: "queued" },
+                  ],
+                },
+              ],
               columns: [
                 { id: "name", label: "Task" },
                 { id: "state", label: "State" },

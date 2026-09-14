@@ -3,6 +3,7 @@ import { z } from "@northgraindata/dsui-adapter-sdk";
 import type {
   AirflowClient,
   AirflowConnection,
+  AirflowEventLog,
   AirflowHttpConfig,
   AirflowPool,
   AirflowUser,
@@ -278,6 +279,20 @@ const userSchema = z.object({
 });
 const userCollectionSchema = z.object({
   users: z.array(userSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const eventLogSchema = z.object({
+  event_log_id: z.union([z.string(), z.number()]).optional(),
+  id: z.union([z.string(), z.number()]).optional(),
+  when: z.string().nullable().optional(),
+  timestamp: z.string().nullable().optional(),
+  event: z.string().nullable().optional(),
+  dag_id: z.string().nullable().optional(),
+  task_id: z.string().nullable().optional(),
+  owner: z.string().nullable().optional(),
+});
+const eventLogCollectionSchema = z.object({
+  event_logs: z.array(eventLogSchema).max(100),
   total_entries: z.number().int().nonnegative(),
 });
 
@@ -968,6 +983,27 @@ export function createAirflowClient(
           }),
         }),
       ),
+    updateConnection: async (input, signal): Promise<AirflowConnection> =>
+      mapConnection(
+        await request(
+          `connections/${encodeURIComponent(input.connectionId)}`,
+          connectionSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              conn_type: input.connectionType,
+              description: input.description || null,
+              host: input.host || null,
+              login: input.login || null,
+              schema: input.schema || null,
+              port: input.port,
+              password: input.password || undefined,
+              extra: input.extra || undefined,
+            }),
+          },
+        ),
+      ),
     deleteConnection: async (connectionId, signal): Promise<void> => {
       await request(
         `connections/${encodeURIComponent(connectionId)}`,
@@ -994,6 +1030,21 @@ export function createAirflowClient(
             description: input.description || null,
           }),
         }),
+      ),
+    updateVariable: async (input, signal): Promise<AirflowVariable> =>
+      mapVariable(
+        await request(
+          `variables/${encodeURIComponent(input.key)}`,
+          variableSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              value: input.value,
+              description: input.description || null,
+            }),
+          },
+        ),
       ),
     deleteVariable: async (key, signal): Promise<void> => {
       await request(
@@ -1023,10 +1074,43 @@ export function createAirflowClient(
           }),
         }),
       ),
+    updatePool: async (input, signal): Promise<AirflowPool> =>
+      mapPool(
+        await request(
+          `pools/${encodeURIComponent(input.name)}`,
+          poolSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              slots: input.slots,
+              description: input.description || null,
+              include_deferred: false,
+            }),
+          },
+        ),
+      ),
     deletePool: async (name, signal): Promise<void> => {
       await request(`pools/${encodeURIComponent(name)}`, z.unknown(), signal, {
         method: "DELETE",
       });
+    },
+    listEventLogs: async (signal): Promise<AirflowEventLog[]> => {
+      const result = await request(
+        "eventLogs?limit=100&offset=0",
+        eventLogCollectionSchema,
+        signal,
+      );
+      return result.event_logs
+        .map((entry) => ({
+          eventLogId: String(entry.event_log_id ?? entry.id ?? ""),
+          timestamp: entry.timestamp ?? entry.when ?? "",
+          event: entry.event ?? "",
+          dagId: entry.dag_id ?? "",
+          taskId: entry.task_id ?? "",
+          owner: entry.owner ?? "",
+        }))
+        .sort((left, right) => right.timestamp.localeCompare(left.timestamp));
     },
     listUsers: async (signal): Promise<AirflowUser[]> => {
       if (!isAirflow2) return [];

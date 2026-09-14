@@ -6,6 +6,9 @@ import {
   deleteConnection,
   deletePool,
   deleteVariable,
+  updateConnection,
+  updatePool,
+  updateVariable,
 } from "./actions/admin.js";
 import {
   pauseDag,
@@ -28,6 +31,10 @@ import {
   createConnectionPage,
   createPoolPage,
   createVariablePage,
+  editConnectionPage,
+  editPoolPage,
+  editVariablePage,
+  eventLogsPage,
   poolsPage,
   usersPage,
   variablesPage,
@@ -36,7 +43,13 @@ import { assetDetailPage, assetListPage } from "./pages/assets.js";
 import { dagDetailPage, dagListPage } from "./pages/dags.js";
 import { overviewPage } from "./pages/overview.js";
 import { dagRunDetailPage, taskInstanceDetailPage } from "./pages/runs.js";
-import { connections, pools, users, variables } from "./resources/admin.js";
+import {
+  connections,
+  eventLogs,
+  pools,
+  users,
+  variables,
+} from "./resources/admin.js";
 import { assetDetails, assetEvents, assets } from "./resources/assets.js";
 import {
   dagDetails,
@@ -132,6 +145,7 @@ export function createAirflowAdapter(
       variables,
       pools,
       users,
+      eventLogs,
     ],
     actions: [
       triggerDag,
@@ -146,6 +160,9 @@ export function createAirflowAdapter(
       deleteVariable,
       createPool,
       deletePool,
+      updateConnection,
+      updateVariable,
+      updatePool,
     ],
     pages: [
       overviewPage,
@@ -157,11 +174,15 @@ export function createAirflowAdapter(
       assetDetailPage,
       connectionsPage,
       createConnectionPage,
+      editConnectionPage,
       variablesPage,
       createVariablePage,
+      editVariablePage,
       poolsPage,
       createPoolPage,
+      editPoolPage,
       usersPage,
+      eventLogsPage,
     ],
   });
 }

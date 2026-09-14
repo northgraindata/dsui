@@ -40,6 +40,18 @@ export const dagListPage = definePage({
     }),
     Table({
       source: dags(),
+      searchable: true,
+      pageSize: 25,
+      filters: [
+        {
+          field: "status",
+          label: "Status",
+          options: [
+            { label: "Active", value: "active" },
+            { label: "Paused", value: "paused" },
+          ],
+        },
+      ],
       columns: [
         { id: "name", label: "DAG" },
         { id: "schedule", label: "Schedule" },

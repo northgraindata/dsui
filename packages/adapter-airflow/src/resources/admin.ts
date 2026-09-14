@@ -32,3 +32,8 @@ export const users = defineResource({
     return ctx.client.listUsers();
   },
 });
+
+export const eventLogs = defineResource({
+  id: "event-logs",
+  query: (_, ctx: AirflowContext) => ctx.client.listEventLogs(),
+});

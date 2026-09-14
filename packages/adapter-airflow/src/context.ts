@@ -147,6 +147,15 @@ export interface AirflowUser {
   roles: string;
 }
 
+export interface AirflowEventLog {
+  eventLogId: string;
+  timestamp: string;
+  event: string;
+  dagId: string;
+  taskId: string;
+  owner: string;
+}
+
 export interface AirflowClient {
   dispose(): void;
   getVersion(signal?: AbortSignal): Promise<AirflowVersion>;
@@ -206,9 +215,21 @@ export interface AirflowClient {
     },
     signal?: AbortSignal,
   ): Promise<AirflowConnection>;
+  updateConnection(
+    input: Omit<AirflowConnection, "port"> & {
+      port?: number;
+      password?: string;
+      extra?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<AirflowConnection>;
   deleteConnection(connectionId: string, signal?: AbortSignal): Promise<void>;
   listVariables(signal?: AbortSignal): Promise<AirflowVariable[]>;
   createVariable(
+    input: { key: string; value: string; description?: string },
+    signal?: AbortSignal,
+  ): Promise<AirflowVariable>;
+  updateVariable(
     input: { key: string; value: string; description?: string },
     signal?: AbortSignal,
   ): Promise<AirflowVariable>;
@@ -218,7 +239,12 @@ export interface AirflowClient {
     input: { name: string; slots: number; description?: string },
     signal?: AbortSignal,
   ): Promise<AirflowPool>;
+  updatePool(
+    input: { name: string; slots: number; description?: string },
+    signal?: AbortSignal,
+  ): Promise<AirflowPool>;
   deletePool(name: string, signal?: AbortSignal): Promise<void>;
+  listEventLogs(signal?: AbortSignal): Promise<AirflowEventLog[]>;
   listUsers(signal?: AbortSignal): Promise<AirflowUser[]>;
   supportsUserAdministration(): boolean;
 }

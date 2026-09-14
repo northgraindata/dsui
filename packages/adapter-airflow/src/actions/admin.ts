@@ -30,6 +30,16 @@ export const createConnection = defineAction({
   },
 });
 
+export const updateConnection = defineAction({
+  id: "update-connection",
+  input: createConnectionInput,
+  run: async (input, ctx: Ctx) => {
+    const connection = await ctx.client.updateConnection(input, ctx.signal);
+    ctx.invalidate(connections);
+    return connection;
+  },
+});
+
 export const deleteConnection = defineAction({
   id: "delete-connection",
   input: z.object({ connectionId: z.string().min(1) }),
@@ -56,6 +66,16 @@ export const createVariable = defineAction({
   },
 });
 
+export const updateVariable = defineAction({
+  id: "update-variable",
+  input: createVariableInput,
+  run: async (input, ctx: Ctx) => {
+    const variable = await ctx.client.updateVariable(input, ctx.signal);
+    ctx.invalidate(variables);
+    return variable;
+  },
+});
+
 export const deleteVariable = defineAction({
   id: "delete-variable",
   input: z.object({ key: z.string().min(1) }),
@@ -77,6 +97,16 @@ export const createPool = defineAction({
   input: createPoolInput,
   run: async (input, ctx: Ctx) => {
     const pool = await ctx.client.createPool(input, ctx.signal);
+    ctx.invalidate(pools);
+    return pool;
+  },
+});
+
+export const updatePool = defineAction({
+  id: "update-pool",
+  input: createPoolInput,
+  run: async (input, ctx: Ctx) => {
+    const pool = await ctx.client.updatePool(input, ctx.signal);
     ctx.invalidate(pools);
     return pool;
   },
