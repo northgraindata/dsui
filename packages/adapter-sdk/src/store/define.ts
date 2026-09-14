@@ -1,5 +1,10 @@
 import { assertNonEmptyId } from "../shared/validators";
-import type { StoreDefinition, StoreHelpers, StoreScope } from "./types";
+import type {
+  StoreDefinition,
+  StoreHelpers,
+  StorePersistence,
+  StoreScope,
+} from "./types";
 
 /**
  * Defines client/session/UI state.
@@ -31,6 +36,7 @@ export function defineStore<
 >(options: {
   id: string;
   scope: StoreScope;
+  persistence?: StorePersistence;
   state: TState;
   actions: (helpers: StoreHelpers<TState>) => TActions;
 }): StoreDefinition<TState, TActions> {
@@ -39,6 +45,7 @@ export function defineStore<
     kind: "store",
     id: options.id,
     scope: options.scope,
+    persistence: options.persistence ?? { type: "memory" },
     initialState: { ...options.state },
     createActions: options.actions,
   };

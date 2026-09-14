@@ -1,48 +1,58 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { Surface } from "@northgraindata/dsui-ui";
-import { lazy, Suspense, useMemo } from "react";
-import { type RegistryViewProps, resolveView } from "../registry/view-registry";
+import type { ComponentType } from "react";
+import { useEffect, useState } from "react";
+import {
+  type ComponentProps,
+  resolveComponent,
+} from "../registry/component-registry";
+import { loadExternalComponent } from "../registry/external-components";
 
 /**
- * Renders a `"custom"` node through the component registry. Unknown ids
- * render an explicit fallback instead of failing silently or blank.
+ * Renders a `"custom"` node through discovered browser components. Unknown
+ * components render an explicit fallback instead of failing silently or blank.
  */
-export function CustomView({
+export function Custom({
   client,
   node,
   renderNode,
+  context,
 }: {
-  client: RegistryViewProps["client"];
+  client: ComponentProps["client"];
   node: PageNode;
-  renderNode: RegistryViewProps["renderNode"];
+  renderNode: ComponentProps["renderNode"];
+  context?: Record<string, unknown>;
 }) {
-  const entry = resolveView(node.props.component);
-  const LazyView = useMemo(
-    () => (entry?.type === "lazy" ? lazy(entry.loader) : null),
-    [entry],
-  );
-  if (!entry)
+  const entry = resolveComponent(node.props.component, node.props.path);
+  const [ExternalComponent, setExternalComponent] =
+    useState<ComponentType<ComponentProps> | null>(null);
+  useEffect(() => {
+    if (entry) return;
+    let active = true;
+    void loadExternalComponent(
+      node.props.component,
+      node.props.browserUrl,
+    ).then((component) => {
+      if (active) setExternalComponent(component);
+    });
+    return () => {
+      active = false;
+    };
+  }, [entry, node.props.component, node.props.browserUrl]);
+  const Component = entry?.component ?? ExternalComponent;
+  if (!Component)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
         Unknown component “{node.props.component}”. The adapter declaring it is
-        not installed or did not register a browser entry.
+        not installed or its browser path is not available in this build.
       </Surface>
     );
-  if (entry.type === "sync") {
-    const View = entry.view;
-    return <View client={client} node={node} renderNode={renderNode} />;
-  }
   return (
-    <Suspense
-      fallback={
-        <Surface className="p-5 text-[12px] text-secondary" aria-busy="true">
-          Loading component…
-        </Surface>
-      }
-    >
-      {LazyView ? (
-        <LazyView client={client} node={node} renderNode={renderNode} />
-      ) : null}
-    </Suspense>
+    <Component
+      client={client}
+      node={node}
+      context={context}
+      renderNode={renderNode}
+    />
   );
 }

@@ -18,10 +18,7 @@ export interface SelectNode {
   readonly props: SelectProps;
 }
 
-export const Select = defineComponent<SelectProps, SelectNode>({
+export const Select = defineComponent<SelectProps>({
   id: "select",
-  render: (props) => {
-    if (!props.name) throw new Error("Select requires a field name");
-    return { kind: "select", props: { ...props, options: [...props.options] } };
-  },
+  path: "./ui/select",
 });

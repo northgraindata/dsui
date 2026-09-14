@@ -7,6 +7,15 @@ import {
   restartExtension,
   unloadExtension,
 } from "./actions/extensions.js";
+import {
+  closeNotebook,
+  createNotebook,
+  deleteNotebook,
+  duplicateNotebook,
+  importNotebook,
+  saveNotebook,
+  selectNotebook,
+} from "./actions/notebooks.js";
 import { cancelQuery, runQuery } from "./actions/run-query.js";
 import {
   attachDatabase,
@@ -35,6 +44,7 @@ import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
 import { extensionPage, extensionsPage } from "./pages/extensions.js";
 import { filesPage } from "./pages/files.js";
+import { notebooksIndexPage, notebooksPage } from "./pages/notebooks.js";
 import { overviewPage } from "./pages/overview.js";
 import { queryPage } from "./pages/query.js";
 import { schemaPage } from "./pages/schema.js";
@@ -80,6 +90,7 @@ import {
   activityFiltersStore,
   dataExplorerStore,
   fileBrowserStore,
+  notebookStore,
   queryEditorStore,
   sessionStore,
   settingsFilterStore,
@@ -123,6 +134,7 @@ export function createDuckDbAdapter(
       queryEditorStore,
       dataExplorerStore,
       fileBrowserStore,
+      notebookStore,
       activityFiltersStore,
       settingsFilterStore,
     ],
@@ -184,6 +196,13 @@ export function createDuckDbAdapter(
       resetSetting,
       createSecret,
       dropSecret,
+      saveNotebook,
+      createNotebook,
+      closeNotebook,
+      selectNotebook,
+      deleteNotebook,
+      duplicateNotebook,
+      importNotebook,
     ],
     pages: [
       overviewPage,
@@ -192,6 +211,8 @@ export function createDuckDbAdapter(
       schemaPage,
       relationPage,
       queryPage,
+      notebooksPage,
+      notebooksIndexPage,
       filesPage,
       extensionsPage,
       extensionPage,

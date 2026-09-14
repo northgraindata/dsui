@@ -13,10 +13,7 @@ export interface TextInputNode {
   readonly props: TextInputProps;
 }
 
-export const TextInput = defineComponent<TextInputProps, TextInputNode>({
+export const TextInput = defineComponent<TextInputProps>({
   id: "text-input",
-  render: (props) => {
-    if (!props.name) throw new Error("TextInput requires a field name");
-    return { kind: "text-input", props: { ...props } };
-  },
+  path: "./ui/text-input",
 });

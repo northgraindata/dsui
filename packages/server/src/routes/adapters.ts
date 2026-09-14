@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { PublicAdapter } from "@northgraindata/dsui-core";
 import type { Hono } from "hono";
 import type { AdapterRegistry } from "../adapters/registry.js";
@@ -29,6 +30,15 @@ export function publicAdapterPayload(
       ...(action.inputSchema ? { inputSchema: action.inputSchema } : {}),
     })),
     pages: adapter.catalog.pages.map((page) => ({ path: page.path })),
+    components: adapter.catalog.components.map((component) => ({
+      id: component.id,
+      path: component.path,
+    })),
+    ...(adapter.browserBundlePath
+      ? {
+          browserComponentsUrl: `/api/v1/adapters/${adapter.id}/components.mjs`,
+        }
+      : {}),
   };
 }
 
@@ -48,4 +58,20 @@ export function registerAdapterRoutes(
         ),
     ),
   );
+
+  app.get("/api/v1/adapters/:id/components.mjs", async (context) => {
+    const adapter = deps.registry.get(context.req.param("id"));
+    if (!adapter.browserBundlePath)
+      return context.json(
+        { message: "Adapter has no browser components" },
+        404,
+      );
+    const bytes = await readFile(adapter.browserBundlePath);
+    return new Response(bytes, {
+      headers: {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=31536000, immutable",
+      },
+    });
+  });
 }

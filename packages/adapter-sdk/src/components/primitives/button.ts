@@ -24,12 +24,7 @@ export interface ButtonNode {
   readonly props: ButtonProps;
 }
 
-export const Button = defineComponent<ButtonProps, ButtonNode>({
+export const Button = defineComponent<ButtonProps>({
   id: "button",
-  render: (props) => {
-    if (!props.label) throw new Error("Button requires a label");
-    if (typeof props.link === "string" && !props.link.startsWith("/"))
-      throw new Error("Button link path must be absolute");
-    return { kind: "button", props: { ...props } };
-  },
+  path: "./ui/button",
 });

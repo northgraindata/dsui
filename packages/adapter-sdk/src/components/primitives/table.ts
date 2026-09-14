@@ -99,17 +99,7 @@ export interface TableNode {
   readonly props: TableProps;
 }
 
-export const Table = defineComponent<TableProps, TableNode>({
+export const Table = defineComponent<TableProps>({
   id: "table",
-  render: (props) => {
-    if (props.rowLink && !props.rowLink.path.startsWith("/"))
-      throw new Error("Table rowLink path must be absolute");
-    for (const action of props.actions ?? []) {
-      if (Boolean(action.action) === Boolean(action.link))
-        throw new Error("Table action requires exactly one action or link");
-      if (action.link && !action.link.path.startsWith("/"))
-        throw new Error("Table action link path must be absolute");
-    }
-    return { kind: "table", props: { ...props } };
-  },
+  path: "./ui/table",
 });

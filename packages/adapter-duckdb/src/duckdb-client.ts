@@ -79,7 +79,11 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     const options: Record<string, string> = {};
     if (config.readOnly) options.access_mode = "READ_ONLY";
     if (disableAutoload) options.autoload_known_extensions = "false";
-    const target = config.path ?? config.url ?? ":memory:";
+    const target =
+      config.method === "quack"
+        ? ":memory:"
+        : (config.path ?? config.url ?? ":memory:");
+    validateConnectionTarget(config);
     try {
       instance = await DuckDBInstance.create(target, options);
       connection = await instance.connect();
@@ -94,7 +98,8 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
       if (guidance) throw new Error(guidance);
       throw error;
     }
-    if (config.url) await attachRemote(connection);
+    if (config.method === "quack") await attachQuack(connection);
+    else if (config.url) await attachRemote(connection);
     return connection;
   }
 
@@ -102,22 +107,53 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     const url = config.url;
     if (!url) return;
     const secretClauses: string[] = [];
-    if (config.s3AccessKeyId)
-      secretClauses.push(`KEY_ID '${escapeString(config.s3AccessKeyId)}'`);
-    if (config.s3SecretAccessKey)
-      secretClauses.push(`SECRET '${escapeString(config.s3SecretAccessKey)}'`);
-    if (config.s3SessionToken)
+    const method = config.method ?? "s3";
+    const secretType = method === "gcs" ? "GCS" : method === "r2" ? "R2" : "S3";
+    const keyId =
+      method === "gcs"
+        ? config.gcsKeyId
+        : method === "r2"
+          ? config.r2KeyId
+          : config.s3AccessKeyId;
+    const secret =
+      method === "gcs"
+        ? config.gcsSecret
+        : method === "r2"
+          ? config.r2Secret
+          : config.s3SecretAccessKey;
+    const accountId = method === "r2" ? config.r2AccountId : undefined;
+    if (keyId) secretClauses.push(`KEY_ID '${escapeString(keyId)}'`);
+    if (secret) secretClauses.push(`SECRET '${escapeString(secret)}'`);
+    if (config.s3SessionToken && method === "s3")
       secretClauses.push(
         `SESSION_TOKEN '${escapeString(config.s3SessionToken)}'`,
       );
-    if (config.s3Region)
+    if (config.s3Region && method === "s3")
       secretClauses.push(`REGION '${escapeString(config.s3Region)}'`);
-    if (config.s3Endpoint)
+    if (config.s3Endpoint && method === "s3")
       secretClauses.push(`ENDPOINT '${escapeString(config.s3Endpoint)}'`);
+    if (accountId)
+      secretClauses.push(`ACCOUNT_ID '${escapeString(accountId)}'`);
+    if (method === "azure" && config.connectionString)
+      secretClauses.push(
+        `CONNECTION_STRING '${escapeString(config.connectionString)}'`,
+      );
     const createSecret = secretClauses.length
-      ? `CREATE SECRET (TYPE S3 ${secretClauses.join(" ")});`
+      ? `CREATE OR REPLACE SECRET dsui_remote (TYPE ${method === "azure" ? "AZURE" : secretType} ${secretClauses.join(" ")});`
       : "";
     if (createSecret) await conn.run(createSecret);
+  }
+
+  async function attachQuack(conn: DuckDBConnection): Promise<void> {
+    const uri = config.uri ?? "quack:localhost";
+    const options = [
+      config.token ? `TOKEN '${escapeString(config.token)}'` : "",
+      `DISABLE_SSL ${config.disableSsl ? "true" : "false"}`,
+      "TYPE quack",
+    ].filter(Boolean);
+    await conn.run(
+      `ATTACH '${escapeString(uri)}' AS ${quote("remote")} (${options.join(", ")})`,
+    );
   }
 
   async function read(
@@ -643,6 +679,7 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
       });
     },
     async attach(input) {
+      validateAttachSource(input.source);
       const readOnly = input.readOnly ? " (READ_ONLY)" : "";
       await run(
         `ATTACH '${escapeString(input.source)}' AS ${quote(input.alias)}${readOnly}`,
@@ -693,4 +730,78 @@ function quote(identifier: string): string {
 
 function escapeString(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "''");
+}
+
+function validateConnectionTarget(config: DuckDbConfig): void {
+  if (config.method === "quack") {
+    validateRemoteUrl(config.uri ?? "quack:localhost", ["quack:"]);
+    return;
+  }
+  if (!config.url) return;
+  const methods: Record<string, string[]> = {
+    s3: ["s3:", "https:"],
+    gcs: ["gcs:", "gs:", "https:"],
+    r2: ["r2:", "https:"],
+    azure: ["az:", "azure:", "https:"],
+  };
+  validateRemoteUrl(config.url, methods[config.method ?? "s3"] ?? ["https:"]);
+}
+
+function validateAttachSource(source: string): void {
+  if (/^quack[:]/i.test(source)) {
+    validateRemoteUrl(source, ["quack:"]);
+    return;
+  }
+  if (/^[a-z][a-z\d+.-]*:/i.test(source)) {
+    validateRemoteUrl(source, [
+      "s3:",
+      "gcs:",
+      "gs:",
+      "r2:",
+      "az:",
+      "azure:",
+      "http:",
+      "https:",
+    ]);
+  }
+}
+
+function validateRemoteUrl(value: string, allowedProtocols: string[]): void {
+  const protocol = value.match(/^[a-z][a-z\d+.-]*:/i)?.[0].toLowerCase();
+  if (!protocol || !allowedProtocols.includes(protocol))
+    throw new Error(`Unsupported remote connection scheme: ${value}`);
+  if (protocol === "quack:") {
+    const host = value
+      .replace(/^quack:(?:\/\/)?/i, "")
+      .split(":")[0]
+      .replace(/^\[/, "");
+    if (!host || host === "localhost" || host === "127.0.0.1" || host === "::1")
+      return;
+    if (
+      /^(10\.|127\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(
+        host,
+      )
+    )
+      throw new Error(
+        "Remote connection to private network addresses is not allowed",
+      );
+    return;
+  }
+  if (protocol === "http:" || protocol === "https:") {
+    const parsed = new URL(value);
+    if (!parsed.hostname || parsed.username || parsed.password)
+      throw new Error(
+        "Remote URLs must include a hostname and no embedded credentials",
+      );
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host === "::1" ||
+      host === "127.0.0.1" ||
+      /^(10\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(host)
+    )
+      throw new Error(
+        "Remote connection to private network addresses is not allowed",
+      );
+  }
 }

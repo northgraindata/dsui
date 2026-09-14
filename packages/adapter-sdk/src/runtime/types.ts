@@ -3,7 +3,16 @@ import type { AdapterDefinition } from "../adapter/index";
 import type { PageNode } from "../components/index";
 import type { AnyPageDefinition, StoreAccessor } from "../page/index";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
-import type { StoreDefinition, StoreInstance } from "../store/index";
+import type {
+  StoreDefinition,
+  StoreInstance,
+  StorePersistenceProvider,
+} from "../store/index";
+
+export interface AdapterRuntimeOptions {
+  /** Host-owned backend for stores declaring persistent state. */
+  readonly persistenceProvider?: StorePersistenceProvider;
+}
 
 /**
  * Resource execution states (internal lifecycle; surfaced to components
@@ -64,6 +73,8 @@ export interface PageScope {
   readonly params: Record<string, string>;
   /** Store accessor bound to this scope (adapter + page stores). */
   readonly stores: StoreAccessor;
+  /** Resolves after all declared persistent stores have hydrated. */
+  ready(): Promise<void>;
   /**
    * Renders the component tree. Reactive: re-call after `onUpdate`
    * fires to pick up store-driven changes.

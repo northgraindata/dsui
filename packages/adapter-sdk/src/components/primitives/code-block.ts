@@ -12,7 +12,7 @@ export interface CodeBlockNode {
   readonly props: CodeBlockProps;
 }
 
-export const CodeBlock = defineComponent<CodeBlockProps, CodeBlockNode>({
+export const CodeBlock = defineComponent<CodeBlockProps>({
   id: "code-block",
-  render: (props) => ({ kind: "code-block", props: { ...props } }),
+  path: "./ui/code-block",
 });

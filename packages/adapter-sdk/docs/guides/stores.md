@@ -68,6 +68,38 @@ which is usually what users expect from filters and drafts.
 When unsure, pick page scope. Adapter scope is for identity-like state
 that the whole adapter session shares. Everything else is page state.
 
+## Persist store state
+
+Stores are memory-only by default. A store can opt into persistence without
+knowing where the host stores the data:
+
+```ts
+defineStore({
+  id: "notebooks",
+  scope: "adapter",
+  persistence: {
+    type: "persistent",
+    key: "notebooks",
+    version: 1,
+  },
+  state: { documents: [] },
+  actions: ({ set }) => ({
+    setDocuments: (documents) => set({ documents }),
+  }),
+});
+```
+
+The runtime host injects a `StorePersistenceProvider`. The adapter SDK only
+defines the contract; adapters do not implement SQLite, HTTP, or migrations.
+The store starts with its initial state and hydrates asynchronously. Use
+`store.status` and `await store.ready()` when a caller needs to know whether
+the initial load finished. If a local update happens during hydration, that
+update wins and is saved after the load completes.
+
+In the DSUI server, persistent stores are backed by the server's SQLite
+database and isolated by service id. `MemoryStorePersistenceProvider` is
+available for tests and ephemeral hosts; it does not survive a process restart.
+
 ## Read reactively in pages
 
 Pages read stores through the accessor. `use()` returns live state
