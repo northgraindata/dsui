@@ -57,6 +57,12 @@ export interface TableRowMenuAction {
   };
 }
 
+export interface TableFilter {
+  field: string;
+  label: string;
+  options: readonly { label: string; value: string }[];
+}
+
 export type PageTableRowLink = {
   path: string;
   params: Record<string, string>;
@@ -98,6 +104,12 @@ export interface TableProps {
   rowLink?: TableRowLink;
   rowActions?: readonly TableRowAction[];
   actions?: readonly TableRowMenuAction[];
+  /** Enables client-side text search across the table's visible columns. */
+  searchable?: boolean;
+  /** Exact-match filters applied to the fetched rows. */
+  filters?: readonly TableFilter[];
+  /** Number of rows displayed per client-side page. */
+  pageSize?: number;
 }
 
 export interface TableNode {

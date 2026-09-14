@@ -20,6 +20,7 @@ import type {
 import type { StackProps } from "./primitives/stack";
 import type {
   TableColumn,
+  TableFilter,
   TableRowAction,
   TableRowMenuAction,
 } from "./primitives/table";
@@ -116,6 +117,17 @@ export function serializeNode(node: PageNode): PageNode {
             : {}),
           ...(node.props.data ? { data: node.props.data } : {}),
           ...(node.props.variant ? { variant: node.props.variant } : {}),
+          ...(node.props.searchable ? { searchable: true } : {}),
+          ...(node.props.filters
+            ? {
+                filters: node.props.filters.map((filter: TableFilter) => ({
+                  field: filter.field,
+                  label: filter.label,
+                  options: filter.options.map((option) => ({ ...option })),
+                })),
+              }
+            : {}),
+          ...(node.props.pageSize ? { pageSize: node.props.pageSize } : {}),
           ...(node.props.columns
             ? {
                 columns: node.props.columns.map((column: TableColumn) => ({

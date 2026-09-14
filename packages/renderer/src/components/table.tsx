@@ -1,5 +1,6 @@
 import type {
   TableColumn,
+  TableFilter,
   PageTableRowAction as TableRowAction,
   TableRowMenuAction,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -8,9 +9,10 @@ import {
   DataTable as CatalogTable,
   Dialog,
   DialogContent,
+  Input,
   Surface,
 } from "@northgraindata/dsui-ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import type { RegistryViewProps } from "../registry/view-registry";
 import type { RendererClient } from "../types/renderer-types";
 import { DataTable as DataGrid } from "./data-table";
@@ -173,6 +175,10 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
   const [columnData, setColumnData] = useState<unknown>();
   const [error, setError] = useState<string>();
   const [refresh, setRefresh] = useState(0);
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [page, setPage] = useState(0);
+  const searchId = useId();
   const reload = useCallback(() => setRefresh((count) => count + 1), []);
   useEffect(() => {
     if (!source && !columnsSource) return;
@@ -214,7 +220,7 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
         Loading records…
       </Surface>
     );
-  const rows = Array.isArray(data)
+  const rows: Record<string, unknown>[] = Array.isArray(data)
     ? data.map((row) =>
         row && typeof row === "object" && !Array.isArray(row)
           ? (row as Record<string, unknown>)
@@ -234,72 +240,170 @@ export function TableView({ client, node, renderNode }: RegistryViewProps) {
   const menuActions = node.props.actions;
   const columns: readonly TableColumn[] =
     node.props.columns ?? Object.keys(rows[0]).map((id) => ({ id, label: id }));
+  const filteredRows = rows.filter((row) => {
+    const matchesSearch =
+      !search ||
+      columns.some((column) =>
+        String(row[column.id] ?? "")
+          .toLocaleLowerCase()
+          .includes(search.toLocaleLowerCase()),
+      );
+    return (
+      matchesSearch &&
+      (node.props.filters ?? []).every(
+        (filter: TableFilter) =>
+          !filters[filter.field] ||
+          String(row[filter.field] ?? "") === filters[filter.field],
+      )
+    );
+  });
+  const pageSize = node.props.pageSize;
+  const pageCount = pageSize
+    ? Math.max(1, Math.ceil(filteredRows.length / pageSize))
+    : 1;
+  const currentPage = Math.min(page, pageCount - 1);
+  const visibleRows = pageSize
+    ? filteredRows.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+    : filteredRows;
   return (
-    <CatalogTable
-      columns={columns}
-      rows={rows}
-      renderCell={(columnId, value, row) => {
-        const column = columns.find((candidate) => candidate.id === columnId);
-        if (!column?.renderCell) return formatCell(value);
-        const cells = Array.isArray(column.renderCell)
-          ? column.renderCell
-          : [column.renderCell];
-        return (
-          <>
-            {cells.map((cell) => (
-              <span key={`${cell.kind}:${JSON.stringify(cell.props)}`}>
-                {renderNode(client, cell, row)}
-              </span>
-            ))}
-          </>
-        );
-      }}
-      onRowClick={
-        rowLink
-          ? (row) => {
-              const href = resolveLink(rowLink.path, rowLink.params, row);
-              if (href) client.navigate(href);
-            }
-          : undefined
-      }
-      renderRowActions={
-        rowActions.length
-          ? (row) => (
-              <>
-                {rowActions
-                  .filter((spec) => matchesWhen(row, spec.when))
-                  .map((spec) => (
-                    <RowActionButton
-                      key={`${spec.label}:${spec.action?.actionId ?? spec.link?.path}`}
+    <div className="grid gap-3">
+      {node.props.searchable || node.props.filters?.length ? (
+        <div className="flex flex-wrap items-end gap-2">
+          {node.props.searchable ? (
+            <div className="grid gap-1 text-[11px] text-secondary">
+              <label htmlFor={searchId}>Search</label>
+              <Input
+                id={searchId}
+                type="search"
+                value={search}
+                placeholder="Search records"
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(0);
+                }}
+              />
+            </div>
+          ) : null}
+          {(node.props.filters ?? []).map((filter: TableFilter) => (
+            <label
+              key={filter.field}
+              className="grid gap-1 text-[11px] text-secondary"
+            >
+              {filter.label}
+              <select
+                className="min-h-[34px] border border-border-strong bg-background px-2.5 text-[12px] text-primary"
+                value={filters[filter.field] ?? ""}
+                onChange={(event) => {
+                  setFilters((current) => ({
+                    ...current,
+                    [filter.field]: event.target.value,
+                  }));
+                  setPage(0);
+                }}
+              >
+                <option value="">All</option>
+                {filter.options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+      ) : null}
+      <CatalogTable
+        columns={columns}
+        rows={visibleRows}
+        renderCell={(columnId, value, row) => {
+          const column = columns.find((candidate) => candidate.id === columnId);
+          if (!column?.renderCell) return formatCell(value);
+          const cells = Array.isArray(column.renderCell)
+            ? column.renderCell
+            : [column.renderCell];
+          return (
+            <>
+              {cells.map((cell) => (
+                <span key={`${cell.kind}:${JSON.stringify(cell.props)}`}>
+                  {renderNode(client, cell, row)}
+                </span>
+              ))}
+            </>
+          );
+        }}
+        onRowClick={
+          rowLink
+            ? (row) => {
+                const href = resolveLink(rowLink.path, rowLink.params, row);
+                if (href) client.navigate(href);
+              }
+            : undefined
+        }
+        renderRowActions={
+          rowActions.length
+            ? (row) => (
+                <>
+                  {rowActions
+                    .filter((spec) => matchesWhen(row, spec.when))
+                    .map((spec) => (
+                      <RowActionButton
+                        key={`${spec.label}:${spec.action?.actionId ?? spec.link?.path}`}
+                        client={client}
+                        spec={spec}
+                        row={row}
+                        onDone={reload}
+                      />
+                    ))}
+                </>
+              )
+            : undefined
+        }
+        renderRowMenu={
+          menuActions?.length
+            ? (row) =>
+                menuActions
+                  .filter((spec: TableRowMenuAction) =>
+                    matchesWhen(row, spec.when),
+                  )
+                  .map((spec: TableRowMenuAction) => (
+                    <MenuAction
+                      key={spec.label}
                       client={client}
                       spec={spec}
                       row={row}
                       onDone={reload}
                     />
-                  ))}
-              </>
-            )
-          : undefined
-      }
-      renderRowMenu={
-        menuActions?.length
-          ? (row) =>
-              menuActions
-                .filter((spec: TableRowMenuAction) =>
-                  matchesWhen(row, spec.when),
-                )
-                .map((spec: TableRowMenuAction) => (
-                  <MenuAction
-                    key={spec.label}
-                    client={client}
-                    spec={spec}
-                    row={row}
-                    onDone={reload}
-                  />
-                ))
-          : undefined
-      }
-    />
+                  ))
+            : undefined
+        }
+      />
+      {pageSize && filteredRows.length > pageSize ? (
+        <div className="flex items-center justify-between gap-3 text-[12px] text-secondary">
+          <span>
+            Page {currentPage + 1} of {pageCount} · {filteredRows.length}{" "}
+            records
+          </span>
+          <div className="flex gap-2">
+            <Button
+              size="small"
+              variant="secondary"
+              disabled={currentPage === 0}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              size="small"
+              variant="secondary"
+              disabled={currentPage >= pageCount - 1}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
