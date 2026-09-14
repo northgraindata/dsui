@@ -1,5 +1,13 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
 import {
+  createConnection,
+  createPool,
+  createVariable,
+  deleteConnection,
+  deletePool,
+  deleteVariable,
+} from "./actions/admin.js";
+import {
   pauseDag,
   terminateDagRun,
   triggerDag,
@@ -15,10 +23,17 @@ import {
   airflowConnectionSchema,
   createContext,
 } from "./context.js";
+import {
+  connectionsPage,
+  poolsPage,
+  usersPage,
+  variablesPage,
+} from "./pages/admin.js";
 import { assetDetailPage, assetListPage } from "./pages/assets.js";
 import { dagDetailPage, dagListPage } from "./pages/dags.js";
 import { overviewPage } from "./pages/overview.js";
 import { dagRunDetailPage, taskInstanceDetailPage } from "./pages/runs.js";
+import { connections, pools, users, variables } from "./resources/admin.js";
 import { assetDetails, assetEvents, assets } from "./resources/assets.js";
 import {
   dagDetails,
@@ -110,6 +125,10 @@ export function createAirflowAdapter(
       assets,
       assetDetails,
       assetEvents,
+      connections,
+      variables,
+      pools,
+      users,
     ],
     actions: [
       triggerDag,
@@ -118,6 +137,12 @@ export function createAirflowAdapter(
       terminateDagRun,
       retryTask,
       clearTask,
+      createConnection,
+      deleteConnection,
+      createVariable,
+      deleteVariable,
+      createPool,
+      deletePool,
     ],
     pages: [
       overviewPage,
@@ -127,6 +152,10 @@ export function createAirflowAdapter(
       taskInstanceDetailPage,
       assetListPage,
       assetDetailPage,
+      connectionsPage,
+      variablesPage,
+      poolsPage,
+      usersPage,
     ],
   });
 }
