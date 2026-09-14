@@ -1,6 +1,6 @@
 import type { ActionReference } from "@northgraindata/dsui-adapter-sdk";
 import { Button } from "@northgraindata/dsui-ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { RegistryViewProps } from "../../registry/view-registry";
 import { WorkbenchIcon } from "../icons";
 import {
@@ -23,6 +23,9 @@ export function CodeBlock({
   onMoveDown,
   canMoveUp,
   canMoveDown,
+  readOnly = false,
+  initialResult,
+  onResult,
 }: {
   client: RegistryViewProps["client"];
   action: ActionReference | string;
@@ -35,11 +38,19 @@ export function CodeBlock({
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  readOnly?: boolean;
+  initialResult?: QueryResultView;
+  onResult: (result: QueryResultView | undefined) => void;
 }) {
   const [value, setValue] = useState(content);
-  const [result, setResult] = useState<QueryResultView>();
+  const [result, setResult] = useState<QueryResultView | undefined>(
+    initialResult,
+  );
   const [error, setError] = useState<string>();
   const [running, setRunning] = useState(false);
+  useEffect(() => {
+    setResult(initialResult);
+  }, [initialResult]);
   const run = async () => {
     if (!value.trim() || running) return;
     setRunning(true);
@@ -52,7 +63,9 @@ export function CodeBlock({
       });
       if (response.status !== "success")
         throw new Error(response.message ?? "Code execution failed");
-      setResult(parseQueryResult(response.data));
+      const nextResult = parseQueryResult(response.data);
+      setResult(nextResult);
+      onResult(nextResult);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Code execution failed",
@@ -67,9 +80,9 @@ export function CodeBlock({
         index={index}
         label={language.toUpperCase()}
         icon="braces"
-        onDelete={onDelete}
-        onMoveUp={onMoveUp}
-        onMoveDown={onMoveDown}
+        onDelete={readOnly ? undefined : onDelete}
+        onMoveUp={readOnly ? undefined : onMoveUp}
+        onMoveDown={readOnly ? undefined : onMoveDown}
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
       />
@@ -87,8 +100,11 @@ export function CodeBlock({
       <SqlEditor
         value={value}
         onChange={(nextValue) => {
+          if (readOnly) return;
           setValue(nextValue);
           onChange(nextValue);
+          setResult(undefined);
+          onResult(undefined);
         }}
         onRun={() => void run()}
         placeholder="Write SQL…"

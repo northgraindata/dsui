@@ -15,6 +15,7 @@ import { SectionView } from "../components/layout/section";
 import { StackView } from "../components/layout/stack";
 import { LinkView } from "../components/link";
 import { NotebookView } from "../components/notebook/notebook";
+import { NotebookCatalogView } from "../components/notebook/catalog";
 import { PageHeaderView } from "../components/page-header";
 import { QueryEditorView } from "../components/query-editor/query-editor";
 import { ResourceView } from "../components/resource";
@@ -64,6 +65,7 @@ const firstPartyViews: readonly [string, ComponentType<RegistryViewProps>][] = [
   ["link", LinkView],
   ["code-block", CodeBlockView],
   ["notebook", NotebookView],
+  ["notebook-catalog", NotebookCatalogView],
   ["select", SelectView],
   ["split-pane", SplitPaneView],
   ["table", TableView],
