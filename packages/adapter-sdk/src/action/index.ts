@@ -7,10 +7,10 @@ export type {
   ActionReference,
   ActionResult,
   ActionRuntimeContext,
-  StoreActionAccessor,
   ActionSuccess,
   ActionTarget,
   AnyActionDefinition,
   InputAction,
   InputlessAction,
+  StoreActionAccessor,
 } from "./types";
