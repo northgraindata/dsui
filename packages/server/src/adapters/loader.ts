@@ -1,15 +1,16 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import {
   type ActionBinding,
   type AdapterDefinition,
   type AdapterInfo,
   createAdapterInstance,
   type ResourceBinding,
+  type StorePersistenceProvider,
   serializeNodes,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
-import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import zodToJsonSchema from "zod-to-json-schema";
 import { assertAdapterDefinition } from "./definition.js";
 import { AdapterHostClient } from "./host.js";
@@ -17,6 +18,7 @@ import { type AdapterFetch, ExternalAdapterManager } from "./installer.js";
 import type {
   AdapterBackend,
   AdapterCatalog,
+  AdapterExecutionContext,
   AdapterPackageSource,
   JsonSchema,
   LoadedAdapter,
@@ -34,10 +36,15 @@ export interface AdapterLoadOptions {
       connection?: unknown;
       target?: string;
       input?: unknown;
+      persistenceNamespace?: string;
     }): Promise<unknown>;
   };
   /** Host call budget in ms (actions run long). */
   hostTimeoutMs?: number;
+  /** Creates a durable provider scoped to one DSUI service. */
+  persistenceProvider?: (namespace: string) => StorePersistenceProvider;
+  /** SQLite path passed to isolated adapter hosts. */
+  persistenceDatabasePath?: string;
 }
 
 type CallableResource = (
@@ -129,16 +136,36 @@ function unhealthy(started: number, error: unknown): HealthStatus {
 }
 
 class LocalBackend implements AdapterBackend {
-  constructor(private readonly definition: AdapterDefinition) {}
+  constructor(
+    private readonly definition: AdapterDefinition,
+    private readonly persistenceProvider?: AdapterLoadOptions["persistenceProvider"],
+  ) {}
+
+  private instanceOptions(context?: AdapterExecutionContext) {
+    return context && this.persistenceProvider
+      ? {
+          persistenceProvider: this.persistenceProvider(
+            context.persistenceNamespace,
+          ),
+        }
+      : {};
+  }
 
   validateConnection(connection: unknown): unknown {
     return this.definition.connectionSchema?.parse(connection) ?? connection;
   }
 
-  async checkHealth(connection: unknown): Promise<HealthStatus> {
+  async checkHealth(
+    connection: unknown,
+    context?: AdapterExecutionContext,
+  ): Promise<HealthStatus> {
     const started = Date.now();
     try {
-      const instance = await createAdapterInstance(this.definition, connection);
+      const instance = await createAdapterInstance(
+        this.definition,
+        connection,
+        this.instanceOptions(context),
+      );
       try {
         return healthy(started);
       } finally {
@@ -149,11 +176,20 @@ class LocalBackend implements AdapterBackend {
     }
   }
 
-  async renderPage(connection: unknown, path: string): Promise<PageDocument> {
-    const instance = await createAdapterInstance(this.definition, connection);
+  async renderPage(
+    connection: unknown,
+    path: string,
+    context?: AdapterExecutionContext,
+  ): Promise<PageDocument> {
+    const instance = await createAdapterInstance(
+      this.definition,
+      connection,
+      this.instanceOptions(context),
+    );
     try {
       const scope = instance.createPageScope(path);
       try {
+        await scope.ready();
         return { path, nodes: serializeNodes(scope.render()) };
       } finally {
         scope.dispose();
@@ -167,13 +203,18 @@ class LocalBackend implements AdapterBackend {
     resourceId: string,
     connection: unknown,
     input: unknown,
+    context?: AdapterExecutionContext,
   ): Promise<{ data: unknown }> {
     const resource = findMember(
       this.definition.resources,
       "resource",
       resourceId,
     );
-    const instance = await createAdapterInstance(this.definition, connection);
+    const instance = await createAdapterInstance(
+      this.definition,
+      connection,
+      this.instanceOptions(context),
+    );
     try {
       const binding = (resource as unknown as CallableResource)(input);
       const result = await instance.executeResource(binding);
@@ -194,11 +235,16 @@ class LocalBackend implements AdapterBackend {
     connection: unknown,
     input: unknown,
     signal?: AbortSignal,
+    context?: AdapterExecutionContext,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   > {
     const action = findMember(this.definition.actions, "action", actionId);
-    const instance = await createAdapterInstance(this.definition, connection);
+    const instance = await createAdapterInstance(
+      this.definition,
+      connection,
+      this.instanceOptions(context),
+    );
     try {
       const binding = (action as unknown as CallableAction)(input);
       const result = await instance.executeAction(binding, { signal });
@@ -236,6 +282,7 @@ class RemoteBackend implements AdapterBackend {
         connection?: unknown;
         target?: string;
         input?: unknown;
+        persistenceNamespace?: string;
       }): Promise<unknown>;
     },
   ) {}
@@ -245,11 +292,18 @@ class RemoteBackend implements AdapterBackend {
     return connection;
   }
 
-  async checkHealth(connection: unknown): Promise<HealthStatus> {
+  async checkHealth(
+    connection: unknown,
+    context?: AdapterExecutionContext,
+  ): Promise<HealthStatus> {
     const started = Date.now();
     try {
       const status = assertHealthStatus(
-        await this.host.request({ method: "health", connection }),
+        await this.host.request({
+          method: "health",
+          connection,
+          persistenceNamespace: context?.persistenceNamespace,
+        }),
         "adapter host",
       );
       return { ...status, latencyMs: status.latencyMs ?? Date.now() - started };
@@ -258,11 +312,16 @@ class RemoteBackend implements AdapterBackend {
     }
   }
 
-  async renderPage(connection: unknown, path: string): Promise<PageDocument> {
+  async renderPage(
+    connection: unknown,
+    path: string,
+    context?: AdapterExecutionContext,
+  ): Promise<PageDocument> {
     const result = await this.host.request({
       method: "page",
       connection,
       input: { path },
+      persistenceNamespace: context?.persistenceNamespace,
     });
     if (!result || typeof result !== "object")
       throw new AdapterExecutionError("Adapter host returned an invalid page");
@@ -273,6 +332,7 @@ class RemoteBackend implements AdapterBackend {
     resourceId: string,
     connection: unknown,
     input: unknown,
+    context?: AdapterExecutionContext,
   ): Promise<{ data: unknown }> {
     try {
       const result = (await this.host.request({
@@ -280,6 +340,7 @@ class RemoteBackend implements AdapterBackend {
         connection,
         target: resourceId,
         input,
+        persistenceNamespace: context?.persistenceNamespace,
       })) as { data?: unknown };
       return { data: result?.data };
     } catch (error) {
@@ -293,6 +354,8 @@ class RemoteBackend implements AdapterBackend {
     actionId: string,
     connection: unknown,
     input: unknown,
+    _signal?: AbortSignal,
+    context?: AdapterExecutionContext,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   > {
@@ -301,6 +364,7 @@ class RemoteBackend implements AdapterBackend {
       connection,
       target: actionId,
       input,
+      persistenceNamespace: context?.persistenceNamespace,
     })) as
       | { status: "success"; data: unknown }
       | { status: "error"; message: string };
@@ -316,10 +380,14 @@ class RemoteBackend implements AdapterBackend {
  * re-enters itself in adapter-host mode. Never inferred from argv, which
  * cannot distinguish normal CLI execution from adapter-host mode.
  */
-export function defaultHostCommand(bundlePath: string): {
+export function defaultHostCommand(
+  bundlePath: string,
+  databasePath?: string,
+): {
   command: string;
   args: string[];
 } {
+  const databaseArgs = databasePath ? ["--database", databasePath] : [];
   try {
     const hostPath = fileURLToPath(
       new URL("../adapter-host.ts", import.meta.url),
@@ -327,14 +395,20 @@ export function defaultHostCommand(bundlePath: string): {
     if (existsSync(hostPath))
       return {
         command: process.execPath,
-        args: [hostPath, "adapter-host", "--bundle", bundlePath],
+        args: [
+          hostPath,
+          "adapter-host",
+          "--bundle",
+          bundlePath,
+          ...databaseArgs,
+        ],
       };
   } catch {
     // Compiled binary: adapter-host.ts is not on disk; re-enter below.
   }
   return {
     command: process.execPath,
-    args: ["adapter-host", "--bundle", bundlePath],
+    args: ["adapter-host", "--bundle", bundlePath, ...databaseArgs],
   };
 }
 
@@ -385,7 +459,7 @@ export async function loadAdapter(
       connectionSchema: toJsonSchema(definition.connectionSchema),
       connectionMethods: toConnectionMethods(definition),
       catalog: catalogFromDefinition(definition),
-      backend: new LocalBackend(definition),
+      backend: new LocalBackend(definition, options.persistenceProvider),
       definition,
     };
   }
@@ -429,7 +503,10 @@ export async function loadAdapter(
   const spawn =
     options.spawnHost ??
     ((bundlePath: string) => {
-      const { command, args } = defaultHostCommand(bundlePath);
+      const { command, args } = defaultHostCommand(
+        bundlePath,
+        options.persistenceDatabasePath,
+      );
       return new AdapterHostClient({
         command,
         args,

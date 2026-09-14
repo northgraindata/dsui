@@ -1,9 +1,9 @@
 import type {
   AdapterDefinition,
   AdapterInfo,
+  PageDocument,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
-import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 
 /**
  * Where an adapter comes from. Every adapter — the default Snowflake
@@ -56,6 +56,11 @@ export interface AdapterCatalog {
 
 export interface AdapterHealth extends HealthStatus {}
 
+export interface AdapterExecutionContext {
+  /** Stable DSUI service id used to isolate persisted adapter state. */
+  readonly persistenceNamespace: string;
+}
+
 /**
  * Execution backend behind a loaded adapter. Local adapters run the SDK
  * in-process; verified community adapters run in an `adapter-host`
@@ -66,14 +71,22 @@ export interface AdapterBackend {
   /** Validate a connection object; returns the parsed value. */
   validateConnection(connection: unknown): unknown;
   /** Probe: instantiate (and dispose) against a connection. */
-  checkHealth(connection: unknown): Promise<HealthStatus>;
+  checkHealth(
+    connection: unknown,
+    context?: AdapterExecutionContext,
+  ): Promise<HealthStatus>;
   /** Renders and validates an adapter page for a concrete path. */
-  renderPage(connection: unknown, path: string): Promise<PageDocument>;
+  renderPage(
+    connection: unknown,
+    path: string,
+    context?: AdapterExecutionContext,
+  ): Promise<PageDocument>;
   /** Execute one resource query; throws AdapterExecutionError on failure. */
   executeResource(
     resourceId: string,
     connection: unknown,
     input: unknown,
+    context?: AdapterExecutionContext,
   ): Promise<{ data: unknown }>;
   /** Execute one action; cancellable in-process, timeout-bound remotely. */
   executeAction(
@@ -81,6 +94,7 @@ export interface AdapterBackend {
     connection: unknown,
     input: unknown,
     signal?: AbortSignal,
+    context?: AdapterExecutionContext,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   >;
