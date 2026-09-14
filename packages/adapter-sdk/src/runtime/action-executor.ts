@@ -24,6 +24,9 @@ export class ActionExecutor<TContext> {
       resource?: AnyResourceDefinition,
       input?: unknown,
     ) => void,
+    private readonly stores: ActionRuntimeContext["stores"],
+    private readonly readyStores: () => Promise<void>,
+    private readonly flushStores: () => Promise<void>,
   ) {}
 
   /**
@@ -37,10 +40,12 @@ export class ActionExecutor<TContext> {
     binding: ActionBinding<TInput, TOutput, never>,
     options?: ActionExecutionOptions,
   ): Promise<ActionResult<TOutput>> {
+    await this.readyStores();
     const actionContext = withRuntimeHelpers(
       this.context,
       this.invalidate,
       options?.signal,
+      this.stores,
     );
     const run = binding.definition.run as (
       input: unknown,
@@ -49,6 +54,7 @@ export class ActionExecutor<TContext> {
     try {
       options?.signal?.throwIfAborted();
       const data = (await run(binding.input, actionContext)) as TOutput;
+      await this.flushStores();
       return { status: "success", data };
     } catch (error) {
       return {
@@ -68,6 +74,7 @@ function withRuntimeHelpers<TContext>(
   context: TContext,
   invalidate: (resource?: AnyResourceDefinition, input?: unknown) => void,
   signal?: AbortSignal,
+  stores?: ActionRuntimeContext["stores"],
 ): TContext & ActionRuntimeContext {
   const augmented = Object.create(
     context != null &&
@@ -83,6 +90,7 @@ function withRuntimeHelpers<TContext>(
   Object.defineProperties(augmented, {
     invalidate: { enumerable: false, value: invalidate },
     signal: { enumerable: false, value: signal },
+    stores: { enumerable: false, value: stores },
   });
   return augmented as TContext & ActionRuntimeContext;
 }

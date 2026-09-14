@@ -7,6 +7,7 @@ export type {
   ActionReference,
   ActionResult,
   ActionRuntimeContext,
+  StoreActionAccessor,
   ActionSuccess,
   ActionTarget,
   AnyActionDefinition,
