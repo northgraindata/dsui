@@ -1,5 +1,5 @@
 import { Link, Outlet } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { Icon } from "./icon";
 import { Wordmark } from "./wordmark";
 
@@ -8,6 +8,18 @@ const destinations = [
   { to: "/services", label: "Adapters", icon: "plug" },
   { to: "/settings", label: "Settings", icon: "gear" },
 ];
+
+const AppChromeContext = createContext<{
+  sidebarMerged: boolean;
+  openSearch(): void;
+}>({
+  sidebarMerged: false,
+  openSearch: () => undefined,
+});
+
+export function useAppChrome() {
+  return useContext(AppChromeContext);
+}
 
 export function AppChrome({
   pathname,
@@ -19,12 +31,34 @@ export function AppChrome({
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
   const [topbarHidden, setTopbarHidden] = useState(false);
+  const sidebarMerged = topbarHidden;
+
   useEffect(() => {
-    const onScroll = () => setTopbarHidden(window.scrollY > 10);
+    const onScroll = (event?: Event) => {
+      const target = event?.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest(".adapter-main") &&
+        target.scrollHeight > target.clientHeight
+      ) {
+        setTopbarHidden(target.scrollTop > 10);
+        return;
+      }
+      setTopbarHidden(window.scrollY > 10);
+    };
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    document.addEventListener("scroll", onScroll, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("scroll", onScroll, true);
+    };
   }, []);
+
   const navigation = destinations.map((item) => (
     <Link
       key={item.to}
@@ -42,48 +76,46 @@ export function AppChrome({
     </Link>
   ));
   return (
-    <div className={`app-chrome ${inAdapter ? "app-chrome--adapter" : ""}`}>
-      <a href="#main-content" className="skip-link">
-        Skip to content
-      </a>
-      <header className={`app-topbar${topbarHidden ? " is-hidden" : ""}`}>
-        <Wordmark />
-        <div className="app-topbar-search">
-          <button type="button" className="app-search" onClick={openSearch}>
-            <Icon name="search" />
-            <span>Search anything…</span>
-            <kbd>⌘ K</kbd>
-          </button>
+    <AppChromeContext.Provider value={{ sidebarMerged, openSearch }}>
+      <div className={`app-chrome${inAdapter ? " app-chrome--adapter" : ""}`}>
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
+        <header className={`app-topbar${sidebarMerged ? " is-hidden" : ""}`}>
+          <Wordmark className="app-header-wordmark" />
+          <div className="app-topbar-search">
+            <button type="button" className="app-search" onClick={openSearch}>
+              <Icon name="search" />
+              <span>Search anything…</span>
+              <kbd>⌘ K</kbd>
+            </button>
+          </div>
+        </header>
+        <div className="app-body">
+          {!inAdapter && (
+            <aside className="app-sidebar">
+              <div
+                className={`app-sidebar-header${sidebarMerged ? " is-visible" : ""}`}
+              >
+                <Wordmark />
+                <button
+                  type="button"
+                  className="app-sidebar-search"
+                  onClick={openSearch}
+                  aria-label="Search anything"
+                  title="Search anything (Command K)"
+                >
+                  <Icon name="search" />
+                </button>
+              </div>
+              <nav aria-label="Main navigation">{navigation}</nav>
+            </aside>
+          )}
+          <main id="main-content" className="app-content">
+            <Outlet />
+          </main>
         </div>
-        <div className="app-topbar-actions">
-          <Link
-            to="/settings"
-            className="app-avatar"
-            aria-label="Workspace settings"
-          >
-            DS
-          </Link>
-        </div>
-      </header>
-      <div className="app-body">
-        {!inAdapter && (
-          <aside className="app-sidebar">
-            <nav aria-label="Main navigation">{navigation}</nav>
-            <div className="app-sidebar-bottom">
-              <Link to="/settings" className="workspace-profile">
-                <span className="app-avatar">DS</span>
-                <span>
-                  My workspace<small>Manage settings</small>
-                </span>
-                <Icon name="chevron" />
-              </Link>
-            </div>
-          </aside>
-        )}
-        <main id="main-content" className="app-content">
-          <Outlet />
-        </main>
       </div>
-    </div>
+    </AppChromeContext.Provider>
   );
 }

@@ -3,8 +3,10 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import { deleteService, type Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
+import { useAppChrome } from "./app-chrome";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
+import { Wordmark } from "./wordmark";
 
 function pageLabel(path: string) {
   if (path === "/") return "Overview";
@@ -41,6 +43,7 @@ export function AdapterWorkspace({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const { openSearch, sidebarMerged } = useAppChrome();
   const [showConfirmRemove, setShowConfirmRemove] = useState(false);
   const pages = navigablePagePaths(paths);
   const query = path === "/query";
@@ -66,7 +69,21 @@ export function AdapterWorkspace({
 
   return (
     <div className="adapter-layout">
-      <aside className="adapter-sidebar">
+      <aside className={`adapter-sidebar${sidebarMerged ? " is-merged" : ""}`}>
+        <div
+          className={`app-sidebar-header${sidebarMerged ? " is-visible" : ""}`}
+        >
+          <Wordmark />
+          <button
+            type="button"
+            className="app-sidebar-search"
+            onClick={openSearch}
+            aria-label="Search anything"
+            title="Search anything (Command K)"
+          >
+            <Icon name="search" />
+          </button>
+        </div>
         <Link to="/services" className="adapter-back">
           <Icon name="chevron" size={14} />
           Back to home
