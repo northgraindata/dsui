@@ -18,6 +18,8 @@ export interface DataSource {
   readonly resourceId: string;
   /** Validated input the runtime executes the query with. */
   readonly input: unknown;
+  /** Freshness declaration copied from the owning definition. */
+  readonly refresh?: RefreshStrategy;
 }
 
 /** Browser-safe resource reference used after page serialization. */

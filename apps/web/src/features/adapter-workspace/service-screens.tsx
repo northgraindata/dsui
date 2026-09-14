@@ -20,8 +20,7 @@ export function ServiceObjectView() {
   return (
     <ServiceScreen
       serviceId={serviceId}
-      viewId={viewId}
-      objectSelection={{ database, objectName, tabId }}
+      pagePath={`/${viewId}/${database}/${objectName}/${tabId}`}
     />
   );
 }
@@ -32,5 +31,10 @@ export function ServicePage() {
     from: "/services/$serviceId/$",
     select: (params) => params._splat,
   });
-  return <ServiceScreen serviceId={serviceId} pagePath={`/${splat}`} />;
+  return (
+    <ServiceScreen
+      serviceId={serviceId}
+      pagePath={splat ? `/${splat}` : undefined}
+    />
+  );
 }

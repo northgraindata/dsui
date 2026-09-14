@@ -18,12 +18,10 @@ export function ServiceScreen({
   serviceId,
   viewId,
   pagePath,
-  objectSelection: _objectSelection,
 }: {
   serviceId: string;
   viewId?: string;
   pagePath?: string;
-  objectSelection?: { database: string; objectName: string; tabId: string };
 }) {
   const navigate = useNavigate();
   const [service, setService] = useState<Service>();
@@ -119,7 +117,10 @@ export function ServiceScreen({
             navigate: (destination) =>
               navigate({
                 to: "/services/$serviceId/$",
-                params: { serviceId: service.id, _splat: destination.slice(1) },
+                params: {
+                  serviceId: service.id,
+                  _splat: decodeURIComponent(destination.slice(1)),
+                },
               }),
           }}
         />

@@ -94,6 +94,7 @@ export function defineResource(options: {
       kind: "resource-binding",
       resourceId: definition.id,
       input,
+      refresh: definition.refresh,
       definition,
     };
   };

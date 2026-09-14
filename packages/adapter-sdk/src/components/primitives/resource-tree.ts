@@ -1,6 +1,5 @@
+import type { DataSource, ResourceReference } from "../../resource";
 import { defineComponent } from "../define";
-import type { DataSource } from "../../resource";
-import type { ResourceReference } from "../../resource";
 import type { PageTableRowLink, TableRowLink } from "./table";
 
 export interface ResourceTreeBranchProps {

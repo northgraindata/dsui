@@ -1,6 +1,6 @@
 import {
-  type PageNode,
   defineComponent,
+  type PageNode,
   Select,
 } from "@northgraindata/dsui-adapter-sdk";
 
@@ -26,39 +26,38 @@ export interface SessionBarProps {
 const options = (values: readonly string[]) =>
   values.map((value) => ({ label: value, value }));
 
-export const SessionBar = defineComponent<
-  SessionBarProps,
-  readonly PageNode[]
->({
-  id: "session-bar",
-  render: (props) => [
-    Select({
-      name: "role",
-      label: "Role",
-      value: props.role,
-      options: options(props.roles),
-      onChange: props.onRole,
-    }),
-    Select({
-      name: "warehouse",
-      label: "Warehouse",
-      value: props.warehouse,
-      options: options(props.warehouses),
-      onChange: props.onWarehouse,
-    }),
-    Select({
-      name: "database",
-      label: "Database",
-      value: props.database,
-      options: options(props.databases),
-      onChange: props.onDatabase,
-    }),
-    Select({
-      name: "schema",
-      label: "Schema",
-      value: props.schema,
-      options: [],
-      onChange: props.onSchema,
-    }),
-  ],
-});
+export const SessionBar = defineComponent<SessionBarProps, readonly PageNode[]>(
+  {
+    id: "session-bar",
+    render: (props) => [
+      Select({
+        name: "role",
+        label: "Role",
+        value: props.role,
+        options: options(props.roles),
+        onChange: props.onRole,
+      }),
+      Select({
+        name: "warehouse",
+        label: "Warehouse",
+        value: props.warehouse,
+        options: options(props.warehouses),
+        onChange: props.onWarehouse,
+      }),
+      Select({
+        name: "database",
+        label: "Database",
+        value: props.database,
+        options: options(props.databases),
+        onChange: props.onDatabase,
+      }),
+      Select({
+        name: "schema",
+        label: "Schema",
+        value: props.schema,
+        options: [],
+        onChange: props.onSchema,
+      }),
+    ],
+  },
+);

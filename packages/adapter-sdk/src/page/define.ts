@@ -27,9 +27,7 @@ import type { AnyPageDefinition, PageRenderContext } from "./types";
 export function definePage<TPath extends string>(options: {
   path: TPath;
   stores?: readonly AnyStoreDefinition[];
-  render: (
-    ctx: PageRenderContext<TPath>,
-  ) => PageNode | readonly PageNode[];
+  render: (ctx: PageRenderContext<TPath>) => PageNode | readonly PageNode[];
 }): AnyPageDefinition & { readonly path: TPath } {
   if (!options.path.startsWith("/"))
     throw new InvalidDefinitionError(

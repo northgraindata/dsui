@@ -6,6 +6,7 @@ import type {
   TableColumn,
   TableProps,
   TableRowAction,
+  TableRowMenuAction,
 } from "../primitives/table";
 import type { ComponentProps } from "../runtime";
 
@@ -84,6 +85,19 @@ export function Table({ client, node, renderNode }: ComponentProps) {
                   row={row}
                   spec={spec}
                   onDone={reload}
+                />
+              ))
+          : undefined
+      }
+      renderRowMenu={
+        props.actions?.length
+          ? (row) =>
+              props.actions!.map((spec) => (
+                <RowMenuAction
+                  key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
+                  client={client}
+                  row={row}
+                  spec={spec}
                 />
               ))
           : undefined
@@ -170,6 +184,47 @@ function RowAction({
   );
 }
 
+function RowMenuAction({
+  client,
+  row,
+  spec,
+}: {
+  client: ComponentProps["client"];
+  row: Record<string, unknown>;
+  spec: TableRowMenuAction;
+}) {
+  const [busy, setBusy] = useState(false);
+  const enabled = matchesWhen(row, spec.when);
+  return (
+    <button
+      type="button"
+      disabled={busy || !enabled}
+      onClick={() => {
+        if (spec.confirmation && !window.confirm(spec.confirmation.description))
+          return;
+        if (spec.link) {
+          const href = resolveLink(spec.link.path, spec.link.params, row);
+          if (href) client.navigate(href);
+          return;
+        }
+        if (!spec.action) return;
+        const input = Object.fromEntries(
+          Object.entries(spec.input ?? {}).map(([key, field]) => [
+            key,
+            row[field],
+          ]),
+        );
+        setBusy(true);
+        client
+          .executeAction({ actionId: actionId(spec.action), input })
+          .finally(() => setBusy(false));
+      }}
+    >
+      {spec.label}
+    </button>
+  );
+}
+
 function matchesWhen(
   row: Record<string, unknown>,
   when: TableRowAction["when"] | TableRowAction["disabledWhen"],
@@ -181,7 +236,10 @@ function matchesWhen(
   return true;
 }
 
-function actionId(action: TableRowAction["action"]): string {
+function actionId(
+  action: TableRowAction["action"] | TableRowMenuAction["action"],
+): string {
+  if (!action) throw new Error("Table action is missing");
   return typeof action === "string" ? action : action.id;
 }
 

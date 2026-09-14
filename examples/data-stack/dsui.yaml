@@ -1,4 +1,6 @@
 adapters:
+  airflow:
+    package: "@northgraindata/dsui-adapter-airflow"
   # Local workspace package, loaded in-process through the uniform loader.
   snowflake:
     package: "@northgraindata/dsui-adapter-snowflake"

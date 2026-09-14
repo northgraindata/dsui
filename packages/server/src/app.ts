@@ -206,6 +206,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     const entries = Object.entries(
       loaded.adapters === undefined
         ? {
+            airflow: {
+              package: "@northgraindata/dsui-adapter-airflow",
+            },
             duckdb: {
               package: "@northgraindata/dsui-adapter-duckdb",
             },

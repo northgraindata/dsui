@@ -36,6 +36,23 @@ export interface TableRowAction {
   };
 }
 
+export interface TableRowMenuAction {
+  label: string;
+  action?: AnyActionDefinition | string;
+  input?: Record<string, string>;
+  link?: TableRowLink;
+  confirmation?: {
+    title: string;
+    description: string;
+    confirmLabel?: string;
+  };
+  when?: {
+    field: string;
+    equals?: string | number | boolean;
+    notEquals?: string | number | boolean;
+  };
+}
+
 export type PageTableRowLink = {
   path: string;
   params: Record<string, string>;
@@ -74,6 +91,7 @@ export interface TableProps {
   variant?: "default" | "data";
   rowLink?: TableRowLink;
   rowActions?: readonly TableRowAction[];
+  actions?: readonly TableRowMenuAction[];
 }
 
 export interface TableNode {

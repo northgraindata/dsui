@@ -23,6 +23,30 @@
 .app-topbar.is-hidden {
   transform: translateY(-100%);
 }
+/* Topbar is gone: rails and layout fill the full viewport height. */
+.app-topbar.is-hidden ~ .app-body {
+  min-height: 100dvh;
+}
+.app-topbar.is-hidden ~ .app-body .adapter-layout {
+  min-height: 100dvh;
+}
+@media (min-width: 641px) {
+  .app-topbar.is-hidden ~ .app-body .app-sidebar,
+  .app-topbar.is-hidden ~ .app-body .adapter-sidebar {
+    top: 0;
+    height: 100dvh;
+  }
+}
+.app-body,
+.adapter-layout {
+  transition: min-height 0.25s ease;
+}
+.app-sidebar,
+.adapter-sidebar {
+  transition:
+    top 0.25s ease,
+    height 0.25s ease;
+}
 @media (prefers-reduced-motion: reduce) {
   .app-topbar {
     transition: none;
@@ -352,7 +376,8 @@
   letter-spacing: 0.1px;
 }
 .adapter-main > .grid > header {
-  display: none;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
 }
 .service-mark {
   border-radius: 8px;
