@@ -68,7 +68,8 @@ export class StoreRegistry {
   async ready(): Promise<void> {
     const definitions = new Map<string, AnyStoreDefinition>();
     for (const definition of this.sources.stores) {
-      if (definition.scope === "adapter") definitions.set(definition.id, definition);
+      if (definition.scope === "adapter")
+        definitions.set(definition.id, definition);
     }
     await Promise.all(
       [...definitions.values()].map((definition) =>

@@ -78,7 +78,9 @@ export async function publicService(
     };
   }
   const connection = connectionFor(deps.cipher, source);
-  const health = await adapter.backend.checkHealth(connection);
+  const health = await adapter.backend.checkHealth(connection, {
+    persistenceNamespace: source.service.id,
+  });
   return {
     id: source.service.id,
     name: source.service.name ?? adapter.metadata.name,
@@ -232,6 +234,7 @@ export function registerServiceRoutes(
         await adapter.backend.renderPage(
           connectionFor(deps.cipher, source),
           path,
+          { persistenceNamespace: source.service.id },
         ),
       );
     } catch (error) {
