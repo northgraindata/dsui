@@ -80,7 +80,7 @@ export function Table({ client, node, renderNode }: ComponentProps) {
           ? (row) =>
               props.rowActions!.map((spec) => (
                 <RowAction
-                  key={`${spec.label}:${actionId(spec.action)}`}
+                  key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
                   client={client}
                   row={row}
                   spec={spec}
@@ -155,7 +155,7 @@ function RowAction({
   return (
     <button
       type="button"
-      disabled={busy || disabled || !enabled}
+      disabled={busy || disabled || !enabled || (!spec.action && !spec.link)}
       onClick={() => {
         if (
           spec.confirmation &&
@@ -164,6 +164,12 @@ function RowAction({
           )
         )
           return;
+        if (spec.link) {
+          const href = resolveLink(spec.link.path, spec.link.params, row);
+          if (href) client.navigate(href);
+          return;
+        }
+        if (!spec.action) return;
         const input = Object.fromEntries(
           Object.entries(spec.input ?? {}).map(([key, field]) => [
             key,
@@ -174,7 +180,20 @@ function RowAction({
         client
           .executeAction({ actionId: actionId(spec.action), input })
           .then((result) => {
-            if (result.status === "success") onDone();
+            if (result.status !== "success") return;
+            onDone();
+            if (spec.successLink) {
+              const resultData =
+                result.data && typeof result.data === "object"
+                  ? (result.data as Record<string, unknown>)
+                  : {};
+              const href = resolveLink(
+                spec.successLink.path,
+                spec.successLink.params,
+                { ...row, ...resultData },
+              );
+              if (href) client.navigate(href);
+            }
           })
           .finally(() => setBusy(false));
       }}
