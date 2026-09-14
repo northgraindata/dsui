@@ -3,6 +3,7 @@ import {
   createStoreInstance,
   type StoreDefinition,
   type StoreInstance,
+  type StorePersistenceProvider,
 } from "../store/index";
 
 type AnyInstance = StoreInstance<
@@ -30,7 +31,10 @@ export class StoreRegistry {
    * @param sources - Adapter-level and page-level store definitions
    * used for id resolution.
    */
-  constructor(private readonly sources: ScopeSources) {}
+  constructor(
+    private readonly sources: ScopeSources,
+    readonly persistenceProvider?: StorePersistenceProvider,
+  ) {}
 
   /**
    * Returns the adapter-scoped instance for a definition, creating it
@@ -47,9 +51,35 @@ export class StoreRegistry {
   ): StoreInstance<TState, TActions> {
     const existing = this.adapterStores.get(definition.id);
     if (existing) return existing as unknown as StoreInstance<TState, TActions>;
-    const created = createStoreInstance(definition);
+    const created = createStoreInstance(definition, {
+      persistenceProvider: this.persistenceProvider,
+    });
     this.adapterStores.set(definition.id, created as unknown as AnyInstance);
     return created;
+  }
+
+  async flush(): Promise<void> {
+    await Promise.all(
+      [...this.adapterStores.values()].map((store) => store.flush()),
+    );
+  }
+
+  /** Resolves after all adapter-scoped persistent stores have hydrated. */
+  async ready(): Promise<void> {
+    const definitions = new Map<string, AnyStoreDefinition>();
+    for (const definition of this.sources.stores) {
+      if (definition.scope === "adapter") definitions.set(definition.id, definition);
+    }
+    await Promise.all(
+      [...definitions.values()].map((definition) =>
+        this.adapterStore(
+          definition as StoreDefinition<
+            Record<string, unknown>,
+            Record<string, (...args: never[]) => unknown>
+          >,
+        ).ready(),
+      ),
+    );
   }
 
   /**
