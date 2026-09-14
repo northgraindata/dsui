@@ -1,7 +1,6 @@
-import { defineComponent } from "../define";
 import type { AnyActionDefinition } from "../../action";
-import type { DataSource } from "../../resource";
-import type { ResourceReference } from "../../resource";
+import type { DataSource, ResourceReference } from "../../resource";
+import { defineComponent } from "../define";
 
 export interface QueryEditorProps {
   language: string;
@@ -29,8 +28,5 @@ export interface QueryExplorerDocument {
 
 export const QueryEditor = defineComponent<QueryEditorProps, QueryEditorNode>({
   id: "query-editor",
-  render: (props) => {
-    if (!props.language) throw new Error("QueryEditor requires a language");
-    return { kind: "query-editor", props: { ...props } };
-  },
+  path: "./ui/query-editor",
 });

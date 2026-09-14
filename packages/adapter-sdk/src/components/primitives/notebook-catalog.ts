@@ -29,5 +29,5 @@ export const NotebookCatalog = defineComponent<
   NotebookCatalogNode
 >({
   id: "notebook-catalog",
-  render: (props) => ({ kind: "notebook-catalog", props: { ...props } }),
+  path: "./ui/notebook-catalog",
 });

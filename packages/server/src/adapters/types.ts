@@ -48,10 +48,15 @@ export interface ActionCatalogEntry {
 export interface PageCatalogEntry {
   path: string;
 }
+export interface ComponentCatalogEntry {
+  id: string;
+  path: string;
+}
 export interface AdapterCatalog {
   resources: ResourceCatalogEntry[];
   actions: ActionCatalogEntry[];
   pages: PageCatalogEntry[];
+  components: ComponentCatalogEntry[];
 }
 
 export interface AdapterHealth extends HealthStatus {}
@@ -122,6 +127,8 @@ export interface LoadedAdapter {
   readonly backend: AdapterBackend;
   /** The live definition. Present for in-process adapters only. */
   readonly definition?: AdapterDefinition;
+  /** Verified browser component bundle for external adapters. */
+  readonly browserBundlePath?: string;
 }
 
 export class AdapterLoadError extends Error {

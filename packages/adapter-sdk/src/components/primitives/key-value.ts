@@ -1,5 +1,5 @@
-import { defineComponent } from "../define";
 import type { DataSource } from "../../resource";
+import { defineComponent } from "../define";
 
 export interface KeyValueProps {
   title?: string;
@@ -12,7 +12,7 @@ export interface KeyValueNode {
   readonly props: KeyValueProps;
 }
 
-export const KeyValue = defineComponent<KeyValueProps, KeyValueNode>({
+export const KeyValue = defineComponent<KeyValueProps>({
   id: "key-value",
-  render: (props) => ({ kind: "key-value", props: { ...props } }),
+  path: "./ui/key-value",
 });

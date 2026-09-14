@@ -155,6 +155,7 @@ export {
   type ValueNode,
   type ValueProps,
 } from "./components/index";
+export type { ComponentClient, ComponentProps } from "./components/runtime";
 export {
   type AnyPageDefinition,
   definePage,
@@ -225,6 +226,25 @@ export const adapterManifestSchema = z.object({
   resources: z.array(z.string()).default([]),
   actions: z.array(z.string()).default([]),
   pages: z.array(z.string()).default([]),
+  components: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        path: z.string().regex(/^\.\/ui\/[A-Za-z0-9._/-]+$/),
+      }),
+    )
+    .default([]),
+  browser: z
+    .object({
+      entry: z.string().regex(/^\.\/dist\/[A-Za-z0-9._/-]+\.mjs$/),
+      bytes: z
+        .number()
+        .int()
+        .positive()
+        .max(5 * 1024 * 1024),
+      sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .optional(),
   bundle: z.object({
     bytes: z
       .number()

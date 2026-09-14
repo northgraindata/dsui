@@ -130,6 +130,7 @@ export async function runAdapterHost(): Promise<number> {
             inputSchema: inputSchemaOf(action, `action "${action.id}"`),
           })),
           pages: definition.pages.map((page) => ({ path: page.path })),
+          components: [],
         });
         break;
       }

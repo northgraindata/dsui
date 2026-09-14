@@ -115,6 +115,7 @@ export function catalogFromDefinition<TContext, TConfig>(
       ),
     })),
     pages: definition.pages.map((page) => ({ path: page.path })),
+    components: [],
   };
 }
 
@@ -261,7 +262,7 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
   if (!value || typeof value !== "object")
     throw new AdapterLoadError(`Invalid adapter catalog from ${from}`);
   const catalog = value as Record<string, unknown>;
-  for (const key of ["resources", "actions", "pages"] as const) {
+  for (const key of ["resources", "actions", "pages", "components"] as const) {
     if (!Array.isArray(catalog[key]))
       throw new AdapterLoadError(`Invalid adapter catalog from ${from}`);
   }
@@ -534,7 +535,11 @@ export async function loadAdapter(
       resources: catalog.resources,
       actions: catalog.actions,
       pages: catalog.pages,
+      components: found.manifest.components,
     },
     backend: new RemoteBackend(host),
+    ...(found.browserBundlePath
+      ? { browserBundlePath: found.browserBundlePath }
+      : {}),
   };
 }

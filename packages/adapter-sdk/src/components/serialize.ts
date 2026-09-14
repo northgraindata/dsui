@@ -422,6 +422,10 @@ export function serializeNode(node: PageNode): PageNode {
         kind: node.kind,
         props: {
           component: node.props.component,
+          path: node.props.path,
+          ...(node.props.browserUrl
+            ? { browserUrl: node.props.browserUrl }
+            : {}),
           ...(node.props.props ? { props: { ...node.props.props } } : {}),
         },
       };

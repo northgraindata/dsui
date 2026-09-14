@@ -1,6 +1,6 @@
-import { defineComponent } from "../define";
 import type { AnyActionDefinition } from "../../action";
 import type { DataSource } from "../../resource";
+import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
 
 export interface TableColumn {
@@ -81,11 +81,7 @@ export interface TableNode {
   readonly props: TableProps;
 }
 
-export const Table = defineComponent<TableProps, TableNode>({
+export const Table = defineComponent<TableProps>({
   id: "table",
-  render: (props) => {
-    if (props.rowLink && !props.rowLink.path.startsWith("/"))
-      throw new Error("Table rowLink path must be absolute");
-    return { kind: "table", props: { ...props } };
-  },
+  path: "./ui/table",
 });

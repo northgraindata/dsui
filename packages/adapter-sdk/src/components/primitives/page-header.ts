@@ -1,13 +1,16 @@
+import type { ActionReference } from "../../action";
 import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
 import type { FieldReference } from "./collection";
-import type { ActionReference } from "../../action";
 
 export interface PageHeaderProps {
   title: string | FieldReference;
   description?: string | FieldReference;
   icon?: string | FieldReference;
-  badge?: { label: string | FieldReference; tone?: "healthy" | "warning" | "unavailable" | "info" | FieldReference };
+  badge?: {
+    label: string | FieldReference;
+    tone?: "healthy" | "warning" | "unavailable" | "info" | FieldReference;
+  };
   meta?: string | FieldReference;
   variant?: "default" | "detail";
   tags?: PageNode | readonly PageNode[];

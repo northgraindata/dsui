@@ -3,7 +3,12 @@ import type { PageNode } from "../nodes";
 import type { FieldReference } from "./collection";
 import type { TableRowLink } from "./table";
 
-export type CardVariant = "default" | "subtle" | "metric" | "interactive" | "panel";
+export type CardVariant =
+  | "default"
+  | "subtle"
+  | "metric"
+  | "interactive"
+  | "panel";
 export type CardBadgeTone = "healthy" | "warning" | "unavailable" | "info";
 export type CardValue = string | FieldReference;
 

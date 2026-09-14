@@ -48,5 +48,5 @@ export interface NotebookNode {
 
 export const Notebook = defineComponent<NotebookProps, NotebookNode>({
   id: "notebook",
-  render: (props) => ({ kind: "notebook", props: { ...props } }),
+  path: "./ui/notebook",
 });

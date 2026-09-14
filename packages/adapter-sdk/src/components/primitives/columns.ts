@@ -20,6 +20,9 @@ export const Columns = defineComponent<ColumnsProps, ColumnsNode>({
   render: (props) => {
     if (props.columns.length === 0)
       throw new Error("Columns requires at least one column");
-    return { kind: "columns", props: { ...props, columns: [...props.columns] } };
+    return {
+      kind: "columns",
+      props: { ...props, columns: [...props.columns] },
+    };
   },
 });

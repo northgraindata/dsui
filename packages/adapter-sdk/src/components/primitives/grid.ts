@@ -18,7 +18,9 @@ export const Grid = defineComponent<GridProps, GridNode>({
   render: (props) => {
     if (
       props.columns !== undefined &&
-      (!Number.isInteger(props.columns) || props.columns < 1 || props.columns > 6)
+      (!Number.isInteger(props.columns) ||
+        props.columns < 1 ||
+        props.columns > 6)
     ) {
       throw new Error("Grid columns must be an integer between 1 and 6");
     }
