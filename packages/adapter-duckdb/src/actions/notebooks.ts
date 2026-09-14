@@ -52,6 +52,31 @@ function openNotebook(ctx: Ctx, id: string) {
   session(ctx).actions.openNotebook(id);
 }
 
+function newNotebookRecord(title?: string): NotebookRecord {
+  const id = `notebook-${crypto.randomUUID()}`;
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const createdAt = now.toISOString();
+  return {
+    id,
+    title: title ?? `Notebook ${timestamp}`,
+    description: "",
+    environment: "DuckDB",
+    location: "Local workspace",
+    createdAt,
+    updatedAt: createdAt,
+    lastViewedAt: createdAt,
+    blocks: [
+      {
+        id: `markdown-${crypto.randomUUID()}`,
+        kind: "markdown",
+        content: "## New note\n\nClick to edit this Markdown block.",
+      },
+    ],
+  };
+}
+
 function normalizeBlock(
   value: z.infer<typeof block>,
 ): NotebookRecord["blocks"][number] {
@@ -106,34 +131,13 @@ export const createNotebook = defineAction({
   id: "create-notebook",
   input: z.object({ title: z.string().min(1).max(160).optional() }),
   run: ({ title }, ctx: Ctx) => {
-    const id = `notebook-${crypto.randomUUID()}`;
-    const now = new Date();
-    const pad = (value: number) => String(value).padStart(2, "0");
-    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    const notebookTitle = title ?? `Notebook ${timestamp}`;
-    const notebook: NotebookRecord = {
-      id,
-      title: notebookTitle,
-      description: "",
-      environment: "DuckDB",
-      location: "Local workspace",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastViewedAt: new Date().toISOString(),
-      blocks: [
-        {
-          id: `markdown-${crypto.randomUUID()}`,
-          kind: "markdown",
-          content: "## New note\n\nClick to edit this Markdown block.",
-        },
-      ],
-    };
+    const notebook = newNotebookRecord(title);
     store(ctx).set({
       notebooks: [...store(ctx).get().notebooks, notebook],
-      selectedId: id,
+      selectedId: notebook.id,
     });
-    openNotebook(ctx, id);
-    return { id };
+    openNotebook(ctx, notebook.id);
+    return { id: notebook.id };
   },
 });
 
@@ -233,8 +237,12 @@ export const deleteNotebook = defineAction({
     const remaining = store(ctx)
       .get()
       .notebooks.filter((notebook) => notebook.id !== id);
-    if (remaining.length === 0)
-      throw new Error("At least one notebook is required");
+    if (remaining.length === 0) {
+      const replacement = newNotebookRecord();
+      store(ctx).set({ notebooks: [replacement], selectedId: replacement.id });
+      openNotebook(ctx, replacement.id);
+      return { id, replacementId: replacement.id };
+    }
     store(ctx).set({
       notebooks: remaining,
       selectedId: remaining[0].id,

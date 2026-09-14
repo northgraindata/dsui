@@ -30,6 +30,20 @@ export const notebooksPage = definePage({
     const notebook =
       state.notebooks.find((item) => item.id === params.notebookId) ??
       state.notebooks[0];
+    if (!notebook)
+      return [
+        PageHeader({
+          title: "Notebooks",
+          description: "Combine notes and executable SQL in one workspace.",
+        }),
+        NotebookCatalog({
+          notebooks: [],
+          actions: {
+            create: "create-notebook",
+            import: "import-notebook",
+          },
+        }),
+      ];
     return [
       PageHeader({
         title: "Notebooks",
