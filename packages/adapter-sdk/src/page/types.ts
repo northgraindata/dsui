@@ -69,6 +69,8 @@ export interface StoreAccessor {
 export interface PageRenderContext<TPath extends string> {
   /** Route params inferred from the path (see {@link ExtractRouteParams}). */
   params: ExtractRouteParams<TPath>;
+  /** Query parameters from the concrete adapter page URL. */
+  query: URLSearchParams;
   /** Store accessor for reactive state and actions. */
   stores: StoreAccessor;
 }
@@ -90,6 +92,7 @@ export interface AnyPageDefinition {
    */
   readonly render: (ctx: {
     params: Record<string, string>;
+    query: URLSearchParams;
     stores: StoreAccessor;
   }) => PageNode | readonly PageNode[];
 }

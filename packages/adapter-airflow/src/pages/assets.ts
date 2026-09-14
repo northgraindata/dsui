@@ -16,6 +16,8 @@ export const assetListPage = definePage({
     }),
     Table({
       source: assets(),
+      searchable: true,
+      pageSize: 25,
       columns: [
         { id: "name", label: "Asset" },
         { id: "uri", label: "URI" },
@@ -49,6 +51,7 @@ export const assetDetailPage = definePage({
             label: "Events",
             content: Table({
               source: assetEvents(input),
+              pageSize: 25,
               columns: [
                 { id: "timestamp", label: "Timestamp" },
                 { id: "sourceDagId", label: "Source DAG" },

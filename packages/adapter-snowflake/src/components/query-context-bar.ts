@@ -1,7 +1,6 @@
 import {
   defineComponent,
   KeyValue,
-  type KeyValueNode,
 } from "@northgraindata/dsui-adapter-sdk";
 
 export interface QueryContextBarProps {
@@ -11,10 +10,7 @@ export interface QueryContextBarProps {
   schema: string | null;
 }
 
-export const QueryContextBar = defineComponent<
-  QueryContextBarProps,
-  KeyValueNode
->({
+export const QueryContextBar = defineComponent<QueryContextBarProps>({
   id: "query-context-bar",
   render: (props) => KeyValue({ title: "Context", data: { ...props } }),
 });

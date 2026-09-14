@@ -16,9 +16,12 @@ export interface TableRowLink {
 
 export interface TableRowAction {
   label: string;
+  icon?: string;
   variant?: "primary" | "secondary" | "danger";
-  action: AnyActionDefinition | string;
+  action?: AnyActionDefinition | string;
+  link?: TableRowLink;
   input?: Record<string, string>;
+  successLink?: TableRowLink;
   confirmation?: {
     title: string;
     description: string;
@@ -41,6 +44,7 @@ export interface TableRowMenuAction {
   action?: AnyActionDefinition | string;
   input?: Record<string, string>;
   link?: TableRowLink;
+  successLink?: TableRowLink;
   confirmation?: {
     title: string;
     description: string;
@@ -51,6 +55,12 @@ export interface TableRowMenuAction {
     equals?: string | number | boolean;
     notEquals?: string | number | boolean;
   };
+}
+
+export interface TableFilter {
+  field: string;
+  label: string;
+  options: readonly { label: string; value: string }[];
 }
 
 export type PageTableRowLink = {
@@ -92,6 +102,9 @@ export interface TableProps {
   rowLink?: TableRowLink;
   rowActions?: readonly TableRowAction[];
   actions?: readonly TableRowMenuAction[];
+  searchable?: boolean;
+  filters?: readonly TableFilter[];
+  pageSize?: number;
 }
 
 export interface TableNode {

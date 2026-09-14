@@ -2,7 +2,12 @@ import { Buffer } from "node:buffer";
 import { z } from "@northgraindata/dsui-adapter-sdk";
 import type {
   AirflowClient,
+  AirflowConnection,
+  AirflowEventLog,
   AirflowHttpConfig,
+  AirflowPool,
+  AirflowUser,
+  AirflowVariable,
   AirflowVersion,
   Asset,
   AssetEvent,
@@ -17,6 +22,9 @@ import type {
 
 const versionResponseSchema = z.object({
   version: z.string().min(1),
+});
+const tokenResponseSchema = z.object({
+  access_token: z.string().min(1),
 });
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 
@@ -59,6 +67,10 @@ const airflow2DagCollectionSchema = z.object({
 });
 const airflow2DagDetailsSchema = airflow2DagSchema.extend({
   fileloc: z.string().optional().default(""),
+  file_token: z.string().min(1).optional(),
+});
+const dagSourceSchema = z.object({
+  content: z.string(),
 });
 const taskSchema = z.object({
   task_id: z.string().min(1),
@@ -219,6 +231,70 @@ const datasetEventCollectionSchema = z.object({
   dataset_events: z.array(datasetEventSchema).max(100),
   total_entries: z.number().int().nonnegative(),
 });
+const connectionSchema = z.object({
+  connection_id: z.string().min(1),
+  conn_type: z.string().min(1),
+  description: nullableString,
+  host: nullableString,
+  login: nullableString,
+  schema: nullableString,
+  port: z.number().int().nullable().optional(),
+});
+const connectionCollectionSchema = z.object({
+  connections: z.array(connectionSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const variableSchema = z.object({
+  key: z.string().min(1),
+  description: nullableString,
+  is_encrypted: z.boolean().optional().default(false),
+});
+const variableCollectionSchema = z.object({
+  variables: z.array(variableSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const poolSchema = z.object({
+  name: z.string().min(1),
+  slots: z.number().int().nonnegative(),
+  occupied_slots: z.number().int().nonnegative().optional().default(0),
+  running_slots: z.number().int().nonnegative().optional().default(0),
+  queued_slots: z.number().int().nonnegative().optional().default(0),
+  open_slots: z.number().int().nonnegative().optional().default(0),
+  description: nullableString,
+});
+const poolCollectionSchema = z.object({
+  pools: z.array(poolSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const userSchema = z.object({
+  username: z.string().min(1),
+  first_name: z.string().optional().default(""),
+  last_name: z.string().optional().default(""),
+  email: z.string().optional().default(""),
+  active: z.boolean().optional().default(true),
+  roles: z
+    .array(z.object({ name: z.string() }))
+    .optional()
+    .default([]),
+});
+const userCollectionSchema = z.object({
+  users: z.array(userSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
+const eventLogSchema = z.object({
+  event_log_id: z.union([z.string(), z.number()]).optional(),
+  id: z.union([z.string(), z.number()]).optional(),
+  when: z.string().nullable().optional(),
+  timestamp: z.string().nullable().optional(),
+  event: z.string().nullable().optional(),
+  dag_id: z.string().nullable().optional(),
+  task_id: z.string().nullable().optional(),
+  owner: z.string().nullable().optional(),
+});
+const eventLogCollectionSchema = z.object({
+  event_logs: z.array(eventLogSchema).max(100),
+  total_entries: z.number().int().nonnegative(),
+});
 
 type DagPayload = z.output<typeof dagSchema>;
 
@@ -362,6 +438,52 @@ function mapDataset(dataset: z.output<typeof datasetSchema>): Asset {
   };
 }
 
+function mapConnection(
+  connection: z.output<typeof connectionSchema>,
+): AirflowConnection {
+  return {
+    connectionId: connection.connection_id,
+    connectionType: connection.conn_type,
+    description: connection.description ?? "",
+    host: connection.host ?? "",
+    login: connection.login ?? "",
+    schema: connection.schema ?? "",
+    port: connection.port ?? null,
+  };
+}
+
+function mapVariable(
+  variable: z.output<typeof variableSchema>,
+): AirflowVariable {
+  return {
+    key: variable.key,
+    description: variable.description ?? "",
+    isEncrypted: variable.is_encrypted,
+  };
+}
+
+function mapPool(pool: z.output<typeof poolSchema>): AirflowPool {
+  return {
+    name: pool.name,
+    slots: pool.slots,
+    occupiedSlots: pool.occupied_slots,
+    runningSlots: pool.running_slots,
+    queuedSlots: pool.queued_slots,
+    openSlots: pool.open_slots,
+    description: pool.description ?? "",
+  };
+}
+
+function mapUser(user: z.output<typeof userSchema>): AirflowUser {
+  return {
+    username: user.username,
+    name: `${user.first_name} ${user.last_name}`.trim(),
+    email: user.email,
+    active: user.active,
+    roles: user.roles.map((role) => role.name).join(", "),
+  };
+}
+
 function normalizeBaseUrl(value: string): URL {
   const url = new URL(value);
   if (
@@ -387,11 +509,12 @@ export function createAirflowClient(
   const baseUrl = normalizeBaseUrl(config.baseUrl);
   const apiVersion = config.apiVersion ?? "v2";
   const isAirflow2 = apiVersion === "v1";
-  const authorization =
-    config.apiVersion === "v1"
-      ? `Basic ${Buffer.from(`${config.username}:${config.password}`, "utf8").toString("base64")}`
-      : `Bearer ${config.token}`;
+  const basicAuthorization = isAirflow2
+    ? `Basic ${Buffer.from(`${config.username}:${config.password}`, "utf8").toString("base64")}`
+    : undefined;
   const lifetime = new AbortController();
+  let accessToken: string | undefined;
+  let tokenRequest: Promise<string> | undefined;
 
   async function readJson(
     response: Response,
@@ -436,20 +559,19 @@ export function createAirflowClient(
     }
   }
 
-  async function request<T>(
+  async function request<TSchema extends z.ZodTypeAny>(
     path: string,
-    schema: z.ZodType<T, z.ZodTypeDef, any>,
+    schema: TSchema,
     signal?: AbortSignal,
     init: RequestInit = {},
-  ): Promise<T> {
+  ): Promise<z.output<TSchema>> {
     const combinedSignal = AbortSignal.any([
       lifetime.signal,
       ...(signal ? [signal] : []),
     ]);
     combinedSignal.throwIfAborted();
-    const response = await fetchFn(
-      new URL(`api/${apiVersion}/${path}`, baseUrl),
-      {
+    const send = async (authorization: string) =>
+      fetchFn(new URL(`api/${apiVersion}/${path}`, baseUrl), {
         ...init,
         headers: {
           Authorization: authorization,
@@ -460,8 +582,17 @@ export function createAirflowClient(
         redirect: "error",
         signal: combinedSignal,
         verbose: true,
-      } as RequestInit,
-    );
+      } as RequestInit);
+    let authorization = basicAuthorization;
+    if (!authorization)
+      authorization = `Bearer ${await getAccessToken(signal)}`;
+    let response = await send(authorization);
+    if (!isAirflow2 && response.status === 401) {
+      await response.body?.cancel();
+      if (`Bearer ${accessToken}` === authorization) accessToken = undefined;
+      authorization = `Bearer ${await getAccessToken(signal)}`;
+      response = await send(authorization);
+    }
     if (!response.ok) {
       let detail = "";
       try {
@@ -489,10 +620,52 @@ export function createAirflowClient(
         `Airflow request failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`,
       );
     }
+    if (response.status === 204) return undefined as z.output<TSchema>;
     const body = await readJson(response, combinedSignal);
     const parsed = schema.safeParse(body);
     if (!parsed.success) throw new Error("Invalid Airflow response");
     return parsed.data;
+  }
+
+  async function getAccessToken(signal?: AbortSignal): Promise<string> {
+    if (!accessToken) {
+      tokenRequest ??= requestAccessToken().finally(() => {
+        tokenRequest = undefined;
+      });
+      accessToken = await tokenRequest;
+    }
+    signal?.throwIfAborted();
+    return accessToken;
+  }
+
+  async function requestAccessToken(): Promise<string> {
+    lifetime.signal.throwIfAborted();
+    const response = await fetchFn(new URL("auth/token", baseUrl), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "dsui-airflow/0.1",
+      },
+      body: JSON.stringify({
+        username: config.username,
+        password: config.password,
+      }),
+      redirect: "error",
+      signal: lifetime.signal,
+      verbose: true,
+    } as RequestInit);
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new Error(
+        `Airflow authentication failed (HTTP ${response.status})`,
+      );
+    }
+    const body = await readJson(response, lifetime.signal);
+    const parsed = tokenResponseSchema.safeParse(body);
+    if (!parsed.success)
+      throw new Error("Invalid Airflow authentication response");
+    return parsed.data.access_token;
   }
 
   return {
@@ -530,6 +703,26 @@ export function createAirflowClient(
         signal,
       );
       return { ...mapDag(result), fileLocation: result.fileloc };
+    },
+    getDagSource: async (dagId, signal): Promise<string> => {
+      let sourceId = dagId;
+      if (isAirflow2) {
+        const dag = await request(
+          `dags/${encodeURIComponent(dagId)}`,
+          airflow2DagDetailsSchema,
+          signal,
+        );
+        if (!dag.file_token)
+          throw new Error("Airflow did not provide a DAG source file token");
+        sourceId = dag.file_token;
+      }
+      return (
+        await request(
+          `dagSources/${encodeURIComponent(sourceId)}`,
+          dagSourceSchema,
+          signal,
+        )
+      ).content;
     },
     listDagTasks: async (dagId, signal): Promise<DagTask[]> => {
       if (isAirflow2) {
@@ -662,6 +855,18 @@ export function createAirflowClient(
         );
       return mapDag(await request(path, dagSchema, signal, init));
     },
+    setDagRunState: async (dagId, dagRunId, state, signal): Promise<DagRun> =>
+      mapDagRun(
+        await request(
+          `dags/${encodeURIComponent(dagId)}/dagRuns/${encodeURIComponent(dagRunId)}`,
+          dagRunSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ state }),
+          },
+        ),
+      ),
     clearTaskInstance: async (input, onlyFailed, signal): Promise<void> => {
       if (isAirflow2 && input.mapIndex >= 0)
         throw new Error(
@@ -753,5 +958,171 @@ export function createAirflowClient(
         sourceMapIndex: event.source_map_index ?? null,
       }));
     },
+    listConnections: async (signal): Promise<AirflowConnection[]> => {
+      const result = await request(
+        "connections?limit=100&offset=0&order_by=connection_id",
+        connectionCollectionSchema,
+        signal,
+      );
+      return result.connections.map(mapConnection);
+    },
+    createConnection: async (input, signal): Promise<AirflowConnection> =>
+      mapConnection(
+        await request("connections", connectionSchema, signal, {
+          method: "POST",
+          body: JSON.stringify({
+            connection_id: input.connectionId,
+            conn_type: input.connectionType,
+            description: input.description || null,
+            host: input.host || null,
+            login: input.login || null,
+            schema: input.schema || null,
+            port: input.port,
+            password: input.password || null,
+            extra: input.extra || null,
+          }),
+        }),
+      ),
+    updateConnection: async (input, signal): Promise<AirflowConnection> =>
+      mapConnection(
+        await request(
+          `connections/${encodeURIComponent(input.connectionId)}`,
+          connectionSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              conn_type: input.connectionType,
+              description: input.description || null,
+              host: input.host || null,
+              login: input.login || null,
+              schema: input.schema || null,
+              port: input.port,
+              password: input.password || undefined,
+              extra: input.extra || undefined,
+            }),
+          },
+        ),
+      ),
+    deleteConnection: async (connectionId, signal): Promise<void> => {
+      await request(
+        `connections/${encodeURIComponent(connectionId)}`,
+        z.unknown(),
+        signal,
+        { method: "DELETE" },
+      );
+    },
+    listVariables: async (signal): Promise<AirflowVariable[]> => {
+      const result = await request(
+        "variables?limit=100&offset=0&order_by=key",
+        variableCollectionSchema,
+        signal,
+      );
+      return result.variables.map(mapVariable);
+    },
+    createVariable: async (input, signal): Promise<AirflowVariable> =>
+      mapVariable(
+        await request("variables", variableSchema, signal, {
+          method: "POST",
+          body: JSON.stringify({
+            key: input.key,
+            value: input.value,
+            description: input.description || null,
+          }),
+        }),
+      ),
+    updateVariable: async (input, signal): Promise<AirflowVariable> =>
+      mapVariable(
+        await request(
+          `variables/${encodeURIComponent(input.key)}`,
+          variableSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              value: input.value,
+              description: input.description || null,
+            }),
+          },
+        ),
+      ),
+    deleteVariable: async (key, signal): Promise<void> => {
+      await request(
+        `variables/${encodeURIComponent(key)}`,
+        z.unknown(),
+        signal,
+        { method: "DELETE" },
+      );
+    },
+    listPools: async (signal): Promise<AirflowPool[]> => {
+      const result = await request(
+        "pools?limit=100&offset=0&order_by=name",
+        poolCollectionSchema,
+        signal,
+      );
+      return result.pools.map(mapPool);
+    },
+    createPool: async (input, signal): Promise<AirflowPool> =>
+      mapPool(
+        await request("pools", poolSchema, signal, {
+          method: "POST",
+          body: JSON.stringify({
+            name: input.name,
+            slots: input.slots,
+            description: input.description || null,
+            include_deferred: false,
+          }),
+        }),
+      ),
+    updatePool: async (input, signal): Promise<AirflowPool> =>
+      mapPool(
+        await request(
+          `pools/${encodeURIComponent(input.name)}`,
+          poolSchema,
+          signal,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              slots: input.slots,
+              description: input.description || null,
+              include_deferred: false,
+            }),
+          },
+        ),
+      ),
+    deletePool: async (name, signal): Promise<void> => {
+      await request(`pools/${encodeURIComponent(name)}`, z.unknown(), signal, {
+        method: "DELETE",
+      });
+    },
+    listEventLogs: async (signal): Promise<AirflowEventLog[]> => {
+      const result = await request(
+        "eventLogs?limit=100&offset=0",
+        eventLogCollectionSchema,
+        signal,
+      );
+      return result.event_logs
+        .map((entry) => ({
+          eventLogId: String(entry.event_log_id ?? entry.id ?? ""),
+          timestamp: entry.timestamp ?? entry.when ?? "",
+          event: entry.event ?? "",
+          dagId: entry.dag_id ?? "",
+          taskId: entry.task_id ?? "",
+          owner: entry.owner ?? "",
+        }))
+        .sort((left, right) => right.timestamp.localeCompare(left.timestamp));
+    },
+    listUsers: async (signal): Promise<AirflowUser[]> => {
+      if (!isAirflow2) return [];
+      const result = await request(
+        "users?limit=100&offset=0",
+        userCollectionSchema,
+        signal,
+      );
+      return result.users
+        .map(mapUser)
+        .sort((left, right) => left.username.localeCompare(right.username));
+    },
+    supportsUserAdministration: () => isAirflow2,
   };
 }

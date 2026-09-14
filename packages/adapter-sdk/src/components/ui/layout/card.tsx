@@ -21,7 +21,11 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
   const content = node.props.content ? nodes(node.props.content) : [];
   if (node.props.variant === "metric") {
     return (
-      <section className="layout-card" data-variant="metric">
+      <section
+        className="layout-card"
+        data-variant="metric"
+        data-icon={icon ?? undefined}
+      >
         {icon ? (
           <span className="layout-card-icon">
             <WorkbenchIcon name={icon} size={20} />

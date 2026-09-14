@@ -115,6 +115,7 @@ export type {
   PageTableRowAction,
   PageTableRowLink,
   TableColumn,
+  TableFilter,
   TableNode,
   TableProps,
   TableRowAction,

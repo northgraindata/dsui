@@ -2,7 +2,8 @@ import { z } from "@northgraindata/dsui-adapter-sdk";
 
 export const airflowConnectionSchema = z.object({
   baseUrl: z.string().url(),
-  token: z.string().min(1),
+  username: z.string().min(1),
+  password: z.string().min(1),
 });
 
 export const airflow2ConnectionSchema = z.object({
@@ -112,11 +113,55 @@ export interface AssetEvent {
   sourceMapIndex: number | null;
 }
 
+export interface AirflowConnection {
+  connectionId: string;
+  connectionType: string;
+  description: string;
+  host: string;
+  login: string;
+  schema: string;
+  port: number | null;
+}
+
+export interface AirflowVariable {
+  key: string;
+  description: string;
+  isEncrypted: boolean;
+}
+
+export interface AirflowPool {
+  name: string;
+  slots: number;
+  occupiedSlots: number;
+  runningSlots: number;
+  queuedSlots: number;
+  openSlots: number;
+  description: string;
+}
+
+export interface AirflowUser {
+  username: string;
+  name: string;
+  email: string;
+  active: boolean;
+  roles: string;
+}
+
+export interface AirflowEventLog {
+  eventLogId: string;
+  timestamp: string;
+  event: string;
+  dagId: string;
+  taskId: string;
+  owner: string;
+}
+
 export interface AirflowClient {
   dispose(): void;
   getVersion(signal?: AbortSignal): Promise<AirflowVersion>;
   listDags(signal?: AbortSignal): Promise<DagSummary[]>;
   getDag(dagId: string, signal?: AbortSignal): Promise<DagDetails>;
+  getDagSource(dagId: string, signal?: AbortSignal): Promise<string>;
   listDagTasks(dagId: string, signal?: AbortSignal): Promise<DagTask[]>;
   listDagRuns(dagId: string, signal?: AbortSignal): Promise<DagRun[]>;
   getDagRun(
@@ -147,6 +192,12 @@ export interface AirflowClient {
     isPaused: boolean,
     signal?: AbortSignal,
   ): Promise<DagSummary>;
+  setDagRunState(
+    dagId: string,
+    dagRunId: string,
+    state: "failed",
+    signal?: AbortSignal,
+  ): Promise<DagRun>;
   clearTaskInstance(
     input: TaskInstanceRef,
     onlyFailed: boolean,
@@ -155,6 +206,47 @@ export interface AirflowClient {
   listAssets(signal?: AbortSignal): Promise<Asset[]>;
   getAsset(assetId: number, signal?: AbortSignal): Promise<Asset>;
   listAssetEvents(assetId: number, signal?: AbortSignal): Promise<AssetEvent[]>;
+  listConnections(signal?: AbortSignal): Promise<AirflowConnection[]>;
+  createConnection(
+    input: Omit<AirflowConnection, "port"> & {
+      port?: number;
+      password?: string;
+      extra?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<AirflowConnection>;
+  updateConnection(
+    input: Omit<AirflowConnection, "port"> & {
+      port?: number;
+      password?: string;
+      extra?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<AirflowConnection>;
+  deleteConnection(connectionId: string, signal?: AbortSignal): Promise<void>;
+  listVariables(signal?: AbortSignal): Promise<AirflowVariable[]>;
+  createVariable(
+    input: { key: string; value: string; description?: string },
+    signal?: AbortSignal,
+  ): Promise<AirflowVariable>;
+  updateVariable(
+    input: { key: string; value: string; description?: string },
+    signal?: AbortSignal,
+  ): Promise<AirflowVariable>;
+  deleteVariable(key: string, signal?: AbortSignal): Promise<void>;
+  listPools(signal?: AbortSignal): Promise<AirflowPool[]>;
+  createPool(
+    input: { name: string; slots: number; description?: string },
+    signal?: AbortSignal,
+  ): Promise<AirflowPool>;
+  updatePool(
+    input: { name: string; slots: number; description?: string },
+    signal?: AbortSignal,
+  ): Promise<AirflowPool>;
+  deletePool(name: string, signal?: AbortSignal): Promise<void>;
+  listEventLogs(signal?: AbortSignal): Promise<AirflowEventLog[]>;
+  listUsers(signal?: AbortSignal): Promise<AirflowUser[]>;
+  supportsUserAdministration(): boolean;
 }
 
 export interface AirflowContext {

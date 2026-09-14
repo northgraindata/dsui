@@ -1,10 +1,12 @@
 import type { ActionTarget } from "../../action";
 import { defineComponent } from "../define";
 import type { FieldReference } from "./collection";
+import type { TableRowLink } from "./table";
 
 export interface ButtonProps {
   label: string | FieldReference;
   action?: ActionTarget | FieldReference;
+  successLink?: TableRowLink;
   link?: string | FieldReference;
   icon?: string | FieldReference;
   description?: string | FieldReference;

@@ -314,9 +314,11 @@
 }
 .adapter-main {
   min-width: 0;
-  padding: var(--app-page-padding);
+  padding: 32px 30px 28px;
 }
 .adapter-main > .grid {
+  display: grid;
+  gap: 16px;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -388,7 +390,7 @@
   );
 }
 .adapter-heading .service-mark {
-  border-radius: 50%;
+  border-radius: 12px;
 }
 @media (max-width: 1200px) {
   .app-topbar-actions {

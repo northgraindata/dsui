@@ -178,7 +178,12 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
   createPageScope(url: string): PageScope {
     for (const page of this.definition.pages) {
       const params = matchRoute(page.path, url);
-      if (params) return this.createPageScopeFor(page, params);
+      if (params)
+        return this.createPageScopeFor(
+          page,
+          params,
+          new URLSearchParams(url.split(/[?#]/, 2)[1] ?? ""),
+        );
     }
     throw new UnknownPageError(url);
   }
@@ -192,8 +197,9 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
   createPageScopeFor(
     page: AnyPageDefinition,
     params: Record<string, string> = {},
+    query = new URLSearchParams(),
   ): PageScope {
-    return createPageScope(this.stores, page, params);
+    return createPageScope(this.stores, page, params, query);
   }
 
   /**

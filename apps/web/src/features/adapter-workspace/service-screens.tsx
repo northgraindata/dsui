@@ -1,4 +1,4 @@
-import { useParams } from "@tanstack/react-router";
+import { useLocation, useParams } from "@tanstack/react-router";
 import { ServiceScreen } from "./service-screen";
 
 export function ServiceDetail() {
@@ -27,6 +27,7 @@ export function ServiceObjectView() {
 
 export function ServicePage() {
   const { serviceId } = useParams({ from: "/services/$serviceId/$" });
+  const search = useLocation({ select: (location) => location.searchStr });
   const splat = useParams({
     from: "/services/$serviceId/$",
     select: (params) => params._splat,
@@ -34,7 +35,7 @@ export function ServicePage() {
   return (
     <ServiceScreen
       serviceId={serviceId}
-      pagePath={splat ? `/${splat}` : undefined}
+      pagePath={splat ? `/${splat}${search}` : undefined}
     />
   );
 }
