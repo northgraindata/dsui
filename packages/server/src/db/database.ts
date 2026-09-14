@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import type { EncryptedValue } from "./crypto";
 import { runMigrations } from "./migrate";
 import { migrations } from "./migrations/index";
+import type { StorePersistenceRequest } from "@northgraindata/dsui-adapter-sdk";
 
 export type UiServiceRow = {
   id: string;
@@ -40,6 +41,11 @@ export type EnterpriseSsoProviderRow = {
   config_tag: string;
   created_at: string;
   updated_at: string;
+};
+
+export type PersistedStoreState = {
+  readonly value: unknown;
+  readonly version: number;
 };
 
 export class DsuiDatabase {
@@ -188,6 +194,54 @@ export class DsuiDatabase {
         "INSERT INTO enterprise_memberships (user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at",
       )
       .run(userId, role, now, now);
+  }
+
+  loadStoreState(
+    namespace: string,
+    request: StorePersistenceRequest,
+  ): PersistedStoreState | null {
+    const row = this.sqlite
+      .query<
+        { value_json: string; version: number },
+        [string, string, string, string]
+      >(
+        "SELECT value_json, version FROM store_state WHERE namespace = ? AND scope = ? AND store_id = ? AND store_key = ?",
+      )
+      .get(namespace, request.scope, request.storeId, request.key);
+    if (!row) return null;
+    try {
+      return { value: JSON.parse(row.value_json), version: row.version };
+    } catch {
+      throw new Error(
+        `Stored state for store "${request.storeId}" is not valid JSON`,
+      );
+    }
+  }
+
+  saveStoreState(
+    namespace: string,
+    request: StorePersistenceRequest & { readonly value: unknown },
+  ): void {
+    const now = new Date().toISOString();
+    this.sqlite
+      .query(
+        `INSERT INTO store_state
+          (namespace, scope, store_id, store_key, version, value_json, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(namespace, scope, store_id, store_key)
+         DO UPDATE SET version = excluded.version,
+                       value_json = excluded.value_json,
+                       updated_at = excluded.updated_at`,
+      )
+      .run(
+        namespace,
+        request.scope,
+        request.storeId,
+        request.key,
+        request.version,
+        JSON.stringify(request.value),
+        now,
+      );
   }
   listEnterpriseSsoProviders(): EnterpriseSsoProviderRow[] {
     return this.sqlite
