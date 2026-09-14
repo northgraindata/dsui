@@ -10,6 +10,7 @@ export function MarkdownBlock({
   onMoveDown,
   canMoveUp,
   canMoveDown,
+  readOnly = false,
 }: {
   content: string;
   index: number;
@@ -19,6 +20,7 @@ export function MarkdownBlock({
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  readOnly?: boolean;
 }) {
   const [value, setValue] = useState(content);
   const [editing, setEditing] = useState(false);
@@ -34,13 +36,13 @@ export function MarkdownBlock({
         index={index}
         label="Markdown"
         icon="file"
-        onDelete={onDelete}
-        onMoveUp={onMoveUp}
-        onMoveDown={onMoveDown}
+        onDelete={readOnly ? undefined : onDelete}
+        onMoveUp={readOnly ? undefined : onMoveUp}
+        onMoveDown={readOnly ? undefined : onMoveDown}
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
       />
-      {editing ? (
+      {editing && !readOnly ? (
         <textarea
           ref={editor}
           className="notebook-markdown-editor"
@@ -57,7 +59,9 @@ export function MarkdownBlock({
           type="button"
           className="notebook-markdown"
           title="Click to edit Markdown"
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            if (!readOnly) setEditing(true);
+          }}
         >
           <MarkdownPreview value={value} />
         </button>

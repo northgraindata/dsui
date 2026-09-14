@@ -105,7 +105,7 @@ export function AdapterWorkspace({
           <div className="notebook-preview">
             <Icon name="file" />
             <span>Notebooks</span>
-            <small>Coming soon</small>
+            <small>Persistent workspace</small>
           </div>
         </section>
       </aside>

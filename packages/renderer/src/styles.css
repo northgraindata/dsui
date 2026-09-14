@@ -182,10 +182,48 @@
 
 .notebook-workspace {
   display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  align-items: start;
   gap: 16px;
   padding: 20px;
 }
+.notebook-tabs {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0;
+}
+.notebook-tab {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  background: var(--color-surface);
+}
+.notebook-tab[data-active="true"] {
+  border-color: var(--color-border);
+  background: var(--color-canvas);
+}
+.notebook-tab button {
+  border: 0;
+  background: transparent;
+  color: var(--color-secondary);
+  padding: 8px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.notebook-tab[data-active="true"] button { color: var(--color-primary); }
+.notebook-tab-close {
+  padding: 7px 8px 7px 0 !important;
+  color: var(--color-muted) !important;
+  font-size: 15px !important;
+}
+.notebook-tab-close:hover { color: var(--color-primary) !important; }
 .notebook-header {
+  grid-column: 2;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -213,14 +251,184 @@
   font-size: 12px;
 }
 .notebook-status {
+  grid-column: 2;
   color: var(--color-muted);
   font:
     10px / 1.2 "JetBrains Mono",
     ui-monospace,
     monospace;
 }
+.notebook-meta {
+  margin: 6px 0 0;
+  color: var(--color-muted);
+  font-size: 10px;
+}
+.notebook-import-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  color: var(--color-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.notebook-import-button:hover { color: var(--color-primary); }
 .notebook-title-editor {
+  width: min(100%, 720px);
   min-width: 0;
+}
+.notebook-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.notebook-title-row .notebook-title-input {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.notebook-title-edit-hint {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--color-muted);
+}
+.notebook-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.notebook-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 12px;
+}
+.notebook-catalog {
+  grid-column: 1;
+  grid-row: 2 / span 4;
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 10px;
+}
+.notebook-catalog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-secondary);
+  font-size: 11px;
+}
+.notebook-catalog-header span {
+  color: var(--color-muted);
+  font: 10px "JetBrains Mono", ui-monospace, monospace;
+}
+.notebook-catalog-page {
+  display: grid;
+  gap: 20px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.notebook-catalog-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 18px;
+}
+.notebook-catalog-toolbar h2,
+.notebook-catalog-toolbar p { margin: 0; }
+.notebook-catalog-toolbar h2 { font-size: 24px; }
+.notebook-catalog-toolbar > div:first-child > p:last-child {
+  margin-top: 6px;
+  color: var(--color-secondary);
+  font-size: 12px;
+}
+.notebook-catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.notebook-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.notebook-catalog-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 16px;
+}
+.notebook-catalog-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.notebook-catalog-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+.notebook-catalog-card-heading span {
+  flex: 0 0 auto;
+  color: var(--color-muted);
+  font: 10px "JetBrains Mono", ui-monospace, monospace;
+}
+.notebook-catalog-card > p {
+  min-height: 36px;
+  margin: 0;
+  color: var(--color-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.notebook-catalog-card dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 10px;
+}
+.notebook-catalog-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.notebook-catalog-card dt { color: var(--color-muted); }
+.notebook-catalog-card dd { margin: 0; color: var(--color-secondary); text-align: right; }
+@media (max-width: 640px) {
+  .notebook-catalog-page { padding: 16px; }
+  .notebook-catalog-toolbar { align-items: flex-start; flex-direction: column; }
+  .notebook-catalog-actions { justify-content: flex-start; }
+}
+.notebook-list button {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-secondary);
+  padding: 6px 9px;
+  font-size: 11px;
+}
+.notebook-list button[aria-current="page"] {
+  border-color: var(--color-border-strong);
+  color: var(--color-primary);
+}
+.notebook-list button:hover {
+  color: var(--color-primary);
 }
 .notebook-title-input,
 .notebook-description-input {
@@ -238,6 +446,7 @@
   font-weight: 600;
 }
 .notebook-description-input {
+  max-width: 640px;
   margin-top: 5px;
   padding: 0;
   color: var(--color-secondary);
@@ -249,12 +458,45 @@ textarea.notebook-description-input {
   background: var(--color-canvas);
   padding: 5px 7px;
 }
+@media (max-width: 760px) {
+  .notebook-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .notebook-tabs,
+  .notebook-header,
+  .notebook-catalog,
+  .notebook-status,
+  .notebook-blocks,
+  .notebook-add-block {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .notebook-catalog {
+    position: static;
+  }
+  .notebook-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .notebook-header {
+    flex-direction: column;
+  }
+  .notebook-toolbar {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .notebook-title-editor,
+  .notebook-description-input {
+    max-width: 100%;
+  }
+}
 .notebook-add-block,
 .notebook-block-actions {
   position: relative;
 }
 .notebook-block-actions { margin-left: auto; }
 .notebook-add-block {
+  grid-column: 2;
   display: flex;
   justify-content: center;
 }
@@ -299,6 +541,7 @@ textarea.notebook-description-input {
   bottom: calc(100% + 6px);
 }
 .notebook-blocks {
+  grid-column: 2;
   display: grid;
   gap: 12px;
   max-width: 980px;

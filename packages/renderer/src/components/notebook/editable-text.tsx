@@ -5,11 +5,15 @@ export function EditableText({
   onChange,
   multiline = false,
   className,
+  readOnly = false,
+  onCommit,
 }: {
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
   className?: string;
+  readOnly?: boolean;
+  onCommit?: (value: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -24,7 +28,9 @@ export function EditableText({
   }, [editing, multiline]);
 
   const save = () => {
+    if (readOnly) return;
     onChange(draft);
+    onCommit?.(draft);
     setEditing(false);
   };
   const handleKeyDown = (
@@ -36,6 +42,7 @@ export function EditableText({
       setEditing(false);
     }
   };
+  if (readOnly) return <span className={className}>{value || "Untitled"}</span>;
   if (editing) {
     if (multiline)
       return (

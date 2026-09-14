@@ -26,6 +26,7 @@ const paths: Record<string, string> = {
     "M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5M3 3l6 6m6 6 6 6M21 3l-6 6M9 15l-6 6",
   check: "m5 12 4 4L19 6",
   format: "M8 4H4v4m12-4h4v4M4 16v4h4m8 0h4v-4M9 8h6m-6 4h4m-4 4h6",
+  edit: "M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4",
   calendar:
     "M7 3v4m10-4v4M3 10h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z",
   hash: "M10 3 6 21M18 3l-4 18M4 9h17M3 15h17",
