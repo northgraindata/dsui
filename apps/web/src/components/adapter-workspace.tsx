@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";

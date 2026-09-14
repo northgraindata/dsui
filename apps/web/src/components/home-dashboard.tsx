@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { deleteService, type Service } from "../api";
 import { Icon } from "./icon";
