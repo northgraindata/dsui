@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
     "./components/ui": "./src/components/ui/index.ts",
     "./components/ui/*": "./src/components/ui/*.tsx",
     "./components/ui/query-editor/query-result": "./src/components/ui/query-editor/query-result.ts",
