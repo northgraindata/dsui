@@ -25,6 +25,11 @@ const sdkComponents = import.meta.glob(
   { eager: true },
 ) as Record<string, { default?: ComponentType<ComponentProps> }>;
 
+const localAdapterComponents = import.meta.glob(
+  "../../../adapter-*/src/components/*.tsx",
+  { eager: true },
+) as Record<string, { default?: ComponentType<ComponentProps> }>;
+
 for (const [path, module] of Object.entries(sdkComponents)) {
   if (!module.default) continue;
   const file = path
@@ -35,6 +40,23 @@ for (const [path, module] of Object.entries(sdkComponents)) {
     components.set(file, { type: "sync", component: module.default });
     components.set(`./ui/${file}`, { type: "sync", component: module.default });
   }
+}
+
+for (const [path, module] of Object.entries(localAdapterComponents)) {
+  if (!module.default) continue;
+  const parts = path.split("/");
+  const adapter = parts.find((part) => part.startsWith("adapter-"));
+  const file = parts.at(-1)?.replace(/\.tsx$/, "");
+  if (!adapter || !file) continue;
+  const adapterId = adapter.slice("adapter-".length);
+  components.set(`${adapterId}/${file}`, {
+    type: "sync",
+    component: module.default,
+  });
+  components.set(`./${file}.tsx`, {
+    type: "sync",
+    component: module.default,
+  });
 }
 
 /** Resolves a component by its declared path or stable id. */
