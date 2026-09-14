@@ -1,11 +1,15 @@
 import { navigate } from "astro:transitions/client";
 import type { AstroProviderProps } from "fumadocs-core/framework/astro";
 import type { Root } from "fumadocs-core/page-tree";
-import { DocsLayout } from "fumadocs-ui/layouts/docs";
-import { DocsPage, type DocsPageProps } from "fumadocs-ui/layouts/docs/page";
+import { GlassLayout } from "fumadocs-ui/layouts/glass";
+import { DocsPage, type DocsPageProps } from "fumadocs-ui/layouts/glass/page";
 import { RootProvider } from "fumadocs-ui/provider/astro";
 import type { ReactNode } from "react";
 import Search from "./Search";
+
+const landingUrl = import.meta.env.DEV
+  ? "http://localhost:4321"
+  : "https://dsui.northgraindata.com";
 
 export function Docs({
   tree,
@@ -28,14 +32,18 @@ export function Docs({
       theme={{ enabled: false }}
       search={{ SearchDialog: Search }}
     >
-      <DocsLayout
+      <GlassLayout
         tree={tree}
         themeSwitch={{ enabled: false }}
         nav={{
           title: (
-            <span className="docs-brand inline-flex items-center text-lg font-semibold tracking-tight">
+            <a
+              href={landingUrl}
+              aria-label="Go to dsui landing page"
+              className="docs-brand inline-flex items-center text-lg font-semibold tracking-tight"
+            >
               <img
-                src={`${import.meta.env.BASE_URL}branding/logo-icon.svg`}
+                src={`${import.meta.env.BASE_URL}/branding/logo-icon.svg`}
                 alt=""
                 width="24"
                 height="24"
@@ -43,13 +51,20 @@ export function Docs({
               />
               dsui
               <span className="nav-subtitle">Docs</span>
-            </span>
+            </a>
           ),
         }}
+        links={[
+          {
+            text: "Back to dsui",
+            url: "https://dsui.northgraindata.com",
+            external: true,
+          },
+        ]}
         githubUrl="https://github.com/northgraindata/dsui"
       >
         <DocsPage {...page}>{children}</DocsPage>
-      </DocsLayout>
+      </GlassLayout>
     </RootProvider>
   );
 }

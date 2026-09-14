@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "@northgraindata/dsui-renderer/styles.css";
-@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/ocean.css";
 @import "fumadocs-ui/css/preset.css";
+@import "fumadocs-ui/css/generated/glass.css";
 @source "../../../../packages/renderer/src";
 @source "../../../../packages/ui/src";
 
@@ -712,5 +713,92 @@ html {
 
   .primitive-props-table :is(th, td):last-child {
     display: none;
+  }
+}
+
+/*
+ * dsui finish — keep Fumadocs' layout mechanics, but give the docs the same
+ * construction-line / deep-canvas character as the landing page.
+ */
+#fd-glass-layout {
+  --fd-main-width: 960px;
+}
+
+#nd-sidebar {
+  border-color: rgb(147 197 253 / 13%);
+  background:
+    linear-gradient(180deg, rgb(15 23 42 / 76%), rgb(2 6 23 / 88%)),
+    var(--color-fd-popover);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 5%),
+    18px 24px 70px rgb(2 6 23 / 28%);
+}
+
+#nd-sidebar > div:first-child {
+  border-bottom: 1px solid rgb(148 163 184 / 10%);
+  padding-bottom: 0.75rem;
+}
+
+#nd-sidebar a,
+#nd-toc a,
+#nd-sidebar button {
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+#nd-sidebar :is(a, button):focus-visible,
+#nd-toc a:focus-visible {
+  outline-offset: 2px;
+}
+
+#nd-page {
+  padding-inline: clamp(0rem, 1vw, 0.75rem);
+}
+
+#nd-page .docs-page-header {
+  max-width: 48rem;
+}
+
+#nd-page .prose {
+  max-width: 68ch;
+}
+
+#nd-page .prose h2 {
+  position: relative;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(148 163 184 / 10%);
+}
+
+#nd-page figure.shiki {
+  border-color: rgb(96 165 250 / 22%);
+  background:
+    linear-gradient(135deg, rgb(15 23 42 / 96%), rgb(2 6 23 / 96%)),
+    var(--color-fd-card);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 5%),
+    0 18px 50px rgb(2 6 23 / 24%);
+}
+
+#nd-page .prose :not(pre) > code {
+  border-color: rgb(96 165 250 / 18%);
+  background: rgb(30 64 175 / 14%);
+  color: var(--ds-blue-100);
+}
+
+#nd-page .prose blockquote {
+  border-left-width: 2px;
+  border-radius: 0 6px 6px 0;
+  background: linear-gradient(90deg, rgb(37 99 235 / 10%), transparent);
+}
+
+@media (max-width: 767px) {
+  #nd-page {
+    padding-inline: 0;
+  }
+
+  #nd-page .prose {
+    max-width: none;
   }
 }
