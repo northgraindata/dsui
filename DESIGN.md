@@ -1,16 +1,23 @@
-# dsui design
+# DSUI design
 
-This document is the product and visual source of truth for dsui, Data Stack UI.
+This document is the product and visual source of truth for DSUI, Data Stack UI.
 
 ## Product contract
 
-**Tagline:** One lightweight UI for your data stack.
+**Primary message:** One operational workspace for your stack.
 
-dsui is a local-first, developer-first interface for working with Trino, Kafka, S3, MinIO, PostgreSQL, Flink, and other services through adapters. It replaces the extra interfaces developers otherwise add to a Docker Compose stack.
+**Supporting line:** A lightweight, self-hosted interface for the data and
+infrastructure tools you already run.
 
-Lightweight is a product characteristic, not an implementation detail. A significant dependency or feature is accepted only when its usefulness clearly exceeds its resource, security, maintenance, and bundle cost. dsui must not require PostgreSQL, Redis, or another infrastructure service to run.
+Use `DSUI` as the product name. DSUI is a product by Northgrain Data;
+attribute it as “DSUI by Northgrain Data” or “Open source by
+Northgrain Data.”
 
-dsui is not a data platform, orchestrator, observability suite, data catalog, SaaS control plane, lineage product, or universal replacement for advanced vendor interfaces.
+DSUI is a local-first, developer-first interface for working with Trino, Kafka, S3, MinIO, PostgreSQL, Flink, and other services through adapters. It replaces the extra interfaces developers otherwise add to a Docker Compose stack.
+
+Lightweight is a product characteristic, not an implementation detail. A significant dependency or feature is accepted only when its usefulness clearly exceeds its resource, security, maintenance, and bundle cost. DSUI must not require PostgreSQL, Redis, or another infrastructure service to run.
+
+DSUI is not a data platform, orchestrator, observability suite, data catalog, SaaS control plane, lineage product, or universal replacement for advanced vendor interfaces.
 
 ## v0.1 workflows
 
@@ -28,9 +35,9 @@ Accounts, cloud sync, multi-tenancy, marketplaces, Kubernetes operators, AI feat
 
 ## Runtime principles
 
-The browser communicates only with dsui. Infrastructure credentials remain server-side. SQLite stores required local state. The core application does not contain service-specific behavior. Adapters provide metadata, connection validation, health, capabilities, and server operations.
+The browser communicates only with DSUI. Infrastructure credentials remain server-side. SQLite stores required local state. The core application does not contain service-specific behavior. Adapters provide metadata, connection validation, health, capabilities, and server operations.
 
-Adapters customize pages through a constrained declarative schema rendered by dsui-owned components. They do not ship React applications, HTML, CSS, or browser JavaScript. Community adapters are administrator-approved server code and are never described as safely sandboxed.
+Adapters customize pages through a constrained declarative schema rendered by DSUI-owned components. They do not ship React applications, HTML, CSS, or browser JavaScript. Community adapters are administrator-approved server code and are never described as safely sandboxed.
 
 ## Application direction
 
@@ -68,4 +75,4 @@ Major custom artwork depicts data infrastructure: racks, modules, pipelines, cab
 
 The landing page explains the product in under ten seconds, establishes lightweight as an engineering principle, shows real product UI and Compose code, and directs visitors to GitHub and documentation. It contains no pricing, sales funnel, or enterprise contact form.
 
-Northgrain attribution is visible but secondary: “dsui by Northgrain Data” and “Open source by Northgrain Data.”
+Northgrain attribution is visible but secondary: “DSUI by Northgrain Data” and “Open source by Northgrain Data.”
