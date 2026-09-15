@@ -24,7 +24,7 @@ const docsBaseUrl = import.meta.env.DEV
         <a
           href="/"
           class="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-lg font-semibold tracking-tight transition-colors hover:text-brand-muted"
-          aria-label="dsui home"
+          aria-label="DSUI home"
         >
           <img
             src="/branding/logo-icon.svg"
@@ -33,7 +33,7 @@ const docsBaseUrl = import.meta.env.DEV
             height="24"
             class="size-6"
           />
-          dsui
+          DSUI
         </a>
         <div class="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
           <a
@@ -53,7 +53,7 @@ const docsBaseUrl = import.meta.env.DEV
           <a
             class="hidden h-10 items-center gap-2 rounded-lg px-3 text-copy-subtle transition-colors hover:bg-foreground/6 hover:text-foreground sm:inline-flex"
             href="https://github.com/northgraindata/dsui"
-            aria-label="dsui on GitHub"
+            aria-label="DSUI on GitHub"
           >
             <svg
               class="size-4"
@@ -94,13 +94,13 @@ const docsBaseUrl = import.meta.env.DEV
           <h1
             class="text-balance text-6xl font-semibold tracking-tighter sm:text-8xl"
           >
-            One lightweight UI for your data stack.
+            One operational workspace for your stack.
           </h1>
           <p
             class="mx-auto mt-6 max-w-xl text-pretty text-base leading-7 text-copy sm:text-lg"
           >
-            Inspect, query, and operate the services you already run — from one
-            local-first workspace.
+            A lightweight, self-hosted interface for the data and infrastructure
+            tools you already run.
           </p>
           <div
             class="mx-auto mt-8 flex w-full max-w-md flex-col justify-center gap-3 sm:max-w-none sm:flex-row"
@@ -124,49 +124,19 @@ const docsBaseUrl = import.meta.env.DEV
           </div>
         </div>
 
-        <!-- Replace the contents of this figure with the real dashboard screenshot. -->
         <figure
-          class="mx-auto mt-14 w-full overflow-hidden rounded-2xl border border-brand-soft/15 bg-canvas/85 text-left"
-          aria-label="Dashboard preview placeholder"
+          class="mx-auto mt-14 w-full overflow-hidden rounded-2xl border border-brand-soft/15 bg-canvas/85 text-left shadow-action-secondary"
           style="-webkit-mask-image: var(--ds-mask-preview); mask-image: var(--ds-mask-preview);"
         >
-          <div class="flex h-11 items-center border-b border-foreground/8 px-4">
-            <div class="flex gap-1.5" aria-hidden="true">
-              <span class="size-2 rounded-full bg-surface-hover"></span>
-              <span class="size-2 rounded-full bg-surface-hover"></span>
-              <span class="size-2 rounded-full bg-surface-hover"></span>
-            </div>
-            <span class="mx-auto font-mono text-[11px] text-copy-muted"
-              >dsui</span
-            >
-            <span class="size-8" aria-hidden="true"></span>
-          </div>
-          <div
-            class="grid aspect-[16/9] grid-cols-[minmax(9rem,20%)_1fr] bg-dashboard"
-          >
-            <aside class="border-r border-foreground/8 p-4 sm:p-5">
-              <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">
-                WORKSPACE
-              </p>
-              <div class="mt-5 space-y-2">
-                <div class="h-7 rounded-md bg-brand/12"></div>
-                <div class="h-7 rounded-md bg-foreground/4"></div>
-                <div class="h-7 rounded-md bg-foreground/4"></div>
-              </div>
-            </aside>
-            <div class="flex items-center justify-center p-6 sm:p-10">
-              <div class="text-center">
-                <p
-                  class="font-mono text-[11px] tracking-[0.16em] text-brand-muted/70"
-                >
-                  DASHBOARD PREVIEW
-                </p>
-                <p class="mt-3 max-w-xs text-sm leading-6 text-copy-muted">
-                  Your product screenshot slots directly into this frame.
-                </p>
-              </div>
-            </div>
-          </div>
+          <img
+            src="/assets/product.png"
+            alt="DSUI workspace showing a DuckDB analytics overview"
+            width="1731"
+            height="909"
+            class="block w-full"
+            loading="eager"
+            fetchpriority="high"
+          />
         </figure>
       </div>
     </section>

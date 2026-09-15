@@ -2,12 +2,13 @@
 import AnimatedBeam from "@/components/ui/animated-beam.astro";
 
 const tools = [
-  { name: "Kafka", src: "/assets/logos/apachekafka.svg" },
-  { name: "Trino", src: "/assets/logos/trino.svg" },
-  { name: "MinIO", src: "/assets/logos/minio.svg" },
-  { name: "Postgres", src: "/assets/logos/postgresql.svg" },
-  { name: "BigQuery", src: "/assets/logos/bigquery.svg" },
   { name: "Airflow", src: "/assets/logos/airflow.svg" },
+  { name: "dbt", src: "/assets/logos/dbt.png" },
+  { name: "PostgreSQL", src: "/assets/logos/postgresql.svg" },
+  { name: "Trino", src: "/assets/logos/trino.png" },
+  { name: "S3", src: "/assets/logos/s3.svg" },
+  { name: "MinIO", src: "/assets/logos/minio.svg" },
+  { name: "DuckDB", src: "/assets/logos/duckdb.svg" },
 ] as const;
 ---
 
@@ -61,7 +62,7 @@ const tools = [
                   <img
                     src={tool.src}
                     alt=""
-                    class="size-5 object-contain brightness-0 invert sm:size-6"
+                    class="size-5 object-contain sm:size-6"
                   />
                 </span>
               </div>
@@ -104,7 +105,7 @@ const tools = [
         </div>
 
         <div
-          class="mx-auto grid h-80 w-full grid-rows-3 items-center justify-items-end gap-6 lg:mx-0"
+          class="mx-auto grid h-80 w-full grid-rows-4 items-center justify-items-end gap-6 lg:mx-0"
         >
           {
             tools.slice(3).map((tool) => (
@@ -116,7 +117,7 @@ const tools = [
                   <img
                     src={tool.src}
                     alt=""
-                    class="size-5 object-contain brightness-0 invert sm:size-6"
+                    class="size-5 object-contain sm:size-6"
                   />
                 </span>
                 <p class="text-sm font-medium tracking-tight text-copy">
@@ -128,13 +129,6 @@ const tools = [
         </div>
       </div>
     </div>
-
-    <p
-      class="mx-auto max-w-3xl border-t border-foreground/8 pt-8 text-center text-sm leading-6 text-copy-muted"
-    >
-      No external control plane. No account required. Credentials stay on the
-      server, where they belong.
-    </p>
   </div>
 </section>
 
