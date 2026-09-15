@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are applied to the latest released minor version while dsui remains pre-1.0.
+Security fixes are applied to the latest released minor version while DSUI remains pre-1.0.
 
 ## Reporting a vulnerability
 
