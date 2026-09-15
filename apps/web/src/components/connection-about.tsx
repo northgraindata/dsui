@@ -34,7 +34,7 @@ export function ConnectionAbout({ adapter }: { adapter: Adapter }) {
         {
           icon: "plug",
           title: "One connected workspace",
-          detail: "Work with your data stack in dsui",
+          detail: "Work with your data stack in DSUI",
         },
         {
           icon: "check",

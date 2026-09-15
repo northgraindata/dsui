@@ -27,7 +27,7 @@
 }
 
 /*
- * dsui docs theme — mirrors the landing page in apps/site.
+ * DSUI docs theme — mirrors the landing page in apps/site.
  * Landing tokens: canvas #020617, surface #0f172a, brand #3b82f6.
  * Docs are dark-only (theme switch disabled), so :root and .dark match.
  */
@@ -717,7 +717,7 @@ html {
 }
 
 /*
- * dsui finish — keep Fumadocs' layout mechanics, but give the docs the same
+ * DSUI finish — keep Fumadocs' layout mechanics, but give the docs the same
  * construction-line / deep-canvas character as the landing page.
  */
 #fd-glass-layout {

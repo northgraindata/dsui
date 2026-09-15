@@ -293,7 +293,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     });
   } catch {
     throw new ApiError(
-      "dsui API is unavailable. Check that the server is running.",
+      "DSUI API is unavailable. Check that the server is running.",
     );
   }
   if (!response.ok)

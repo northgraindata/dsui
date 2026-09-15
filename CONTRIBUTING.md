@@ -1,4 +1,4 @@
-# Contributing to dsui
+# Contributing to DSUI
 
 Focused issues, reproductions, documentation fixes, and code contributions are
 welcome. You do not need an AI tool or agent skills to contribute.

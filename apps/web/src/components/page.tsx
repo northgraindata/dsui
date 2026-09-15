@@ -53,7 +53,7 @@ export function UnavailableState({ detail }: { detail: string }) {
     >
       <Status state="unavailable" label="API unavailable" />
       <h2 className="m-0 text-[14px] font-semibold text-primary">
-        dsui could not load this data
+        DSUI could not load this data
       </h2>
       <p className="m-0 max-w-md break-words font-mono text-[11px] text-secondary">
         {detail}

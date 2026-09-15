@@ -1,4 +1,4 @@
-# dsui data-stack demo
+# DSUI data-stack demo
 
 Start the complete demonstration from the repository root:
 
