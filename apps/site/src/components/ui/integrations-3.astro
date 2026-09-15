@@ -1,17 +1,17 @@
 ---
 const integrations = [
   {
-    name: "Trino",
-    src: "/assets/logos/trino.svg",
+    name: "Apache Airflow",
+    src: "/assets/logos/airflow.svg",
     gradient:
-      "from-adapter-trino/70 via-adapter-bigquery-mid/25 to-transparent",
-    glow: "bg-adapter-trino-glow/18",
+      "from-adapter-airflow/75 via-adapter-trino-glow/25 to-transparent",
+    glow: "bg-adapter-airflow/20",
   },
   {
-    name: "Apache Kafka",
-    src: "/assets/logos/apachekafka.svg",
-    gradient: "from-adapter-kafka/65 via-adapter-kafka-mid/20 to-transparent",
-    glow: "bg-adapter-kafka-glow/16",
+    name: "dbt",
+    src: "/assets/logos/dbt.png",
+    gradient: "from-brand/70 via-adapter-postgres/25 to-transparent",
+    glow: "bg-brand/18",
   },
   {
     name: "PostgreSQL",
@@ -20,38 +20,35 @@ const integrations = [
     glow: "bg-adapter-postgres-glow/18",
   },
   {
-    name: "MinIO",
-    src: "/assets/logos/minio.svg",
-    gradient: "from-brand-soft/85 via-brand/45 to-adapter-trino-glow/20",
-    glow: "bg-brand-hover/30",
-    featured: true,
-  },
-  {
-    name: "BigQuery",
-    src: "/assets/logos/bigquery.svg",
-    gradient: "from-adapter-bigquery/75 via-brand/30 to-transparent",
-    glow: "bg-adapter-bigquery-glow/18",
-  },
-  {
-    name: "Apache Airflow",
-    src: "/assets/logos/airflow.svg",
-    gradient:
-      "from-adapter-airflow/75 via-adapter-trino-glow/30 to-transparent",
+    name: "Trino",
+    src: "/assets/logos/trino.png",
+    gradient: "from-adapter-trino/70 via-adapter-airflow/25 to-transparent",
     glow: "bg-adapter-trino-glow/18",
   },
   {
-    name: "Dagster",
-    src: "/assets/logos/dagster.svg",
-    gradient:
-      "from-adapter-dagster/75 via-adapter-dagster-mid/30 to-transparent",
-    glow: "bg-adapter-dagster-glow/18",
+    name: "S3",
+    src: "/assets/logos/s3.svg",
+    gradient: "from-adapter-airflow/70 via-brand/25 to-transparent",
+    glow: "bg-adapter-airflow/18",
+  },
+  {
+    name: "MinIO",
+    src: "/assets/logos/minio.svg",
+    gradient: "from-adapter-trino/70 via-adapter-postgres/25 to-transparent",
+    glow: "bg-adapter-trino-glow/18",
+  },
+  {
+    name: "DuckDB",
+    src: "/assets/logos/duckdb.svg",
+    gradient: "from-adapter-postgres/70 via-brand/25 to-transparent",
+    glow: "bg-adapter-postgres-glow/18",
   },
 ] as const;
 
 const rows = [
   integrations.slice(0, 2),
   integrations.slice(2, 5),
-  integrations.slice(5),
+  integrations.slice(5, 7),
 ];
 
 const docsBaseUrl = import.meta.env.DEV
@@ -79,7 +76,11 @@ const docsBaseUrl = import.meta.env.DEV
               >
                 <div class="absolute inset-px rounded-[15px] bg-canvas/95"></div>
                 <div aria-hidden="true" class:list={["absolute -inset-8 rounded-full blur-2xl", integration.glow]}></div>
-                <img src={integration.src} alt={integration.name} class="relative size-9 object-contain brightness-0 invert drop-shadow-integration sm:size-10" />
+                <img
+                  src={integration.src}
+                  alt={integration.name}
+                  class="relative size-9 object-contain drop-shadow-integration sm:size-10"
+                />
               </div>
             ))}
           </div>
@@ -91,7 +92,7 @@ const docsBaseUrl = import.meta.env.DEV
       <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">ADAPTERS</p>
       <h2 class="mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">Your stack, one consistent interface.</h2>
       <p class="mt-5 text-pretty text-base leading-7 text-copy sm:text-lg">
-        Work with the data services you already run. Each adapter brings service-specific workflows into the same focused dsui workspace.
+        Work with the data services you already run. Each adapter brings service-specific workflows into the same focused DSUI workspace.
       </p>
       <a
         class="hero-action mt-8 inline-flex h-12 items-center justify-center whitespace-nowrap rounded-xl border border-brand-muted/15 bg-action-secondary px-6 text-sm font-semibold text-copy shadow-action-secondary hover:border-brand-muted/35 hover:shadow-action-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
