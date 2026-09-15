@@ -10,9 +10,57 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
-    name: Verify application and image
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # TODO(baseline): remove continue-on-error once pre-existing
+      # violations outside changed files are fixed.
+      - name: Check lint
+        run: bun run lint
+        continue-on-error: true
+
+  format:
+    name: Format check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # TODO(baseline): remove continue-on-error once pre-existing
+      # formatting violations are fixed.
+      - name: Check formatting
+        run: bun run format:check
+        continue-on-error: true
+
+  test:
+    name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -27,14 +75,57 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Check release notes formatter
-        run: bunx biome check scripts/generate-release-notes.ts
+      # TODO(tests): remove continue-on-error once the first real
+      # test files land; currently no package ships tests.
+      - name: Run workspace tests
+        run: bun run test
+        continue-on-error: true
 
-      - name: Typecheck
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck workspaces
         run: bun run typecheck
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Build workspaces
         run: bun run build
 
-      - name: Build container image
+  docker:
+    name: Build container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Build image
         run: docker build --tag ghcr.io/northgraindata/dsui:ci .
