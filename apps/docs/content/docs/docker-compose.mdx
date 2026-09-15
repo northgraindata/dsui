@@ -1,12 +1,12 @@
 ---
 title: Docker Compose
-description: Add dsui to an existing Compose data stack.
+description: Add DSUI to an existing Compose data stack.
 ---
 
 ```yaml
 services:
   dsui:
-    image: ghcr.io/northgraindata/dsui:latest
+    image: ghcr.io/northgraindata/dsui:0.1.0
     ports: ["4192:4192"]
     volumes:
       - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
@@ -18,4 +18,6 @@ volumes:
   dsui-data:
 ```
 
-Service hostnames must be reachable from the dsui container; use Compose service names rather than `localhost`.
+Service hostnames must be reachable from the DSUI container; use Compose service names rather than `localhost`.
+
+Pin a version tag for repeatable deployments. The `latest` tag tracks the most recent stable release.

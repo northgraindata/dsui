@@ -11,4 +11,4 @@ All notable changes to dsui are documented here. The format follows [Keep a Chan
 - Adapter SDK and built-in Trino, Kafka, and S3/MinIO adapters.
 - Declarative and UI-managed connections.
 - Community adapter template and immutable source validation.
-- Docker Compose demonstration, CI, releases, and benchmark infrastructure.
+- Automated Docker image releases to GitHub Container Registry with generated GitHub Release notes.
