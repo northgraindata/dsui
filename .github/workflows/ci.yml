@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify application and image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check release notes formatter
+        run: bunx biome check scripts/generate-release-notes.ts
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build workspaces
+        run: bun run build
+
+      - name: Build container image
+        run: docker build --tag ghcr.io/northgraindata/dsui:ci .
