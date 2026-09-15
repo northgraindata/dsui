@@ -1,65 +1,36 @@
-<p align="center">
-  <strong>dsui</strong><br />
-  <sub>DATA STACK UI</sub>
-</p>
+![DSUI — One operational workspace for your stack.](./assets/readme/banner.png)
 
-<p align="center"><strong>One lightweight UI for your data stack.</strong></p>
+[Website](https://dsui.northgraindata.com) · [Docs](https://dsui.northgraindata.com/docs) · [GitHub](https://github.com/northgraindata/dsui)
 
-<p align="center">
-  <a href="https://github.com/northgraindata/dsui/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg" /></a>
-  <a href="https://github.com/northgraindata/dsui/releases"><img alt="Release" src="https://img.shields.io/github/v/release/northgraindata/dsui" /></a>
-  <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue" /></a>
-  <a href="https://github.com/northgraindata/dsui/pkgs/container/dsui"><img alt="Container" src="https://img.shields.io/badge/ghcr.io-dsui-536edb" /></a>
-</p>
+# One operational workspace for your stack.
 
-![The compact dsui services dashboard](assets/screenshots/dashboard.png)
+Connect, explore and operate the data and infrastructure tools you already run.
 
-dsui is an open-source, local-first interface for inspecting Trino, Kafka, S3, MinIO, and future data services from one place. It replaces the extra UI container normally added for each service in a development stack.
+![CI](https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg)![Release](https://img.shields.io/github/v/release/northgraindata/dsui)![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)![Container](https://img.shields.io/badge/ghcr.io-dsui-536edb)
 
-## Quickstart
+![DSUI workspace showing a DuckDB analytics overview](./assets/readme/product.png)
 
-```bash
-docker run --rm -p 4192:4192 -v dsui-data:/data \
-  ghcr.io/northgraindata/dsui:latest
-```
+## Spend less time setting up tooling
 
-Open `http://localhost:4192` and add a service, or mount a declarative `dsui.yaml`. The complete demo is in [`examples/data-stack`](examples/data-stack).
+A data stack can mean a separate interface, container, configuration, and port for every service. DSUI gives the tools you already run one consistent workspace.
 
-```bash
-docker compose -f examples/data-stack/compose.yaml up --build
-```
+Configure a connection, run the DSUI container alongside your stack, and start working from one place.
 
-## Why dsui
+## One setup, across your stack
 
-A Compose data stack can already include a query engine, broker, object store, database, and stream processor. Running a separate administration UI for each one adds memory, images, ports, and context switching. dsui covers the common developer workflows through one server-side adapter model and one compact interface.
-
-It is not a data platform, orchestrator, observability suite, catalog, SaaS control plane, or replacement for every vendor-specific console.
-
-## Supported services
-
-| Adapter | Workflows | Status |
-| --- | --- | --- |
-| Snowflake | SQL, metadata, warehouses, jobs, governance, cost | Available |
-
-Adapters resolve by package name through one loader: local packages run
-in-process, pinned npm packages install verified and run isolated.
-No adapter id receives special handling anywhere in the server.
+Configure a DuckDB database in `dsui.yaml`:
 
 ```yaml
 services:
-  - id: analytics
-    adapter: snowflake
+  - id: warehouse
+    adapter: duckdb
     name: Analytics warehouse
     connection:
-      accountIdentifier: org-account
-      token: ${SNOWFLAKE_TOKEN}
+      method: file
+      path: /data/warehouse.duckdb
 ```
 
-## Lightweight by design
-
-dsui uses Bun, Hono, SQLite, Vite, and a small set of focused dependencies. It does not require PostgreSQL, Redis, an external control plane, or a dsui account. CI records image size, idle memory, cold startup, and frontend bundle size; benchmark values are published only after they are measured.
-
-## Docker Compose
+Run DSUI alongside it in `docker-compose.yml`:
 
 ```yaml
 services:
@@ -67,31 +38,53 @@ services:
     image: ghcr.io/northgraindata/dsui:latest
     ports:
       - "4192:4192"
+    environment:
+      DSUI_CONFIG: /etc/dsui/dsui.yaml
     volumes:
       - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
       - dsui-data:/data
+
+volumes:
+  dsui-data:
 ```
 
-Configuration-managed services are read-only in the UI. `${ENV_NAME}` interpolation keeps credentials out of committed YAML, and resolved secrets never reach browser storage.
+Start the workspace:
+
+```bash
+docker compose up -d
+```
+
+Open [http://localhost:4192](http://localhost:4192). DSUI loads its bundled DuckDB adapter and opens the database file in the persistent `/data` volume. Add your other services to the same `dsui.yaml` and Compose network.
 
 ## Adapters
 
-The core application contains no service-specific UI logic. Adapters declare metadata, connection schemas, resources, actions, and pages rendered by dsui. Community adapters install from exact, integrity-pinned npm packages; adapter-supplied browser code is not accepted.
+Connect Apache Airflow, dbt, PostgreSQL, Trino, S3-compatible storage such as MinIO, and DuckDB through one workspace.
 
-Start with [`templates/adapter`](templates/adapter) and the [Adapter SDK guide](https://dsui.northgraindata.com/docs/adapter-sdk/). The pre-1.0 API is intentionally experimental while the reference adapter exercises it.
 
-## Documentation
+|                                                       |                                               |                                                             |                                                       |                                                   |                                                |                                                         |
+| ----------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
+| <img src="./apps/site/public/assets/logos/airflow.svg" width="56" alt="Apache Airflow" /> | <img src="./apps/site/public/assets/logos/dbt.png" width="56" alt="dbt" /> | <img src="./apps/site/public/assets/logos/postgresql.svg" width="56" alt="PostgreSQL" /> | <img src="./apps/site/public/assets/logos/trino.png" width="56" alt="Trino" /> | <img src="./apps/site/public/assets/logos/s3.svg" width="56" alt="Amazon S3" /> | <img src="./apps/site/public/assets/logos/minio.svg" width="56" alt="MinIO" /> | <img src="./apps/site/public/assets/logos/duckdb.svg" width="56" alt="DuckDB" /> |
 
-Practical installation, configuration, adapter, architecture, and security documentation lives at [dsui.northgraindata.com/docs](https://dsui.northgraindata.com/docs/).
+
+
+
+**Need another tool?**
+The TypeScript [Adapter SDK](https://dsui.northgraindata.com/docs/adapter-sdk) lets you bring internal services and community adapters into the same workspace.
+
+## Self-hosted
+
+DSUI runs in your environment and keeps its local state in `/data`. It does not need a separate database or control plane. The official container image is published through GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/northgraindata/dsui:latest
+```
+
+
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md). Focused issues and pull requests are welcome, especially adapter implementations, contract tests, accessibility improvements, and measured performance work.
-
-## Northgrain Data
-
-Built and maintained by [Northgrain Data](https://northgraindata.com). dsui has its own project identity; Northgrain attribution is intentionally secondary.
+Contributions are welcome. See `[CONTRIBUTING.md](./CONTRIBUTING.md)` to get started.
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE).
+DSUI is developed by [Northgrain Data](https://northgraindata.com) and is available under the [Apache License 2.0](./LICENSE).
