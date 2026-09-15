@@ -20,6 +20,7 @@ import {
 } from "./config.js";
 import { ConnectionCipher } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
+import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
 import { type EnterpriseAuthKit, registerAuthRoutes } from "./routes/auth.js";
 import { registerExecuteRoutes } from "./routes/execute.js";
@@ -187,6 +188,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     fetch: options.adapterFetch,
     offline: options.offlineAdapters,
     spawnHost: options.spawnHost,
+    persistenceProvider: (namespace) =>
+      new SqliteStorePersistenceProvider(database, namespace),
+    persistenceDatabasePath: databasePath,
   };
 
   /**

@@ -136,12 +136,14 @@ export interface InstalledExternalAdapter {
   manifestPath: string;
   bundlePath: string;
   bundleSha256: string;
+  browserBundlePath?: string;
   installedAt: string;
 }
 
 type Activation = Omit<InstalledExternalAdapter, "manifest" | "source"> & {
   source: CommunityAdapterSource;
   manifestSha256: string;
+  browserBundleSha256?: string;
 };
 
 function sha256(bytes: Uint8Array): string {
@@ -418,6 +420,21 @@ function validateFiles(
   return manifest;
 }
 
+function validateBrowserBundle(
+  manifest: z.infer<typeof adapterManifestSchema>,
+  bundle: Uint8Array,
+): void {
+  if (!manifest.browser) return;
+  if (
+    manifest.browser.bytes !== bundle.length ||
+    manifest.browser.sha256 !== sha256(bundle)
+  )
+    throw new ExternalAdapterError(
+      "Adapter browser bundle differs from manifest digest or byte count",
+    );
+  rejectUnsafeBundle(bundle, manifest.browser.entry);
+}
+
 function npmPackumentUrl(name: string): string {
   return `https://registry.npmjs.org/${encodeURIComponent(name)}`;
 }
@@ -578,12 +595,24 @@ export class ExternalAdapterManager {
       const bundle = new Uint8Array(
         await readFile(this.objectPath(activation.bundleSha256, ".mjs")),
       );
+      const browserBundle = activation.browserBundleSha256
+        ? new Uint8Array(
+            await readFile(
+              this.objectPath(activation.browserBundleSha256, ".mjs"),
+            ),
+          )
+        : undefined;
       if (
         sha256(manifestBytes) !== activation.manifestSha256 ||
-        sha256(bundle) !== activation.bundleSha256
+        sha256(bundle) !== activation.bundleSha256 ||
+        (browserBundle &&
+          sha256(browserBundle) !== activation.browserBundleSha256)
       )
         throw new Error("hash mismatch");
       const manifest = validateFiles(manifestBytes, bundle, source);
+      if (manifest.browser && !browserBundle)
+        throw new Error("missing browser bundle");
+      if (browserBundle) validateBrowserBundle(manifest, browserBundle);
       if (manifest.id !== activation.id) throw new Error("id mismatch");
       return {
         ...activation,
@@ -591,6 +620,14 @@ export class ExternalAdapterManager {
         manifest,
         manifestPath: this.objectPath(activation.manifestSha256, ".json"),
         bundlePath: this.objectPath(activation.bundleSha256, ".mjs"),
+        ...(activation.browserBundleSha256
+          ? {
+              browserBundlePath: this.objectPath(
+                activation.browserBundleSha256,
+                ".mjs",
+              ),
+            }
+          : {}),
       };
     } catch {
       return undefined;
@@ -614,6 +651,7 @@ export class ExternalAdapterManager {
     }
     let manifestBytes: Uint8Array;
     let bundle: Uint8Array;
+    let browserBundle: Uint8Array | undefined;
     if (source.source === "npm") {
       const packumentBytes = await fetchNpm(
         this.fetcher,
@@ -674,8 +712,20 @@ export class ExternalAdapterManager {
             "npm package lacks declared adapter bundle",
           );
         })();
+      if (preliminary.browser)
+        browserBundle =
+          files.get(preliminary.browser.entry.slice(2)) ??
+          (() => {
+            throw new ExternalAdapterError(
+              "npm package lacks declared browser bundle",
+            );
+          })();
       for (const file of files.keys()) {
-        if (/\.(?:node|wasm|mjs|cjs|js)$/i.test(file) && file !== entry)
+        if (
+          /\.(?:node|wasm|mjs|cjs|js)$/i.test(file) &&
+          file !== entry &&
+          file !== preliminary.browser?.entry.slice(2)
+        )
           throw new ExternalAdapterError(
             "npm package contains native code or extra executable chunks",
           );
@@ -702,10 +752,29 @@ export class ExternalAdapterManager {
         MAX_BUNDLE_BYTES,
         "GitHub adapter bundle",
       );
+      if (preliminary.browser)
+        browserBundle = await fetchPublic(
+          this.fetcher,
+          githubRawUrl(
+            source.repository,
+            source.commit,
+            preliminary.browser.entry.slice(2),
+          ),
+          MAX_BUNDLE_BYTES,
+          "GitHub browser bundle",
+        );
     }
     const manifest = validateFiles(manifestBytes, bundle, source);
+    if (manifest.browser && !browserBundle)
+      throw new ExternalAdapterError(
+        "Adapter declares a browser bundle but none was found",
+      );
+    if (browserBundle) validateBrowserBundle(manifest, browserBundle);
     const manifestPath = await this.saveObject(manifestBytes, ".json");
     const bundlePath = await this.saveObject(bundle, ".mjs");
+    const browserBundlePath = browserBundle
+      ? await this.saveObject(browserBundle, ".mjs")
+      : undefined;
     const activation: Activation = {
       id: manifest.id,
       source,
@@ -713,12 +782,21 @@ export class ExternalAdapterManager {
       bundleSha256: sha256(bundle),
       manifestPath,
       bundlePath,
+      ...(browserBundlePath
+        ? { browserBundleSha256: sha256(browserBundle!) }
+        : {}),
       installedAt: new Date().toISOString(),
     };
     await this.atomic(
       this.activationPath(this.activationKey(manifest.id, source)),
       JSON.stringify(activation),
     );
-    return { ...activation, manifest, manifestPath, bundlePath };
+    return {
+      ...activation,
+      manifest,
+      manifestPath,
+      bundlePath,
+      ...(browserBundlePath ? { browserBundlePath } : {}),
+    };
   }
 }

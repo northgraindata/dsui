@@ -70,6 +70,7 @@ const paths: Record<string, ReactNode> = {
     <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0-12.5v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.05 16.95l-1.41 1.41m12.72 0-1.42-1.41M7.05 7.05 5.64 5.64" />
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  refresh: <path d="M20 11a8 8 0 1 0 1 4m-1-4V6m0 5h-5" />,
   search: (
     <>
       <circle cx="10.8" cy="10.8" r="6.8" />

@@ -1,7 +1,6 @@
-import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
-import { Link, useRouter } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
-import { deleteService, type Service } from "../api";
+import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import type { Service } from "../api";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
@@ -40,8 +39,6 @@ export function AdapterWorkspace({
   path?: string;
   children: ReactNode;
 }) {
-  const router = useRouter();
-  const [showConfirmRemove, setShowConfirmRemove] = useState(false);
   const pages = navigablePagePaths(paths);
   const query = path === "/query";
   const active = (item: string) =>
@@ -59,15 +56,10 @@ export function AdapterWorkspace({
     </Link>
   );
 
-  const handleRemove = async () => {
-    await deleteService(service.id);
-    router.navigate({ to: "/" });
-  };
-
   return (
     <div className="adapter-layout">
       <aside className="adapter-sidebar">
-        <Link to="/services" className="adapter-back">
+        <Link to="/" className="adapter-back">
           <Icon name="chevron" size={14} />
           Back to home
         </Link>
@@ -88,25 +80,6 @@ export function AdapterWorkspace({
         <nav className="adapter-pages" aria-label="Adapter pages">
           {pages.map((item) => pageLink(item, true))}
         </nav>
-        <section className="adapter-recent">
-          <header>
-            <h2>{query ? "Recent queries" : "Recent"}</h2>
-            {pages.includes("/activity") && (
-              <Link
-                to="/services/$serviceId/$viewId"
-                params={{ serviceId: service.id, viewId: "activity" }}
-              >
-                View all
-              </Link>
-            )}
-          </header>
-          <p>Open Activity to browse query history for this connection.</p>
-          <div className="notebook-preview">
-            <Icon name="file" />
-            <span>Notebooks</span>
-            <small>Coming soon</small>
-          </div>
-        </section>
       </aside>
       <div className="adapter-main">
         <header className="adapter-heading flex items-center justify-between">
@@ -125,30 +98,6 @@ export function AdapterWorkspace({
               </p>
             </div>
           </div>
-          <Dialog.Root
-            open={showConfirmRemove}
-            onOpenChange={setShowConfirmRemove}
-          >
-            <Dialog.Trigger asChild>
-              <Button variant="danger">Remove connection</Button>
-            </Dialog.Trigger>
-            <DialogContent
-              title="Remove connection"
-              description={`Are you sure you want to remove ${service.name}?`}
-            >
-              <div className="flex justify-end gap-3 pt-5">
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowConfirmRemove(false)}
-                >
-                  Cancel
-                </Button>
-                <Button variant="danger" onClick={handleRemove}>
-                  Yes, remove
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog.Root>
         </header>
         {children}
       </div>

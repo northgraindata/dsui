@@ -145,7 +145,7 @@ export const dropIndex = defineAction({
   id: "drop-index",
   input: z.object({ index: z.string().min(1) }),
   run: async ({ index }, ctx: Ctx) => {
-    await ctx.client.execute(`DROP INDEX ${index}`);
+    await ctx.client.execute(`DROP INDEX ${identifierPath(index)}`);
     ctx.invalidate(indexes);
     return { index, dropped: true };
   },
@@ -160,7 +160,7 @@ export const importData = defineAction({
   }),
   run: async ({ table, source, format }, ctx: Ctx) => {
     await ctx.client.execute(
-      `COPY ${table} FROM '${source}' (FORMAT ${format})`,
+      `COPY ${identifierPath(table)} FROM '${literal(source)}' (FORMAT ${format})`,
     );
     ctx.invalidate(tables);
     return { table, imported: true };
@@ -171,10 +171,18 @@ function quote(identifier: string): string {
   return `"${identifier.replace(/"/g, '""')}"`;
 }
 
+function identifierPath(value: string): string {
+  return value.split(".").map(quote).join(".");
+}
+
 function scoped(database: string, schema: string): string {
   return `${quote(database)}.${quote(schema)}`;
 }
 
 function full(database: string, schema: string, name: string): string {
   return `${scoped(database, schema)}.${quote(name)}`;
+}
+
+function literal(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "''");
 }

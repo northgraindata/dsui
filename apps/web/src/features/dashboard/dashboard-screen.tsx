@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getServices, type Service } from "../../api";
 import { HomeDashboard } from "../../components/home-dashboard";
 
@@ -7,7 +7,9 @@ export function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setError(undefined);
     getServices()
       .then(setServices)
       .catch((cause) =>
@@ -18,5 +20,19 @@ export function DashboardScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  return <HomeDashboard services={services} loading={loading} error={error} />;
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return (
+    <HomeDashboard
+      services={services}
+      loading={loading}
+      error={error}
+      onRefresh={refresh}
+      onServiceRemoved={(id) =>
+        setServices((current) => current.filter((service) => service.id !== id))
+      }
+    />
+  );
 }

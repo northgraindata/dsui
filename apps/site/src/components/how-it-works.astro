@@ -9,6 +9,9 @@ const services = [
 
 const dockerCommand =
   "docker run --rm -p 4192:4192 -v dsui-data:/data ghcr.io/northgraindata/dsui:latest";
+const docsBaseUrl = import.meta.env.DEV
+  ? "http://localhost:4322/docs"
+  : "/docs";
 ---
 
 <section
@@ -48,7 +51,7 @@ const dockerCommand =
       </p>
       <a
         class="mt-8 inline-flex min-h-11 items-center text-sm font-semibold text-copy transition-colors hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-4 focus-visible:ring-offset-canvas"
-        href="/docs/getting-started/"
+        href={`${docsBaseUrl}/getting-started`}
       >
         Read the setup guide
         <span class="ml-2 text-brand-muted" aria-hidden="true">→</span>

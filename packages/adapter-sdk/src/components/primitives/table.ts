@@ -70,13 +70,11 @@ export type PageTableRowLink = {
 
 export type PageTableRowAction = {
   label: string;
-  icon?: string;
   variant?: "primary" | "secondary" | "danger";
-  action?: {
+  action: {
     actionId: string;
     input?: Record<string, string>;
   };
-  link?: PageTableRowLink;
   successLink?: PageTableRowLink;
   confirmation?: {
     title: string;
@@ -104,11 +102,8 @@ export interface TableProps {
   rowLink?: TableRowLink;
   rowActions?: readonly TableRowAction[];
   actions?: readonly TableRowMenuAction[];
-  /** Enables client-side text search across the table's visible columns. */
   searchable?: boolean;
-  /** Exact-match filters applied to the fetched rows. */
   filters?: readonly TableFilter[];
-  /** Number of rows displayed per client-side page. */
   pageSize?: number;
 }
 
@@ -117,27 +112,7 @@ export interface TableNode {
   readonly props: TableProps;
 }
 
-export const Table = defineComponent<TableProps, TableNode>({
+export const Table = defineComponent<TableProps>({
   id: "table",
-  render: (props) => {
-    if (props.rowLink && !props.rowLink.path.startsWith("/"))
-      throw new Error("Table rowLink path must be absolute");
-    for (const action of props.actions ?? []) {
-      if (Boolean(action.action) === Boolean(action.link))
-        throw new Error("Table action requires exactly one action or link");
-      if (action.link && !action.link.path.startsWith("/"))
-        throw new Error("Table action link path must be absolute");
-      if (action.successLink && !action.successLink.path.startsWith("/"))
-        throw new Error("Table action successLink path must be absolute");
-    }
-    for (const action of props.rowActions ?? []) {
-      if (Boolean(action.action) === Boolean(action.link))
-        throw new Error("Table row action requires exactly one action or link");
-      if (action.link && !action.link.path.startsWith("/"))
-        throw new Error("Table row action link path must be absolute");
-      if (action.successLink && !action.successLink.path.startsWith("/"))
-        throw new Error("Table action successLink path must be absolute");
-    }
-    return { kind: "table", props: { ...props } };
-  },
+  path: "./ui/table",
 });

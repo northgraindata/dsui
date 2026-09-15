@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus, PublicService } from "@northgraindata/dsui-core";
 import type { Hono } from "hono";
 import { z } from "zod";
@@ -18,6 +19,32 @@ export const createServiceSchema = z.object({
 export type ServiceSource =
   | { service: ConfiguredService; managedBy: "configuration" }
   | { service: UiServiceRow; managedBy: "ui" };
+
+function withBrowserComponents(
+  document: PageDocument,
+  browserUrl: string | undefined,
+): PageDocument {
+  if (!browserUrl) return document;
+  const visit = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(visit);
+    if (!value || typeof value !== "object") return value;
+    const record = value as Record<string, unknown>;
+    if (
+      typeof record.kind === "string" &&
+      record.props &&
+      typeof record.props === "object"
+    ) {
+      const props = visit(record.props) as Record<string, unknown>;
+      return record.kind === "custom" && !props.browserUrl
+        ? { ...record, props: { ...props, browserUrl } }
+        : { ...record, props };
+    }
+    return Object.fromEntries(
+      Object.entries(record).map(([key, item]) => [key, visit(item)]),
+    );
+  };
+  return visit(document) as PageDocument;
+}
 
 export function serviceSource(
   config: DsuiConfig,
@@ -78,7 +105,9 @@ export async function publicService(
     };
   }
   const connection = connectionFor(deps.cipher, source);
-  const health = await adapter.backend.checkHealth(connection);
+  const health = await adapter.backend.checkHealth(connection, {
+    persistenceNamespace: source.service.id,
+  });
   return {
     id: source.service.id,
     name: source.service.name ?? adapter.metadata.name,
@@ -228,10 +257,17 @@ export function registerServiceRoutes(
       );
       if (!source) throw new Error("Service not found");
       const adapter = deps.registry.get(source.service.adapter);
+      const document = await adapter.backend.renderPage(
+        connectionFor(deps.cipher, source),
+        path,
+        { persistenceNamespace: source.service.id },
+      );
       return context.json(
-        await adapter.backend.renderPage(
-          connectionFor(deps.cipher, source),
-          path,
+        withBrowserComponents(
+          document,
+          adapter.browserBundlePath
+            ? `/api/v1/adapters/${encodeURIComponent(adapter.id)}/components.mjs`
+            : undefined,
         ),
       );
     } catch (error) {

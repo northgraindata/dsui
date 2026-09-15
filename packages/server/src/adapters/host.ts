@@ -17,6 +17,8 @@ export interface AdapterHostRequest {
   /** Resource or action id for `resource`/`action` methods. */
   target?: string;
   input?: unknown;
+  /** Stable DSUI service id used to isolate persisted adapter state. */
+  persistenceNamespace?: string;
 }
 
 interface JsonRpcResponse {
@@ -78,6 +80,7 @@ export class AdapterHostClient {
         connection: request.connection ?? {},
         target: request.target,
         input: request.input ?? {},
+        persistenceNamespace: request.persistenceNamespace,
       },
     })}\n`;
     if (Buffer.byteLength(input) > max)

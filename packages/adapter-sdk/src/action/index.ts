@@ -12,4 +12,5 @@ export type {
   AnyActionDefinition,
   InputAction,
   InputlessAction,
+  StoreActionAccessor,
 } from "./types";

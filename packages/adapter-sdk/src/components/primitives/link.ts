@@ -13,7 +13,7 @@ export interface LinkNode {
   readonly props: LinkProps;
 }
 
-export const Link = defineComponent<LinkProps, LinkNode>({
+export const Link = defineComponent<LinkProps>({
   id: "link",
-  render: (props) => ({ kind: "link", props: { ...props } }),
+  path: "./ui/link",
 });

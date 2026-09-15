@@ -330,7 +330,7 @@ function detailTabs(
           content: CodeBlock({
             label: "DAG source",
             value: { field: "content" },
-            language: "text",
+            language: "python",
           }),
         }),
       },

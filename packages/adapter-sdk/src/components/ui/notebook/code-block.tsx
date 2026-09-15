@@ -1,0 +1,123 @@
+import type { ActionReference } from "@northgraindata/dsui-adapter-sdk";
+import {
+  parseQueryResult,
+  type QueryResultView,
+} from "@northgraindata/dsui-adapter-sdk/components/ui/query-editor/query-result";
+import { QueryResults } from "@northgraindata/dsui-adapter-sdk/components/ui/query-editor/results";
+import { SqlEditor } from "@northgraindata/dsui-adapter-sdk/components/ui/query-editor/sql-editor";
+import { Button } from "@northgraindata/dsui-ui";
+import { useEffect, useState } from "react";
+import type { ComponentProps as RegistryViewProps } from "../../runtime";
+import { WorkbenchIcon } from "../icons";
+import { BlockHeader } from "./block-header";
+
+export function CodeBlock({
+  client,
+  action,
+  content,
+  index,
+  language,
+  onChange,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+  readOnly = false,
+  initialResult,
+  onResult,
+}: {
+  client: RegistryViewProps["client"];
+  action: ActionReference | string;
+  content: string;
+  index: number;
+  language: string;
+  onChange: (value: string) => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  readOnly?: boolean;
+  initialResult?: QueryResultView;
+  onResult: (result: QueryResultView | undefined) => void;
+}) {
+  const [value, setValue] = useState(content);
+  const [result, setResult] = useState<QueryResultView | undefined>(
+    initialResult,
+  );
+  const [error, setError] = useState<string>();
+  const [running, setRunning] = useState(false);
+  useEffect(() => {
+    setResult(initialResult);
+  }, [initialResult]);
+  const run = async () => {
+    if (!value.trim() || running) return;
+    setRunning(true);
+    setError(undefined);
+    setResult(undefined);
+    try {
+      const response = await client.executeAction({
+        ...actionReference(action),
+        input: { sql: value },
+      });
+      if (response.status !== "success")
+        throw new Error(response.message ?? "Code execution failed");
+      const nextResult = parseQueryResult(response.data);
+      setResult(nextResult);
+      onResult(nextResult);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Code execution failed",
+      );
+    } finally {
+      setRunning(false);
+    }
+  };
+  return (
+    <article className="notebook-block notebook-code-block">
+      <BlockHeader
+        index={index}
+        label={language.toUpperCase()}
+        icon="braces"
+        onDelete={readOnly ? undefined : onDelete}
+        onMoveUp={readOnly ? undefined : onMoveUp}
+        onMoveDown={readOnly ? undefined : onMoveDown}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+      />
+      <div className="notebook-code-toolbar">
+        <span>SQL</span>
+        <Button
+          type="button"
+          onClick={() => void run()}
+          disabled={running || !value.trim()}
+        >
+          <WorkbenchIcon name="play" size={14} />
+          {running ? "Running…" : "Run"}
+        </Button>
+      </div>
+      <SqlEditor
+        value={value}
+        onChange={(nextValue) => {
+          if (readOnly) return;
+          setValue(nextValue);
+          onChange(nextValue);
+          setResult(undefined);
+          onResult(undefined);
+        }}
+        onRun={() => void run()}
+        placeholder="Write SQL…"
+      />
+      {(result || error || running) && (
+        <QueryResults result={result} error={error} running={running} />
+      )}
+    </article>
+  );
+}
+
+function actionReference(value: unknown): ActionReference {
+  if (!value || typeof value !== "object" || !("actionId" in value))
+    return { actionId: String(value ?? "") };
+  return { actionId: String((value as { actionId: string }).actionId) };
+}

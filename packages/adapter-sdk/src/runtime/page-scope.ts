@@ -58,6 +58,7 @@ export function createPageScope(
             Record<string, unknown>,
             Record<string, (...args: never[]) => unknown>
           >,
+          { persistenceProvider: registry.persistenceProvider },
         );
         pageStores.set(def.id, pageInstance);
       }
@@ -85,16 +86,45 @@ export function createPageScope(
           Record<string, unknown>,
           Record<string, (...args: never[]) => unknown>
         >,
+        { persistenceProvider: registry.persistenceProvider },
       );
       pageStores.set(def.id, created);
       return { ...created.get() } as never;
     },
   };
 
+  const readyPromise = Promise.all(
+    page.stores.map((definition) => {
+      const resolved = registry.resolve(definition);
+      if (resolved.scope === "adapter")
+        return registry
+          .adapterStore(
+            definition as StoreDefinition<
+              Record<string, unknown>,
+              Record<string, (...args: never[]) => unknown>
+            >,
+          )
+          .ready();
+      let instance = pageStores.get(definition.id);
+      if (!instance) {
+        instance = createStoreInstance(
+          resolved as StoreDefinition<
+            Record<string, unknown>,
+            Record<string, (...args: never[]) => unknown>
+          >,
+          { persistenceProvider: registry.persistenceProvider },
+        );
+        pageStores.set(definition.id, instance);
+      }
+      return instance.ready();
+    }),
+  ).then(() => undefined);
+
   return {
     page,
     params: { ...params },
     stores: accessor,
+    ready: () => readyPromise,
     render: () =>
       page.render({ params: { ...params }, query, stores: accessor }),
     onUpdate: (listener) => {

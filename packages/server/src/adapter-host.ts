@@ -8,6 +8,8 @@ import {
 import type { HealthStatus } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
 import { assertAdapterDefinition } from "./adapters/definition.js";
+import { DsuiDatabase } from "./db/database.js";
+import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 
 type HostMethod = "describe" | "health" | "page" | "resource" | "action";
 
@@ -15,6 +17,7 @@ interface HostParams {
   connection?: unknown;
   target?: string;
   input?: unknown;
+  persistenceNamespace?: string;
 }
 
 interface HostRequest {
@@ -100,6 +103,17 @@ export async function runAdapterHost(): Promise<number> {
   }
   const method = request.method as HostMethod;
   const params = (request.params ?? {}) as HostParams;
+  const databasePath = argument("--database");
+  const database = databasePath ? new DsuiDatabase(databasePath) : undefined;
+  const runtimeOptions =
+    params.persistenceNamespace && database
+      ? {
+          persistenceProvider: new SqliteStorePersistenceProvider(
+            database,
+            params.persistenceNamespace,
+          ),
+        }
+      : {};
   try {
     switch (method) {
       case "describe": {
@@ -116,6 +130,7 @@ export async function runAdapterHost(): Promise<number> {
             inputSchema: inputSchemaOf(action, `action "${action.id}"`),
           })),
           pages: definition.pages.map((page) => ({ path: page.path })),
+          components: [],
         });
         break;
       }
@@ -125,6 +140,7 @@ export async function runAdapterHost(): Promise<number> {
           const instance = await createAdapterInstance(
             definition,
             params.connection,
+            runtimeOptions,
           );
           try {
             const status: HealthStatus = {
@@ -154,10 +170,12 @@ export async function runAdapterHost(): Promise<number> {
         const instance = await createAdapterInstance(
           definition,
           params.connection,
+          runtimeOptions,
         );
         try {
           const scope = instance.createPageScope(path);
           try {
+            await scope.ready();
             reply(request.id, { path, nodes: serializeNodes(scope.render()) });
           } finally {
             scope.dispose();
@@ -175,6 +193,7 @@ export async function runAdapterHost(): Promise<number> {
         const instance = await createAdapterInstance(
           definition,
           params.connection,
+          runtimeOptions,
         );
         try {
           const binding = (
@@ -198,6 +217,7 @@ export async function runAdapterHost(): Promise<number> {
         const instance = await createAdapterInstance(
           definition,
           params.connection,
+          runtimeOptions,
         );
         try {
           const binding = (
@@ -226,6 +246,8 @@ export async function runAdapterHost(): Promise<number> {
       undefined,
       error instanceof Error ? error.message : "Adapter host failed",
     );
+  } finally {
+    database?.close();
   }
   return 0;
 }

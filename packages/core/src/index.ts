@@ -45,6 +45,8 @@ export interface PublicAdapter {
   resources: Array<{ id: string; inputSchema?: Record<string, unknown> }>;
   actions: Array<{ id: string; inputSchema?: Record<string, unknown> }>;
   pages: Array<{ path: string }>;
+  components: Array<{ id: string; path: string }>;
+  browserComponentsUrl?: string;
 }
 
 /** One service as served by the services API. */

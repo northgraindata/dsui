@@ -13,6 +13,35 @@
  */
 export type StoreScope = "adapter" | "page";
 
+/** Persistence configuration declared by a store. */
+export type StorePersistence =
+  | { readonly type: "memory" }
+  | {
+      readonly type: "persistent";
+      readonly key?: string;
+      readonly version?: number;
+    };
+
+/** Context passed to a host persistence provider. */
+export interface StorePersistenceRequest {
+  readonly scope: StoreScope;
+  readonly storeId: string;
+  readonly key: string;
+  readonly version: number;
+}
+
+/** Generic persistence backend supplied by the runtime host. */
+export interface StorePersistenceProvider {
+  load(
+    request: StorePersistenceRequest,
+  ): Promise<{ readonly value: unknown; readonly version: number } | null>;
+  save(
+    request: StorePersistenceRequest & { readonly value: unknown },
+  ): Promise<void>;
+}
+
+export type StoreStatus = "ready" | "loading" | "error";
+
 /**
  * State helpers handed to a store's `actions` factory. Bound to one
  * store instance; actions close over them.
@@ -49,6 +78,8 @@ export interface StoreDefinition<
   readonly id: string;
   /** Lifetime of the state (adapter- or page-scoped). */
   readonly scope: StoreScope;
+  /** Where this store's state lives. */
+  readonly persistence: StorePersistence;
   /** Frozen at definition time; instances start as copies of it. */
   readonly initialState: Readonly<TState>;
   /** Builds typed actions bound to one store instance. */
@@ -66,6 +97,8 @@ export interface AnyStoreDefinition {
   readonly id: string;
   /** Lifetime of the state. */
   readonly scope: StoreScope;
+  /** Persistence mode used by the runtime. */
+  readonly persistence: StorePersistence;
 }
 
 /**
@@ -81,6 +114,12 @@ export interface StoreInstance<
 > {
   /** The definition this instance was created from. */
   readonly definition: StoreDefinition<TState, TActions>;
+  /** Current persistence lifecycle status. */
+  readonly status: StoreStatus;
+  /** Resolves after the initial persistence load has completed. */
+  ready(): Promise<void>;
+  /** Resolves after queued persistence writes have completed. */
+  flush(): Promise<void>;
   /**
    * Current state snapshot (a copy).
    */

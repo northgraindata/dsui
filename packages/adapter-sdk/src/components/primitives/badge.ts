@@ -19,7 +19,7 @@ export interface BadgeNode {
   readonly props: BadgeProps;
 }
 
-export const Badge = defineComponent<BadgeProps, BadgeNode>({
+export const Badge = defineComponent<BadgeProps>({
   id: "badge",
-  render: (props) => ({ kind: "badge", props: { ...props } }),
+  path: "./ui/badge",
 });

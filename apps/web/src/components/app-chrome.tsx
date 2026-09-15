@@ -55,29 +55,11 @@ export function AppChrome({
             <kbd>⌘ K</kbd>
           </button>
         </div>
-        <div className="app-topbar-actions">
-          <Link
-            to="/settings"
-            className="app-avatar"
-            aria-label="Workspace settings"
-          >
-            DS
-          </Link>
-        </div>
       </header>
       <div className="app-body">
         {!inAdapter && (
           <aside className="app-sidebar">
             <nav aria-label="Main navigation">{navigation}</nav>
-            <div className="app-sidebar-bottom">
-              <Link to="/settings" className="workspace-profile">
-                <span className="app-avatar">DS</span>
-                <span>
-                  My workspace<small>Manage settings</small>
-                </span>
-                <Icon name="chevron" />
-              </Link>
-            </div>
           </aside>
         )}
         <main id="main-content" className="app-content">

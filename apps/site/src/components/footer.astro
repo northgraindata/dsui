@@ -1,3 +1,9 @@
+---
+const docsBaseUrl = import.meta.env.DEV
+  ? "http://localhost:4322/docs"
+  : "/docs";
+---
+
 <footer class="relative overflow-hidden bg-canvas text-foreground">
   <div
     aria-hidden="true"
@@ -30,7 +36,7 @@
         <div class="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
           <a
             class="hero-action inline-flex h-12 items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
-            href="/docs/getting-started/"
+            href={`${docsBaseUrl}/getting-started`}
           >
             Get started
             <span
@@ -79,15 +85,25 @@
         <a class="transition-colors hover:text-foreground" href="#adapters"
           >Adapters</a
         >
-        <a class="transition-colors hover:text-foreground" href="/docs/"
+        <a class="transition-colors hover:text-foreground" href={docsBaseUrl}
           >Documentation</a
         >
       </nav>
-      <p class="text-xs text-copy-muted">
-        Built by <a
-          class="transition-colors hover:text-copy"
-          href="https://northgraindata.com">Northgrain Data</a
+      <p class="inline-flex items-center gap-1.5 text-xs text-copy-muted">
+        <span>Built by</span>
+        <a
+          class="inline-flex items-center gap-1.5 transition-colors hover:text-copy"
+          href="https://northgraindata.com"
         >
+          <img
+            src="/assets/northgrain-mark.svg"
+            alt=""
+            width="16"
+            height="16"
+            class="size-4 rounded-sm bg-white p-0.5 object-contain"
+          />
+          Northgrain Data
+        </a>
       </p>
     </div>
   </div>

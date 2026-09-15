@@ -83,30 +83,6 @@ export const relationPage = definePage({
               ],
         }),
       ],
-      inspector: [
-        KeyValue({
-          title: "Table details",
-          data: {
-            schema: params.schema,
-            name: params.relation,
-            type: isView ? "VIEW" : "TABLE",
-            database: params.database,
-          },
-        }),
-        Table({
-          source: tableColumns(input),
-          columns: [
-            { id: "name", label: "Columns" },
-            { id: "type", label: "Type" },
-          ],
-        }),
-        KeyValue({
-          title: "Sample query",
-          data: {
-            SQL: `SELECT *\nFROM ${[params.database, params.schema, params.relation].map((name) => `"${name.replaceAll('"', '""')}"`).join(".")}\nLIMIT 100;`,
-          },
-        }),
-      ],
     });
   },
 });

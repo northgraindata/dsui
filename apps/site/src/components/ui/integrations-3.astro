@@ -53,6 +53,10 @@ const rows = [
   integrations.slice(2, 5),
   integrations.slice(5),
 ];
+
+const docsBaseUrl = import.meta.env.DEV
+  ? "http://localhost:4322/docs"
+  : "/docs";
 ---
 
 <section id="adapters" class="bg-canvas py-24 text-foreground sm:py-32">
@@ -91,7 +95,7 @@ const rows = [
       </p>
       <a
         class="hero-action mt-8 inline-flex h-12 items-center justify-center whitespace-nowrap rounded-xl border border-brand-muted/15 bg-action-secondary px-6 text-sm font-semibold text-copy shadow-action-secondary hover:border-brand-muted/35 hover:shadow-action-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
-        href="/docs/adapters/"
+        href={`${docsBaseUrl}/adapters`}
       >
         Explore adapters <span class="hero-action-icon ml-2 text-brand-muted" aria-hidden="true">→</span>
       </a>

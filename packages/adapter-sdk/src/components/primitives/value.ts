@@ -15,10 +15,7 @@ export interface ValueNode {
   readonly props: ValueProps;
 }
 
-export const Value = defineComponent<ValueProps, ValueNode>({
+export const Value = defineComponent<ValueProps>({
   id: "value",
-  render: (props) => ({
-    kind: "value",
-    props: { ...props, format: props.format ?? "text" },
-  }),
+  path: "./ui/value",
 });

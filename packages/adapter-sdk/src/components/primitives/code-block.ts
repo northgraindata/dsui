@@ -4,7 +4,7 @@ import type { FieldReference } from "./collection";
 export interface CodeBlockProps {
   label: string | FieldReference;
   value: string | FieldReference;
-  language?: "sql" | "text" | FieldReference;
+  language?: "python" | "sql" | "text" | FieldReference;
 }
 
 export interface CodeBlockNode {
@@ -12,7 +12,7 @@ export interface CodeBlockNode {
   readonly props: CodeBlockProps;
 }
 
-export const CodeBlock = defineComponent<CodeBlockProps, CodeBlockNode>({
+export const CodeBlock = defineComponent<CodeBlockProps>({
   id: "code-block",
-  render: (props) => ({ kind: "code-block", props: { ...props } }),
+  path: "./ui/code-block",
 });

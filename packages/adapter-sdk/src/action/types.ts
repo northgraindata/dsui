@@ -1,5 +1,15 @@
 import type { z } from "zod";
 import type { AnyResourceDefinition } from "../resource/types";
+import type { StoreDefinition, StoreInstance } from "../store/types";
+
+export interface StoreActionAccessor {
+  get<
+    TState extends Record<string, unknown>,
+    TActions extends Record<string, (...args: never[]) => unknown>,
+  >(
+    definition: StoreDefinition<TState, TActions>,
+  ): StoreInstance<TState, TActions>;
+}
 
 /**
  * Minimal structural view of an action binding, shared with UI
@@ -114,6 +124,8 @@ export interface ActionDefinition<TInput, TOutput, TContext = unknown> {
 export interface ActionRuntimeContext {
   /** Caller-owned cancellation; pass to cancellable I/O and check during work. */
   readonly signal?: AbortSignal;
+  /** Access to adapter-scoped stores for durable action-backed mutations. */
+  readonly stores: StoreActionAccessor;
   /**
    * Re-executes watched bindings: none (all), a resource (its bindings),
    * or a resource plus input (one binding).

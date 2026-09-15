@@ -15,6 +15,7 @@ import { StoreRegistry } from "./store-registry";
 import type {
   ActionExecutionOptions,
   AdapterInstance,
+  AdapterRuntimeOptions,
   PageScope,
   ResourceResult,
 } from "./types";
@@ -43,6 +44,7 @@ import type {
 export async function createAdapterInstance<TContext, TConfig>(
   definition: AdapterDefinition<TContext, TConfig>,
   rawConfig: unknown = {},
+  options: AdapterRuntimeOptions = {},
 ): Promise<AdapterInstance<TContext>> {
   const config =
     definition.connectionSchema != null
@@ -52,6 +54,7 @@ export async function createAdapterInstance<TContext, TConfig>(
   return new AdapterRuntime(
     definition as AdapterDefinition<TContext, unknown>,
     context,
+    options,
   );
 }
 
@@ -83,13 +86,18 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
   constructor(
     definition: AdapterDefinition<TContext, unknown>,
     context: TContext,
+    options: AdapterRuntimeOptions = {},
   ) {
     this.definition = definition;
     this.context = context;
-    this.stores = new StoreRegistry(definition);
+    this.stores = new StoreRegistry(definition, options.persistenceProvider);
     this.resources = new ResourceExecutor<TContext>(context);
-    this.actions = new ActionExecutor<TContext>(context, (resource, input) =>
-      this.resources.invalidate(resource, input),
+    this.actions = new ActionExecutor<TContext>(
+      context,
+      (resource, input) => this.resources.invalidate(resource, input),
+      { get: (store) => this.store(store) },
+      () => this.stores.ready(),
+      () => this.stores.flush(),
     );
   }
 
@@ -107,7 +115,9 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
   ): StoreInstance<TState, TActions> {
     if (definition.scope === "adapter")
       return this.stores.adapterStore(definition);
-    return createStoreInstance(definition);
+    return createStoreInstance(definition, {
+      persistenceProvider: this.stores.persistenceProvider,
+    });
   }
 
   /**

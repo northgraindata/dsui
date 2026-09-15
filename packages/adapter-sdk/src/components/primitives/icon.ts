@@ -13,5 +13,5 @@ export interface IconNode {
 
 export const Icon = defineComponent<IconProps, IconNode>({
   id: "icon",
-  render: (props) => ({ kind: "icon", props: { ...props } }),
+  path: "./ui/icon",
 });

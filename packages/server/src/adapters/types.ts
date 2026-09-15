@@ -48,13 +48,23 @@ export interface ActionCatalogEntry {
 export interface PageCatalogEntry {
   path: string;
 }
+export interface ComponentCatalogEntry {
+  id: string;
+  path: string;
+}
 export interface AdapterCatalog {
   resources: ResourceCatalogEntry[];
   actions: ActionCatalogEntry[];
   pages: PageCatalogEntry[];
+  components: ComponentCatalogEntry[];
 }
 
 export interface AdapterHealth extends HealthStatus {}
+
+export interface AdapterExecutionContext {
+  /** Stable DSUI service id used to isolate persisted adapter state. */
+  readonly persistenceNamespace: string;
+}
 
 /**
  * Execution backend behind a loaded adapter. Local adapters run the SDK
@@ -66,14 +76,22 @@ export interface AdapterBackend {
   /** Validate a connection object; returns the parsed value. */
   validateConnection(connection: unknown): unknown;
   /** Probe: instantiate (and dispose) against a connection. */
-  checkHealth(connection: unknown): Promise<HealthStatus>;
+  checkHealth(
+    connection: unknown,
+    context?: AdapterExecutionContext,
+  ): Promise<HealthStatus>;
   /** Renders and validates an adapter page for a concrete path. */
-  renderPage(connection: unknown, path: string): Promise<PageDocument>;
+  renderPage(
+    connection: unknown,
+    path: string,
+    context?: AdapterExecutionContext,
+  ): Promise<PageDocument>;
   /** Execute one resource query; throws AdapterExecutionError on failure. */
   executeResource(
     resourceId: string,
     connection: unknown,
     input: unknown,
+    context?: AdapterExecutionContext,
   ): Promise<{ data: unknown }>;
   /** Execute one action; cancellable in-process, timeout-bound remotely. */
   executeAction(
@@ -81,6 +99,7 @@ export interface AdapterBackend {
     connection: unknown,
     input: unknown,
     signal?: AbortSignal,
+    context?: AdapterExecutionContext,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   >;
@@ -108,6 +127,8 @@ export interface LoadedAdapter {
   readonly backend: AdapterBackend;
   /** The live definition. Present for in-process adapters only. */
   readonly definition?: AdapterDefinition;
+  /** Verified browser component bundle for external adapters. */
+  readonly browserBundlePath?: string;
 }
 
 export class AdapterLoadError extends Error {

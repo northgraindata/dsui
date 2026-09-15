@@ -4,12 +4,19 @@ import type { PropsWithChildren } from "react";
 export function DialogContent({
   title,
   description,
+  className,
   children,
-}: PropsWithChildren<{ title: string; description?: string }>) {
+}: PropsWithChildren<{
+  title: string;
+  description?: string;
+  className?: string;
+}>) {
   return (
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-50 bg-overlay/85" />
-      <Dialog.Content className="fixed top-1/2 left-1/2 z-[51] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 border border-border-strong bg-surface-raised p-5 ring-1 ring-accent/10">
+      <Dialog.Content
+        className={`fixed top-1/2 left-1/2 z-[51] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 border border-border-strong bg-surface-raised p-5 ring-1 ring-accent/10 ${className ?? ""}`}
+      >
         <div className="mb-[18px] flex justify-between gap-5 border-b border-dashed border-border pb-[14px]">
           <div>
             <Dialog.Title>{title}</Dialog.Title>

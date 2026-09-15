@@ -1,5 +1,7 @@
+import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
 import { Link } from "@tanstack/react-router";
-import type { Service } from "../api";
+import { useState } from "react";
+import { deleteService, type Service } from "../api";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
 
@@ -7,11 +9,19 @@ export function HomeDashboard({
   services,
   loading,
   error,
+  onServiceRemoved,
+  onRefresh,
 }: {
   services: Service[];
   loading: boolean;
   error?: string;
+  onServiceRemoved?: (id: string) => void;
+  onRefresh?: () => void;
 }) {
+  const [openMenu, setOpenMenu] = useState<string>();
+  const [removeService, setRemoveService] = useState<Service>();
+  const [settingsService, setSettingsService] = useState<Service>();
+  const [removing, setRemoving] = useState(false);
   const connected = services.filter(
     (service) => service.health === "healthy",
   ).length;
@@ -93,10 +103,16 @@ export function HomeDashboard({
               <h2>Your data stack</h2>
               <p>All connected services in one place.</p>
             </div>
-            <Link to="/services/new" className="outline-action">
-              <Icon name="plus" />
-              Add adapter
-            </Link>
+            <button
+              type="button"
+              className="outline-action"
+              onClick={onRefresh}
+              disabled={loading}
+              aria-label="Refresh connected services"
+            >
+              <Icon name="refresh" />
+              {loading ? "Refreshing…" : "Refresh"}
+            </button>
           </header>
           <div className="stack-cards" aria-busy={loading}>
             {loading && (
@@ -105,49 +121,87 @@ export function HomeDashboard({
               </p>
             )}
             {services.map((service) => (
-              <Link
-                key={service.id}
-                to="/services/$serviceId"
-                params={{ serviceId: service.id }}
-                className="stack-card"
-              >
-                <div className="stack-card-heading">
-                  <ServiceMark
-                    adapter={service.adapter}
-                    logo={service.logo}
-                    size={42}
-                    variant="bare"
-                  />
-                  <div>
-                    <h3>{service.name}</h3>
-                    <span>
-                      <i className="health-dot" data-health={service.health} />
-                      {service.health === "healthy"
-                        ? "Connected"
-                        : service.health}
-                    </span>
+              <article key={service.id} className="stack-card">
+                <Link
+                  to="/services/$serviceId"
+                  params={{ serviceId: service.id }}
+                  className="stack-card-main"
+                >
+                  <div className="stack-card-heading">
+                    <ServiceMark
+                      adapter={service.adapter}
+                      logo={service.logo}
+                      size={42}
+                      variant="bare"
+                    />
+                    <div>
+                      <h3>{service.name}</h3>
+                      <span>
+                        <i
+                          className="health-dot"
+                          data-health={service.health}
+                        />
+                        {service.health === "healthy"
+                          ? "Connected"
+                          : service.health}
+                      </span>
+                    </div>
                   </div>
-                  <Icon name="chevron" size={15} />
+                  <div className="stack-card-detail">
+                    <p title={service.endpoint}>
+                      {service.endpoint || service.adapter}
+                    </p>
+                    <small title={service.detail ?? undefined}>
+                      {service.detail ??
+                        (service.latencyMs !== undefined
+                          ? `${service.latencyMs} ms response time`
+                          : "Ready to explore")}
+                    </small>
+                    <Icon name="database" size={21} />
+                  </div>
+                </Link>
+                <div className="stack-card-menu">
+                  <button
+                    type="button"
+                    className="stack-card-menu-trigger"
+                    aria-label={`Manage ${service.name}`}
+                    aria-expanded={openMenu === service.id}
+                    onClick={() =>
+                      setOpenMenu((current) =>
+                        current === service.id ? undefined : service.id,
+                      )
+                    }
+                  >
+                    <span aria-hidden="true">⋯</span>
+                  </button>
+                  {openMenu === service.id && (
+                    <div className="stack-card-menu-popover" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setSettingsService(service);
+                          setOpenMenu(undefined);
+                        }}
+                      >
+                        <Icon name="gear" size={15} /> Settings
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="is-danger"
+                        onClick={() => {
+                          setRemoveService(service);
+                          setOpenMenu(undefined);
+                        }}
+                      >
+                        Remove connection
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="stack-card-detail">
-                  <p title={service.endpoint}>
-                    {service.endpoint || service.adapter}
-                  </p>
-                  <small title={service.detail ?? undefined}>
-                    {service.detail ??
-                      (service.latencyMs !== undefined
-                        ? `${service.latencyMs} ms response time`
-                        : "Ready to explore")}
-                  </small>
-                  <Icon name="database" size={21} />
-                </div>
-              </Link>
+              </article>
             ))}
-            <Link to="/services/new" className="stack-card stack-card--add">
-              <Icon name="plus" size={24} />
-              <strong>Add new adapter</strong>
-              <p>Connect more tools to your stack.</p>
-            </Link>
           </div>
         </section>
         <aside className="home-aside">
@@ -187,6 +241,93 @@ export function HomeDashboard({
           </section>
         </aside>
       </div>
+      <Dialog.Root
+        open={Boolean(removeService)}
+        onOpenChange={(open) => !open && setRemoveService(undefined)}
+      >
+        <DialogContent
+          title="Remove connection"
+          description={
+            removeService
+              ? `Are you sure you want to remove ${removeService.name}?`
+              : undefined
+          }
+        >
+          <div className="flex justify-end gap-3 pt-5">
+            <Button variant="ghost" onClick={() => setRemoveService(undefined)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={removing}
+              onClick={async () => {
+                if (!removeService) return;
+                setRemoving(true);
+                try {
+                  await deleteService(removeService.id);
+                  onServiceRemoved?.(removeService.id);
+                  setRemoveService(undefined);
+                } finally {
+                  setRemoving(false);
+                }
+              }}
+            >
+              {removing ? "Removing…" : "Yes, remove"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog.Root>
+      <Dialog.Root
+        open={Boolean(settingsService)}
+        onOpenChange={(open) => !open && setSettingsService(undefined)}
+      >
+        <DialogContent
+          title={`${settingsService?.name ?? "Service"} settings`}
+          description="Manage this connection and its workspace preferences."
+          className="service-settings-dialog"
+        >
+          <div className="service-settings-layout">
+            <nav
+              aria-label="Service settings"
+              className="service-settings-sidebar"
+            >
+              <button type="button" className="is-active">
+                Connection
+              </button>
+              <button type="button" disabled>
+                Appearance
+              </button>
+              <button type="button" disabled>
+                Danger zone
+              </button>
+            </nav>
+            <section
+              className="service-settings-content"
+              aria-label="Connection settings"
+            >
+              <h3>Connection</h3>
+              <p>Review the adapter currently connected to your workspace.</p>
+              <dl>
+                <div>
+                  <dt>Adapter</dt>
+                  <dd>{settingsService?.adapter}</dd>
+                </div>
+                <div>
+                  <dt>Endpoint</dt>
+                  <dd>{settingsService?.endpoint || "Managed by adapter"}</dd>
+                </div>
+              </dl>
+              <Button variant="secondary" disabled>
+                Change connection
+              </Button>
+              <small className="service-settings-note">
+                Connection editing will be available here once the service
+                update API is enabled.
+              </small>
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog.Root>
     </div>
   );
 }

@@ -193,6 +193,16 @@
 .resource-code-string {
   color: #eae583;
 }
+.resource-code-comment {
+  color: var(--color-muted);
+}
+.resource-code-number,
+.resource-code-constant {
+  color: #c99cff;
+}
+.resource-code-decorator {
+  color: #70d6b2;
+}
 .resource-code-block button {
   position: absolute;
   top: 8px;

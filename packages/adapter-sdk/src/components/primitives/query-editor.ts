@@ -28,8 +28,5 @@ export interface QueryExplorerDocument {
 
 export const QueryEditor = defineComponent<QueryEditorProps, QueryEditorNode>({
   id: "query-editor",
-  render: (props) => {
-    if (!props.language) throw new Error("QueryEditor requires a language");
-    return { kind: "query-editor", props: { ...props } };
-  },
+  path: "./ui/query-editor",
 });

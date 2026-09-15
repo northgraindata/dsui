@@ -10,6 +10,7 @@ export { StoreRegistry } from "./store-registry";
 export type {
   ActionExecutionOptions,
   AdapterInstance,
+  AdapterRuntimeOptions,
   PageScope,
   ResourceFailure,
   ResourceResult,
