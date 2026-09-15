@@ -7,7 +7,7 @@ import { isAdapterSource, loadConfig } from "./config";
 const VERSION = "0.1.0";
 
 function usage(): string {
-  return `dsui ${VERSION}
+  return `DSUI ${VERSION}
 
 Usage:
   dsui [serve]
@@ -29,7 +29,7 @@ async function serve(): Promise<never> {
     hostname: process.env.DSUI_HOST ?? "0.0.0.0",
     port: Number(process.env.DSUI_PORT ?? 4192),
   });
-  console.log(`dsui listening on http://${server.hostname}:${server.port}`);
+  console.log(`DSUI listening on http://${server.hostname}:${server.port}`);
   await new Promise<never>(() => undefined);
   throw new Error("unreachable");
 }
