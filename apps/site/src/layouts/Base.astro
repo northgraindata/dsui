@@ -6,8 +6,8 @@ interface Props {
   description?: string;
 }
 const {
-  title = "dsui — Data Stack UI",
-  description = "One lightweight UI for your data stack.",
+  title = "DSUI - One operational workspace for your stack.",
+  description = "A lightweight, self-hosted interface for the data and infrastructure tools you already run.",
 } = Astro.props;
 ---
 <!doctype html>
@@ -20,6 +20,20 @@ const {
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://dsui.northgraindata.com" />
+    <meta property="og:image" content="https://dsui.northgraindata.com/og-image.png" />
+    <meta property="og:image:width" content="1672" />
+    <meta property="og:image:height" content="941" />
+    <meta property="og:image:alt" content="DSUI — One operational workspace for your stack." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://dsui.northgraindata.com/og-image.png" />
+    <link rel="icon" type="image/png" href="/favicons/favicon-96x96.png?v=20260915" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicons/favicon.svg?v=20260915" />
+    <link rel="shortcut icon" href="/favicons/favicon.ico?v=20260915" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png?v=20260915" />
+    <meta name="apple-mobile-web-app-title" content="DSUI" />
+    <link rel="manifest" href="/favicons/site.webmanifest?v=20260915" />
     <title>{title}</title>
   </head>
   <body><slot /></body>
