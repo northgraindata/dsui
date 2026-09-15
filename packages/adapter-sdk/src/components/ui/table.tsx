@@ -132,7 +132,7 @@ export function resolveLink(
   let resolved = path;
   for (const [param, field] of Object.entries(params)) {
     const value = row[field];
-    if (value === null || value === undefined) return null;
+    if (value === null || value === undefined || value === "") return null;
     resolved = resolved.replace(`:${param}`, encodeURIComponent(String(value)));
   }
   return resolved;
@@ -150,56 +150,74 @@ function RowAction({
   onDone: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string>();
   const enabled = matchesWhen(row, spec.when);
-  const disabled = !matchesWhen(row, spec.disabledWhen);
+  const disabled = isRowActionDisabled(row, spec.disabledWhen);
   return (
-    <button
-      type="button"
-      disabled={busy || disabled || !enabled || (!spec.action && !spec.link)}
-      onClick={() => {
-        if (
-          spec.confirmation &&
-          !window.confirm(
-            `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
+    <>
+      <button
+        type="button"
+        title={actionError}
+        disabled={busy || disabled || !enabled || (!spec.action && !spec.link)}
+        onClick={() => {
+          if (
+            spec.confirmation &&
+            !window.confirm(
+              `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
+            )
           )
-        )
-          return;
-        if (spec.link) {
-          const href = resolveLink(spec.link.path, spec.link.params, row);
-          if (href) client.navigate(href);
-          return;
-        }
-        if (!spec.action) return;
-        const input = Object.fromEntries(
-          Object.entries(spec.input ?? {}).map(([key, field]) => [
-            key,
-            row[field],
-          ]),
-        );
-        setBusy(true);
-        client
-          .executeAction({ actionId: actionId(spec.action), input })
-          .then((result) => {
-            if (result.status !== "success") return;
-            onDone();
-            if (spec.successLink) {
-              const resultData =
-                result.data && typeof result.data === "object"
-                  ? (result.data as Record<string, unknown>)
-                  : {};
-              const href = resolveLink(
-                spec.successLink.path,
-                spec.successLink.params,
-                { ...row, ...resultData },
+            return;
+          if (spec.link) {
+            const href = resolveLink(spec.link.path, spec.link.params, row);
+            if (href) client.navigate(href);
+            return;
+          }
+          if (!spec.action) return;
+          const input = Object.fromEntries(
+            Object.entries(spec.input ?? {}).map(([key, field]) => [
+              key,
+              row[field],
+            ]),
+          );
+          setBusy(true);
+          setActionError(undefined);
+          client
+            .executeAction({ actionId: actionId(spec.action), input })
+            .then((result) => {
+              if (result.status !== "success") {
+                setActionError(result.message ?? "Action failed");
+                return;
+              }
+              onDone();
+              if (spec.successLink) {
+                const resultData =
+                  result.data && typeof result.data === "object"
+                    ? (result.data as Record<string, unknown>)
+                    : {};
+                const href = resolveLink(
+                  spec.successLink.path,
+                  spec.successLink.params,
+                  { ...row, ...resultData },
+                );
+                if (href) client.navigate(href);
+                else
+                  setActionError(
+                    "Action succeeded but the follow-up link is missing data",
+                  );
+              }
+            })
+            .catch((cause: unknown) => {
+              setActionError(
+                cause instanceof Error ? cause.message : "Action failed",
               );
-              if (href) client.navigate(href);
-            }
-          })
-          .finally(() => setBusy(false));
-      }}
-    >
-      {spec.label}
-    </button>
+            })
+            .finally(() => setBusy(false));
+        }}
+      >
+        {spec.label}
+      </button>
+      {actionError ? <span role="alert">{actionError}</span> : null}
+    </>
   );
 }
 
@@ -213,38 +231,56 @@ function RowMenuAction({
   spec: TableRowMenuAction;
 }) {
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string>();
   const enabled = matchesWhen(row, spec.when);
   return (
-    <button
-      type="button"
-      disabled={busy || !enabled}
-      onClick={() => {
-        if (spec.confirmation && !window.confirm(spec.confirmation.description))
-          return;
-        if (spec.link) {
-          const href = resolveLink(spec.link.path, spec.link.params, row);
-          if (href) client.navigate(href);
-          return;
-        }
-        if (!spec.action) return;
-        const input = Object.fromEntries(
-          Object.entries(spec.input ?? {}).map(([key, field]) => [
-            key,
-            row[field],
-          ]),
-        );
-        setBusy(true);
-        client
-          .executeAction({ actionId: actionId(spec.action), input })
-          .finally(() => setBusy(false));
-      }}
-    >
-      {spec.label}
-    </button>
+    <>
+      <button
+        type="button"
+        title={actionError}
+        disabled={busy || !enabled}
+        onClick={() => {
+          if (
+            spec.confirmation &&
+            !window.confirm(spec.confirmation.description)
+          )
+            return;
+          if (spec.link) {
+            const href = resolveLink(spec.link.path, spec.link.params, row);
+            if (href) client.navigate(href);
+            return;
+          }
+          if (!spec.action) return;
+          const input = Object.fromEntries(
+            Object.entries(spec.input ?? {}).map(([key, field]) => [
+              key,
+              row[field],
+            ]),
+          );
+          setBusy(true);
+          setActionError(undefined);
+          client
+            .executeAction({ actionId: actionId(spec.action), input })
+            .then((result) => {
+              if (result.status !== "success")
+                setActionError(result.message ?? "Action failed");
+            })
+            .catch((cause: unknown) => {
+              setActionError(
+                cause instanceof Error ? cause.message : "Action failed",
+              );
+            })
+            .finally(() => setBusy(false));
+        }}
+      >
+        {spec.label}
+      </button>
+      {actionError ? <span role="alert">{actionError}</span> : null}
+    </>
   );
 }
 
-function matchesWhen(
+export function matchesWhen(
   row: Record<string, unknown>,
   when: TableRowAction["when"] | TableRowAction["disabledWhen"],
 ): boolean {
@@ -253,6 +289,13 @@ function matchesWhen(
   if (when.equals !== undefined && value !== when.equals) return false;
   if (when.notEquals !== undefined && value === when.notEquals) return false;
   return true;
+}
+
+export function isRowActionDisabled(
+  row: Record<string, unknown>,
+  when: TableRowAction["disabledWhen"],
+): boolean {
+  return when ? matchesWhen(row, when) : false;
 }
 
 function actionId(
