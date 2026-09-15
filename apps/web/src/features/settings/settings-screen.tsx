@@ -6,7 +6,7 @@ export function SettingsScreen() {
     <div className={cn(pageClass, "max-w-xl")}>
       <PageHeading
         title="Settings"
-        detail="Configuration for this local dsui workspace."
+        detail="Configuration for this local DSUI workspace."
       />
       <Surface className="grid gap-3 p-5">
         <div>

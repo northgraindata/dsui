@@ -53,7 +53,7 @@ export function AdapterMarketplace() {
         </div>
       ) : adapters.length === 0 ? (
         <p className="marketplace-message">
-          No adapters are installed. Add an adapter to your dsui configuration
+          No adapters are installed. Add an adapter to your DSUI configuration
           to get started.
         </p>
       ) : (

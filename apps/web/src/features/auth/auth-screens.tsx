@@ -55,7 +55,7 @@ export function LoginScreen() {
         </Button>
       </form>
       <p className="border-t border-dashed border-border px-5 py-3 text-center font-mono text-[10.5px] text-muted">
-        Authentication is configured by this dsui instance.
+        Authentication is configured by this DSUI instance.
       </p>
     </AuthFrame>
   );
@@ -89,7 +89,7 @@ export function SetupScreen() {
   return (
     <AuthFrame
       title="Create the owner account"
-      copy="This account administers this local dsui workspace."
+      copy="This account administers this local DSUI workspace."
     >
       <form className={authCardInput} onSubmit={submit}>
         <Field label="Email">

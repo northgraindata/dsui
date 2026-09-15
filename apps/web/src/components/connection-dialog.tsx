@@ -38,7 +38,7 @@ export function ConnectionDialog({
       ? {
           path: {
             label: "Database file path",
-            hint: "Provide the path to your DuckDB file on the dsui server. The file will be created if it doesn’t exist.",
+            hint: "Provide the path to your DuckDB file on the DSUI server. The file will be created if it doesn’t exist.",
           },
           readOnly: {
             label: "Read-only mode",
