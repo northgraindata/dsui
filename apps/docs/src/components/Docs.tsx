@@ -39,7 +39,7 @@ export function Docs({
           title: (
             <a
               href={landingUrl}
-              aria-label="Go to dsui landing page"
+              aria-label="Go to DSUI landing page"
               className="docs-brand inline-flex items-center text-lg font-semibold tracking-tight"
             >
               <img
@@ -49,14 +49,14 @@ export function Docs({
                 height="24"
                 className="size-6"
               />
-              dsui
+              DSUI
               <span className="nav-subtitle">Docs</span>
             </a>
           ),
         }}
         links={[
           {
-            text: "Back to dsui",
+            text: "Back to DSUI",
             url: "https://dsui.northgraindata.com",
             external: true,
           },
