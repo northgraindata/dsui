@@ -3,6 +3,7 @@ import type { ActionReference } from "../../action";
 import type { PageNode } from "../nodes";
 import type { ButtonProps } from "../primitives/button";
 import type { ComponentProps } from "../runtime";
+import { WorkbenchIcon } from "./icons";
 
 export function Button({ client, node, context }: ComponentProps) {
   const props = readProps(node);
@@ -10,6 +11,7 @@ export function Button({ client, node, context }: ComponentProps) {
   const label = resolve(props.label, context) ?? "";
   const link = resolve(props.link, context);
   const action = resolveAction(props.action, context);
+  const icon = resolve(props.icon, context);
   const confirmation = resolveConfirmation(props.confirmation, context);
   return (
     <UiButton
@@ -33,8 +35,10 @@ export function Button({ client, node, context }: ComponentProps) {
         else if (action) void client.executeAction(action);
       }}
     >
-      {props.icon ? (
-        <span className="button-list-icon">{resolve(props.icon, context)}</span>
+      {icon ? (
+        <span className="button-list-icon">
+          <WorkbenchIcon name={icon} />
+        </span>
       ) : null}
       <span className="button-list-text">
         <strong>{label}</strong>

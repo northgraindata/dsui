@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-const paths: Record<string, ReactNode> = {
+export const iconPaths: Record<string, ReactNode> = {
   home: (
     <>
       <path d="m3 10 9-7 9 7v10H15v-7H9v7H3Z" />
@@ -22,6 +22,7 @@ const paths: Record<string, ReactNode> = {
   ),
   sparkle: <path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" />,
   check: <path d="m5 12 4 4L19 6" />,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
   alert: (
     <>
       <path d="m12 3 10 18H2Z" />
@@ -94,6 +95,39 @@ const paths: Record<string, ReactNode> = {
   folder: (
     <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11Z" />
   ),
+  pause: <path d="M7 4v16M17 4v16" />,
+  reload: (
+    <path d="M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5M4 16a8 8 0 0 0 14 3l3-3m0 5v-5h-5" />
+  ),
+  eye: (
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+  ),
+  cloud: (
+    <path d="M7 18H6a4 4 0 0 1-1-8 7 7 0 0 1 13-2 5 5 0 0 1 0 10h-1M12 22V12m-3 3 3-3 3 3" />
+  ),
+  clock: <path d="M12 8v5l3 2M5 5a9 9 0 1 0 7-3M3 3v5h5" />,
+  history: <path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2" />,
+  braces: <path d="M8 3H6v6l-3 3 3 3v6h2M16 3h2v6l3 3-3 3v6h-2" />,
+  pin: (
+    <path d="M12 22S4 14 4 9a8 8 0 0 1 16 0c0 5-8 13-8 13ZM15 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+  ),
+  network: (
+    <path d="M5 5l7 7 7-7M12 12v8M5 19l7-7 7 7M7 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM21 4a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM14 21a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />
+  ),
+  hash: <path d="M10 3 6 21M18 3l-4 18M4 9h17M3 15h17" />,
+  cpu: (
+    <path d="M6 6h12v12H6zM9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m13-6h3m-3 6h3" />
+  ),
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
+  warning: <path d="M12 3 2.5 20h19L12 3ZM12 9v5m0 3h.01" />,
+  copy: <path d="M8 7H5v14h12v-3M9 3h11v14H9ZM12 3v3h5V3" />,
+  download: <path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />,
+  expand: (
+    <path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5M3 3l6 6m6 6 6 6M21 3l-6 6M9 15l-6 6" />
+  ),
+  format: <path d="M8 4H4v4m12-4h4v4M4 16v4h4m8 0h4v-4M9 8h6m-6 4h4m-4 4h6" />,
+  edit: <path d="M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4" />,
+  "chevron-down": <path d="m7 10 5 5 5-5" />,
 };
 
 export function Icon({ name, size = 16 }: { name: string; size?: number }) {
@@ -109,7 +143,7 @@ export function Icon({ name, size = 16 }: { name: string; size?: number }) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {paths[name] ?? paths.grid}
+      {iconPaths[name] ?? iconPaths.grid}
     </svg>
   );
 }

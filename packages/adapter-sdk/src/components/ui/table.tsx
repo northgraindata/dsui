@@ -9,6 +9,7 @@ import type {
   TableRowMenuAction,
 } from "../primitives/table";
 import type { ComponentProps } from "../runtime";
+import { WorkbenchIcon } from "./icons";
 
 type TableNodeProps = TableProps & { component?: string };
 
@@ -214,6 +215,7 @@ function RowAction({
             .finally(() => setBusy(false));
         }}
       >
+        {spec.icon ? <WorkbenchIcon name={spec.icon} size={14} /> : null}
         {spec.label}
       </button>
       {actionError ? <span role="alert">{actionError}</span> : null}
