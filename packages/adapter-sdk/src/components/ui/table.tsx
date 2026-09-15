@@ -298,11 +298,17 @@ export function isRowActionDisabled(
   return when ? matchesWhen(row, when) : false;
 }
 
-function actionId(
+export function actionId(
   action: TableRowAction["action"] | TableRowMenuAction["action"],
 ): string {
   if (!action) throw new Error("Table action is missing");
-  return typeof action === "string" ? action : action.id;
+  if (typeof action === "string") return action;
+  // Browser nodes carry serialized { actionId } references; raw definitions
+  // carry { id }. Accept both so actions survive the server boundary.
+  const reference = action as { actionId?: unknown; id?: unknown };
+  if (typeof reference.actionId === "string") return reference.actionId;
+  if (typeof reference.id === "string") return reference.id;
+  throw new Error("Table action is missing");
 }
 
 function formatCell(value: unknown): string {
