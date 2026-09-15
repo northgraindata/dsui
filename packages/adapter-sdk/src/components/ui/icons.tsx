@@ -1,4 +1,4 @@
-const paths: Record<string, string> = {
+export const iconPaths: Record<string, string> = {
   search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   copy: "M8 7H5v14h12v-3M9 3h11v14H9ZM12 3v3h5V3",
@@ -66,7 +66,7 @@ export function WorkbenchIcon({
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d={paths[name] ?? paths.table} />
+      <path d={iconPaths[name] ?? iconPaths.table} />
     </svg>
   );
 }
