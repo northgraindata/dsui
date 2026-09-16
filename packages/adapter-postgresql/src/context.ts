@@ -1,5 +1,5 @@
 import { z } from "@northgraindata/dsui-adapter-sdk";
-import type { PostgreSQLClient } from "./client.js";
+import { createPostgreSQLClient, type PostgreSQLClient } from "./client.js";
 
 export const postgresqlConnectionSchema = z.object({
   host: z.string().min(1),
@@ -24,11 +24,33 @@ export type PostgreSQLConfig = z.output<typeof postgresqlConnectionSchema>;
 export interface PostgreSQLContext {
   client: PostgreSQLClient;
   config: PostgreSQLConfig;
+  getClient(database: string): PostgreSQLClient;
+  dispose(): Promise<void>;
 }
 
 export function createPostgreSQLContext(
   client: PostgreSQLClient,
   config: PostgreSQLConfig,
 ): PostgreSQLContext {
-  return { client, config };
+  const clients = new Map<string, PostgreSQLClient>([
+    [config.database, client],
+  ]);
+
+  return {
+    client,
+    config,
+    getClient(database) {
+      const existing = clients.get(database);
+      if (existing) return existing;
+      const next = createPostgreSQLClient({ ...config, database });
+      clients.set(database, next);
+      return next;
+    },
+    async dispose() {
+      await Promise.all(
+        [...clients.values()].map((databaseClient) => databaseClient.dispose()),
+      );
+      clients.clear();
+    },
+  };
 }

@@ -20,3 +20,24 @@ export const relationPreview = defineResource<
   query: ({ schema, relation, maxRows }, ctx) =>
     ctx.client.previewRelation(schema, relation, maxRows),
 });
+
+export const databaseRelationPreview = defineResource<
+  z.ZodObject<{
+    database: z.ZodString;
+    schema: z.ZodString;
+    relation: z.ZodString;
+    maxRows: z.ZodDefault<z.ZodNumber>;
+  }>,
+  PostgreSQLQueryResult,
+  PostgreSQLContext
+>({
+  id: "database-relation-preview",
+  input: z.object({
+    database: z.string().min(1),
+    schema: z.string().min(1),
+    relation: z.string().min(1),
+    maxRows: z.number().int().positive().max(1_000).default(100),
+  }),
+  query: ({ database, schema, relation, maxRows }, ctx) =>
+    ctx.getClient(database).previewRelation(schema, relation, maxRows),
+});

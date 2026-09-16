@@ -11,8 +11,8 @@ intentional while the SDK and renderer remain generic.
 - SSL modes and optional CA/client certificate fields.
 - Server information and PostgreSQL version reporting.
 - Database listing from the configured connection.
-- Schema, relation, and column catalog resources.
-- Index and constraint catalog resources.
+- Schema, relation, column, index, and constraint catalog resources.
+- Lazy per-database clients with database-scoped catalog pages.
 - Bounded relation preview resource.
 - Read-only catalog pages built from SDK components.
 - Page-scoped SQL editor state.
@@ -22,9 +22,8 @@ intentional while the SDK and renderer remain generic.
 
 ## Partial
 
-- Database listing does not switch the existing pool to another database.
-  PostgreSQL connections are database-scoped; multi-database browsing needs a
-  per-database client manager before database detail pages can be enabled.
+- Database clients are created lazily when a database detail page is opened.
+  A large database list therefore does not create one pool per database up front.
 - Query cancellation currently checks the SDK abort signal before and after
   execution. Provider-side cancellation needs a separate administrative
   connection and driver-specific cancellation support.

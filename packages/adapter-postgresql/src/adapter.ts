@@ -9,6 +9,9 @@ import {
 } from "./context.js";
 import { activityPage } from "./pages/activity.js";
 import {
+  databasePage,
+  databaseRelationPage,
+  databaseSchemaPage,
   databasesPage,
   relationColumnsPage,
   relationsPage,
@@ -20,12 +23,20 @@ import { activity } from "./resources/activity.js";
 import {
   columns,
   constraints,
+  databaseColumns,
+  databaseConstraints,
+  databaseIndexes,
+  databaseRelations,
+  databaseSchemas,
   databases,
   indexes,
   relations,
   schemas,
 } from "./resources/catalog.js";
-import { relationPreview } from "./resources/preview.js";
+import {
+  databaseRelationPreview,
+  relationPreview,
+} from "./resources/preview.js";
 import { serverInfo } from "./resources/server.js";
 import { activityFiltersStore } from "./stores/activity-filters.js";
 import { queryEditorStore } from "./stores/query-editor.js";
@@ -57,23 +68,32 @@ export function createPostgreSQLAdapter() {
         throw error;
       }
     },
-    disposeContext: (ctx) => ctx.client.dispose(),
+    disposeContext: (ctx) => ctx.dispose(),
     stores: [queryEditorStore, activityFiltersStore],
     resources: [
       serverInfo,
       databases,
       schemas,
+      databaseSchemas,
       relations,
+      databaseRelations,
       columns,
+      databaseColumns,
       indexes,
+      databaseIndexes,
       constraints,
+      databaseConstraints,
       relationPreview,
+      databaseRelationPreview,
       activity,
     ],
     actions: [runQuery],
     pages: [
       overviewPage,
       databasesPage,
+      databasePage,
+      databaseSchemaPage,
+      databaseRelationPage,
       schemasPage,
       relationsPage,
       relationColumnsPage,
