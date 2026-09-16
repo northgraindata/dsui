@@ -2,6 +2,8 @@ import { realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 import {
   createDbtLocalExecutor,
+  type DbtCloudClient,
+  type DbtCloudRun,
   type DbtCommandRequest,
   type DbtLocalExecutionDependencies,
   type DbtSecretResolver,
@@ -9,6 +11,7 @@ import {
 import {
   LocalProcessRunner,
   type ProcessOutputChunk,
+  ProcessRunnerError,
 } from "@northgraindata/dsui-process-runner";
 import type { RunArtifact } from "./contracts.js";
 import type {
@@ -21,6 +24,22 @@ export interface DbtRunExecutorDependencies {
   readonly secretResolver: DbtSecretResolver;
   readonly runner?: DbtLocalExecutionDependencies["runner"];
   readonly allowedExecutables?: readonly string[];
+  readonly cloud?: DbtCloudExecutionConfig;
+}
+
+export interface DbtCloudRunTarget {
+  readonly jobId: string | number;
+  readonly triggerBody?: unknown;
+}
+
+export interface DbtCloudExecutionConfig {
+  readonly client: DbtCloudClient;
+  /** Resolves an explicit Cloud job target; request fields are never guessed. */
+  readonly targetResolver: (
+    request: RunExecutorRequest["request"],
+  ) => DbtCloudRunTarget | Promise<DbtCloudRunTarget>;
+  readonly pollIntervalMs?: number;
+  readonly timeoutMs?: number;
 }
 
 const optionKeys = new Set([
@@ -157,6 +176,169 @@ function outputEvent(chunk: ProcessOutputChunk) {
   };
 }
 
+function redactCloudOutput(
+  text: string,
+  request: RunExecutorRequest["request"],
+): string {
+  return Object.values(request.environment ?? {}).reduce((result, value) => {
+    if (
+      !("value" in value) ||
+      typeof value.value !== "string" ||
+      value.value.length === 0
+    )
+      return result;
+    return result.split(value.value).join("[REDACTED]");
+  }, text);
+}
+
+const terminalStatuses = new Set([
+  "success",
+  "succeeded",
+  "error",
+  "failed",
+  "failure",
+  "cancelled",
+  "canceled",
+]);
+
+function providerStatus(run: DbtCloudRun) {
+  const value = run as Record<string, unknown>;
+  const status = value.status;
+  const statusText = typeof status === "string" ? status : String(status);
+  const numericStatus = typeof status === "number" ? status : Number(status);
+  const terminal =
+    numericStatus === 10 ||
+    numericStatus === 20 ||
+    numericStatus === 30 ||
+    terminalStatuses.has(statusText.toLowerCase());
+  const message = ["message", "statusMessage", "jobStatusMessage"]
+    .map((key) => value[key])
+    .find((candidate): candidate is string => typeof candidate === "string");
+  return {
+    terminal,
+    status: {
+      provider: "dbt-cloud",
+      status: statusText,
+      ...(typeof value.statusCode === "string"
+        ? { code: value.statusCode }
+        : {}),
+      ...(message ? { message } : {}),
+    },
+    success:
+      numericStatus === 10 ||
+      ["success", "succeeded"].includes(statusText.toLowerCase()),
+    cancelled:
+      numericStatus === 30 ||
+      ["cancelled", "canceled"].includes(statusText.toLowerCase()),
+  };
+}
+
+function logText(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined;
+  const record = value as Record<string, unknown>;
+  for (const key of ["log", "logs", "text", "stdout", "content"])
+    if (typeof record[key] === "string") return record[key];
+  return undefined;
+}
+
+function wait(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    const abort = () => {
+      clearTimeout(timer);
+      reject(
+        signal.reason ??
+          new DOMException("The operation was aborted", "AbortError"),
+      );
+    };
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
+async function executeCloud(
+  config: DbtCloudExecutionConfig,
+  request: RunExecutorRequest["request"],
+  signal: AbortSignal,
+  onOutput: RunExecutorRequest["onOutput"],
+): Promise<RunExecutorResult> {
+  const target = await config.targetResolver(request);
+  const intervalMs = config.pollIntervalMs ?? 2_000;
+  if (!Number.isFinite(intervalMs) || intervalMs < 0)
+    throw new Error("Cloud pollIntervalMs must be non-negative");
+  const timeoutMs = request.timeoutMs ?? config.timeoutMs ?? 600_000;
+  const started = Date.now();
+  const triggered = await config.client.triggerJob(
+    target.jobId,
+    target.triggerBody,
+    { signal },
+  );
+  const runId = triggered.id;
+  let cancelled = false;
+  const cancel = async () => {
+    if (cancelled) return;
+    cancelled = true;
+    await config.client.cancelRun(runId, { signal: undefined });
+  };
+
+  try {
+    let current = triggered;
+    while (true) {
+      const state = providerStatus(current);
+      if (state.terminal) {
+        const logs = await config.client
+          .getRunLogs(runId, { signal })
+          .catch(() => undefined);
+        const text = logText(logs);
+        if (text)
+          onOutput({
+            type: "output",
+            at: new Date().toISOString(),
+            stream: "stdout",
+            text: redactCloudOutput(text, request),
+          });
+        return {
+          exitCode: state.cancelled ? 130 : state.success ? 0 : 1,
+          durationMs: Date.now() - started,
+          providerStatus: state.status,
+        };
+      }
+      if (signal.aborted) {
+        await cancel();
+        const status = providerStatus(await config.client.getRun(runId)).status;
+        return {
+          exitCode: 130,
+          durationMs: Date.now() - started,
+          providerStatus: status,
+        };
+      }
+      if (Date.now() - started >= timeoutMs) {
+        await cancel();
+        throw new ProcessRunnerError(
+          "TIMEOUT",
+          `dbt Cloud run timed out after ${timeoutMs}ms`,
+        );
+      }
+      await wait(
+        Math.min(intervalMs, timeoutMs - (Date.now() - started)),
+        signal,
+      ).catch(async (error) => {
+        if (!signal.aborted) throw error;
+        await cancel();
+        throw new ProcessRunnerError(
+          "CANCELLED",
+          "dbt Cloud run was cancelled",
+        );
+      });
+      current = await config.client.getRun(runId, { signal });
+    }
+  } catch (error) {
+    if (signal.aborted && !cancelled) await cancel();
+    throw error;
+  }
+}
+
 export function createDbtRunExecutor(
   dependencies: DbtRunExecutorDependencies,
 ): RunExecutor {
@@ -174,6 +356,8 @@ export function createDbtRunExecutor(
       signal,
       onOutput,
     }: RunExecutorRequest): Promise<RunExecutorResult> {
+      if (dependencies.cloud)
+        return executeCloud(dependencies.cloud, request, signal, onOutput);
       if ("cloud" in (request as object))
         throw new Error(
           "dbt Cloud execution is not supported by the local runtime",
