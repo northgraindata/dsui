@@ -15,5 +15,6 @@ export {
   createDbtBackend,
   DbtNotImplementedError,
 } from "./backend.js";
+export * from "./cloud-client.js";
 export * from "./context.js";
 export * from "./local.js";
