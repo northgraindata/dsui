@@ -1,4 +1,14 @@
 export {
+  LocalProcessRunner,
+  type ProcessOutputChunk,
+  type ProcessOutputStream,
+  ProcessRunnerError,
+  type ProcessRunnerErrorCode,
+  type ProcessRunnerOptions,
+  type ProcessRunRequest,
+  type ProcessRunResult,
+} from "@northgraindata/dsui-process-runner";
+export {
   type AdapterFetch,
   assertSafeAdapterUrl,
   type CommunityAdapterSource,

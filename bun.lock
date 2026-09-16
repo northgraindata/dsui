@@ -118,6 +118,14 @@
       "name": "@northgraindata/dsui-core",
       "version": "0.0.0",
     },
+    "packages/process-runner": {
+      "name": "@northgraindata/dsui-process-runner",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "typescript": "^5.9.2",
+      },
+    },
     "packages/renderer": {
       "name": "@northgraindata/dsui-renderer",
       "version": "0.0.0",
@@ -146,6 +154,7 @@
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-adapter-snowflake": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
+        "@northgraindata/dsui-process-runner": "workspace:*",
         "better-auth": "1.7.1",
         "hono": "^4.11.7",
         "yaml": "^2.8.2",
@@ -522,6 +531,8 @@
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],
 
     "@northgraindata/dsui-docs": ["@northgraindata/dsui-docs@workspace:apps/docs"],
+
+    "@northgraindata/dsui-process-runner": ["@northgraindata/dsui-process-runner@workspace:packages/process-runner"],
 
     "@northgraindata/dsui-renderer": ["@northgraindata/dsui-renderer@workspace:packages/renderer"],
 

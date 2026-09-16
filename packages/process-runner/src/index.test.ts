@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { LocalProcessRunner } from "./runner.js";
+import { LocalProcessRunner } from "./index.js";
 
 const cwd = process.cwd();
 
@@ -8,7 +8,6 @@ describe("LocalProcessRunner", () => {
     const runner = new LocalProcessRunner({
       allowedCommands: [process.execPath],
     });
-
     const result = await runner.run({
       command: process.execPath,
       args: ["-e", 'console.log("out"); console.error("err")'],
@@ -20,23 +19,32 @@ describe("LocalProcessRunner", () => {
     expect(result.stderr).toContain("err");
   });
 
+  test("returns non-zero exit codes", async () => {
+    const result = await new LocalProcessRunner().run({
+      command: process.execPath,
+      args: ["-e", "process.exit(7)"],
+      cwd,
+    });
+
+    expect(result.exitCode).toBe(7);
+  });
+
+  test("reports spawn failures", async () => {
+    await expect(
+      new LocalProcessRunner().run({ command: "/does/not/exist", cwd }),
+    ).rejects.toMatchObject({ code: "SPAWN_FAILED" });
+  });
+
   test("rejects commands outside the allowlist", async () => {
     const runner = new LocalProcessRunner({ allowedCommands: ["dbt"] });
-
     await expect(
       runner.run({ command: process.execPath, cwd }),
-    ).rejects.toMatchObject({
-      code: "COMMAND_NOT_ALLOWED",
-    });
+    ).rejects.toMatchObject({ code: "COMMAND_NOT_ALLOWED" });
   });
 
   test("redacts sensitive values from output and callbacks", async () => {
     const chunks: string[] = [];
-    const runner = new LocalProcessRunner({
-      allowedCommands: [process.execPath],
-    });
-
-    const result = await runner.run({
+    const result = await new LocalProcessRunner().run({
       command: process.execPath,
       args: ["-e", 'console.log("token=secret-value")'],
       cwd,
@@ -51,32 +59,33 @@ describe("LocalProcessRunner", () => {
     expect(chunks.join("")).not.toContain("secret-value");
   });
 
+  test("rejects output beyond the configured limit", async () => {
+    await expect(
+      new LocalProcessRunner().run({
+        command: process.execPath,
+        args: ["-e", 'process.stdout.write("1234567890")'],
+        cwd,
+        maxOutputBytes: 4,
+      }),
+    ).rejects.toMatchObject({ code: "OUTPUT_LIMIT" });
+  });
+
   test("cancels a running process", async () => {
     const controller = new AbortController();
-    const runner = new LocalProcessRunner({
-      allowedCommands: [process.execPath],
-    });
-    const promise = runner.run({
+    const promise = new LocalProcessRunner().run({
       command: process.execPath,
       args: ["-e", "setTimeout(() => {}, 10000)"],
       cwd,
       signal: controller.signal,
     });
-
     controller.abort();
 
-    await expect(promise).rejects.toMatchObject({
-      code: "CANCELLED",
-    });
+    await expect(promise).rejects.toMatchObject({ code: "CANCELLED" });
   });
 
   test("times out a running process", async () => {
-    const runner = new LocalProcessRunner({
-      allowedCommands: [process.execPath],
-    });
-
     await expect(
-      runner.run({
+      new LocalProcessRunner().run({
         command: process.execPath,
         args: ["-e", "setTimeout(() => {}, 10000)"],
         cwd,
