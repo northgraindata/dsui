@@ -24,8 +24,10 @@ import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
 import { type EnterpriseAuthKit, registerAuthRoutes } from "./routes/auth.js";
 import { registerExecuteRoutes } from "./routes/execute.js";
+import { registerRunRoutes } from "./routes/runs.js";
 import { registerServiceRoutes } from "./routes/services.js";
 import { registerSystemRoutes } from "./routes/system.js";
+import type { RunProtocol } from "./runs/contracts.js";
 
 export type Runtime = ReturnType<typeof createRuntime>;
 
@@ -50,6 +52,8 @@ export type CreateRuntimeOptions = {
   offlineAdapters?: boolean;
   /** Injectable fetch used by the community-adapter installer. */
   adapterFetch?: AdapterLoadOptions["fetch"];
+  /** Optional durable execution provider; omitted until a host configures one. */
+  runProtocol?: RunProtocol;
   /**
    * Subprocess host factory for verified community adapters. Defaults to
    * re-entering this executable in adapter-host mode. Tests inject fakes.
@@ -326,6 +330,8 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   });
   registerServiceRoutes(app, serviceDeps);
   registerExecuteRoutes(app, serviceDeps);
+  if (options.runProtocol)
+    registerRunRoutes(app, { runs: options.runProtocol });
 
   return {
     app,
