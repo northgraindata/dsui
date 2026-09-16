@@ -11,6 +11,7 @@ export {
   run,
   test,
 } from "./adapter.js";
+export * from "./artifacts.js";
 export {
   createDbtBackend,
   DbtNotImplementedError,
