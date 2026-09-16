@@ -66,6 +66,8 @@ export type StartIdempotencyClaim =
       readonly run: Run;
     };
 
+export type CancellationIdempotencyClaim = "claimed" | "existing";
+
 type RunRow = {
   invocation_id: string;
   provider_run_id: string | null;
@@ -414,6 +416,65 @@ export class DsuiDatabase {
       return { outcome: "claimed" as const, run };
     });
     return claim();
+  }
+
+  claimCancellationIdempotency(
+    invocationId: string,
+    idempotencyKey: string,
+  ): CancellationIdempotencyClaim {
+    const claim = this.sqlite.transaction(() => {
+      const existing = this.sqlite
+        .query<unknown, [string, string]>(
+          "SELECT 1 FROM run_cancellation_idempotency WHERE invocation_id = ? AND idempotency_key = ?",
+        )
+        .get(invocationId, idempotencyKey);
+      if (existing) return "existing" as const;
+      this.sqlite
+        .query(
+          "INSERT INTO run_cancellation_idempotency (invocation_id, idempotency_key, created_at) VALUES (?, ?, ?)",
+        )
+        .run(invocationId, idempotencyKey, new Date().toISOString());
+      return "claimed" as const;
+    });
+    return claim();
+  }
+
+  recoverInterruptedRuns(): void {
+    const now = new Date().toISOString();
+    const recover = this.sqlite.transaction(() => {
+      const runs = this.sqlite
+        .query<{ invocation_id: string; created_at: string }, []>(
+          "SELECT invocation_id, created_at FROM runs WHERE state IN ('queued', 'running')",
+        )
+        .all();
+      for (const run of runs) {
+        this.sqlite
+          .query(
+            "UPDATE runs SET state = 'failed', completed_at = ?, duration_ms = ?, cancellable = 0, retryable = 1 WHERE invocation_id = ?",
+          )
+          .run(
+            now,
+            Math.max(0, Date.parse(now) - Date.parse(run.created_at)),
+            run.invocation_id,
+          );
+        this.sqlite
+          .query(
+            "INSERT INTO run_events (invocation_id, sequence, event_json, at, type) VALUES (?, COALESCE((SELECT MAX(sequence) + 1 FROM run_events WHERE invocation_id = ?), 1), ?, ?, 'error')",
+          )
+          .run(
+            run.invocation_id,
+            run.invocation_id,
+            JSON.stringify({
+              type: "error",
+              at: now,
+              message:
+                "Run interrupted before the server restarted; execution was not resumed",
+            }),
+            now,
+          );
+      }
+    });
+    recover();
   }
 
   loadRun(invocationId: string): Run | null {

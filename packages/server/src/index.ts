@@ -85,3 +85,9 @@ export {
   resolveStartRetry,
   startRunRequestFingerprint,
 } from "./runs/contracts";
+export {
+  DurableRunService,
+  type RunExecutor,
+  type RunExecutorRequest,
+  type RunExecutorResult,
+} from "./runs/service";

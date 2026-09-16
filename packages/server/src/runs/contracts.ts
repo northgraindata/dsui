@@ -173,9 +173,9 @@ export interface RunProtocol {
 }
 
 const transitions: Readonly<Record<RunState, readonly RunState[]>> = {
-  queued: ["running"],
+  queued: ["running", "cancelling"],
   running: ["cancelling", "succeeded", "failed", "timed_out"],
-  cancelling: ["cancelled"],
+  cancelling: ["cancelled", "timed_out", "failed"],
   cancelled: [],
   succeeded: [],
   failed: [],

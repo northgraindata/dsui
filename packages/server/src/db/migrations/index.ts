@@ -6,6 +6,7 @@ import { migration_0004_mock_settings } from "./0004_mock_settings.js";
 import { migration_0005_drop_mock_settings } from "./0005_drop_mock_settings.js";
 import { migration_0006_store_state } from "./0006_store_state.js";
 import { migration_0007_runs } from "./0007_runs.js";
+import { migration_0008_run_cancellation_idempotency } from "./0008_run_cancellation_idempotency.js";
 
 /** All migrations in version order. Add new files here, never reorder. */
 export const migrations: Migration[] = [
@@ -16,4 +17,5 @@ export const migrations: Migration[] = [
   migration_0005_drop_mock_settings,
   migration_0006_store_state,
   migration_0007_runs,
+  migration_0008_run_cancellation_idempotency,
 ];
