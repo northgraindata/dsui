@@ -2,6 +2,15 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { StorePersistenceRequest } from "@northgraindata/dsui-adapter-sdk";
+import {
+  assertValidRunTransition,
+  type Run,
+  type RunArtifact,
+  type RunEvent,
+  type RunEventPage,
+  type RunRequest,
+  type RunState,
+} from "../runs/contracts";
 import type { EncryptedValue } from "./crypto";
 import { runMigrations } from "./migrate";
 import { migrations } from "./migrations/index";
@@ -47,6 +56,124 @@ export type PersistedStoreState = {
   readonly value: unknown;
   readonly version: number;
 };
+
+export type StartIdempotencyClaim =
+  | { readonly outcome: "claimed"; readonly run: Run }
+  | { readonly outcome: "conflict"; readonly reason: "idempotency_key_reused" }
+  | {
+      readonly outcome: "existing";
+      readonly requestFingerprint: string;
+      readonly run: Run;
+    };
+
+type RunRow = {
+  invocation_id: string;
+  provider_run_id: string | null;
+  request_json: string;
+  state: RunState;
+  provider_status_json: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_ms: number | null;
+  trigger: string | null;
+  environment: string | null;
+  cancellable: number;
+  retryable: number;
+  retried_from_invocation_id: string | null;
+};
+
+const runInsertSql = `INSERT INTO runs
+  (invocation_id, provider_run_id, request_json, state, provider_status_json,
+   created_at, started_at, completed_at, duration_ms, trigger, environment,
+   cancellable, retryable, retried_from_invocation_id)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+const runUpdateSql = `UPDATE runs SET provider_run_id = ?, request_json = ?, state = ?,
+  provider_status_json = ?, created_at = ?, started_at = ?, completed_at = ?,
+  duration_ms = ?, trigger = ?, environment = ?, cancellable = ?, retryable = ?,
+  retried_from_invocation_id = ? WHERE invocation_id = ?`;
+
+function safeRequestMetadata(request: Run["request"]): string {
+  const environment = request.environment
+    ? Object.fromEntries(
+        Object.entries(request.environment).map(([key, value]) => [
+          key,
+          "secretRef" in value ? { secretRef: value.secretRef } : {},
+        ]),
+      )
+    : undefined;
+  return JSON.stringify({
+    ...request,
+    ...(environment ? { environment } : {}),
+  });
+}
+
+type SqlValue = string | number | null;
+
+function runValues(run: Run): SqlValue[] {
+  return [
+    run.invocationId,
+    run.providerRunId ?? null,
+    safeRequestMetadata(run.request),
+    run.state,
+    run.providerStatus ? JSON.stringify(run.providerStatus) : null,
+    run.createdAt,
+    run.startedAt ?? null,
+    run.completedAt ?? null,
+    run.durationMs ?? null,
+    run.trigger ?? null,
+    run.environment ?? null,
+    run.cancellable ? 1 : 0,
+    run.retryable ? 1 : 0,
+    run.retriedFromInvocationId ?? null,
+  ];
+}
+
+function decodeRun(row: RunRow): Run {
+  return {
+    invocationId: row.invocation_id,
+    ...(row.provider_run_id ? { providerRunId: row.provider_run_id } : {}),
+    request: JSON.parse(row.request_json) as RunRequest,
+    state: row.state,
+    ...(row.provider_status_json
+      ? { providerStatus: JSON.parse(row.provider_status_json) }
+      : {}),
+    createdAt: row.created_at,
+    ...(row.started_at ? { startedAt: row.started_at } : {}),
+    ...(row.completed_at ? { completedAt: row.completed_at } : {}),
+    ...(row.duration_ms !== null ? { durationMs: row.duration_ms } : {}),
+    ...(row.trigger ? { trigger: row.trigger } : {}),
+    ...(row.environment ? { environment: row.environment } : {}),
+    cancellable: Boolean(row.cancellable),
+    retryable: Boolean(row.retryable),
+    ...(row.retried_from_invocation_id
+      ? { retriedFromInvocationId: row.retried_from_invocation_id }
+      : {}),
+  };
+}
+
+function eventState(event: RunEvent): RunState | undefined {
+  switch (event.type) {
+    case "started":
+      return "running";
+    case "status":
+    case "completed":
+      return event.state;
+    case "cancelled":
+      return "cancelled";
+    case "timed_out":
+      return "timed_out";
+    default:
+      return undefined;
+  }
+}
+
+function parseCursor(cursor: string): number {
+  const value = Number(cursor);
+  if (!Number.isSafeInteger(value) || value < 0)
+    throw new Error(`Invalid run event cursor: ${cursor}`);
+  return value;
+}
 
 export class DsuiDatabase {
   readonly sqlite: Database;
@@ -241,6 +368,169 @@ export class DsuiDatabase {
         request.version,
         JSON.stringify(request.value),
         now,
+      );
+  }
+
+  claimStartIdempotency(
+    idempotencyKey: string,
+    requestFingerprint: string,
+    run: Run,
+  ): StartIdempotencyClaim {
+    const claim = this.sqlite.transaction(() => {
+      const existing = this.sqlite
+        .query<
+          { request_fingerprint: string; invocation_id: string },
+          [string]
+        >(
+          "SELECT request_fingerprint, invocation_id FROM run_idempotency WHERE idempotency_key = ?",
+        )
+        .get(idempotencyKey);
+      if (existing) {
+        if (existing.request_fingerprint !== requestFingerprint) {
+          return {
+            outcome: "conflict" as const,
+            reason: "idempotency_key_reused" as const,
+          };
+        }
+        const existingRun = this.loadRun(existing.invocation_id);
+        if (!existingRun) throw new Error("Idempotency record has no run");
+        return {
+          outcome: "existing" as const,
+          requestFingerprint: existing.request_fingerprint,
+          run: existingRun,
+        };
+      }
+      this.insertRun(run);
+      this.sqlite
+        .query(
+          "INSERT INTO run_idempotency (idempotency_key, request_fingerprint, invocation_id, created_at) VALUES (?, ?, ?, ?)",
+        )
+        .run(
+          idempotencyKey,
+          requestFingerprint,
+          run.invocationId,
+          run.createdAt,
+        );
+      return { outcome: "claimed" as const, run };
+    });
+    return claim();
+  }
+
+  loadRun(invocationId: string): Run | null {
+    const row = this.sqlite
+      .query<RunRow, [string]>("SELECT * FROM runs WHERE invocation_id = ?")
+      .get(invocationId);
+    return row ? decodeRun(row) : null;
+  }
+
+  saveRun(run: Run): void {
+    const existing = this.loadRun(run.invocationId);
+    if (existing) assertValidRunTransition(existing.state, run.state);
+    if (existing) {
+      this.updateRun(run);
+    } else {
+      this.insertRun(run);
+    }
+  }
+
+  appendRunEvent(invocationId: string, event: RunEvent): number {
+    const append = this.sqlite.transaction(() => {
+      const run = this.loadRun(invocationId);
+      if (!run) throw new Error(`Run not found: ${invocationId}`);
+      const nextState = eventState(event);
+      if (nextState) {
+        assertValidRunTransition(run.state, nextState);
+        this.updateRun({ ...run, state: nextState });
+      }
+      const sequence =
+        (this.sqlite
+          .query<{ sequence: number }, [string]>(
+            "SELECT COALESCE(MAX(sequence), 0) AS sequence FROM run_events WHERE invocation_id = ?",
+          )
+          .get(invocationId)?.sequence ?? 0) + 1;
+      this.sqlite
+        .query(
+          "INSERT INTO run_events (invocation_id, sequence, event_json, at, type) VALUES (?, ?, ?, ?, ?)",
+        )
+        .run(
+          invocationId,
+          sequence,
+          JSON.stringify(event),
+          event.at,
+          event.type,
+        );
+      if (event.type === "artifact_discovered")
+        this.saveRunArtifact(event.artifact);
+      return sequence;
+    });
+    return append();
+  }
+
+  listRunEvents(
+    invocationId: string,
+    cursor?: string,
+    limit = 100,
+  ): RunEventPage {
+    const after = cursor ? parseCursor(cursor) : 0;
+    const rows = this.sqlite
+      .query<
+        { sequence: number; event_json: string },
+        [string, number, number]
+      >(
+        "SELECT sequence, event_json FROM run_events WHERE invocation_id = ? AND sequence > ? ORDER BY sequence ASC LIMIT ?",
+      )
+      .all(invocationId, after, limit + 1);
+    const page = rows
+      .slice(0, limit)
+      .map((row) => JSON.parse(row.event_json) as RunEvent);
+    return {
+      events: page,
+      ...(rows.length > limit
+        ? { nextCursor: String(rows[limit - 1].sequence) }
+        : {}),
+    };
+  }
+
+  listRunArtifacts(invocationId: string): readonly RunArtifact[] {
+    return this.sqlite
+      .query<{ artifact_json: string }, [string]>(
+        "SELECT artifact_json FROM run_artifacts WHERE invocation_id = ? ORDER BY created_at ASC, artifact_id ASC",
+      )
+      .all(invocationId)
+      .map((row) => JSON.parse(row.artifact_json) as RunArtifact);
+  }
+
+  getRunArtifact(invocationId: string, artifactId: string): RunArtifact | null {
+    const row = this.sqlite
+      .query<{ artifact_json: string }, [string, string]>(
+        "SELECT artifact_json FROM run_artifacts WHERE invocation_id = ? AND artifact_id = ?",
+      )
+      .get(invocationId, artifactId);
+    return row ? (JSON.parse(row.artifact_json) as RunArtifact) : null;
+  }
+
+  private insertRun(run: Run): void {
+    this.sqlite.query(runInsertSql).run(...runValues(run));
+  }
+
+  private updateRun(run: Run): void {
+    this.sqlite
+      .query(runUpdateSql)
+      .run(...runValues(run).slice(1), run.invocationId);
+  }
+
+  private saveRunArtifact(artifact: RunArtifact): void {
+    this.sqlite
+      .query(
+        "INSERT INTO run_artifacts (invocation_id, artifact_id, artifact_json, kind, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(invocation_id, artifact_id) DO UPDATE SET artifact_json = excluded.artifact_json, kind = excluded.kind, content_type = excluded.content_type",
+      )
+      .run(
+        artifact.invocationId,
+        artifact.artifactId,
+        JSON.stringify(artifact),
+        artifact.kind,
+        artifact.contentType,
+        artifact.generatedAt ?? new Date().toISOString(),
       );
   }
   listEnterpriseSsoProviders(): EnterpriseSsoProviderRow[] {

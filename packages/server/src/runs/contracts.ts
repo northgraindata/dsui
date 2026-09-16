@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /** Durable run protocol shared by the server and future run providers. */
 
 export type NormalizedRunState =
@@ -201,10 +203,12 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-/** Deterministic representation for an idempotency store's request hash. */
+/** Deterministic hash for an idempotency store; raw request values are not stored. */
 export function startRunRequestFingerprint(request: RunRequest): string {
   const { idempotencyKey: _, ...intent } = request;
-  return JSON.stringify(canonicalize(intent));
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(intent)))
+    .digest("hex");
 }
 
 export interface IdempotencyRecord {
