@@ -16,3 +16,4 @@ export {
   DbtNotImplementedError,
 } from "./backend.js";
 export * from "./context.js";
+export * from "./local.js";

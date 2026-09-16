@@ -14,6 +14,10 @@ const secretValueSchema = z.object({
 export const secretInputSchema = z.union([secretRefSchema, secretValueSchema]);
 export type SecretInput = z.output<typeof secretInputSchema>;
 
+export type EnvironmentValue =
+  | { readonly value: string; readonly secretRef?: never }
+  | { readonly secretRef: string; readonly value?: never };
+
 const environmentValueSchema = z.union([
   z.object({ value: z.string(), secretRef: z.never().optional() }),
   z.object({ secretRef: z.string().min(1), value: z.never().optional() }),

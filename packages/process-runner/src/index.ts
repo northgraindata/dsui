@@ -55,7 +55,7 @@ const DEFAULT_MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
 
 function redact(text: string, sensitiveValues: readonly string[]): string {
   return sensitiveValues.reduce((result, value) => {
-    if (value.length < 4) return result;
+    if (value.length === 0) return result;
     return result.split(value).join("[REDACTED]");
   }, text);
 }
