@@ -56,3 +56,32 @@ export {
 export { ConnectionCipher, type EncryptedValue } from "./db/crypto";
 export { DsuiDatabase } from "./db/database";
 export type { Migration } from "./db/migrate";
+export type {
+  CancelRunRequest,
+  EnvironmentValue,
+  GetRunArtifactRequest,
+  GetRunRequest,
+  IdempotencyRecord,
+  ListRunArtifactsRequest,
+  ListRunEventsRequest,
+  NormalizedRunState,
+  ProviderStatus,
+  Run,
+  RunArtifact,
+  RunArtifactContent,
+  RunCommand,
+  RunEvent,
+  RunEventPage,
+  RunProtocol,
+  RunRequest,
+  RunState,
+  StartRunRequest,
+  StartRunResponse,
+  TerminalRunState,
+} from "./runs/contracts";
+export {
+  assertValidRunTransition,
+  isValidRunTransition,
+  resolveStartRetry,
+  startRunRequestFingerprint,
+} from "./runs/contracts";
