@@ -30,7 +30,6 @@ describe("runtime adapter registration", () => {
       "airflow",
       "duckdb",
       "dbt",
-      "snowflake",
     ]);
   });
 
