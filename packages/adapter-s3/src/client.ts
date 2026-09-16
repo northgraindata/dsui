@@ -17,6 +17,7 @@ import {
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { zipSync } from "fflate";
 import type { S3Bucket, S3Client, S3Config, S3Object } from "./context.js";
 
 const iso = (value: Date | undefined) => value?.toISOString() ?? "";
@@ -81,24 +82,51 @@ export function createS3Client(config: S3Config): S3Client {
         }),
         { abortSignal: signal },
       );
-      const folders: S3Object[] = (result.CommonPrefixes ?? []).flatMap(
-        (item) =>
-          item.Prefix
-            ? [
-                {
-                  bucket,
-                  key: item.Prefix,
-                  name: item.Prefix.slice(prefix.length).replace(/\/$/, ""),
-                  type: "folder" as const,
-                  size: null,
-                  lastModified: "",
-                  eTag: "",
-                  contentType: "",
-                  storageClass: "",
-                },
-              ]
-            : [],
-      );
+      const folders: S3Object[] = (
+        await Promise.all(
+          (result.CommonPrefixes ?? []).map(async (item) => {
+            if (!item.Prefix) return undefined;
+            const objects = [];
+            let summaryToken: string | undefined;
+            do {
+              const summary = await client.send(
+                new ListObjectsV2Command({
+                  Bucket: bucket,
+                  Prefix: item.Prefix,
+                  MaxKeys: 1000,
+                  ContinuationToken: summaryToken,
+                }),
+                { abortSignal: signal },
+              );
+              objects.push(...(summary.Contents ?? []));
+              summaryToken = summary.NextContinuationToken;
+            } while (summaryToken);
+            return {
+              bucket,
+              key: item.Prefix,
+              name: item.Prefix.slice(prefix.length).replace(/\/$/, ""),
+              type: "folder" as const,
+              size: objects.reduce(
+                (total, object) => total + (object.Size ?? 0),
+                0,
+              ),
+              lastModified: iso(
+                objects.reduce<Date | undefined>(
+                  (latest, object) =>
+                    !latest ||
+                    (object.LastModified && object.LastModified > latest)
+                      ? object.LastModified
+                      : latest,
+                  undefined,
+                ),
+              ),
+              eTag: "",
+              contentType: "",
+              storageClass: "",
+            };
+          }),
+        )
+      ).filter((folder) => folder !== undefined) as S3Object[];
       const objects: S3Object[] = (result.Contents ?? []).flatMap((item) =>
         !item.Key || item.Key === prefix
           ? []
@@ -169,13 +197,53 @@ export function createS3Client(config: S3Config): S3Client {
     presignGet: async ({ bucket, key, expiresIn = 900 }) => ({
       url: await getSignedUrl(
         signingClient,
-        new GetObjectCommand({ Bucket: bucket, Key: key }),
+        new GetObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          ResponseContentDisposition: `attachment; filename="${(
+            key.split("/").at(-1) || "download"
+          ).replace(/["\\\r\n]/g, "_")}"`,
+        }),
         {
           expiresIn,
         },
       ),
       expiresIn,
     }),
+    downloadFolderZip: async ({ bucket, prefix }, signal) => {
+      const files: Record<string, Uint8Array> = {};
+      let token: string | undefined;
+      do {
+        const result = await client.send(
+          new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: prefix,
+            MaxKeys: 1000,
+            ContinuationToken: token,
+          }),
+          { abortSignal: signal },
+        );
+        for (const item of result.Contents ?? []) {
+          if (!item.Key || item.Key.endsWith("/")) continue;
+          const object = await client.send(
+            new GetObjectCommand({ Bucket: bucket, Key: item.Key }),
+            { abortSignal: signal },
+          );
+          if (!object.Body) continue;
+          files[item.Key.slice(prefix.length)] =
+            await object.Body.transformToByteArray();
+        }
+        token = result.NextContinuationToken;
+      } while (token);
+      const archive = zipSync(files, { level: 6 });
+      const name = prefix.replace(/\/+$/, "").split("/").at(-1) || bucket;
+      let binary = "";
+      for (const byte of archive) binary += String.fromCharCode(byte);
+      return {
+        base64: Buffer.from(binary, "binary").toString("base64"),
+        filename: `${name}.zip`,
+      };
+    },
     bucketInfo: async (bucket) => {
       const optional = async <T>(promise: Promise<T>): Promise<T | string> => {
         try {

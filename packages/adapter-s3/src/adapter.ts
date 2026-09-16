@@ -3,6 +3,7 @@ import {
   copyObject,
   createFolder,
   deleteObjects,
+  downloadFolderZip,
   presignGet,
   readActivity,
   uploadObject,
@@ -15,15 +16,8 @@ import {
   type S3Config,
   s3ConnectionSchema,
 } from "./context.js";
-import { browserPage, objectPage } from "./pages/browser.js";
-import {
-  activityPage,
-  bucketsPage,
-  explorerPage,
-  overviewPage,
-  policiesPage,
-  uploadsPage,
-} from "./pages/buckets.js";
+import { browserPage } from "./pages/browser.js";
+import { fileBrowserPage } from "./pages/buckets.js";
 import {
   bucketInfo,
   buckets,
@@ -73,17 +67,9 @@ export function createS3Adapter(
       createFolder,
       copyObject,
       readActivity,
+      downloadFolderZip,
     ],
-    pages: [
-      overviewPage,
-      bucketsPage,
-      explorerPage,
-      uploadsPage,
-      activityPage,
-      policiesPage,
-      browserPage,
-      objectPage,
-    ],
+    pages: [fileBrowserPage, browserPage],
   });
 }
 

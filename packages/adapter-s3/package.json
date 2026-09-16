@@ -15,6 +15,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1132.0",
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
     "@northgraindata/dsui-ui": "workspace:*",
+    "fflate": "^0.8.2",
     "react": "^19.0.0"
   },
   "devDependencies": {

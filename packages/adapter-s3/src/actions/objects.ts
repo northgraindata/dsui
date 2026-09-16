@@ -108,3 +108,12 @@ export const presignGet = defineAction({
     return link;
   },
 });
+
+export const downloadFolderZip = defineAction({
+  id: "s3-download-folder-zip",
+  input: z.object({
+    bucket: z.string().min(1),
+    prefix: z.string().min(1),
+  }),
+  run: (input, ctx: Ctx) => ctx.client.downloadFolderZip(input, ctx.signal),
+});

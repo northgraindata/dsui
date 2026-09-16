@@ -1,34 +1,25 @@
 import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
 import { useCallback, useEffect, useState } from "react";
-import type { Activity } from "../activity";
-import type {
-  BucketInfo,
-  ObjectPage,
-  S3Bucket,
-  S3ObjectDetails,
-} from "../context";
-import { ObjectInspector } from "./inspector";
-import { OperationDialog } from "./operation-dialog";
+import type { ObjectPage, S3Bucket, S3Object } from "../context";
 import "./workspace.css";
 
-export type Operation =
-  | "Upload"
-  | "Create folder"
-  | "Delete"
-  | "Copy"
-  | "Move"
-  | "Presigned URL"
-  | "Download";
 export const bytes = (n: number) => {
   const i = n > 0 ? Math.min(4, Math.floor(Math.log2(n) / 10)) : 0;
   return `${(n / 1024 ** i).toFixed(i ? 1 : 0)} ${["B", "KiB", "MiB", "GiB", "TiB"][i]}`;
 };
-export const date = (value: string) =>
+
+const date = (value: string) =>
   value ? new Date(value).toLocaleString() : "—";
+
+const typeLabel = (row: S3Object) => {
+  if (row.type === "folder") return "Folder";
+  const extension = row.name.split(".").at(-1);
+  if (extension && extension !== row.name) return extension.toUpperCase();
+  return row.contentType?.split("/").at(-1)?.toUpperCase() || "Object";
+};
 
 export default function StorageWorkspace({ client, node }: ComponentProps) {
   const props = node.kind === "custom" ? node.props.props : undefined;
-  const mode = String(props?.mode ?? "explorer");
   const [buckets, setBuckets] = useState<S3Bucket[]>([]);
   const [bucket, setBucket] = useState(String(props?.bucket ?? ""));
   const [prefix, setPrefix] = useState(String(props?.prefix ?? ""));
@@ -36,20 +27,17 @@ export default function StorageWorkspace({ client, node }: ComponentProps) {
   const [tokens, setTokens] = useState<(string | undefined)[]>([undefined]);
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
-  const [focused, setFocused] = useState<string>();
-  const [info, setInfo] = useState<BucketInfo>();
-  const [details, setDetails] = useState<S3ObjectDetails>();
-  const [activity, setActivity] = useState<Activity[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState<string>();
   const [revision, refresh] = useState(0);
-  const [operation, setOperation] = useState<Operation>();
-  const [descending, setDescending] = useState(false);
+
   const fail = useCallback(
-    (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
+    (value: unknown) =>
+      setError(value instanceof Error ? value.message : String(value)),
     [],
   );
+
   useEffect(() => {
     let active = true;
     client
@@ -65,30 +53,14 @@ export default function StorageWorkspace({ client, node }: ComponentProps) {
       active = false;
     };
   }, [client, fail]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: revision explicitly reloads server data after a completed operation.
-  useEffect(() => {
-    let active = true;
-    client
-      .executeAction({ actionId: "s3-read-activity" })
-      .then((result) => {
-        if (active && result.status === "success")
-          setActivity(result.data as Activity[]);
-      })
-      .catch(fail);
-    return () => {
-      active = false;
-    };
-  }, [client, revision, fail]);
+
   const token = tokens.at(-1);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: revision explicitly reloads server data after a completed operation.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: revision explicitly reloads the file list.
   useEffect(() => {
     if (!bucket) return;
     let active = true;
     setLoading(true);
     setError("");
-    setSelected([]);
-    setFocused(undefined);
-    setDetails(undefined);
     client
       .executeResource({
         resourceId: "s3-objects",
@@ -102,8 +74,8 @@ export default function StorageWorkspace({ client, node }: ComponentProps) {
       .then((value) => {
         if (active) setPage(value as ObjectPage);
       })
-      .catch((e) => {
-        if (active) fail(e);
+      .catch((value) => {
+        if (active) fail(value);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -112,435 +84,266 @@ export default function StorageWorkspace({ client, node }: ComponentProps) {
       active = false;
     };
   }, [bucket, prefix, search, token, client, revision, fail]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: revision explicitly reloads server data after a completed operation.
-  useEffect(() => {
-    if (!bucket) return;
-    let active = true;
-    setInfo(undefined);
-    client
-      .executeResource({ resourceId: "s3-bucket-info", input: { bucket } })
-      .then((value) => {
-        if (active) setInfo(value as BucketInfo);
-      })
-      .catch(fail);
-    return () => {
-      active = false;
-    };
-  }, [bucket, client, revision, fail]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: revision explicitly reloads server data after a completed operation.
-  useEffect(() => {
-    setDetails(undefined);
-    if (!focused) return;
-    let active = true;
-    client
-      .executeResource({
-        resourceId: "s3-object-details",
-        input: { bucket, key: focused },
-      })
-      .then((value) => {
-        if (active) setDetails(value as S3ObjectDetails);
-      })
-      .catch(fail);
-    return () => {
-      active = false;
-    };
-  }, [focused, bucket, client, revision, fail]);
+
   const openPrefix = (value: string) => {
-    setSelected([]);
-    setFocused(undefined);
-    setDetails(undefined);
     setPrefix(value);
     setSearch("");
     setDraft("");
     setTokens([undefined]);
   };
-  const keys = selected.length ? selected : focused ? [focused] : [];
+
+  const download = async (key: string) => {
+    setDownloading(key);
+    setError("");
+    try {
+      const result = await client.executeAction({
+        actionId: "s3-presign-get",
+        input: { bucket, key, expiresIn: 300 },
+      });
+      if (result.status !== "success")
+        throw new Error(result.message || "Unable to prepare download");
+      const link = document.createElement("a");
+      link.href = String((result.data as { url: string }).url);
+      link.download = key.split("/").at(-1) || key;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (value) {
+      fail(value);
+    } finally {
+      setDownloading(undefined);
+    }
+  };
+
+  const downloadFolder = async (prefix: string) => {
+    setDownloading(prefix);
+    setError("");
+    try {
+      const result = await client.executeAction({
+        actionId: "s3-download-folder-zip",
+        input: { bucket, prefix },
+      });
+      if (result.status !== "success")
+        throw new Error(result.message || "Unable to prepare folder download");
+      const data = result.data as { base64: string; filename: string };
+      const bytes = Uint8Array.from(atob(data.base64), (char) =>
+        char.charCodeAt(0),
+      );
+      const url = URL.createObjectURL(
+        new Blob([bytes], { type: "application/zip" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = data.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (value) {
+      fail(value);
+    } finally {
+      setDownloading(undefined);
+    }
+  };
+
   const rows = [...page.rows].sort((a, b) =>
     a.type === b.type
-      ? a.name.localeCompare(b.name) * (descending ? -1 : 1)
+      ? a.name.localeCompare(b.name)
       : a.type === "folder"
         ? -1
         : 1,
   );
-  const allKeys = rows.filter((r) => r.type === "object").map((r) => r.key);
-  const choose = (key: string) =>
-    setSelected((current) =>
-      current.includes(key)
-        ? current.filter((k) => k !== key)
-        : [...current, key],
-    );
-  const metrics = [
-    ["Buckets", buckets.length],
-    [
-      "Objects in bucket",
-      info ? `${info.objectCount}${info.partial ? "+" : ""}` : "—",
-    ],
-    [
-      "Bucket storage",
-      info ? `${bytes(info.size)}${info.partial ? "+" : ""}` : "—",
-    ],
-    ["Versioning", info?.versioning ?? "—"],
-    [
-      "Multipart uploads",
-      info && info.multipartUploads >= 0
-        ? `${info.multipartUploads}${info.multipartPartial ? "+" : ""}`
-        : "Unavailable",
-    ],
-    ["Regions", new Set(buckets.map((b) => b.region)).size],
-  ];
+  const currentRegion = buckets.find((item) => item.name === bucket)?.region;
+  const parts = prefix.split("/").filter(Boolean);
+
   return (
     <div className="s3-workspace">
-      <div className="s3-metrics">
-        {metrics.map(([label, value]) => (
-          <div className="s3-metric" key={label}>
-            <strong>{value}</strong>
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
-      {info?.partial && (
-        <p className="s3-note">
-          Storage totals cover the first 1,000 objects in {bucket}.
-        </p>
-      )}
       {error && (
         <div className="s3-error" role="alert">
-          {error}
-          <button type="button" onClick={() => refresh((n) => n + 1)}>
+          <span>{error}</span>
+          <button type="button" onClick={() => refresh((value) => value + 1)}>
             Retry
           </button>
         </div>
       )}
-      <div className="s3-columns">
-        <section className="s3-panel s3-browser">
-          <header className="s3-panel-header">
-            <div>
-              <h2>
-                {mode === "activity"
-                  ? "Activity"
-                  : mode === "policies"
-                    ? "Bucket configuration"
-                    : mode === "uploads"
-                      ? "Uploads"
-                      : "Bucket explorer"}
-              </h2>
-              <p>
-                {mode === "activity"
-                  ? "Recent operations performed through DSUI."
-                  : "Browse and manage objects in your buckets."}
-              </p>
-            </div>
+
+      <section className="s3-panel s3-browser" aria-label="S3 file browser">
+        <header className="s3-panel-header">
+          <div>
+            <h2>File browser</h2>
+            <p>Browse files and folders in your S3 buckets.</p>
+          </div>
+          <label className="s3-bucket-select">
+            <span>Bucket</span>
             <select
-              aria-label="Switch bucket"
+              aria-label="Select bucket"
               value={bucket}
-              onChange={(e) => {
-                setBucket(e.target.value);
+              onChange={(event) => {
+                setBucket(event.target.value);
                 openPrefix("");
               }}
             >
-              {buckets.map((b) => (
-                <option key={b.name}>{b.name}</option>
+              {buckets.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.name}
+                </option>
               ))}
             </select>
-          </header>
-          {bucket && (
-            <p className="s3-note">
-              {bucket} · {buckets.find((b) => b.name === bucket)?.region} ·
-              Created{" "}
-              {date(buckets.find((b) => b.name === bucket)?.createdAt ?? "")}
-            </p>
-          )}
-          {mode === "activity" ? (
-            <ActivityList entries={activity} />
-          ) : mode === "policies" ? (
-            <>
-              <h3>Versioning</h3>
-              <p>{info?.versioning ?? "Loading…"}</p>
-              <h3>Default encryption</h3>
-              <p>{info?.encryption ?? "Loading…"}</p>
-              <h3>Bucket policy</h3>
-              <pre>{info?.policy ?? "Loading…"}</pre>
-            </>
-          ) : (
-            <>
-              <nav className="s3-breadcrumb" aria-label="Object path">
-                <button
-                  type="button"
-                  onClick={() => client.navigate("/buckets")}
-                >
-                  Buckets
-                </button>
-                <span>/</span>
-                <button type="button" onClick={() => openPrefix("")}>
-                  {bucket || "Select a bucket"}
-                </button>
-                {prefix
-                  .split("/")
-                  .filter(Boolean)
-                  .map((part, i, parts) => (
-                    <span key={parts.slice(0, i + 1).join("/")}>
-                      <span> / </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openPrefix(`${parts.slice(0, i + 1).join("/")}/`)
-                        }
-                      >
-                        {part}
-                      </button>
-                    </span>
-                  ))}
-              </nav>
-              <div className="s3-toolbar">
-                <button
-                  type="button"
-                  className="s3-primary"
-                  disabled={!bucket}
-                  onClick={() => setOperation("Upload")}
-                >
-                  ↑ Upload
-                </button>
-                <button
-                  type="button"
-                  disabled={!bucket}
-                  onClick={() => setOperation("Create folder")}
-                >
-                  Create folder
-                </button>
-                {(
-                  [
-                    "Download",
-                    "Delete",
-                    "Presigned URL",
-                    "Copy",
-                    "Move",
-                  ] as Operation[]
-                ).map((op) => (
-                  <button
-                    type="button"
-                    key={op}
-                    disabled={
-                      !keys.length || (op !== "Delete" && keys.length !== 1)
-                    }
-                    onClick={() => setOperation(op)}
-                  >
-                    {op}
-                  </button>
-                ))}
-                <button type="button" onClick={() => refresh((n) => n + 1)}>
-                  Refresh
-                </button>
-              </div>
-              <form
-                className="s3-search"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setSearch(draft);
-                  setTokens([undefined]);
-                }}
-              >
-                <input
-                  aria-label="Search by key prefix"
-                  placeholder="Search by key prefix in this bucket…"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                />
-                <button type="submit">Search</button>
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearch("");
-                      setDraft("");
-                      setTokens([undefined]);
-                    }}
-                  >
-                    Clear
-                  </button>
-                )}
-              </form>
-              {mode === "uploads" && (
-                <p className="s3-note">
-                  Upload files up to 5 MiB. Choose a destination prefix in the
-                  upload form.
-                </p>
-              )}
-              <div className="s3-table-wrap" aria-busy={loading}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>
-                        <input
-                          type="checkbox"
-                          aria-label="Select all objects on page"
-                          checked={
-                            allKeys.length > 0 &&
-                            allKeys.every((k) => selected.includes(k))
-                          }
-                          onChange={(e) =>
-                            setSelected(e.target.checked ? allKeys : [])
-                          }
-                        />
-                      </th>
-                      <th>
-                        <button
-                          type="button"
-                          onClick={() => setDescending(!descending)}
-                        >
-                          Name {descending ? "↓" : "↑"}
-                        </button>
-                      </th>
-                      <th>Type</th>
-                      <th>Size</th>
-                      <th>Last modified</th>
-                      <th>Storage class</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {!loading &&
-                      rows.map((row) => (
-                        <tr
-                          key={row.key}
-                          data-selected={
-                            selected.includes(row.key) || focused === row.key
-                          }
-                        >
-                          <td>
-                            {row.type === "object" && (
-                              <input
-                                type="checkbox"
-                                aria-label={`Select ${row.name}`}
-                                checked={selected.includes(row.key)}
-                                onChange={() => choose(row.key)}
-                              />
-                            )}
-                          </td>
-                          <td>
-                            <button
-                              className="s3-object-name"
-                              type="button"
-                              onClick={() =>
-                                row.type === "folder"
-                                  ? openPrefix(row.key)
-                                  : setFocused(row.key)
-                              }
-                            >
-                              {row.name}
-                              {row.type === "folder" ? "/" : ""}
-                            </button>
-                          </td>
-                          <td>
-                            {row.type === "folder"
-                              ? "Folder"
-                              : row.name.includes(".")
-                                ? row.name.split(".").at(-1)?.toUpperCase()
-                                : "Object"}
-                          </td>
-                          <td>{row.size === null ? "—" : bytes(row.size)}</td>
-                          <td>{date(row.lastModified)}</td>
-                          <td>
-                            {row.storageClass && (
-                              <span className="s3-badge">
-                                {row.storageClass}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-                {loading ? (
-                  <p className="s3-empty">Loading objects…</p>
-                ) : (
-                  !rows.length && (
-                    <p className="s3-empty">
-                      {search
-                        ? "No objects match this key prefix."
-                        : "This prefix is empty. Upload a file to get started."}
-                    </p>
-                  )
-                )}
-              </div>
-              <footer className="s3-pagination">
-                <span>{selected.length} objects selected</span>
-                <span>
-                  Page {tokens.length} · {page.rows.length} entries
-                </span>
-                <button
-                  type="button"
-                  disabled={loading || tokens.length === 1}
-                  onClick={() => setTokens((t) => t.slice(0, -1))}
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={loading || !page.nextToken}
-                  onClick={() => setTokens((t) => [...t, page.nextToken])}
-                >
-                  Next
-                </button>
-              </footer>
-            </>
-          )}
-        </section>
-        <aside className="s3-rail">
-          <ObjectInspector
-            client={client}
-            bucket={bucket}
-            objectKey={focused}
-            details={details}
-          />
-          <section className="s3-panel">
-            <header className="s3-panel-header">
-              <h2>Recent activity</h2>
+          </label>
+        </header>
+
+        {bucket && (
+          <p className="s3-note">
+            {bucket} · {currentRegion || "region unavailable"}
+          </p>
+        )}
+
+        <nav className="s3-breadcrumb" aria-label="Object path">
+          <button type="button" onClick={() => client.navigate("/")}>
+            Buckets
+          </button>
+          <span>/</span>
+          <button type="button" onClick={() => openPrefix("")}>
+            {bucket || "Select a bucket"}
+          </button>
+          {parts.map((part, index) => (
+            <span key={parts.slice(0, index + 1).join("/")}>
+              <span> / </span>
               <button
                 type="button"
-                onClick={() => client.navigate("/activity")}
+                onClick={() =>
+                  openPrefix(`${parts.slice(0, index + 1).join("/")}/`)
+                }
               >
-                View all →
+                {part}
               </button>
-            </header>
-            <ActivityList entries={activity.slice(0, 5)} />
-          </section>
-        </aside>
-      </div>
-      {operation && (
-        <OperationDialog
-          client={client}
-          operation={operation}
-          bucket={bucket}
-          prefix={prefix}
-          keys={keys}
-          buckets={buckets}
-          close={() => setOperation(undefined)}
-          done={() => {
-            setOperation(undefined);
-            refresh((n) => n + 1);
+            </span>
+          ))}
+        </nav>
+
+        <form
+          className="s3-search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSearch(draft.trim());
+            setTokens([undefined]);
           }}
-        />
-      )}
-    </div>
-  );
-}
-function ActivityList({ entries }: { entries: Activity[] }) {
-  return entries.length ? (
-    <ul className="s3-activity">
-      {entries.map((entry) => (
-        <li key={entry.id}>
-          <strong>
-            {entry.operation} {entry.key}
-          </strong>
+        >
+          <input
+            aria-label="Search files"
+            placeholder="Search files by key or prefix…"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <button type="submit">Search</button>
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setDraft("");
+                setTokens([undefined]);
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </form>
+
+        <div className="s3-table-wrap" aria-busy={loading}>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">Size</th>
+                <th scope="col">Last modified</th>
+                <th scope="col">Storage class</th>
+                <th scope="col">Download</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!loading &&
+                rows.map((row) => (
+                  <tr key={row.key}>
+                    <td>
+                      {row.type === "folder" ? (
+                        <button
+                          className="s3-object-name"
+                          type="button"
+                          onClick={() => openPrefix(row.key)}
+                        >
+                          {row.name}/
+                        </button>
+                      ) : (
+                        <span className="s3-object-name">{row.name}</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`s3-file-type s3-file-type-${row.type}`}>
+                        {typeLabel(row)}
+                      </span>
+                    </td>
+                    <td>{row.size === null ? "—" : bytes(row.size)}</td>
+                    <td>{date(row.lastModified)}</td>
+                    <td>{row.storageClass || "—"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="s3-download"
+                        disabled={downloading === row.key}
+                        onClick={() =>
+                          void (row.type === "folder"
+                            ? downloadFolder(row.key)
+                            : download(row.key))
+                        }
+                      >
+                        {downloading === row.key
+                          ? "Preparing…"
+                          : row.type === "folder"
+                            ? "Download ZIP"
+                            : "Download"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+          {loading ? (
+            <p className="s3-empty">Loading files…</p>
+          ) : (
+            !rows.length && (
+              <p className="s3-empty">
+                {search
+                  ? "No files match this search."
+                  : "This folder is empty."}
+              </p>
+            )
+          )}
+        </div>
+
+        <footer className="s3-pagination">
           <span>
-            {entry.bucket} · {date(entry.at)}
+            {page.rows.length} {page.rows.length === 1 ? "entry" : "entries"}
           </span>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    <p className="s3-note">
-      No operations recorded yet. Activity includes actions from this DSUI
-      service only.
-    </p>
+          <span>Page {tokens.length}</span>
+          <button
+            type="button"
+            disabled={loading || tokens.length === 1}
+            onClick={() => setTokens((value) => value.slice(0, -1))}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            disabled={loading || !page.nextToken}
+            onClick={() => setTokens((value) => [...value, page.nextToken])}
+          >
+            Next
+          </button>
+        </footer>
+      </section>
+    </div>
   );
 }

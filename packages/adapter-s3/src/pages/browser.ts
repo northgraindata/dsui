@@ -1,11 +1,5 @@
-import {
-  definePage,
-  KeyValue,
-  PageHeader,
-  Tabs,
-} from "@northgraindata/dsui-adapter-sdk";
+import { definePage, PageHeader } from "@northgraindata/dsui-adapter-sdk";
 import { S3Workspace } from "../components/s3-workspace.js";
-import { objectDetails } from "../resources/s3.js";
 
 export const browserPage = definePage({
   path: "/buckets/:bucket",
@@ -19,22 +13,4 @@ export const browserPage = definePage({
       S3Workspace({ mode: "explorer", bucket: params.bucket, prefix }),
     ];
   },
-});
-
-export const objectPage = definePage({
-  path: "/buckets/:bucket/objects/:key",
-  render: ({ params }) => [
-    PageHeader({
-      title: params.key,
-      description: "Object metadata and preview controls.",
-    }),
-    Tabs({
-      items: [
-        {
-          label: "Details",
-          content: KeyValue({ source: objectDetails(params) }),
-        },
-      ],
-    }),
-  ],
 });

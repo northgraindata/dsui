@@ -112,6 +112,10 @@ export interface S3Client {
     input: { bucket: string; key: string; expiresIn?: number },
     signal?: AbortSignal,
   ): Promise<{ url: string; expiresIn: number }>;
+  downloadFolderZip(
+    input: { bucket: string; prefix: string },
+    signal?: AbortSignal,
+  ): Promise<{ base64: string; filename: string }>;
 }
 
 export interface S3Context {
