@@ -207,17 +207,18 @@ the contract to cover:
 
 | Capability | API family | UI/resource |
 | --- | --- | --- |
-| Account details | `GET /api/v3/accounts/{accountId}` | connection validation, Overview |
-| Projects | `GET /api/v3/accounts/{accountId}/projects` and project detail | project context |
-| Environments | account/project environment list and detail routes | Environments |
-| Jobs | `GET /api/v3/accounts/{accountId}/jobs` and job detail | Jobs |
-| Job runs | job run list/detail routes | Runs |
-| Run trigger | job run trigger route | Run job / Run now |
-| Run cancel | run cancel route | Cancel |
-| Run retry | retry route or supported job/run action | Retry |
-| Run logs | run logs/steps route | Run detail |
-| Run artifacts | artifact list/download routes | Artifacts, Documentation |
-| Webhooks | `/api/v3/accounts/{accountId}/webhooks/subscriptions` | later server integration |
+| Account details | v3 account routes | connection validation, Overview |
+| Projects/environments | v3 account/project/environment routes | project context, Environments |
+| Jobs | v2 `GET /api/v2/accounts/{account_id}/jobs/` and job detail | Jobs |
+| Trigger job | v2 `POST /api/v2/accounts/{account_id}/jobs/{job_id}/run/` | Run now |
+| Retry job | v2 `POST /api/v2/accounts/{account_id}/jobs/{job_id}/rerun/` | Retry job |
+| Runs | v2 `GET /api/v2/accounts/{account_id}/runs/` and `GET /api/v2/accounts/{account_id}/runs/{id}/` | Runs |
+| Cancel run | v2 `POST /api/v2/accounts/{account_id}/runs/{run_id}/cancel/` | Cancel |
+| Retry run | v2 `POST /api/v2/accounts/{account_id}/runs/{run_id}/retry/` | Retry |
+| Run logs | v2 run logs/steps routes | Run detail |
+| Run artifacts | v2 `GET /api/v2/accounts/{account_id}/runs/{run_id}/artifacts/` and artifact download route | Artifacts, Documentation |
+| Job artifacts | v2 job artifact route with optional step | Artifacts, Documentation |
+| Webhooks | v3 `/api/v3/accounts/{account_id}/webhooks/subscriptions` | later server integration |
 
 The client must support:
 
@@ -229,6 +230,11 @@ The client must support:
 - request cancellation through the runtime signal;
 - permission-aware capability discovery;
 - redaction of authorization headers and tokens in logs.
+
+Cloud jobs are multi-step. Every run and artifact reference must preserve the
+job ID, run ID, step ID/name, command, and provider status. Artifact downloads
+must not follow arbitrary URLs returned by the provider without an allowlisted
+Cloud host check and bounded response/content-type validation.
 
 ### Discovery API
 
@@ -264,6 +270,39 @@ must not be required for the first working Cloud implementation.
 
 ## Local Execution Contract
 
+Local execution cannot remain a single synchronous action when a command can
+run longer than the HTTP request. The host therefore needs a durable run
+protocol:
+
+```text
+startRun(request) -> invocationId
+getRun(invocationId) -> Run
+listRunEvents(invocationId, cursor?) -> events + nextCursor
+cancelRun(invocationId) -> Run
+listRunArtifacts(invocationId) -> Artifact[]
+getRunArtifact(invocationId, artifactId) -> bounded content/download
+```
+
+The server owns invocation records, authorization, persistence, restart
+recovery, and cleanup. A client disconnect must not silently terminate a run.
+The UI may use event streaming when available and cursor-based polling as the
+fallback. `startRun` must accept an idempotency key derived from the user
+intent; duplicate starts with the same key must not create duplicate runs.
+
+The lifecycle is:
+
+```text
+queued -> running -> cancelling -> cancelled
+                    |             |
+                    +-> succeeded
+                    +-> failed
+                    +-> timed_out
+```
+
+Provider-native status and messages remain available alongside the normalized
+state. Retry is a new invocation linked to the original and is never inferred
+from a timeout or an unknown network outcome.
+
 The host must own process execution. The adapter requests an allowed command;
 the host decides whether and how it can run.
 
@@ -291,13 +330,20 @@ the host decides whether and how it can run.
 ### Security requirements
 
 - no arbitrary command strings from user input;
-- allowlisted executable and command arguments;
-- path validation and workspace boundary enforcement;
+- command enum plus per-command argument schema;
+- canonical executable identity and approved runtime roots;
+- canonical project/profile/target paths with traversal and symlink checks;
+- explicit environment allowlist and host-side secret handles;
 - no raw profile contents in logs or persistent stores;
 - secrets passed through the host secret boundary;
 - resource limits, timeout, and output-size limits;
 - cancellation must terminate the process tree, not only the parent;
 - failed execution must not be reported as successful because artifacts exist.
+
+The runner must return bounded output with truncation metadata and redact
+secrets before persistence or delivery. Redaction must work across chunk
+boundaries. The host must enforce concurrency, timeout, output, disk, and
+network policy appropriate for local execution.
 
 ## Artifact Compatibility
 
@@ -305,7 +351,7 @@ Artifact readers are registered by artifact kind and schema version. A reader
 must validate the schema URL/version, parse only known fields, preserve unknown
 fields where safe, and return structured warnings for optional omissions.
 
-### v1 artifacts
+### dbt Core v1 artifacts
 
 Support the JSON artifact families used by v1:
 
@@ -316,12 +362,28 @@ Support the JSON artifact families used by v1:
 - `semantic_manifest.json` where present;
 - generated documentation assets where produced.
 
-### v2/Fusion artifacts
+The initial compatibility matrix should cover the manifest schema versions that
+are still encountered in supported Cloud/local projects, starting with v7-v12,
+the current run-results schema v6, and the current catalog schema. The matrix
+must be maintained as a data table and tested with real fixtures rather than
+encoded as assumptions in page code.
 
-Support the artifact formats produced by the v2 documentation/runtime flow,
-including Parquet and semantic metadata where available. Do not force v2 output
-through v1 JSON assumptions. The reader should expose a common normalized model
-and retain the original artifact kind/version for diagnostics.
+### dbt v2/Fusion artifacts
+
+Support the concrete artifact formats produced by the v2 documentation/runtime
+flow, including JSON compatibility artifacts, Parquet documentation indexes,
+semantic metadata, and Fusion telemetry/OTel Parquet where available. Do not
+force v2 output through v1 JSON assumptions. The reader should expose a common
+normalized model and retain the original artifact kind/version for diagnostics.
+
+Cloud artifact downloads may be scoped to a run step. The artifact API client
+must preserve and pass the step selector and must not accidentally present an
+artifact from the last step as the complete run output.
+
+The first release must publish an explicit compatibility matrix. It should name
+the supported manifest/catalog/run-results/sources schema versions and the
+supported v2/Fusion artifact kinds. Older or unknown versions are visible as
+unsupported with a structured warning; they are never silently coerced.
 
 ### Partial sets
 
