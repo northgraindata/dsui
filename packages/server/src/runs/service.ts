@@ -15,6 +15,7 @@ import {
 } from "./contracts.js";
 
 export interface RunExecutorRequest {
+  readonly invocationId: string;
   readonly request: StartRunRequest;
   readonly signal: AbortSignal;
   readonly onOutput: (event: Extract<RunEvent, { type: "output" }>) => void;
@@ -216,6 +217,7 @@ export class DurableRunService implements RunProtocol {
         at: new Date().toISOString(),
       });
       const result = await this.executor.execute({
+        invocationId: run.invocationId,
         request,
         signal: controller.signal,
         onOutput: (event) =>

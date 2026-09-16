@@ -86,6 +86,10 @@ export {
   startRunRequestFingerprint,
 } from "./runs/contracts";
 export {
+  createDbtRunExecutor,
+  type DbtRunExecutorDependencies,
+} from "./runs/dbt-executor";
+export {
   DurableRunService,
   type RunExecutor,
   type RunExecutorRequest,

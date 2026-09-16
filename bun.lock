@@ -88,6 +88,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-process-runner": "workspace:*",
       },
     },
     "packages/adapter-duckdb": {
@@ -157,6 +158,7 @@
       "dependencies": {
         "@better-auth/sso": "1.7.1",
         "@northgraindata/dsui-adapter-airflow": "workspace:*",
+        "@northgraindata/dsui-adapter-dbt": "workspace:*",
         "@northgraindata/dsui-adapter-duckdb": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-adapter-snowflake": "workspace:*",

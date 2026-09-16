@@ -40,6 +40,10 @@ export interface DbtLocalExecutor {
   execute(
     request: DbtCommandRequest,
     signal?: AbortSignal,
+    options?: {
+      readonly timeoutMs?: number;
+      readonly onOutput?: ProcessRunRequest["onOutput"];
+    },
   ): Promise<ProcessRunResult>;
 }
 
@@ -260,7 +264,7 @@ export function createDbtLocalExecutor(
   dependencies: DbtLocalExecutionDependencies,
 ): DbtLocalExecutor {
   return {
-    async execute(request, signal) {
+    async execute(request, signal, options) {
       const plan = planDbtCommand(request, {
         allowedExecutables: dependencies.allowedExecutables,
       });
@@ -275,6 +279,8 @@ export function createDbtLocalExecutor(
         env: resolved,
         sensitiveValues,
         signal,
+        timeoutMs: options?.timeoutMs,
+        onOutput: options?.onOutput,
       });
       return {
         ...result,
