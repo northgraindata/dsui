@@ -1,5 +1,0 @@
-order_id,customer_id,ordered_at,amount,status
-1001,1,2026-09-01,120.50,paid
-1002,1,2026-09-03,80.00,paid
-1003,2,2026-09-04,42.25,pending
-1004,3,2026-09-05,210.00,paid
