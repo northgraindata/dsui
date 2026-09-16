@@ -49,8 +49,8 @@ During iteration, use the affected package's scripts. For example:
 ```sh
 bun run --filter @northgraindata/dsui-adapter-sdk test
 bun run --filter @northgraindata/dsui-adapter-sdk typecheck
-bun run --filter @northgraindata/dsui-adapter-snowflake test
-bun run --filter @northgraindata/dsui-adapter-snowflake typecheck
+bun run --filter @northgraindata/dsui-adapter-duckdb test
+bun run --filter @northgraindata/dsui-adapter-duckdb typecheck
 ```
 
 SDK or adapter changes must run SDK tests and affected adapter tests and typechecks.

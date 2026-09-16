@@ -120,5 +120,5 @@ Re-exported `z` from Zod for schemas.
 
 ## What to read next
 
-- [Snowflake adapter](../examples/snowflake) for the worked reference
+- [Quickstart](../getting-started/quickstart) for a worked reference
 - [Testing adapters](../guides/testing-adapters) for proving behavior

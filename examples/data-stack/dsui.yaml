@@ -2,19 +2,12 @@ adapters:
   airflow:
     package: "@northgraindata/dsui-adapter-airflow"
   # Local workspace package, loaded in-process through the uniform loader.
-  snowflake:
-    package: "@northgraindata/dsui-adapter-snowflake"
-  # Presentation overrides (all optional, keyed by adapter id):
-  #
-  #   snowflake:
-  #     name: Snowflake
-  #     description: Browse metadata and execute Snowflake SQL.
-  #     iconUrl: https://example.com/snowflake.svg
+  duckdb:
+    package: "@northgraindata/dsui-adapter-duckdb"
 
 services:
   - id: analytics
-    adapter: snowflake
-    name: Analytics warehouse
+    adapter: duckdb
+    name: Analytics database
     connection:
-      accountIdentifier: org-account
-      token: ${SNOWFLAKE_TOKEN}
+      method: memory

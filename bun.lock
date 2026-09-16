@@ -107,13 +107,6 @@
         "react": "^19.0.0",
       },
     },
-    "packages/adapter-snowflake": {
-      "name": "@northgraindata/dsui-adapter-snowflake",
-      "version": "0.0.0",
-      "dependencies": {
-        "@northgraindata/dsui-adapter-sdk": "workspace:*",
-      },
-    },
     "packages/core": {
       "name": "@northgraindata/dsui-core",
       "version": "0.0.0",
@@ -144,7 +137,6 @@
         "@northgraindata/dsui-adapter-airflow": "workspace:*",
         "@northgraindata/dsui-adapter-duckdb": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
-        "@northgraindata/dsui-adapter-snowflake": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
         "better-auth": "1.7.1",
         "hono": "^4.11.7",
@@ -516,8 +508,6 @@
     "@northgraindata/dsui-adapter-duckdb": ["@northgraindata/dsui-adapter-duckdb@workspace:packages/adapter-duckdb"],
 
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
-
-    "@northgraindata/dsui-adapter-snowflake": ["@northgraindata/dsui-adapter-snowflake@workspace:packages/adapter-snowflake"],
 
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],
 

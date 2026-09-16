@@ -95,4 +95,4 @@ bunx tsc --noEmit # types, including @ts-expect-error assertions
 ## What to read next
 
 - [Instances and isolation](../concepts/instances-and-isolation) for what isolation means
-- [Snowflake adapter](../examples/snowflake) for the full tested reference
+- [Quickstart](../getting-started/quickstart) for the minimal tested reference

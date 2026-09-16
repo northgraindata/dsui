@@ -73,7 +73,7 @@ renderers branch on `status` without try/catch.
 ## Invalidate what you change
 
 End every mutation with the invalidation its reads need, or the UI
-shows stale data after success. The Snowflake adapter follows one
+shows stale data after success. A well-behaved adapter follows one
 pattern everywhere: mutate, invalidate the affected resources, return
 a small confirmation record.
 

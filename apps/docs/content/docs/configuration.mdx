@@ -8,11 +8,10 @@ description: Configure services, authentication, storage, and community adapters
 ```yaml
 services:
   - id: analytics
-    adapter: snowflake
-    name: Analytics warehouse
+    adapter: duckdb
+    name: Analytics database
     connection:
-      accountIdentifier: org-account
-      token: ${SNOWFLAKE_TOKEN}
+      method: memory
 ```
 
 `${ENV_NAME}` interpolation is supported. Missing variables are errors. Resolved values are never returned to the browser or logged. Configuration-managed services are read-only in the UI.
@@ -20,13 +19,13 @@ services:
 ## Adapters
 
 Adapters resolve by package name. With no `adapters:` section the
-server loads its default set (Snowflake). A local or workspace package
+server loads its bundled adapters. A local or workspace package
 loads in-process:
 
 ```yaml
 adapters:
-  snowflake:
-    package: "@northgraindata/dsui-adapter-snowflake"
+  duckdb:
+    package: "@northgraindata/dsui-adapter-duckdb"
 ```
 
 A pinned npm package installs verified (tarball SRI plus manifest
