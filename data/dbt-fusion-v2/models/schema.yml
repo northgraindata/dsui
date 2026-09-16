@@ -1,0 +1,36 @@
+version: 2
+
+sources:
+  - name: fixture_inputs
+    schema: raw
+    tables:
+      - name: customers
+      - name: orders
+
+models:
+  - name: stg_customers
+    description: Cleaned customer seed records.
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+      - name: segment
+        tests:
+          - accepted_values:
+              arguments:
+                values: [enterprise, startup]
+  - name: stg_orders
+    description: Cleaned order seed records.
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: customer_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+  - name: customer_order_metrics
+    description: One row per customer with order rollups.
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]

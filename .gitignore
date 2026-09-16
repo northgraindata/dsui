@@ -11,3 +11,8 @@ coverage/
 .env.*
 !.env.example
 data/
+!data/
+!data/dbt-core-v1/
+!data/dbt-core-v1/**
+!data/dbt-fusion-v2/
+!data/dbt-fusion-v2/**

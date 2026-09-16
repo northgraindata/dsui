@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/.astro", "!image.png", "!.agents"]
+    "includes": ["**", "!**/dist", "!**/.astro", "!image.png", "!.agents"],
+    "ignoreUnknown": true
   },
   "formatter": {
     "enabled": true,

@@ -1,0 +1,12 @@
+dsui_core_v1_fixture:
+  target: local
+  outputs:
+    local:
+      type: postgres
+      host: 127.0.0.1
+      port: 55432
+      user: dbt
+      password: dbt
+      dbname: analytics
+      schema: dbt_core_v1
+      threads: 2
