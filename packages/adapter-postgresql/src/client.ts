@@ -17,6 +17,22 @@ export interface PostgreSQLCapabilities {
   supportsQueryCancellation: boolean;
 }
 
+export interface PostgreSQLOverview {
+  database: string;
+  schemas: number;
+  tables: number;
+  views: number;
+  indexes: number;
+  activeConnections: number;
+  maxConnections: number;
+  databaseSize: string;
+}
+
+export interface PostgreSQLSchemaTableCount {
+  schema: string;
+  tables: number;
+}
+
 export interface PostgreSQLDatabase {
   name: string;
   owner: string;
@@ -82,6 +98,8 @@ export interface PostgreSQLConstraint {
 
 export interface PostgreSQLClient {
   serverInfo(): Promise<PostgreSQLServerInfo>;
+  overview(): Promise<PostgreSQLOverview>;
+  schemaTableCounts(): Promise<PostgreSQLSchemaTableCount[]>;
   capabilities(): Promise<PostgreSQLCapabilities>;
   listDatabases(scope: "all" | "selected"): Promise<PostgreSQLDatabase[]>;
   listSchemas(): Promise<PostgreSQLSchema[]>;
@@ -137,6 +155,62 @@ export function createPostgreSQLClient(
       `;
       if (!row) throw new Error("PostgreSQL did not return server information");
       return row;
+    },
+
+    async overview() {
+      const [row] = await sql<PostgreSQLOverview[]>`
+        with visible_relations as (
+          select c.relkind, n.nspname
+          from pg_class c
+          join pg_namespace n on n.oid = c.relnamespace
+          where n.nspname not in ('information_schema')
+            and n.nspname not like 'pg_%'
+        )
+        select
+          current_database() as database,
+          (
+            select count(*)::integer
+            from pg_namespace
+            where nspname not in ('information_schema')
+              and nspname not like 'pg_%'
+          ) as schemas,
+          count(*) filter (where relkind in ('r', 'p'))::integer as tables,
+          count(*) filter (where relkind in ('v', 'm'))::integer as views,
+          (
+            select count(*)::integer
+            from pg_index i
+            join pg_class c on c.oid = i.indexrelid
+            join pg_namespace n on n.oid = c.relnamespace
+            where i.indisvalid
+              and n.nspname not in ('information_schema')
+              and n.nspname not like 'pg_%'
+          ) as indexes,
+          (
+            select count(*)::integer
+            from pg_stat_activity
+            where datname = current_database()
+          ) as "activeConnections",
+          current_setting('max_connections')::integer as "maxConnections",
+          pg_size_pretty(pg_database_size(current_database())) as "databaseSize"
+        from visible_relations
+      `;
+      if (!row) throw new Error("PostgreSQL did not return overview data");
+      return row;
+    },
+
+    async schemaTableCounts() {
+      return sql<PostgreSQLSchemaTableCount[]>`
+        select
+          n.nspname as schema,
+          count(*)::integer as tables
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where c.relkind in ('r', 'p')
+          and n.nspname not in ('information_schema')
+          and n.nspname not like 'pg_%'
+        group by n.nspname
+        order by tables desc, schema
+      `;
     },
 
     async capabilities() {

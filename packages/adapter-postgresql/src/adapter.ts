@@ -37,6 +37,12 @@ import {
   schemas,
 } from "./resources/catalog.js";
 import {
+  connectionUsage,
+  overview,
+  schemaTableCounts,
+  schemaTableMeter,
+} from "./resources/overview.js";
+import {
   databaseRelationPreview,
   relationPreview,
 } from "./resources/preview.js";
@@ -90,6 +96,10 @@ export function createPostgreSQLAdapter() {
       databaseRelationPreview,
       activity,
       capabilities,
+      overview,
+      schemaTableCounts,
+      schemaTableMeter,
+      connectionUsage,
     ],
     actions: [runQuery, cancelQuery, createSchema, dropSchema],
     pages: [
