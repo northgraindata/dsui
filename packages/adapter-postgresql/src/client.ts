@@ -10,6 +10,13 @@ export interface PostgreSQLServerInfo {
   serverVersionNumber: number;
 }
 
+export interface PostgreSQLCapabilities {
+  serverVersion: string;
+  supportsActivity: boolean;
+  supportsDatabaseListing: boolean;
+  supportsQueryCancellation: boolean;
+}
+
 export interface PostgreSQLDatabase {
   name: string;
   owner: string;
@@ -75,6 +82,7 @@ export interface PostgreSQLConstraint {
 
 export interface PostgreSQLClient {
   serverInfo(): Promise<PostgreSQLServerInfo>;
+  capabilities(): Promise<PostgreSQLCapabilities>;
   listDatabases(scope: "all" | "selected"): Promise<PostgreSQLDatabase[]>;
   listSchemas(): Promise<PostgreSQLSchema[]>;
   listRelations(schema: string): Promise<PostgreSQLRelation[]>;
@@ -93,6 +101,9 @@ export interface PostgreSQLClient {
     database?: string;
     state?: string;
   }): Promise<PostgreSQLActivityEntry[]>;
+  cancelQuery(pid: number): Promise<boolean>;
+  createSchema(name: string): Promise<void>;
+  dropSchema(name: string, cascade: boolean): Promise<void>;
   execute(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
   dispose(): Promise<void>;
 }
@@ -125,6 +136,23 @@ export function createPostgreSQLClient(
           current_setting('server_version_num')::integer as "serverVersionNumber"
       `;
       if (!row) throw new Error("PostgreSQL did not return server information");
+      return row;
+    },
+
+    async capabilities() {
+      const [row] = await sql<PostgreSQLCapabilities[]>`
+        select
+          current_setting('server_version') as "serverVersion",
+          true as "supportsActivity",
+          has_database_privilege(current_user, current_database(), 'CONNECT')
+            as "supportsDatabaseListing",
+          has_function_privilege(
+            current_user,
+            'pg_catalog.pg_cancel_backend(integer)',
+            'execute'
+          ) as "supportsQueryCancellation"
+      `;
+      if (!row) throw new Error("PostgreSQL did not return capabilities");
       return row;
     },
 
@@ -285,6 +313,22 @@ export function createPostgreSQLClient(
         order by query_start desc nulls last
         limit 100
       `;
+    },
+
+    async cancelQuery(pid) {
+      const [row] = await sql<{ cancelled: boolean }[]>`
+        select pg_cancel_backend(${pid}) as cancelled
+      `;
+      return row?.cancelled ?? false;
+    },
+
+    async createSchema(name) {
+      await sql`create schema ${sql(name)}`;
+    },
+
+    async dropSchema(name, cascade) {
+      if (cascade) await sql`drop schema ${sql(name)} cascade`;
+      else await sql`drop schema ${sql(name)}`;
     },
 
     async execute(query, maxRows) {

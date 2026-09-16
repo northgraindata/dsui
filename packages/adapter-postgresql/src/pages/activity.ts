@@ -31,6 +31,19 @@ export const activityPage = definePage({
       }),
       Table({
         source: activity({ state: filters.state || undefined }),
+        rowActions: [
+          {
+            label: "Cancel",
+            variant: "danger",
+            action: "cancel-query",
+            input: { pid: "pid" },
+            confirmation: {
+              title: "Cancel query?",
+              description: "Ask PostgreSQL to cancel this backend query.",
+              confirmLabel: "Cancel query",
+            },
+          },
+        ],
         searchable: true,
         pageSize: 100,
       }),

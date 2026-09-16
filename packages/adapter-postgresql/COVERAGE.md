@@ -10,6 +10,7 @@ intentional while the SDK and renderer remain generic.
 - Per-instance client creation and disposal.
 - SSL modes and optional CA/client certificate fields.
 - Server information and PostgreSQL version reporting.
+- Capability resource for activity, database listing, and query cancellation.
 - Database listing from the configured connection.
 - Schema, relation, column, index, and constraint catalog resources.
 - Lazy per-database clients with database-scoped catalog pages.
@@ -17,6 +18,8 @@ intentional while the SDK and renderer remain generic.
 - Read-only catalog pages built from SDK components.
 - Page-scoped SQL editor state.
 - Bounded ad-hoc query action with statement timeout and serializable results.
+- Query cancellation through `pg_cancel_backend` when the connection has permission.
+- Create/drop schema actions with SDK confirmation UI.
 - Read-only activity resource with SDK-managed five-second polling.
 - Generic service, resource, and action execution routes.
 
@@ -24,9 +27,8 @@ intentional while the SDK and renderer remain generic.
 
 - Database clients are created lazily when a database detail page is opened.
   A large database list therefore does not create one pool per database up front.
-- Query cancellation currently checks the SDK abort signal before and after
-  execution. Provider-side cancellation needs a separate administrative
-  connection and driver-specific cancellation support.
+- Query cancellation depends on the PostgreSQL role having execute permission
+  for `pg_cancel_backend`; the capability resource exposes that state.
 - Query results are bounded to 10,000 rows and 16 MiB after execution. The
   driver still receives the provider result before the adapter applies these
   response bounds.
@@ -36,7 +38,7 @@ intentional while the SDK and renderer remain generic.
 ## Not implemented
 
 - Query history beyond the live `pg_stat_activity` view.
-- DDL actions for schemas, relations, views, and indexes.
+- DDL actions for relations, views, and indexes.
 - Query result persistence or streaming.
 - PostgreSQL-specific backend routes.
 - Custom React components, markup, CSS, polling, or global caches.

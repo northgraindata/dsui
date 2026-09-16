@@ -1,9 +1,16 @@
 import {
   definePage,
+  Form,
   PageHeader,
   Table,
   Tabs,
+  TextInput,
 } from "@northgraindata/dsui-adapter-sdk";
+import {
+  createSchema,
+  createSchemaInput,
+  dropSchema,
+} from "../actions/schemas.js";
 import {
   columns,
   constraints,
@@ -80,9 +87,29 @@ export const schemasPage = definePage({
       title: "Schemas",
       description: "Schemas in the configured PostgreSQL database.",
     }),
+    Form({
+      schema: createSchemaInput,
+      fields: [TextInput({ name: "schema", label: "Schema name" })],
+      onSubmit: createSchema,
+      submitLabel: "Create schema",
+    }),
     Table({
       source: schemas(),
       rowLink: { path: "/schemas/:schema", params: { schema: "name" } },
+      rowActions: [
+        {
+          label: "Drop",
+          variant: "danger",
+          action: dropSchema,
+          input: { schema: "name" },
+          confirmation: {
+            title: "Drop schema?",
+            description:
+              "This removes the schema and its objects only when CASCADE is used.",
+            confirmLabel: "Drop schema",
+          },
+        },
+      ],
       searchable: true,
       pageSize: 100,
     }),

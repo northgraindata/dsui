@@ -1,5 +1,7 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
+import { cancelQuery } from "./actions/cancel-query.js";
 import { runQuery } from "./actions/run-query.js";
+import { createSchema, dropSchema } from "./actions/schemas.js";
 import { createPostgreSQLClient } from "./client.js";
 import {
   createPostgreSQLContext,
@@ -20,6 +22,7 @@ import {
 import { overviewPage } from "./pages/overview.js";
 import { queryPage } from "./pages/query.js";
 import { activity } from "./resources/activity.js";
+import { capabilities } from "./resources/capabilities.js";
 import {
   columns,
   constraints,
@@ -86,8 +89,9 @@ export function createPostgreSQLAdapter() {
       relationPreview,
       databaseRelationPreview,
       activity,
+      capabilities,
     ],
-    actions: [runQuery],
+    actions: [runQuery, cancelQuery, createSchema, dropSchema],
     pages: [
       overviewPage,
       databasesPage,

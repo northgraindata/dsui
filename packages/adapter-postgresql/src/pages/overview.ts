@@ -3,6 +3,7 @@ import {
   KeyValue,
   PageHeader,
 } from "@northgraindata/dsui-adapter-sdk";
+import { capabilities } from "../resources/capabilities.js";
 import { serverInfo } from "../resources/server.js";
 
 export const overviewPage = definePage({
@@ -15,6 +16,10 @@ export const overviewPage = definePage({
     KeyValue({
       title: "Server",
       source: serverInfo(),
+    }),
+    KeyValue({
+      title: "Capabilities",
+      source: capabilities(),
     }),
   ],
 });
