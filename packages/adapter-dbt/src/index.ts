@@ -4,6 +4,7 @@ export {
   compile,
   createDbtAdapter,
   dbtAdapter,
+  default,
   generateDocs,
   metadata,
   readiness,

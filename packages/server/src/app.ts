@@ -216,6 +216,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             duckdb: {
               package: "@northgraindata/dsui-adapter-duckdb",
             },
+            dbt: {
+              package: "@northgraindata/dsui-adapter-dbt",
+            },
             snowflake: {
               package: "@northgraindata/dsui-adapter-snowflake",
             },
