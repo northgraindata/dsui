@@ -1,0 +1,120 @@
+import {
+  definePage,
+  PageHeader,
+  Table,
+  Tabs,
+} from "@northgraindata/dsui-adapter-sdk";
+import {
+  columns,
+  constraints,
+  databases,
+  indexes,
+  relations,
+  schemas,
+} from "../resources/catalog.js";
+import { relationPreview } from "../resources/preview.js";
+
+export const databasesPage = definePage({
+  path: "/databases",
+  render: () => [
+    PageHeader({
+      title: "Databases",
+      description:
+        "Databases visible from the configured PostgreSQL connection.",
+    }),
+    Table({
+      source: databases(),
+      searchable: true,
+      pageSize: 50,
+    }),
+  ],
+});
+
+export const schemasPage = definePage({
+  path: "/schemas",
+  render: () => [
+    PageHeader({
+      title: "Schemas",
+      description: "Schemas in the configured PostgreSQL database.",
+    }),
+    Table({
+      source: schemas(),
+      rowLink: { path: "/schemas/:schema", params: { schema: "name" } },
+      searchable: true,
+      pageSize: 100,
+    }),
+  ],
+});
+
+export const relationsPage = definePage({
+  path: "/schemas/:schema",
+  render: ({ params }) => [
+    PageHeader({ title: params.schema }),
+    Table({
+      source: relations({ schema: params.schema }),
+      rowLink: {
+        path: "/schemas/:schema/:relation",
+        params: { schema: "schema", relation: "name" },
+      },
+      searchable: true,
+      pageSize: 100,
+    }),
+  ],
+});
+
+export const relationColumnsPage = definePage({
+  path: "/schemas/:schema/:relation",
+  render: ({ params }) => [
+    PageHeader({ title: `${params.schema}.${params.relation}` }),
+    Tabs({
+      variant: "detail",
+      items: [
+        {
+          label: "Preview",
+          content: Table({
+            source: relationPreview({
+              schema: params.schema,
+              relation: params.relation,
+              maxRows: 100,
+            }),
+            variant: "data",
+            pageSize: 100,
+          }),
+        },
+        {
+          label: "Columns",
+          content: Table({
+            source: columns({
+              schema: params.schema,
+              relation: params.relation,
+            }),
+            searchable: true,
+            pageSize: 100,
+          }),
+        },
+        {
+          label: "Indexes",
+          content: Table({
+            source: indexes({
+              schema: params.schema,
+              relation: params.relation,
+            }),
+            searchable: true,
+            pageSize: 100,
+          }),
+        },
+        {
+          label: "Constraints",
+          content: Table({
+            source: constraints({
+              schema: params.schema,
+              relation: params.relation,
+            }),
+            searchable: true,
+            pageSize: 100,
+          }),
+        },
+      ],
+    }),
+  ],
+});
