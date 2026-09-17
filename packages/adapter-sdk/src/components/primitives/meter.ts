@@ -16,6 +16,7 @@ export interface MeterData {
 export interface MeterProps {
   source?: DataSource;
   data?: MeterData;
+  format?: "bytes" | "number";
 }
 
 export interface MeterNode {

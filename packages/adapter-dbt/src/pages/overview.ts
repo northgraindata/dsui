@@ -91,7 +91,7 @@ export const overviewPage = definePage({
                 variant: "panel",
                 title: { field: "latestStatus" },
                 description: { field: "latestDuration" },
-                content: Meter({ source: dashboard() }),
+                content: Meter({ source: dashboard(), format: "number" }),
               }),
             }),
           }),
