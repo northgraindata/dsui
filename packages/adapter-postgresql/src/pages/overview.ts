@@ -14,11 +14,8 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import { activity } from "../resources/activity.js";
 import { capabilities } from "../resources/capabilities.js";
-import {
-  connectionUsage,
-  overview,
-  schemaTableMeter,
-} from "../resources/overview.js";
+import { databases } from "../resources/catalog.js";
+import { connectionUsage, overview } from "../resources/overview.js";
 import { serverInfo } from "../resources/server.js";
 
 export const overviewPage = definePage({
@@ -94,10 +91,21 @@ export const overviewPage = definePage({
         {
           weight: 2,
           content: Section({
-            title: "Catalog footprint",
-            description: "How tables are distributed across user schemas.",
+            title: "Databases",
+            description: "Databases visible from the configured connection.",
             link: { label: "Browse data", path: "/data" },
-            content: Meter({ source: schemaTableMeter() }),
+            content: Table({
+              source: databases(),
+              columns: [
+                { id: "name", label: "Database" },
+                { id: "owner", label: "Owner" },
+                { id: "encoding", label: "Encoding" },
+                { id: "sizeBytes", label: "Size" },
+                { id: "allowConnections", label: "Connections" },
+              ],
+              searchable: true,
+              pageSize: 5,
+            }),
           }),
         },
         {
@@ -141,16 +149,18 @@ export const overviewPage = definePage({
           weight: 2,
           content: Section({
             title: "Live activity",
-            description: "Sessions refreshed every five seconds.",
+            description: "Sessions refreshed every second.",
             link: { label: "View all", path: "/activity" },
             content: Table({
-              source: activity({}),
-              columns: [
-                { id: "database", label: "Database" },
-                { id: "state", label: "State" },
-                { id: "query", label: "Query" },
-                { id: "waitEvent", label: "Wait event" },
-              ],
+               source: activity({ state: "active" }),
+               columns: [
+                 { id: "database", label: "Database" },
+                 { id: "state", label: "State" },
+                 { id: "runningFor", label: "Running for", format: "duration" },
+                 { id: "progressPercent", label: "Progress", format: "progress" },
+                 { id: "etaSeconds", label: "ETA", format: "eta" },
+                 { id: "query", label: "Query" },
+               ],
               searchable: true,
               pageSize: 5,
             }),

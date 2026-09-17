@@ -1,5 +1,5 @@
 import type { MeterData } from "@northgraindata/dsui-adapter-sdk";
-import { defineResource } from "@northgraindata/dsui-adapter-sdk";
+import { defineResource, poll } from "@northgraindata/dsui-adapter-sdk";
 import type {
   PostgreSQLOverview,
   PostgreSQLSchemaTableCount,
@@ -24,6 +24,7 @@ export const schemaTableMeter = defineResource<MeterData, PostgreSQLContext>({
   query: async (_, ctx) => {
     const counts = await ctx.client.schemaTableCounts();
     return {
+      format: "number",
       segments:
         counts.length > 0
           ? counts.map((entry) => ({
@@ -39,9 +40,11 @@ export const schemaTableMeter = defineResource<MeterData, PostgreSQLContext>({
 
 export const connectionUsage = defineResource<MeterData, PostgreSQLContext>({
   id: "connection-usage",
+  refresh: poll("1s"),
   query: async (_, ctx) => {
     const data = await ctx.client.overview();
     return {
+      format: "number",
       segments: [
         { label: "Active", value: data.activeConnections, tone: "healthy" },
         {
