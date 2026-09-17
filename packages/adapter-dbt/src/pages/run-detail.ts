@@ -8,6 +8,8 @@ import {
   Section,
   Table,
 } from "@northgraindata/dsui-adapter-sdk";
+import { DependencyGraph } from "../components/dependency-graph.js";
+import { runGraph } from "../resources/artifacts.js";
 import { runArtifacts, runDetail, runLogs } from "../resources/run-detail.js";
 import { dbtRunStore } from "../stores/runs.js";
 
@@ -69,6 +71,19 @@ export const runDetailPage = definePage({
                         language: "text",
                       }),
                     }),
+              }),
+              Section({
+                title: "Lineage",
+                description:
+                  "Model dependencies and execution state for this run.",
+                content: DependencyGraph({
+                  source: runGraph(input),
+                  idField: "graphId",
+                  dependsOnField: "upstreamGraphIds",
+                  labelField: "name",
+                  detailField: "detail",
+                  stateField: "state",
+                }),
               }),
             ],
           },
