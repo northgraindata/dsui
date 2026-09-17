@@ -104,6 +104,37 @@ export function ServiceScreen({
                   reference.input,
                 )
               ).data,
+            watchResource: (reference, listener) => {
+              let active = true;
+              let running = false;
+              const refreshMs =
+                reference.refresh?.kind === "poll"
+                  ? reference.refresh.intervalMs
+                  : 1000;
+              const run = async () => {
+                if (!active || running) return;
+                running = true;
+                try {
+                  listener(
+                    (
+                      await executeResource(
+                        service.id,
+                        reference.resourceId,
+                        reference.input,
+                      )
+                    ).data,
+                  );
+                } finally {
+                  running = false;
+                }
+              };
+              void run();
+              const timer = window.setInterval(run, refreshMs);
+              return () => {
+                active = false;
+                window.clearInterval(timer);
+              };
+            },
             executeAction: async (reference) => {
               const result = await executeAction(
                 service.id,
