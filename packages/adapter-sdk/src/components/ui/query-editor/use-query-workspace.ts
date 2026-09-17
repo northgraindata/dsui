@@ -40,7 +40,12 @@ export function useQueryWorkspace(
     try {
       const response = await client.executeAction({
         ...action,
-        input: { sql: tab.sql },
+        input: {
+          ...(typeof action.input === "object" && action.input !== null
+            ? action.input
+            : {}),
+          sql: tab.sql,
+        },
       });
       if (response.status !== "success")
         throw new Error(response.message ?? "Query failed");

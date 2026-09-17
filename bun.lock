@@ -91,11 +91,20 @@
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
       },
     },
+    "packages/adapter-postgresql": {
+      "name": "@northgraindata/dsui-adapter-postgresql",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "postgres": "^3.4.7",
+      },
+    },
     "packages/adapter-sdk": {
       "name": "@northgraindata/dsui-adapter-sdk",
       "version": "0.0.0",
       "dependencies": {
         "@northgraindata/dsui-ui": "workspace:*",
+        "@number-flow/react": "^0.6.2",
         "@tanstack/react-virtual": "^3.14.11",
         "modern-monaco": "^0.4.2",
         "zod": "^3.24.2",
@@ -143,6 +152,7 @@
         "@better-auth/sso": "1.7.1",
         "@northgraindata/dsui-adapter-airflow": "workspace:*",
         "@northgraindata/dsui-adapter-duckdb": "workspace:*",
+        "@northgraindata/dsui-adapter-postgresql": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-adapter-snowflake": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
@@ -515,6 +525,8 @@
 
     "@northgraindata/dsui-adapter-duckdb": ["@northgraindata/dsui-adapter-duckdb@workspace:packages/adapter-duckdb"],
 
+    "@northgraindata/dsui-adapter-postgresql": ["@northgraindata/dsui-adapter-postgresql@workspace:packages/adapter-postgresql"],
+
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
 
     "@northgraindata/dsui-adapter-snowflake": ["@northgraindata/dsui-adapter-snowflake@workspace:packages/adapter-snowflake"],
@@ -532,6 +544,8 @@
     "@northgraindata/dsui-ui": ["@northgraindata/dsui-ui@workspace:packages/ui"],
 
     "@northgraindata/dsui-web": ["@northgraindata/dsui-web@workspace:apps/web"],
+
+    "@number-flow/react": ["@number-flow/react@0.6.2", "", { "dependencies": { "esm-env": "^1.1.4", "number-flow": "0.6.2" }, "peerDependencies": { "react": "^18 || ^19", "react-dom": "^18 || ^19" } }, "sha512-WjZuV4aA+vhRCgCF+adGLgFVVAJ8vdvq6EchRT2FiBIgElTXtDOA3YgkcMr9UHpvpS9v4H70AB5wZv0D9jc3QA=="],
 
     "@opentelemetry/semantic-conventions": ["@opentelemetry/semantic-conventions@1.43.0", "", {}, "sha512-eSYWTm620tTk45EKSedaUL8MFYI8hW164hIXsgIHyxu3VobUB3fFCu5t0hQby6OoWRPsG1KkKUG2M5UadiLiVg=="],
 
@@ -943,6 +957,8 @@
 
     "escape-string-regexp": ["escape-string-regexp@5.0.0", "", {}, "sha512-/veY75JbMK4j1yjvuUxuVsiS/hr/4iHs9FTT6cgTexxdE0Ly/glccBAkloH/DofkjRbZU3bnoj38mOmhkZ0lHw=="],
 
+    "esm-env": ["esm-env@1.2.2", "", {}, "sha512-Epxrv+Nr/CaL4ZcFGPJIYLWFom+YeV1DqMLHJoEd9SYRxNbaFruBwfEX/kkHUJf55j2+TUbmDcmuilbP1TmXHA=="],
+
     "estree-util-attach-comments": ["estree-util-attach-comments@3.0.0", "", { "dependencies": { "@types/estree": "^1.0.0" } }, "sha512-cKUwm/HUcTDsYh/9FgnuFqpfquUbwIqwKM26BVCGDPVgvaCl/nDCCjUfiLlx6lsEZ3Z4RFxNbOQ60pkaEwFxGw=="],
 
     "estree-util-build-jsx": ["estree-util-build-jsx@3.0.1", "", { "dependencies": { "@types/estree-jsx": "^1.0.0", "devlop": "^1.0.0", "estree-util-is-identifier-name": "^3.0.0", "estree-walker": "^3.0.0" } }, "sha512-8U5eiL6BTrPxp/CHbs2yMgP8ftMhR5ww1eIKoWRMlqvltHF8fZn5LRDvTKuxD3DUn+shRbLGqXemcP51oFCsGQ=="],
@@ -1287,6 +1303,8 @@
 
     "nth-check": ["nth-check@2.1.1", "", { "dependencies": { "boolbase": "^1.0.0" } }, "sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w=="],
 
+    "number-flow": ["number-flow@0.6.2", "", { "dependencies": { "esm-env": "^1.1.4" } }, "sha512-MCnImG4Q5vPwhSXnov56nOuyyKn6LC+Qd7II1UiKc+ACRtug5iAtn0+CwXNxM38AC5lSowEY+oYEtZX2qMnUyw=="],
+
     "obug": ["obug@2.1.4", "", {}, "sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA=="],
 
     "ofetch": ["ofetch@1.5.1", "", { "dependencies": { "destr": "^2.0.5", "node-fetch-native": "^1.6.7", "ufo": "^1.6.1" } }, "sha512-2W4oUZlVaqAPAil6FUg/difl6YhqhUR7x2eZY4bQCko22UXg3hptq9KLQdqFClV+Wu85UX7hNtdGTngi/1BxcA=="],
@@ -1322,6 +1340,8 @@
     "picomatch": ["picomatch@4.0.5", "", {}, "sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A=="],
 
     "postcss": ["postcss@8.5.26", "", { "dependencies": { "nanoid": "^3.3.17", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ=="],
+
+    "postgres": ["postgres@3.4.9", "", {}, "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="],
 
     "prettier": ["prettier@3.9.6", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g=="],
 
