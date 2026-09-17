@@ -8,6 +8,10 @@ export const artifactNames = [
   "catalog.json",
   "run_results.json",
   "sources.json",
+  "freshness.json",
+  "semantic_manifest.json",
+  "osi_document.json",
+  "graph_summary.json",
 ] as const;
 export type ArtifactName = (typeof artifactNames)[number];
 

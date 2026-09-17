@@ -24,6 +24,19 @@ import {
 import { sources, tests } from "./resources/catalog.js";
 import { jobs, projects } from "./resources/cloud.js";
 import { dashboard, recentRuns } from "./resources/dashboard.js";
+import {
+  catalogRelations,
+  freshnessRows,
+  graphSummaryRows,
+  manifestOverview,
+  osiOverview,
+  runResultRows,
+  runResultsOverview,
+  semanticMetrics,
+  semanticModels,
+  semanticOverview,
+  semanticSavedQueries,
+} from "./resources/explorers.js";
 import { overview } from "./resources/overview.js";
 import { runArtifacts, runDetail, runLogs } from "./resources/run-detail.js";
 import { runs } from "./resources/runs.js";
@@ -62,6 +75,17 @@ export function createDbtAdapter() {
       tests,
       dashboard,
       recentRuns,
+      manifestOverview,
+      semanticOverview,
+      semanticModels,
+      semanticMetrics,
+      semanticSavedQueries,
+      catalogRelations,
+      freshnessRows,
+      graphSummaryRows,
+      osiOverview,
+      runResultsOverview,
+      runResultRows,
     ],
     actions: [triggerJob, cancelRun, execute, runBuild],
     pages: [
