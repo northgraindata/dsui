@@ -6,7 +6,7 @@ export function dataExplorer(selectedPath: string) {
     label: "Data explorer",
     stateKey: "duckdb-data-explorer",
     selectedPath,
-    searchPlaceholder: "Search databases, schemas, and objects…",
+    searchPlaceholder: "Search schemas, tables, columns...",
     branch: {
       source: databases(),
       nameField: "name",

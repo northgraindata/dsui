@@ -62,6 +62,52 @@ function rowsFrom(data: unknown): Record<string, unknown>[] {
   );
 }
 
+function relationIcon(type: string | undefined, depth: number): string {
+  const normalizedType = type?.toLocaleLowerCase();
+  if (depth === 0) return "database";
+  if (depth === 1) return "folder";
+  if (normalizedType === "view") return "eye";
+  if (normalizedType === "materialized-view") return "layers";
+  if (normalizedType === "sequence") return "hash";
+  return "table";
+}
+
+function relationLabel(type: string): string {
+  return type.toLocaleLowerCase().replaceAll("-", " ");
+}
+
+const GROUP_ORDER = [
+  "table",
+  "view",
+  "materialized-view",
+  "sequence",
+  "foreign-table",
+];
+
+function groupLabel(type: string): string {
+  const label = relationLabel(type);
+  return `${label.slice(0, 1).toUpperCase()}${label.slice(1)}s`;
+}
+
+function groupedRows(
+  rows: Record<string, unknown>[],
+  typeField: string,
+): Array<[string, Record<string, unknown>[]]> {
+  const groups = new Map<string, Record<string, unknown>[]>();
+  for (const row of rows) {
+    const type = String(row[typeField] ?? "objects").toLocaleLowerCase();
+    groups.set(type, [...(groups.get(type) ?? []), row]);
+  }
+  return [...groups.entries()].sort(([left], [right]) => {
+    const leftOrder = GROUP_ORDER.indexOf(left);
+    const rightOrder = GROUP_ORDER.indexOf(right);
+    if (leftOrder === -1 && rightOrder === -1) return left.localeCompare(right);
+    if (leftOrder === -1) return 1;
+    if (rightOrder === -1) return -1;
+    return leftOrder - rightOrder;
+  });
+}
+
 function TreeBranch({
   client,
   branch,
@@ -133,114 +179,135 @@ function TreeBranch({
   if (!rows.length)
     return <p className="m-1 px-2 py-1 text-[11px] text-muted">No objects.</p>;
 
-  return (
-    <ul
-      className={`m-0 list-none p-0 ${depth ? "ml-3 border-l border-border" : ""}`}
-      role={depth ? "group" : "tree"}
-    >
-      {rows.map((row) => {
-        const name = String(row[branch.nameField ?? "name"] ?? "Unnamed");
-        const nextLabels = [...labels, name];
-        const key = nextLabels.join("/");
-        const nextContext = { ...context, ...row };
-        const href = resolveTreeLink(branch.rowLink, nextContext);
-        const open =
-          expanded.has(key) ||
-          Boolean(needle) ||
-          Boolean(href && selectedPath?.startsWith(`${href}/`));
-        const selected = href === selectedPath;
-        const toggle = () => {
-          const next = new Set(expanded);
-          if (next.has(key)) next.delete(key);
-          else next.add(key);
-          setExpanded(next);
-        };
-        const activate = () => {
-          if (href) client.navigate(href);
-          else if (branch.children) toggle();
-          else onLeafSelect?.(nextLabels);
-        };
-        return (
-          <li
-            key={key}
-            role="treeitem"
-            tabIndex={-1}
-            aria-expanded={branch.children ? open : undefined}
-            aria-selected={selected || undefined}
+  const renderRows = (items: Record<string, unknown>[]) =>
+    items.map((row) => {
+      const name = String(row[branch.nameField ?? "name"] ?? "Unnamed");
+      const nextLabels = [...labels, name];
+      const key = nextLabels.join("/");
+      const nextContext = { ...context, ...row };
+      const href = resolveTreeLink(branch.rowLink, nextContext);
+      const open =
+        expanded.has(key) ||
+        Boolean(needle) ||
+        Boolean(href && selectedPath?.startsWith(`${href}/`));
+      const selected = href === selectedPath;
+      const toggle = () => {
+        const next = new Set(expanded);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        setExpanded(next);
+      };
+      const activate = () => {
+        if (href) client.navigate(href);
+        else if (branch.children) toggle();
+        else onLeafSelect?.(nextLabels);
+      };
+      return (
+        <li
+          key={key}
+          role="treeitem"
+          tabIndex={-1}
+          aria-expanded={branch.children ? open : undefined}
+          aria-selected={selected || undefined}
+        >
+          <div
+            className={`resource-tree-row group flex w-full min-h-7 items-center gap-1 px-1.5 ${
+              selected ? "bg-accent/15 text-primary" : "text-secondary"
+            } hover:bg-surface-hover hover:text-primary`}
           >
-            <div
-              className={`group flex min-h-7 items-center gap-1 px-1.5 ${
-                selected ? "bg-accent/15 text-primary" : "text-secondary"
-              } hover:bg-surface-hover hover:text-primary`}
-            >
-              {branch.children ? (
-                <button
-                  type="button"
-                  aria-label={`${open ? "Collapse" : "Expand"} ${name}`}
-                  className="flex size-5 shrink-0 items-center justify-center bg-transparent text-muted"
-                  onClick={toggle}
-                >
-                  <span aria-hidden="true">{open ? "▾" : "▸"}</span>
-                </button>
-              ) : (
-                <span className="w-5 shrink-0 text-center text-[9px] text-muted">
-                  {String(row[branch.typeField ?? "type"] ?? "").slice(0, 1)}
-                </span>
-              )}
+            {branch.children ? (
               <button
                 type="button"
-                className="min-w-0 flex-1 truncate bg-transparent py-1 text-left font-mono text-[11.5px]"
-                title={nextLabels.join(".")}
-                onClick={activate}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowRight" && branch.children && !open) {
-                    event.preventDefault();
-                    toggle();
-                  } else if (
-                    event.key === "ArrowLeft" &&
-                    branch.children &&
-                    open
-                  ) {
-                    event.preventDefault();
-                    toggle();
-                  }
-                }}
+                className={`resource-tree-chevron-button ${open ? "is-open" : ""}`}
+                aria-label={`${open ? "Collapse" : "Expand"} ${name}`}
+                aria-expanded={open}
+                onClick={toggle}
               >
-                <WorkbenchIcon
-                  name={
-                    branch.children
-                      ? depth === 0
-                        ? "database"
-                        : "table"
-                      : "table"
-                  }
-                  size={15}
-                />
-                {name}
+                <WorkbenchIcon name="chevron" size={18} />
               </button>
-              {row[branch.typeField ?? "type"] ? (
-                <span className="ml-auto text-[9px] uppercase tracking-wide text-muted">
-                  {String(row[branch.typeField ?? "type"])}
-                </span>
-              ) : null}
-            </div>
-            {open && branch.children ? (
-              <TreeBranch
-                client={client}
-                branch={branch.children}
-                context={nextContext}
-                depth={depth + 1}
-                labels={nextLabels}
-                expanded={expanded}
-                setExpanded={setExpanded}
-                selectedPath={selectedPath}
-                search={search}
-                onLeafSelect={onLeafSelect}
-              />
             ) : null}
-          </li>
-        );
-      })}
+            <button
+              type="button"
+              className="resource-tree-link"
+              title={nextLabels.join(".")}
+              onClick={activate}
+            >
+              <WorkbenchIcon
+                name={relationIcon(
+                  String(row[branch.typeField ?? "type"] ?? ""),
+                  depth,
+                )}
+                size={15}
+              />
+              <span className="resource-tree-name">{name}</span>
+            </button>
+            {row[branch.typeField ?? "type"] && branch.children ? (
+              <span className="resource-tree-type ml-auto">
+                {relationLabel(String(row[branch.typeField ?? "type"]))}
+              </span>
+            ) : null}
+          </div>
+          {open && branch.children ? (
+            <TreeBranch
+              client={client}
+              branch={branch.children}
+              context={nextContext}
+              depth={depth + 1}
+              labels={nextLabels}
+              expanded={expanded}
+              setExpanded={setExpanded}
+              selectedPath={selectedPath}
+              search={search}
+              onLeafSelect={onLeafSelect}
+            />
+          ) : null}
+        </li>
+      );
+    });
+
+  const typeField = branch.typeField ?? "type";
+  const groups = !branch.children ? groupedRows(rows, typeField) : [];
+  return (
+    <ul className="m-0 list-none p-0" role={depth ? "group" : "tree"}>
+      {groups.length > 1 ||
+      (groups.length === 1 && groups[0]?.[0] !== "objects")
+        ? groups.map(([type, items]) => {
+            const key = [...labels, `@${type}`].join("/");
+            const collapsedKey = `collapsed:${key}`;
+            const open = needle ? true : !expanded.has(collapsedKey);
+            const toggle = () => {
+              const next = new Set(expanded);
+              if (next.has(collapsedKey)) next.delete(collapsedKey);
+              else next.add(collapsedKey);
+              setExpanded(next);
+            };
+            return (
+              <li className="resource-tree-section" key={key}>
+                <button
+                  type="button"
+                  className="resource-tree-section-row"
+                  aria-expanded={open}
+                  onClick={toggle}
+                >
+                  <span
+                    className={`resource-tree-section-chevron ${open ? "is-open" : ""}`}
+                    aria-hidden="true"
+                  >
+                    <WorkbenchIcon name="chevron" size={18} />
+                  </span>
+                  <WorkbenchIcon name={relationIcon(type, depth)} size={15} />
+                  <span>{groupLabel(type)}</span>
+                  <span className="resource-tree-count">{items.length}</span>
+                </button>
+                {open ? (
+                  <ul className="resource-tree-section-items">
+                    {renderRows(items)}
+                  </ul>
+                ) : null}
+              </li>
+            );
+          })
+        : renderRows(rows)}
     </ul>
   );
 }
@@ -294,16 +361,12 @@ export function ResourceTree({
       <header className="resource-tree-heading">
         <h2>Explorer</h2>
       </header>
-      <div className="border-b border-border p-2.5">
-        <label
-          className="sr-only"
-          htmlFor={`${stateKey ?? "resource-tree"}-search`}
-        >
-          Search data objects
-        </label>
+      <div className="resource-tree-search-wrap">
+        <WorkbenchIcon name="search" size={15} />
         <input
           id={`${stateKey ?? "resource-tree"}-search`}
           type="search"
+          aria-label="Search schemas, tables, columns"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={node.props.searchPlaceholder ?? "Search data…"}
