@@ -1,7 +1,6 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
 import { cancelQuery } from "./actions/cancel-query.js";
 import { runQuery } from "./actions/run-query.js";
-import { createSchema, dropSchema } from "./actions/schemas.js";
 import { createPostgreSQLClient } from "./client.js";
 import {
   createPostgreSQLContext,
@@ -10,17 +9,12 @@ import {
   postgresqlConnectionSchema,
 } from "./context.js";
 import { activityPage } from "./pages/activity.js";
-import {
-  databasePage,
-  databaseRelationPage,
-  databaseSchemaPage,
-  databasesPage,
-  relationColumnsPage,
-  relationsPage,
-  schemasPage,
-} from "./pages/catalog.js";
+import { dataPage } from "./pages/data.js";
+import { databasePage } from "./pages/database.js";
 import { overviewPage } from "./pages/overview.js";
-import { queryPage } from "./pages/query.js";
+import { databaseQueryPage, queryPage } from "./pages/query.js";
+import { relationPage } from "./pages/relation.js";
+import { schemaPage } from "./pages/schema.js";
 import { activity } from "./resources/activity.js";
 import { capabilities } from "./resources/capabilities.js";
 import {
@@ -44,6 +38,7 @@ import {
 } from "./resources/overview.js";
 import {
   databaseRelationPreview,
+  databaseRelationPreviewRows,
   relationPreview,
 } from "./resources/preview.js";
 import { serverInfo } from "./resources/server.js";
@@ -58,12 +53,13 @@ export function createPostgreSQLAdapter() {
       version: "0.1.0",
       author: "DSUI",
       description: "Inspect PostgreSQL databases and run SQL queries.",
+      iconUrl: "https://www.postgresql.org/media/img/about/press/elephant.png",
     },
     connectionMethods: {
       postgresql: {
         label: "PostgreSQL",
         description:
-          "Connect to a PostgreSQL server using structured settings.",
+          "Connect to a PostgreSQL server using structured settings. Database is the initial connection target; Database Scope controls whether all accessible databases or only that database are shown.",
         schema: postgresqlConnectionSchema,
       },
     },
@@ -94,6 +90,7 @@ export function createPostgreSQLAdapter() {
       databaseConstraints,
       relationPreview,
       databaseRelationPreview,
+      databaseRelationPreviewRows,
       activity,
       capabilities,
       overview,
@@ -101,17 +98,15 @@ export function createPostgreSQLAdapter() {
       schemaTableMeter,
       connectionUsage,
     ],
-    actions: [runQuery, cancelQuery, createSchema, dropSchema],
+    actions: [runQuery, cancelQuery],
     pages: [
       overviewPage,
-      databasesPage,
+      dataPage,
       databasePage,
-      databaseSchemaPage,
-      databaseRelationPage,
-      schemasPage,
-      relationsPage,
-      relationColumnsPage,
+      schemaPage,
+      relationPage,
       queryPage,
+      databaseQueryPage,
       activityPage,
     ],
   });
