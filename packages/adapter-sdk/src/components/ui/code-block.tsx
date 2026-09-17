@@ -8,9 +8,12 @@ export function CodeBlock({ node, context }: ComponentProps) {
   const props = componentProps<CodeBlockProps>(node);
   const [copied, setCopied] = useState(false);
   if (!props) return null;
-  const label = resolve(props.label, context) ?? "Code";
-  const value = resolve(props.value, context) ?? "";
-  const language = resolve(props.language, context) ?? "text";
+  const dataContext = props.data
+    ? { ...props.data, ...(context ?? {}) }
+    : context;
+  const label = resolve(props.label, dataContext) ?? "Code";
+  const value = resolve(props.value, dataContext) ?? "";
+  const language = resolve(props.language, dataContext) ?? "text";
   return (
     <div className="resource-code-block">
       <h3>{label}</h3>

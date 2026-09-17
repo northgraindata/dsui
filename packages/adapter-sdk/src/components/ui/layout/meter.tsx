@@ -20,6 +20,10 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(1)} ${units[unit]}`;
 }
 
+function formatValue(value: number, format: "bytes" | "number"): string {
+  return format === "number" ? value.toLocaleString() : formatBytes(value);
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -113,10 +117,11 @@ export function Meter({
   const total = data.segments.reduce((sum, segment) => sum + segment.value, 0);
   const legend = data.segments.filter((segment) => segment.legend !== false);
   const legendTotal = legend.reduce((sum, segment) => sum + segment.value, 0);
+  const format = node.props.format ?? "bytes";
   const header =
     total === legendTotal
-      ? formatBytes(total)
-      : `${formatBytes(legendTotal)} / ${formatBytes(total)}`;
+      ? formatValue(total, format)
+      : `${formatValue(legendTotal, format)} / ${formatValue(total, format)}`;
   return (
     <div className="ov-meter">
       <div className="ov-meter-head">
@@ -143,7 +148,9 @@ export function Meter({
               aria-hidden="true"
             />
             <span className="ov-meter-label">{segment.label}</span>
-            <span className="ov-meter-value">{formatBytes(segment.value)}</span>
+            <span className="ov-meter-value">
+              {formatValue(segment.value, format)}
+            </span>
             <span className="ov-meter-pct">
               {total > 0 ? Math.round((segment.value / total) * 100) : 0}%
             </span>
