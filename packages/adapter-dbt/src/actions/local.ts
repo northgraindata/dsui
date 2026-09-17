@@ -4,6 +4,7 @@ import {
   z,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { DbtContext } from "../context.js";
+import { archiveLocalRun } from "./archive.js";
 
 export const executeInput = z.object({
   command: z.enum(["run", "build", "test", "compile", "docs-generate"]),
@@ -20,12 +21,17 @@ export const execute = defineAction({
       throw new Error(
         "This action is available for dbt Local connections only",
       );
+    if (ctx.config.method !== "local")
+      throw new Error(
+        "This action is available for dbt Local connections only",
+      );
     const result = await ctx.local.execute(input.command, input, ctx.signal);
+    const runId = await archiveLocalRun(ctx.config, result, ctx);
     if (result.exitCode !== 0)
       throw new Error(
         result.stderr ||
           `${input.command} failed with exit code ${result.exitCode}`,
       );
-    return { ...result, runId: "local-latest" };
+    return { ...result, runId };
   },
 });
