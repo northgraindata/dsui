@@ -1,17 +1,11 @@
 {
-  "title": "DSUI documentation",
+  "title": "DSUI",
   "pages": [
     "index",
     "getting-started",
-    "docker",
-    "docker-compose",
-    "configuration",
     "adapters",
     "adapter-sdk",
-    "components",
-    "architecture",
-    "cli",
-    "security",
+    "troubleshooting",
     "contributing"
   ]
 }

@@ -1,0 +1,18 @@
+---
+title: Adapter SDK
+description: Build server-side adapters that DSUI can render safely.
+---
+
+An adapter is a small TypeScript program. It describes a service; DSUI handles execution, refreshing, and rendering.
+
+| Primitive | Use it for |
+| --- | --- |
+| Resource | External data |
+| Store | Local UI state |
+| Action | A command or mutation |
+| Page | A route made from DSUI components |
+| Context | Per-instance clients and configuration |
+
+Keep external data in resources. Keep side effects in actions. Adapters do not ship React, HTML, CSS, or browser JavaScript.
+
+Read the [contribution guide](/docs/contributing) before opening a PR.

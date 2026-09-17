@@ -1,0 +1,52 @@
+---
+title: Quickstart
+description: Run DSUI in Docker and open a DuckDB database.
+---
+
+## 1. Create `dsui.yaml`
+
+```yaml
+services:
+  - id: warehouse
+    adapter: duckdb
+    name: Analytics warehouse
+    connection:
+      method: file
+      path: /data/warehouse.duckdb
+```
+
+## 2. Create `compose.yaml`
+
+```yaml
+services:
+  dsui:
+    image: ghcr.io/northgraindata/dsui:latest
+    ports:
+      - "4192:4192"
+    environment:
+      DSUI_CONFIG: /etc/dsui/dsui.yaml
+    volumes:
+      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
+      - dsui-data:/data
+
+volumes:
+  dsui-data:
+```
+
+## 3. Start DSUI
+
+```bash
+docker compose up -d
+```
+
+## 4. Open the workspace
+
+Open `http://localhost:4192`.
+
+## Expected result
+
+DSUI opens with the **Analytics warehouse** service. Open it, go to **Query**, run `select 42 as answer`, and see one row with `42`.
+
+The database file lives in the `/data` volume and persists across restarts.
+
+Next: learn how [configuration](/docs/getting-started/configuration) works or connect [Airflow](/docs/adapters/airflow).

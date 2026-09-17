@@ -1,13 +1,16 @@
 ---
 title: Contributing
-description: Set up the repository and submit focused, verified changes.
+description: Make a focused change and verify it before opening a pull request.
 ---
+
+Read the [contribution guide](https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md) before you start.
 
 ```bash
 bun install --frozen-lockfile
 bun run check
-bun run test
 bun run build
 ```
 
-Keep dependencies light, add tests with behavioral changes, and update documentation for public interfaces. Significant adapter contract changes must be tested against Trino, Kafka, and S3.
+Keep a pull request focused. Add tests for behavior changes and update the docs when a public contract changes.
+
+For an adapter, start from the [Adapter SDK](/docs/adapter-sdk/overview). Validate the connection, keep credentials server-side, and state the coverage and limitations explicitly.

@@ -1,0 +1,43 @@
+---
+title: dbt
+description: Browse and operate dbt Cloud and local dbt projects.
+---
+
+## Setup
+
+Connect to dbt Cloud with an API token.
+
+```yaml
+services:
+  - id: dbt
+    adapter: dbt
+    name: dbt
+    connection:
+      method: cloud
+      baseUrl: https://cloud.getdbt.com
+      accountId: ${DBT_ACCOUNT_ID}
+      apiToken: ${DBT_API_TOKEN}
+```
+
+Connect to a dbt Core or Fusion project on the DSUI host.
+
+```yaml
+connection:
+  method: local
+  projectPath: /data/dbt
+  target: dev
+```
+
+## Available
+
+- Projects and jobs for dbt Cloud
+- Runs, run details, logs, and run artifacts
+- Models, columns, and lineage
+- Sources and tests
+- Semantic models, metrics, and saved queries
+- Local dbt commands through `execute` and `build`
+
+## Not yet available
+
+- Full parity with the dbt Cloud UI
+- Coverage outside the current branch scope
