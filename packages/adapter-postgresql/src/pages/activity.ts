@@ -15,7 +15,7 @@ export const activityPage = definePage({
     return [
       PageHeader({
         title: "Activity",
-        description: "Active PostgreSQL sessions refreshed every five seconds.",
+        description: "Active PostgreSQL sessions refreshed every second.",
       }),
       Select({
         name: "state",
@@ -29,9 +29,19 @@ export const activityPage = definePage({
         ],
         onChange: filters.setState,
       }),
-      Table({
-        source: activity({ state: filters.state || undefined }),
-        rowActions: [
+       Table({
+         source: activity({ state: filters.state || undefined }),
+         columns: [
+           { id: "database", label: "Database" },
+           { id: "state", label: "State" },
+           { id: "queryStart", label: "Started" },
+           { id: "runningFor", label: "Running for", format: "duration" },
+           { id: "progressPercent", label: "Progress", format: "progress" },
+           { id: "etaSeconds", label: "ETA", format: "eta" },
+           { id: "query", label: "Query" },
+           { id: "waitEvent", label: "Wait event" },
+         ],
+         rowActions: [
           {
             label: "Cancel",
             variant: "danger",

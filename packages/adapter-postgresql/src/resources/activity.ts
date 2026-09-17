@@ -16,5 +16,5 @@ export const activity = defineResource<
     state: z.string().min(1).optional(),
   }),
   query: (filters, ctx) => ctx.client.listActivity(filters),
-  refresh: poll("5s"),
+  refresh: poll("1s"),
 });
