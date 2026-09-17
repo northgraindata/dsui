@@ -1,0 +1,40 @@
+---
+title: Airflow
+description: Inspect and operate an Apache Airflow deployment.
+---
+
+## Setup
+
+Add an Airflow service in DSUI, or declare one in `dsui.yaml`.
+
+```yaml
+services:
+  - id: airflow
+    adapter: airflow
+    name: Local Airflow
+    connection:
+      method: airflow
+      baseUrl: http://airflow:8080
+      username: ${AIRFLOW_USERNAME}
+      password: ${AIRFLOW_PASSWORD}
+```
+
+Use the Compose service name when DSUI and Airflow run in the same Compose project. `localhost` points back to the DSUI container, not Airflow.
+
+Airflow 3 uses `method: airflow`. Airflow 2.10 uses `method: airflow-2` with the same credential fields.
+
+## Available
+
+- Browse DAGs, tasks, source, and task dependencies
+- Inspect DAG runs, task instances, and task logs
+- Trigger, pause, unpause, and terminate DAG runs
+- Retry or clear task instances
+- Browse assets, connections, variables, pools, users, and event logs
+
+## Not yet available
+
+- DAG authoring and deployment
+- Scheduler configuration and plugin management
+- Full parity with the Airflow webserver
+
+Use Airflow's own UI for workflows outside this list.

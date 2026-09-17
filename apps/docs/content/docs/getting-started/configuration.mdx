@@ -1,0 +1,43 @@
+---
+title: Configuration
+description: Declare services in dsui.yaml and keep secrets outside the file.
+---
+
+`dsui.yaml` describes the services DSUI should load at startup.
+
+```yaml
+services:
+  - id: local-duckdb
+    adapter: duckdb
+    name: Local DuckDB
+    connection:
+      method: memory
+      readOnly: false
+```
+
+`id` must be kebab-case. `adapter` selects a loaded adapter. `connection` is validated by that adapter before DSUI connects.
+
+## Secrets
+
+Use environment variables for credentials.
+
+```yaml
+connection:
+  baseUrl: http://airflow:8080
+  username: ${AIRFLOW_USERNAME}
+  password: ${AIRFLOW_PASSWORD}
+```
+
+Missing variables stop startup. Never commit credentials. Services declared in `dsui.yaml` are read-only in the DSUI service manager.
+
+## Add an adapter package
+
+Source checkouts include the preview adapters. A published community adapter must be exact and integrity-pinned.
+
+```yaml
+adapters:
+  example:
+    package: "@your-org/dsui-adapter-example"
+    version: "0.1.0"
+    integrity: "sha512-..."
+```

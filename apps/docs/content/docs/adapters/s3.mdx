@@ -1,0 +1,39 @@
+---
+title: S3
+description: Browse and manage S3-compatible object storage.
+---
+
+## Setup
+
+```yaml
+services:
+  - id: storage
+    adapter: s3
+    name: Storage
+    connection:
+      region: us-east-1
+      accessKeyId: ${S3_ACCESS_KEY_ID}
+      secretAccessKey: ${S3_SECRET_ACCESS_KEY}
+```
+
+For MinIO or another S3-compatible endpoint, set `endpoint` and `forcePathStyle`.
+
+```yaml
+connection:
+  endpoint: http://minio:9000
+  forcePathStyle: true
+```
+
+## Available
+
+- List buckets and browse objects and folders
+- Object details, metadata, tags, and versions
+- Preview text and images
+- Upload, copy, move, and delete objects
+- Presigned download URLs and folder zip downloads
+- Recent activity
+
+## Not yet available
+
+- Bucket lifecycle and policy editing
+- Multipart upload management

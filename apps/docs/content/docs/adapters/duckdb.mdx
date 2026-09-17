@@ -1,0 +1,44 @@
+---
+title: DuckDB
+description: Explore a local DuckDB database, run SQL, and manage extensions.
+---
+
+## Setup
+
+For a persistent database, use `method: file` with a path on the DSUI server filesystem. Mount the directory into the container first.
+
+```yaml
+services:
+  - id: warehouse
+    adapter: duckdb
+    name: Analytics warehouse
+    connection:
+      method: file
+      path: /data/warehouse.duckdb
+```
+
+For a disposable database, use `method: memory`.
+
+```yaml
+connection:
+  method: memory
+  readOnly: false
+```
+
+## Available
+
+- Browse databases, schemas, tables, views, indexes, functions, and types
+- Preview data and inspect DDL
+- Run and cancel SQL queries
+- Create schemas, tables, views, and indexes
+- Attach databases and import data
+- Install, load, and manage extensions
+- Create secrets and work with notebooks
+
+## Not yet available
+
+- Multi-user database access control
+- A managed DuckDB server
+- Full coverage of every DuckDB extension and remote storage provider
+
+The file path is evaluated by DSUI, not by your browser. Mount the directory into the DSUI container before using a file-backed database.

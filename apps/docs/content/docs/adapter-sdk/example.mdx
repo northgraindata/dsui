@@ -1,0 +1,16 @@
+---
+title: Example adapter
+description: Use DuckDB as the reference for a complete adapter.
+---
+
+The [DuckDB adapter](https://github.com/northgraindata/dsui/tree/main/packages/adapter-duckdb/src) is the smallest complete reference in the repository.
+
+It shows how one adapter combines:
+
+- Connection methods for memory, files, and remote sources
+- A context that owns a DuckDB client
+- Resources for catalog data and query history
+- Actions for SQL, schema changes, and extensions
+- Pages for browsing data and running queries
+
+Start with the minimal adapter. Add one resource, one action, and one page at a time. Test each addition with Bun before adding the next capability.

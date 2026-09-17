@@ -1,0 +1,32 @@
+---
+title: Installation
+description: Run the official container image, or build from source.
+---
+
+## Docker
+
+DSUI ships as a container image on GitHub Container Registry. It needs no separate database or control plane.
+
+```bash
+docker pull ghcr.io/northgraindata/dsui:latest
+```
+
+```bash
+docker run --rm -p 4192:4192 -v dsui-data:/data \
+  ghcr.io/northgraindata/dsui:latest
+```
+
+Open `http://localhost:4192`.
+
+For a configured workspace with adapters, use the [quickstart](/docs/getting-started/quickstart).
+
+## From source
+
+Contributors can run DSUI from a checkout with Bun `1.3.12`.
+
+```bash
+git clone https://github.com/northgraindata/dsui.git
+cd dsui
+bun install --frozen-lockfile
+bun run dev
+```

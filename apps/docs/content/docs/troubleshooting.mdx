@@ -1,0 +1,43 @@
+---
+title: Troubleshooting
+description: Diagnose the common setup failures before opening an issue.
+---
+
+## Docker networking
+
+Inside Compose, use service names such as `http://airflow:8080`. Do not use `localhost` for another container.
+
+```yaml
+connection:
+  baseUrl: http://airflow:8080
+```
+
+## Connection refused
+
+Check that the target service is running, exposes the expected port, and is reachable from the DSUI container.
+
+```bash
+docker compose ps
+docker compose logs dsui
+docker compose logs airflow
+```
+
+If DSUI starts before the target is ready, add a healthcheck and `depends_on` condition to Compose.
+
+## Authentication failed
+
+Confirm the base URL, username, and password outside DSUI first. For environment variables, make sure they are present in the DSUI process, not only in your shell.
+
+Never paste credentials into an issue or a screenshot.
+
+## CORS and proxies
+
+Your browser talks to DSUI. DSUI talks to the adapter target. A target service normally does not need CORS configured for DSUI.
+
+When using a reverse proxy, forward requests to DSUI and preserve the `Host` header. Check browser developer tools for requests failing before they reach DSUI.
+
+## Logs and issue reports
+
+For Docker, start with `docker logs <dsui-container>`. From a source checkout, copy the server terminal output.
+
+When you [open an issue](https://github.com/northgraindata/dsui/issues/new), include the DSUI version or commit, adapter, target version, sanitized configuration, expected behavior, actual behavior, and relevant logs.
