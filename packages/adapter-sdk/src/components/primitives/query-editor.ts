@@ -1,11 +1,16 @@
-import type { AnyActionDefinition } from "../../action";
+import type { ActionReference, AnyActionDefinition } from "../../action";
 import type { DataSource, ResourceReference } from "../../resource";
 import { defineComponent } from "../define";
 
 export interface QueryEditorProps {
   language: string;
   value?: string;
-  action: AnyActionDefinition | string;
+  action: AnyActionDefinition | ActionReference | string;
+  database?: {
+    source: DataSource;
+    initialValue?: string;
+    label?: string;
+  };
   explorer?: QueryEditorExplorerProps;
 }
 
