@@ -18,7 +18,6 @@
     "@northgraindata/dsui-adapter-duckdb": "workspace:*",
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
     "@northgraindata/dsui-core": "workspace:*",
-    "@northgraindata/dsui-process-runner": "workspace:*",
     "better-auth": "1.7.1",
     "hono": "^4.11.7",
     "yaml": "^2.8.2",

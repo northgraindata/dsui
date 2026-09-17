@@ -1,17 +1,15 @@
 {
   "name": "@northgraindata/dsui-adapter-dbt",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/adapter.ts"
   },
   "scripts": {
-    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@northgraindata/dsui-adapter-sdk": "workspace:*",
-    "@northgraindata/dsui-process-runner": "workspace:*"
+    "@northgraindata/dsui-adapter-sdk": "workspace:*"
   }
 }

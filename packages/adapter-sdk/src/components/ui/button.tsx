@@ -58,7 +58,10 @@ export function Button({ client, node, context }: ComponentProps) {
             const href = resolveLink(
               props.successLink.path,
               props.successLink.params,
-              { ...(context ?? {}), ...resultData },
+              {
+                ...(context ?? {}),
+                ...resultData,
+              },
             );
             if (href) client.navigate(href);
             else
