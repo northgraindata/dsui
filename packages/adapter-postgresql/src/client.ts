@@ -64,6 +64,7 @@ export interface PostgreSQLColumn {
 
 export interface PostgreSQLQueryResult {
   columns: string[];
+  columnTypes: string[];
   rows: Record<string, unknown>[];
   rowCount: number;
 }
@@ -75,6 +76,9 @@ export interface PostgreSQLActivityEntry {
   state: string | null;
   query: string;
   queryStart: string | null;
+  runningFor: string | null;
+  progressPercent: number | null;
+  etaSeconds: number | null;
   waitEventType: string | null;
   waitEvent: string | null;
   clientAddress: string | null;
@@ -120,8 +124,6 @@ export interface PostgreSQLClient {
     state?: string;
   }): Promise<PostgreSQLActivityEntry[]>;
   cancelQuery(pid: number): Promise<boolean>;
-  createSchema(name: string): Promise<void>;
-  dropSchema(name: string, cascade: boolean): Promise<void>;
   execute(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
   dispose(): Promise<void>;
 }
@@ -355,9 +357,10 @@ export function createPostgreSQLClient(
 
     async previewRelation(schema, relation, maxRows) {
       const result = await sql<Record<string, unknown>[]>`
-        select * from ${sql(schema, relation)} limit ${maxRows}
+        select * from ${sql(schema)}.${sql(relation)} limit ${maxRows}
       `;
       const columns = result.columns.map((column) => column.name);
+      const columnTypes = result.columns.map((column) => postgresTypeName(column.type));
       if (new Set(columns).size !== columns.length)
         throw new Error("Preview returned duplicate column names");
       const rows = result.map((row) =>
@@ -365,26 +368,76 @@ export function createPostgreSQLClient(
           columns.map((column) => [column, toSerializableValue(row[column])]),
         ),
       );
-      return { columns, rows, rowCount: rows.length };
+      return { columns, columnTypes, rows, rowCount: rows.length };
     },
 
     async listActivity({ database, state }) {
       return sql<PostgreSQLActivityEntry[]>`
         select
-          pid::integer,
-          datname as database,
-          usename as "user",
-          state,
-          query,
-          query_start::text as "queryStart",
-          wait_event_type as "waitEventType",
-          wait_event as "waitEvent",
-          client_addr::text as "clientAddress"
-        from pg_stat_activity
-        where pid <> pg_backend_pid()
-          and (${database ?? null}::text is null or datname = ${database ?? null})
-          and (${state ?? null}::text is null or state = ${state ?? null})
-        order by query_start desc nulls last
+          activity.pid::integer,
+          activity.datname as database,
+          activity.usename as "user",
+          activity.state,
+          activity.query,
+          activity.query_start::text as "queryStart",
+          case
+            when activity.state = 'active' then to_char(clock_timestamp() - activity.query_start, 'HH24:MI:SS.MS')
+            else null
+          end as "runningFor",
+          progress.progress_percent as "progressPercent",
+          progress.eta_seconds as "etaSeconds",
+          activity.wait_event_type as "waitEventType",
+          activity.wait_event as "waitEvent",
+          activity.client_addr::text as "clientAddress"
+        from pg_stat_activity as activity
+        left join lateral (
+          with progress_values as (
+            select pid, blocks_done::double precision as done, blocks_total::double precision as total
+            from pg_stat_progress_create_index
+            where blocks_total > 0
+            union all
+            select pid, tuples_done::double precision, tuples_total::double precision
+            from pg_stat_progress_create_index
+            where tuples_total > 0
+            union all
+            select pid, heap_blks_scanned::double precision, heap_blks_total::double precision
+            from pg_stat_progress_vacuum
+            where heap_blks_total > 0
+            union all
+            select pid, sample_blks_scanned::double precision, sample_blks_total::double precision
+            from pg_stat_progress_analyze
+            where sample_blks_total > 0
+          ), calculated as (
+            select
+              pid,
+              least(100, round((done / nullif(total, 0) * 100)::numeric, 1)::double precision) as progress_percent
+            from progress_values
+          )
+          select
+            calculated.progress_percent,
+            case
+              when calculated.progress_percent > 0 and calculated.progress_percent < 100
+                then greatest(
+                  0,
+                  round((extract(epoch from clock_timestamp() - activity.query_start)
+                    * (100 - calculated.progress_percent) / calculated.progress_percent)::numeric)::double precision
+                )
+              else null
+            end as eta_seconds
+          from calculated
+          where calculated.pid = activity.pid
+          order by calculated.progress_percent desc
+          limit 1
+        ) as progress on true
+        where activity.pid <> pg_backend_pid()
+          and activity.datname is not null
+          and (${database ?? null}::text is null or activity.datname = ${database ?? null})
+          and (${state ?? null}::text is null or activity.state = ${state ?? null})
+          and ltrim(activity.query) not like 'with visible_relations as (%'
+          and ltrim(activity.query) not like 'select current_database() as "currentDatabase"%'
+          and ltrim(activity.query) not like 'select current_setting(''server_version'')%'
+          and activity.query not ilike '%pg_stat_activity%'
+        order by activity.query_start desc nulls last
         limit 100
       `;
     },
@@ -396,15 +449,6 @@ export function createPostgreSQLClient(
       return row?.cancelled ?? false;
     },
 
-    async createSchema(name) {
-      await sql`create schema ${sql(name)}`;
-    },
-
-    async dropSchema(name, cascade) {
-      if (cascade) await sql`drop schema ${sql(name)} cascade`;
-      else await sql`drop schema ${sql(name)}`;
-    },
-
     async execute(query, maxRows) {
       const result = await sql.unsafe<Record<string, unknown>[]>(query);
       if (result.length > maxRows)
@@ -413,6 +457,7 @@ export function createPostgreSQLClient(
         );
 
       const columns = result.columns.map((column) => column.name);
+      const columnTypes = result.columns.map((column) => postgresTypeName(column.type));
       if (new Set(columns).size !== columns.length)
         throw new Error("Query returned duplicate column names; use aliases");
       const rows = result.map((row) =>
@@ -423,7 +468,7 @@ export function createPostgreSQLClient(
       const resultBytes = Buffer.byteLength(JSON.stringify(rows));
       if (resultBytes > MAX_RESULT_BYTES)
         throw new Error("Query result exceeds the 16 MiB response limit");
-      return { columns, rows, rowCount: rows.length };
+      return { columns, columnTypes, rows, rowCount: rows.length };
     },
 
     async dispose() {
@@ -446,6 +491,41 @@ function toSerializableValue(value: unknown): unknown {
     );
   return value;
 }
+
+function postgresTypeName(type: unknown): string {
+  if (typeof type === "string") return type;
+  if (typeof type !== "number") return "unknown";
+  return (
+    postgresTypeNames[type] ??
+    `oid:${type}`
+  );
+}
+
+const postgresTypeNames: Record<number, string> = {
+  16: "boolean",
+  17: "bytea",
+  18: "char",
+  20: "bigint",
+  21: "smallint",
+  22: "int2vector",
+  23: "integer",
+  24: "regproc",
+  25: "text",
+  26: "oid",
+  700: "real",
+  701: "double precision",
+  790: "money",
+  1042: "char(n)",
+  1043: "varchar",
+  1082: "date",
+  1114: "timestamp",
+  1184: "timestamptz",
+  1186: "interval",
+  1266: "timetz",
+  1700: "numeric",
+  2950: "uuid",
+  3802: "jsonb",
+};
 
 function sslOption(config: PostgreSQLConfig) {
   if (config.sslMode === "disable") return false;
