@@ -26,7 +26,12 @@ export function LiveDuration({
   const label = `${minutes} minutes ${seconds.toFixed(2)} seconds`;
 
   return (
-    <span className="live-duration" role="timer" aria-label={label} title={label}>
+    <span
+      className="live-duration"
+      role="timer"
+      aria-label={label}
+      title={label}
+    >
       <NumberFlow
         value={minutes}
         format={{ minimumIntegerDigits: 2, useGrouping: false }}

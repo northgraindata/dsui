@@ -30,7 +30,8 @@ export function LiveProgress({
 }
 
 export function LiveEta({ etaSeconds }: { etaSeconds: unknown }) {
-  if (typeof etaSeconds !== "number" || !Number.isFinite(etaSeconds)) return "-";
+  if (typeof etaSeconds !== "number" || !Number.isFinite(etaSeconds))
+    return "-";
   const rounded = Math.max(0, Math.round(etaSeconds));
   const minutes = Math.floor(rounded / 60);
   const seconds = String(rounded % 60).padStart(2, "0");
