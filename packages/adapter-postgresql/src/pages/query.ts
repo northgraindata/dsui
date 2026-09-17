@@ -1,37 +1,69 @@
 import {
-  Button,
-  CodeEditor,
   definePage,
   PageHeader,
+  QueryEditor,
 } from "@northgraindata/dsui-adapter-sdk";
 import { runQuery } from "../actions/run-query.js";
-import { queryEditorStore } from "../stores/query-editor.js";
+import {
+  databaseRelations,
+  databaseSchemas,
+  databases,
+} from "../resources/catalog.js";
 
 export const queryPage = definePage({
   path: "/query",
-  stores: [queryEditorStore],
-  render: ({ stores }) => {
-    const editor = stores.use(queryEditorStore);
-    return [
-      PageHeader({
-        title: "Query editor",
-        description:
-          "Run bounded SQL statements against the configured database.",
-      }),
-      CodeEditor({
-        language: "sql",
-        value: editor.sql,
-        onChange: editor.setSql,
-      }),
-      ...(editor.sql
-        ? [
-            Button({
-              label: "Run query",
-              variant: "primary",
-              action: runQuery({ sql: editor.sql }),
+  render: () => [
+    PageHeader({
+      title: "Query editor",
+      description:
+        "Run bounded SQL statements against the configured database.",
+    }),
+    QueryEditor({
+      language: "sql",
+      action: runQuery,
+      database: { source: databases() },
+      explorer: {
+        source: databases(),
+        children: {
+          source: databaseSchemas({ database: "$name" }),
+          children: {
+            source: databaseRelations({
+              database: "$database",
+              schema: "$name",
             }),
-          ]
-        : []),
-    ];
-  },
+          },
+        },
+      },
+    }),
+  ],
+});
+
+export const databaseQueryPage = definePage({
+  path: "/query/:database",
+  render: ({ params }) => [
+    PageHeader({
+      title: `Query editor · ${params.database}`,
+      description: `Run bounded SQL statements against ${params.database}. Use schema.table names; PostgreSQL databases cannot be referenced from SQL.`,
+    }),
+    QueryEditor({
+      language: "sql",
+      action: runQuery({ database: params.database }),
+      database: {
+        source: databases(),
+        initialValue: params.database,
+      },
+      explorer: {
+        source: databases(),
+        children: {
+          source: databaseSchemas({ database: "$name" }),
+          children: {
+            source: databaseRelations({
+              database: "$database",
+              schema: "$name",
+            }),
+          },
+        },
+      },
+    }),
+  ],
 });
