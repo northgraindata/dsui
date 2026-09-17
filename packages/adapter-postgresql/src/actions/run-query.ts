@@ -21,15 +21,17 @@ export const runQuery = defineAction({
     ctx.signal?.throwIfAborted();
     const normalizedSql = sql.trim();
     if (!normalizedSql) throw new Error("Enter a SQL query to run.");
-    if (/\b(?:from|join)\s+(?:[a-z_][\w$]*\.){2}[a-z_][\w$]*/i.test(normalizedSql)) {
+    if (
+      /\b(?:from|join)\s+(?:[a-z_][\w$]*\.){2}[a-z_][\w$]*/i.test(normalizedSql)
+    ) {
       throw new Error(
         "PostgreSQL does not support cross-database references. Open a query for the target database and use schema.table.",
       );
     }
-    const result = await (database ? ctx.getClient(database) : ctx.client).execute(
-      normalizedSql,
-      maxRows,
-    );
+    const result = await (database
+      ? ctx.getClient(database)
+      : ctx.client
+    ).execute(normalizedSql, maxRows);
     ctx.signal?.throwIfAborted();
     return result;
   },

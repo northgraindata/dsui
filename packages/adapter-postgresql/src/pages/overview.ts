@@ -152,15 +152,19 @@ export const overviewPage = definePage({
             description: "Sessions refreshed every second.",
             link: { label: "View all", path: "/activity" },
             content: Table({
-               source: activity({ state: "active" }),
-               columns: [
-                 { id: "database", label: "Database" },
-                 { id: "state", label: "State" },
-                 { id: "runningFor", label: "Running for", format: "duration" },
-                 { id: "progressPercent", label: "Progress", format: "progress" },
-                 { id: "etaSeconds", label: "ETA", format: "eta" },
-                 { id: "query", label: "Query" },
-               ],
+              source: activity({ state: "active" }),
+              columns: [
+                { id: "database", label: "Database" },
+                { id: "state", label: "State" },
+                { id: "runningFor", label: "Running for", format: "duration" },
+                {
+                  id: "progressPercent",
+                  label: "Progress",
+                  format: "progress",
+                },
+                { id: "etaSeconds", label: "ETA", format: "eta" },
+                { id: "query", label: "Query" },
+              ],
               searchable: true,
               pageSize: 5,
             }),

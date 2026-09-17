@@ -360,7 +360,9 @@ export function createPostgreSQLClient(
         select * from ${sql(schema)}.${sql(relation)} limit ${maxRows}
       `;
       const columns = result.columns.map((column) => column.name);
-      const columnTypes = result.columns.map((column) => postgresTypeName(column.type));
+      const columnTypes = result.columns.map((column) =>
+        postgresTypeName(column.type),
+      );
       if (new Set(columns).size !== columns.length)
         throw new Error("Preview returned duplicate column names");
       const rows = result.map((row) =>
@@ -457,7 +459,9 @@ export function createPostgreSQLClient(
         );
 
       const columns = result.columns.map((column) => column.name);
-      const columnTypes = result.columns.map((column) => postgresTypeName(column.type));
+      const columnTypes = result.columns.map((column) =>
+        postgresTypeName(column.type),
+      );
       if (new Set(columns).size !== columns.length)
         throw new Error("Query returned duplicate column names; use aliases");
       const rows = result.map((row) =>
@@ -495,10 +499,7 @@ function toSerializableValue(value: unknown): unknown {
 function postgresTypeName(type: unknown): string {
   if (typeof type === "string") return type;
   if (typeof type !== "number") return "unknown";
-  return (
-    postgresTypeNames[type] ??
-    `oid:${type}`
-  );
+  return postgresTypeNames[type] ?? `oid:${type}`;
 }
 
 const postgresTypeNames: Record<number, string> = {
