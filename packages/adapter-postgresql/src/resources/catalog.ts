@@ -24,12 +24,16 @@ export const schemas = defineResource<PostgreSQLSchema[], PostgreSQLContext>({
 
 export const databaseSchemas = defineResource<
   z.ZodObject<{ database: z.ZodString }>,
-  PostgreSQLSchema[],
+  (PostgreSQLSchema & { database: string })[],
   PostgreSQLContext
 >({
   id: "database-schemas",
   input: z.object({ database: z.string().min(1) }),
-  query: ({ database }, ctx) => ctx.getClient(database).listSchemas(),
+  query: async ({ database }, ctx) =>
+    (await ctx.getClient(database).listSchemas()).map((schema) => ({
+      ...schema,
+      database,
+    })),
 });
 
 export const relations = defineResource<
@@ -53,7 +57,12 @@ export const databaseRelations = defineResource<
     schema: z.string().min(1),
   }),
   query: ({ database, schema }, ctx) =>
-    ctx.getClient(database).listRelations(schema),
+    ctx
+      .getClient(database)
+      .listRelations(schema)
+      .then((relations) =>
+        relations.filter((relation) => relation.kind !== "sequence"),
+      ),
 });
 
 export const columns = defineResource<
