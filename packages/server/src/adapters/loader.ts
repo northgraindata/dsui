@@ -433,74 +433,109 @@ function asDefinitionModule(module: unknown, from: string): AdapterDefinition {
 
 /**
  * Loads one adapter by logical id. Local packages (no version) import
- * in-process; pinned npm sources install verified and run isolated.
- * Either way the result satisfies the same contract.
+ * in-process; pinned npm and git sources install verified and run
+ * isolated in an adapter-host subprocess. Either way the result
+ * satisfies the same contract.
  */
 export async function loadAdapter(
   id: string,
   source: AdapterPackageSource,
   options: AdapterLoadOptions = {},
 ): Promise<LoadedAdapter> {
-  if (!source.version) {
-    const definition = asDefinitionModule(
-      await importModule(source.package).catch((error: unknown) => {
-        throw new AdapterLoadError(
-          `Cannot load adapter package "${source.package}": ${error instanceof Error ? error.message : "unknown error"}`,
-        );
-      }),
-      source.package,
-    );
-    if (definition.metadata.id !== id)
-      throw new AdapterLoadError(
-        `Adapter package declares id "${definition.metadata.id}" but is registered as "${id}"`,
-      );
-    return {
+  if (source.source === "git") {
+    return loadExternalAdapter(
       id,
-      metadata: { ...definition.metadata },
-      connectionSchema: toJsonSchema(definition.connectionSchema),
-      connectionMethods: toConnectionMethods(definition),
-      catalog: catalogFromDefinition(definition),
-      backend: new LocalBackend(definition, options.persistenceProvider),
-      definition,
-    };
-  }
-  if (!source.integrity)
-    throw new AdapterLoadError(
-      `Pinned adapter "${source.package}" requires an integrity digest`,
+      {
+        source: "git",
+        repository: source.repository,
+        commit: source.commit,
+        integrity: source.integrity,
+        ...(source.entry ? { entry: source.entry } : {}),
+      },
+      source.repository,
+      options,
     );
+  }
+  if (source.version) {
+    if (!source.integrity)
+      throw new AdapterLoadError(
+        `Pinned adapter "${source.package}" requires an integrity digest`,
+      );
+    return loadExternalAdapter(
+      id,
+      {
+        source: "npm",
+        package: source.package,
+        version: source.version,
+        integrity: source.integrity,
+        ...(source.entry ? { entry: source.entry } : {}),
+      },
+      source.package,
+      options,
+    );
+  }
+  const definition = asDefinitionModule(
+    await importModule(source.package).catch((error: unknown) => {
+      throw new AdapterLoadError(
+        `Cannot load adapter package "${source.package}": ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }),
+    source.package,
+  );
+  if (definition.metadata.id !== id)
+    throw new AdapterLoadError(
+      `Adapter package declares id "${definition.metadata.id}" but is registered as "${id}"`,
+    );
+  return {
+    id,
+    metadata: { ...definition.metadata },
+    connectionSchema: toJsonSchema(definition.connectionSchema),
+    connectionMethods: toConnectionMethods(definition),
+    catalog: catalogFromDefinition(definition),
+    backend: new LocalBackend(definition, options.persistenceProvider),
+    definition,
+  };
+}
+
+async function loadExternalAdapter(
+  id: string,
+  source:
+    | {
+        source: "npm";
+        package: string;
+        version: string;
+        integrity: string;
+        entry?: string;
+      }
+    | {
+        source: "git";
+        repository: string;
+        commit: string;
+        integrity: string;
+        entry?: string;
+      },
+  label: string,
+  options: AdapterLoadOptions,
+): Promise<LoadedAdapter> {
   const manager = new ExternalAdapterManager({
     dataDir: options.dataDir,
     fetch: options.fetch,
     offline: options.offline,
   });
   const installed = await manager
-    .installedFor({
-      source: "npm",
-      package: source.package,
-      version: source.version,
-      integrity: source.integrity,
-      ...(source.entry ? { entry: source.entry } : {}),
-    })
+    .installedFor(source)
     .catch((error: unknown) => {
       throw new AdapterLoadError(
-        `Cannot resolve adapter "${source.package}": ${error instanceof Error ? error.message : "unknown error"}`,
+        `Cannot resolve adapter "${label}": ${error instanceof Error ? error.message : "unknown error"}`,
       );
     });
   const found =
     installed ??
-    (await manager
-      .install({
-        source: "npm",
-        package: source.package,
-        version: source.version,
-        integrity: source.integrity,
-        ...(source.entry ? { entry: source.entry } : {}),
-      })
-      .catch((error: unknown) => {
-        throw new AdapterLoadError(
-          `Cannot install adapter "${source.package}": ${error instanceof Error ? error.message : "unknown error"}`,
-        );
-      }));
+    (await manager.install(source).catch((error: unknown) => {
+      throw new AdapterLoadError(
+        `Cannot install adapter "${label}": ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }));
   const spawn =
     options.spawnHost ??
     ((bundlePath: string) => {

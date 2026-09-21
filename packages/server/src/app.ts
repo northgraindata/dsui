@@ -12,11 +12,11 @@ import {
   type Principal,
 } from "./auth.js";
 import {
+  type AdapterSource,
   type DsuiConfig,
   isAdapterSource,
-  type LocalAdapterSource,
   loadConfig,
-  type NpmAdapterSource,
+  toAdapterPackageSource,
 } from "./config.js";
 import { ConnectionCipher } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
@@ -221,22 +221,14 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           }
         : loaded.adapters,
     );
-    const sources: Array<[string, LocalAdapterSource | NpmAdapterSource]> =
-      entries.flatMap(([id, entry]) =>
-        isAdapterSource(entry) ? [[id, entry] as const] : [],
-      );
+    const sources: Array<[string, AdapterSource]> = entries.flatMap(
+      ([id, entry]) => (isAdapterSource(entry) ? [[id, entry] as const] : []),
+    );
     for (const [id, source] of sources) {
       try {
         const loadedAdapter = await loadAdapter(
           id,
-          "version" in source
-            ? {
-                package: source.package,
-                version: source.version,
-                integrity: source.integrity,
-                ...(source.entry ? { entry: source.entry } : {}),
-              }
-            : { package: source.package },
+          toAdapterPackageSource(source),
           loaderOptions,
         );
         next.push(loadedAdapter);

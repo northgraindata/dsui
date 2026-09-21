@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { runAdapterHost } from "./adapter-host";
 import { loadAdapter } from "./adapters/loader";
 import { createRuntime } from "./app";
-import { isAdapterSource, loadConfig } from "./config";
+import { isAdapterSource, loadConfig, toAdapterPackageSource } from "./config";
 
 const VERSION = "0.1.0";
 
@@ -47,17 +47,7 @@ async function doctor(): Promise<number> {
       try {
         if (!isAdapterSource(entry))
           throw new Error("not an adapter source (presentation override?)");
-        await loadAdapter(
-          id,
-          "version" in entry
-            ? {
-                package: entry.package,
-                version: entry.version,
-                integrity: entry.integrity,
-                ...(entry.entry ? { entry: entry.entry } : {}),
-              }
-            : { package: entry.package },
-        );
+        await loadAdapter(id, toAdapterPackageSource(entry));
         console.log(`ok ${id}`);
       } catch (error) {
         console.error(

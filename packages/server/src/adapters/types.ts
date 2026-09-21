@@ -10,16 +10,30 @@ import type { HealthStatus } from "@northgraindata/dsui-core";
  * build included — resolves through the same loader; nothing in the
  * server names an adapter package directly.
  */
-export type AdapterPackageSource = {
-  /** Bare package name (`@acme/dsui-adapter-x`) or absolute bundle path. */
-  package: string;
-  /** Exact SemVer version. Absent = resolve locally, run in-process. */
-  version?: string;
-  /** SHA-512 tarball SRI. Required with `version`. */
-  integrity?: string;
-  /** Bundle entry override, e.g. `./dist/adapter.mjs`. */
-  entry?: string;
-};
+export type AdapterPackageSource =
+  | {
+      /** Bare package name (`@acme/dsui-adapter-x`) or absolute bundle path. */
+      package: string;
+      /** Exact SemVer version. Absent = resolve locally, run in-process. */
+      version?: string;
+      /** SHA-512 tarball SRI. Required with `version`. */
+      integrity?: string;
+      /** Bundle entry override, e.g. `./dist/adapter.mjs`. */
+      entry?: string;
+      source?: undefined;
+    }
+  | {
+      /** Pinned GitHub source: manifest and bundle fetched from a commit. */
+      source: "git";
+      /** `git+https://github.com/owner/repo` URL. */
+      repository: string;
+      /** Full commit SHA; floating refs are not accepted. */
+      commit: string;
+      /** SRI digest (sha256/sha384/sha512) of the raw bundle. */
+      integrity: string;
+      /** Bundle entry override, e.g. `./dist/adapter.mjs`. */
+      entry?: string;
+    };
 
 /** JSON Schema (draft 2020-12-ish) for a Zod input or connection schema. */
 export type JsonSchema = Record<string, unknown>;

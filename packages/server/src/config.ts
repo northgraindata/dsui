@@ -1,6 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
+import type { AdapterPackageSource } from "./adapters/types.js";
 
 const envToken = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
 
@@ -74,6 +75,41 @@ export const npmAdapterSourceSchema = z
   .strict();
 export type NpmAdapterSource = z.infer<typeof npmAdapterSourceSchema>;
 
+const gitRepository =
+  /^git\+https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?(?:\.git)?$/;
+const commitSha = /^[a-f0-9]{40}$/;
+
+/**
+ * A pinned GitHub adapter source. The manifest and bundle are fetched
+ * from `raw.githubusercontent.com` at the exact commit and verified by
+ * SRI. Floating refs are deliberately unsupported.
+ */
+export const gitAdapterSourceSchema = z
+  .object({
+    source: z.literal("git"),
+    repository: z
+      .string()
+      .regex(
+        gitRepository,
+        "must be a git+https://github.com/owner/repository URL",
+      ),
+    commit: z
+      .string()
+      .regex(commitSha, "must be a full 40-character commit SHA"),
+    integrity: z
+      .string()
+      .regex(
+        /^sha(?:256|384|512)-[A-Za-z0-9+/]+={0,2}$/,
+        "must be an SRI digest",
+      ),
+    entry: z
+      .string()
+      .regex(/^\.\/dist\/[A-Za-z0-9._/-]+\.mjs$/)
+      .optional(),
+  })
+  .strict();
+export type GitAdapterSource = z.infer<typeof gitAdapterSourceSchema>;
+
 /** Per-adapter presentation overrides keyed by adapter id. */
 export const adapterOverrideSchema = z
   .object({
@@ -85,8 +121,9 @@ export const adapterOverrideSchema = z
 export type AdapterOverride = z.infer<typeof adapterOverrideSchema>;
 
 /**
- * An `adapters:` entry is either a package source (local or pinned npm)
- * or a presentation override for an already-registered adapter, e.g.:
+ * An `adapters:` entry is either a package source (local, pinned npm,
+ * or pinned git) or a presentation override for an already-registered
+ * adapter, e.g.:
  *
  * adapters:
  *   snowflake:
@@ -95,27 +132,59 @@ export type AdapterOverride = z.infer<typeof adapterOverrideSchema>;
  *     package: "@acme/dsui-adapter-thing"
  *     version: "1.2.3"
  *     integrity: "sha512-..."
+ *   acme-git:
+ *     source: git
+ *     repository: "git+https://github.com/acme/dsui-adapter-thing"
+ *     commit: "<full-sha>"
+ *     integrity: "sha384-..."
  */
 export const adapterEntrySchema = z.union([
   localAdapterSourceSchema,
   npmAdapterSourceSchema,
+  gitAdapterSourceSchema,
   adapterOverrideSchema,
 ]);
 export type AdapterEntry = z.infer<typeof adapterEntrySchema>;
 
-export function isAdapterSource(
-  entry: AdapterEntry,
-): entry is LocalAdapterSource | NpmAdapterSource {
+/** A package source: local, pinned npm, or pinned git. */
+export type AdapterSource =
+  | LocalAdapterSource
+  | NpmAdapterSource
+  | GitAdapterSource;
+
+export function isAdapterSource(entry: AdapterEntry): entry is AdapterSource {
+  if ("source" in entry) return entry.source === "git";
   return "package" in entry;
 }
 
 export function adapterSourceEntries(
   config: DsuiConfig,
-): Array<[string, LocalAdapterSource | NpmAdapterSource]> {
+): Array<[string, AdapterSource]> {
   return Object.entries(config.adapters ?? {}).filter(
-    (entry): entry is [string, LocalAdapterSource | NpmAdapterSource] =>
-      isAdapterSource(entry[1]),
+    (entry): entry is [string, AdapterSource] => isAdapterSource(entry[1]),
   );
+}
+
+/** Maps a parsed `adapters:` entry to the loader's package-source shape. */
+export function toAdapterPackageSource(
+  entry: AdapterSource,
+): AdapterPackageSource {
+  if ("source" in entry)
+    return {
+      source: "git",
+      repository: entry.repository,
+      commit: entry.commit,
+      integrity: entry.integrity,
+      ...(entry.entry ? { entry: entry.entry } : {}),
+    };
+  if ("version" in entry)
+    return {
+      package: entry.package,
+      version: entry.version,
+      integrity: entry.integrity,
+      ...(entry.entry ? { entry: entry.entry } : {}),
+    };
+  return { package: entry.package };
 }
 
 export const configSchema = z
