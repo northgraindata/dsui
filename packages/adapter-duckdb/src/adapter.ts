@@ -92,6 +92,7 @@ import {
   fileBrowserStore,
   notebookStore,
   queryEditorStore,
+  queryHistoryStore,
   sessionStore,
   settingsFilterStore,
 } from "./stores/index.js";
@@ -137,6 +138,7 @@ export function createDuckDbAdapter(
       notebookStore,
       activityFiltersStore,
       settingsFilterStore,
+      queryHistoryStore,
     ],
     resources: [
       version,

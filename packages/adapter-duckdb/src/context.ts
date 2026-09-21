@@ -343,11 +343,6 @@ export interface DuckDbClient {
     token?: string;
   }): Promise<QueryResult>;
   stopQuack(uri: string): Promise<void>;
-  // Query history
-  listQueryHistory(filter?: {
-    search?: string;
-    status?: string | null;
-  }): Promise<QueryHistoryEntry[]>;
   // Ad-hoc SQL
   execute(
     sql: string,

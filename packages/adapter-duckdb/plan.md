@@ -107,7 +107,7 @@ and closes it.
 | `extensions` | — | `duckdb_extensions()` | 60s |
 | `settings` | `{ search? }` | `duckdb_settings()` | 60s |
 | `secrets` | — | `duckdb_secrets()` (redacted) | manual |
-| `query-history` | `{ search?, status? }` | in-memory ring buffer | 10s |
+| `query-history` | `{ search?, status? }` | persistent adapter store | 10s |
 | `result-profile` | `{ queryId }` | `SUMMARIZE` of completed result | manual |
 
 ### Actions (18 ids)

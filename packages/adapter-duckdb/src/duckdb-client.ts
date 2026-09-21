@@ -2,12 +2,7 @@ import { statfsSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import type { DuckDBConnection } from "@duckdb/node-api";
 import { DuckDBInstance } from "@duckdb/node-api";
-import type {
-  DuckDbClient,
-  DuckDbConfig,
-  QueryHistoryEntry,
-  QueryResult,
-} from "./context.js";
+import type { DuckDbClient, DuckDbConfig, QueryResult } from "./context.js";
 
 // Table previews take an explicit LIMIT from the caller; clamp it so a bad
 // input can't request an unbounded preview. Ad-hoc reads are intentionally
@@ -62,8 +57,6 @@ function formatBytes(bytes: number): string {
 export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
   let instance: DuckDBInstance | undefined;
   let connection: DuckDBConnection | undefined;
-  const history: QueryHistoryEntry[] = [];
-  let historySeq = 0;
   const rowCounts = new Map<string, { rows: number; at: number }>();
   const loadedAt = new Map<string, string>();
   const startupExtensions = new Set<string>();
@@ -175,36 +168,6 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     const conn = await connect();
     const result = await conn.run(sql);
     return result.rowsChanged;
-  }
-
-  async function record(
-    sql: string,
-    fn: () => Promise<QueryResult>,
-  ): Promise<QueryResult> {
-    const started = Date.now();
-    try {
-      const result = await fn();
-      history.unshift({
-        id: String(++historySeq),
-        sql,
-        status: "SUCCESS",
-        rows: result.rows.length,
-        elapsedMs: Date.now() - started,
-        startedAt: new Date(started).toISOString(),
-      });
-      return result;
-    } catch (error) {
-      history.unshift({
-        id: String(++historySeq),
-        sql,
-        status: "ERROR",
-        rows: 0,
-        elapsedMs: Date.now() - started,
-        startedAt: new Date(started).toISOString(),
-        message: error instanceof Error ? error.message : "Query failed",
-      });
-      throw error;
-    }
   }
 
   return {
@@ -701,19 +664,12 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     async stopQuack(uri) {
       await run(`CALL quack_stop('${escapeString(uri)}')`);
     },
-    async listQueryHistory(filter) {
-      return history.filter(
-        (entry) =>
-          (!filter?.status || entry.status === filter.status) &&
-          (!filter?.search || entry.sql.includes(filter.search)),
-      );
-    },
     async execute(sql, options) {
       if (options?.signal?.aborted) throw new Error("Query aborted");
       // Any statement can change row counts; drop cached counts so the
       // next overview load recounts instead of serving stale numbers.
       rowCounts.clear();
-      return record(sql, () => read(sql));
+      return read(sql);
     },
     async version() {
       const result = await read(`SELECT version()`);

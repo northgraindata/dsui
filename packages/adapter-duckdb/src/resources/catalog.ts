@@ -1,5 +1,11 @@
-import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
+import {
+  defineResource,
+  poll,
+  type ResourceRuntimeContext,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
 import type { DuckDbContext } from "../context.js";
+import { queryHistoryStore } from "../stores/index.js";
 
 export const version = defineResource({
   id: "version",
@@ -197,11 +203,11 @@ export const extensionCards = defineResource({
 export const recentQueries = defineResource({
   id: "recent-queries",
   input: z.object({ limit: z.number().int().min(1).max(25).default(5) }),
-  query: async ({ limit }, ctx: DuckDbContext) => {
-    const entries = await ctx.client.listQueryHistory({
-      search: "",
-      status: "SUCCESS",
-    });
+  query: async ({ limit }, ctx: DuckDbContext & ResourceRuntimeContext) => {
+    const entries = ctx.stores
+      .get(queryHistoryStore)
+      .get()
+      .entries.filter((entry) => entry.status === "SUCCESS");
     return entries.slice(0, limit).map((entry) => ({
       query: entry.sql.length > 48 ? `${entry.sql.slice(0, 47)}…` : entry.sql,
       age: ageLabel(entry.startedAt),
