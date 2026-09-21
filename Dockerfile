@@ -5,6 +5,7 @@ WORKDIR /src
 COPY package.json bun.lock tsconfig.json turbo.json biome.json ./
 COPY apps ./apps
 COPY packages ./packages
+COPY examples ./examples
 RUN bun install --frozen-lockfile --ignore-scripts
 RUN bun run --filter @northgraindata/dsui-web build
 RUN mkdir -p /out && bun build packages/server/src/main.ts --compile --minify --outfile /out/dsui
