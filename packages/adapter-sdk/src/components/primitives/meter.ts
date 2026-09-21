@@ -10,12 +10,14 @@ export interface MeterSegment {
 
 export interface MeterData {
   segments: readonly MeterSegment[];
+  format?: "bytes" | "number";
   footer?: string;
 }
 
 export interface MeterProps {
   source?: DataSource;
   data?: MeterData;
+  format?: "bytes" | "number";
 }
 
 export interface MeterNode {

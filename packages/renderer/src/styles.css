@@ -1024,7 +1024,7 @@
   align-items: stretch;
 }
 .ov-column > * {
-  flex: 1 0 auto;
+  flex: 0 0 auto;
 }
 .ov-section {
   border: 1px solid var(--color-border);
@@ -1428,7 +1428,7 @@ button.ov-card-title:hover {
 }
 .explorer-layout {
   display: grid;
-  grid-template-columns: 254px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 10px;
   min-height: calc(100dvh - 200px);
   align-items: stretch;
@@ -1518,23 +1518,37 @@ button.ov-card-title:hover {
   padding: 9px 15px;
 }
 .resource-tree-heading {
-  padding: 18px 14px;
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--color-border);
 }
 .resource-tree-heading h2 {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   margin: 0;
+}
+.resource-tree-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 24px 16px;
+  padding: 0 12px;
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-raised) 72%, transparent);
+  color: var(--color-muted);
 }
 .resource-tree-search {
   display: block;
   width: 100%;
-  height: 36px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-background);
+  height: 38px;
+  border: 0;
+  background: transparent;
   color: var(--color-primary);
-  padding: 0 10px;
+  padding: 0;
   outline: none;
   font-size: 12px;
 }
@@ -1542,34 +1556,157 @@ button.ov-card-title:hover {
   color: var(--color-muted);
 }
 .resource-tree-search:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 22%, transparent);
+  box-shadow: none;
 }
 .resource-tree-search::-webkit-search-cancel-button {
   cursor: pointer;
   filter: grayscale(1) brightness(1.8);
 }
-.resource-tree [role="treeitem"] > div {
-  min-height: 33px;
+.resource-tree-row {
+  min-height: 34px;
   border-radius: 6px;
-  margin-bottom: 2px;
-}
-.resource-tree [role="treeitem"] > div > button:last-of-type {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  margin: 1px 12px 1px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--color-secondary);
+  cursor: pointer;
   font-family: var(--font-ui);
   font-size: 12px;
+  text-align: left;
+}
+.resource-tree-link {
+  display: flex;
   min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.resource-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+  padding: 6px 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .resource-tree [role="group"] {
-  border-left: 0;
+  border-left: 1px solid
+    color-mix(in srgb, var(--color-border) 70%, transparent);
+  margin-left: 20px;
 }
-.resource-tree [role="treeitem"][aria-selected="true"] > div {
-  background: linear-gradient(110deg, #102252, #0b1733);
+.resource-tree [role="treeitem"][aria-selected="true"] > .resource-tree-row {
+  background: linear-gradient(110deg, #142a5a, #0b1733);
+  box-shadow: inset 2px 0 var(--color-accent);
+  color: var(--color-primary);
 }
-.resource-tree [role="treeitem"] > div > span:last-child {
-  display: none;
+.resource-tree-type {
+  max-width: 92px;
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 9px;
+  line-height: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.resource-tree-row svg {
+  color: var(--color-secondary);
+  flex: 0 0 auto;
+}
+.resource-tree-chevron {
+  display: grid;
+  width: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.resource-tree-chevron-button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  margin: -1px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.resource-tree-chevron-button:hover {
+  background: var(--color-hover);
+  color: var(--color-primary);
+}
+.resource-tree-chevron-button svg,
+.resource-tree-section-chevron svg {
+  transition: transform 160ms ease-out;
+}
+.resource-tree-chevron-button.is-open svg,
+.resource-tree-section-chevron.is-open svg {
+  transform: rotate(90deg);
+}
+.resource-tree-section-chevron {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  color: var(--color-muted);
+}
+.resource-tree-section {
+  margin: 2px 0 6px;
+}
+.resource-tree-section-row {
+  display: flex;
+  width: calc(100% - 22px);
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  margin: 1px 12px 1px 10px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-secondary);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  text-align: left;
+}
+.resource-tree-section-row:hover,
+.resource-tree-row:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.resource-tree-section-row svg {
+  color: var(--color-secondary);
+}
+.resource-tree-count {
+  min-width: 21px;
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--color-raised);
+  color: var(--color-muted);
+  font: 10px / 16px var(--font-mono);
+  text-align: center;
+}
+.resource-tree-section-items {
+  margin: 0 0 0 28px;
+  padding: 0;
+  border-left: 1px solid
+    color-mix(in srgb, var(--color-border) 70%, transparent);
+  list-style: none;
 }
 .workspace-tabs > [role="tablist"] {
   gap: 12px;
@@ -1617,15 +1754,15 @@ button.ov-card-title:hover {
 }
 @media (max-width: 1400px) {
   .explorer-layout {
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 270px minmax(0, 1fr);
   }
   .explorer-layout--inspector {
-    grid-template-columns: 210px minmax(0, 1fr) 250px;
+    grid-template-columns: 270px minmax(0, 1fr) 250px;
   }
 }
 @media (max-width: 1200px) {
   .explorer-layout--inspector {
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 220px minmax(0, 1fr);
   }
   .explorer-inspector {
     grid-column: 2;

@@ -40,6 +40,7 @@ function resource(source: DataSource): ResourceReference {
   return {
     resourceId: source.resourceId,
     ...(source.input === undefined ? {} : { input: source.input }),
+    ...(source.refresh ? { refresh: source.refresh } : {}),
   };
 }
 
@@ -134,6 +135,7 @@ export function serializeNode(node: PageNode): PageNode {
                 columns: node.props.columns.map((column: TableColumn) => ({
                   id: column.id,
                   label: column.label,
+                  ...(column.format ? { format: column.format } : {}),
                   ...(column.renderCell
                     ? { renderCell: nodes(column.renderCell) }
                     : {}),
@@ -622,6 +624,7 @@ export function serializeNode(node: PageNode): PageNode {
         kind: node.kind,
         props: {
           ...(node.props.source ? { source: resource(node.props.source) } : {}),
+          ...(node.props.format ? { format: node.props.format } : {}),
           ...(node.props.data
             ? {
                 data: {
@@ -630,6 +633,9 @@ export function serializeNode(node: PageNode): PageNode {
                       ...segment,
                     }),
                   ),
+                  ...(node.props.data.format
+                    ? { format: node.props.data.format }
+                    : {}),
                   ...(node.props.data.footer
                     ? { footer: node.props.data.footer }
                     : {}),
