@@ -6,6 +6,7 @@ import type { PageNode } from "../nodes";
 export interface TableColumn {
   id: string;
   label: string;
+  format?: "duration" | "progress" | "eta";
   renderCell?: PageNode | readonly PageNode[];
 }
 

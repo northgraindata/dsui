@@ -6,6 +6,10 @@ import type { PageNode } from "./nodes";
 /** Minimal browser-safe client contract available to component implementations. */
 export interface ComponentClient {
   executeResource(reference: ResourceReference): Promise<unknown>;
+  watchResource?(
+    reference: ResourceReference,
+    listener: (value: unknown) => void,
+  ): () => void;
   executeAction(
     reference: ActionReference,
   ): Promise<

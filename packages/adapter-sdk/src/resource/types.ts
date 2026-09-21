@@ -26,6 +26,7 @@ export interface DataSource {
 export interface ResourceReference {
   readonly resourceId: string;
   readonly input?: unknown;
+  readonly refresh?: RefreshStrategy;
 }
 
 /**
