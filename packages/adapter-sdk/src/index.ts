@@ -181,6 +181,7 @@ export {
   type ResourceBinding,
   type ResourceDefinition,
   type ResourceReference,
+  type ResourceRuntimeContext,
 } from "./resource/index";
 export {
   type ActionExecutionOptions,

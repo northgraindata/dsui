@@ -1,5 +1,12 @@
 import type { z } from "zod";
+import type { StoreActionAccessor } from "../action/types";
 import type { RefreshStrategy } from "../refresh/types";
+
+/** Runtime helpers available to resource queries. */
+export interface ResourceRuntimeContext {
+  /** Access to adapter-scoped stores, including persistent stores. */
+  readonly stores: StoreActionAccessor;
+}
 
 /**
  * Minimal structural view of a resource binding, shared with UI

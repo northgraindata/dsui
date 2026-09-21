@@ -7,4 +7,5 @@ export type {
   ResourceBinding,
   ResourceDefinition,
   ResourceReference,
+  ResourceRuntimeContext,
 } from "./types";

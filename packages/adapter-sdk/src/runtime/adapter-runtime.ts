@@ -91,7 +91,11 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
     this.definition = definition;
     this.context = context;
     this.stores = new StoreRegistry(definition, options.persistenceProvider);
-    this.resources = new ResourceExecutor<TContext>(context);
+    this.resources = new ResourceExecutor<TContext>(
+      context,
+      { get: (store) => this.store(store) },
+      () => this.stores.ready(),
+    );
     this.actions = new ActionExecutor<TContext>(
       context,
       (resource, input) => this.resources.invalidate(resource, input),

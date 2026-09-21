@@ -1,3 +1,4 @@
+import type { StoreActionAccessor } from "../action/types";
 import type { RefreshPolicy } from "../refresh/policy";
 import { PollingRefreshPolicy } from "../refresh/polling";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
@@ -26,7 +27,11 @@ export class ResourceExecutor<TContext> {
   /**
    * @param context - The instance context queries run against.
    */
-  constructor(private readonly context: TContext) {}
+  constructor(
+    private readonly context: TContext,
+    private readonly stores: StoreActionAccessor,
+    private readonly readyStores: () => Promise<void>,
+  ) {}
 
   /**
    * Executes a binding once, returning success or error (never throws
@@ -42,7 +47,11 @@ export class ResourceExecutor<TContext> {
       ctx: unknown,
     ) => Promise<unknown> | unknown;
     try {
-      const data = (await query(binding.input, this.context)) as TOutput;
+      await this.readyStores();
+      const data = (await query(
+        binding.input,
+        withRuntimeHelpers(this.context, this.stores),
+      )) as TOutput;
       return { status: "success", data };
     } catch (error) {
       return {
@@ -147,9 +156,10 @@ export class ResourceExecutor<TContext> {
   private async run(entry: WatchedEntry): Promise<void> {
     const runId = ++entry.executive;
     try {
+      await this.readyStores();
       const data = await entry.binding.definition.query(
         entry.binding.input,
-        this.context,
+        withRuntimeHelpers(this.context, this.stores),
       );
       if (this.disposed || runId !== entry.executive) return;
       const result: ResourceResult<unknown> = { status: "success", data };
@@ -165,6 +175,28 @@ export class ResourceExecutor<TContext> {
       for (const listener of [...entry.listeners]) listener(result);
     }
   }
+}
+
+function withRuntimeHelpers<TContext>(
+  context: TContext,
+  stores: StoreActionAccessor,
+): TContext {
+  const augmented = Object.create(
+    context != null &&
+      (typeof context === "object" || typeof context === "function")
+      ? Object.getPrototypeOf(context)
+      : Object.prototype,
+  ) as Record<string, unknown>;
+  if (
+    context != null &&
+    (typeof context === "object" || typeof context === "function")
+  )
+    Object.assign(augmented, context);
+  Object.defineProperty(augmented, "stores", {
+    enumerable: false,
+    value: stores,
+  });
+  return augmented as TContext;
 }
 
 function bindingKey(
