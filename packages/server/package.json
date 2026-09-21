@@ -15,6 +15,7 @@
     "@better-auth/sso": "1.7.1",
     "@northgraindata/dsui-adapter-airflow": "workspace:*",
     "@northgraindata/dsui-adapter-duckdb": "workspace:*",
+    "@northgraindata/dsui-adapter-s3": "workspace:*",
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
     "@northgraindata/dsui-core": "workspace:*",
     "better-auth": "1.7.1",

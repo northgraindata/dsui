@@ -212,6 +212,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             duckdb: {
               package: "@northgraindata/dsui-adapter-duckdb",
             },
+            s3: {
+              package: "@northgraindata/dsui-adapter-s3",
+            },
           }
         : loaded.adapters,
     );
