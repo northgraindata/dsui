@@ -215,6 +215,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             dbt: {
               package: "@northgraindata/dsui-adapter-dbt",
             },
+            s3: {
+              package: "@northgraindata/dsui-adapter-s3",
+            },
           }
         : loaded.adapters,
     );

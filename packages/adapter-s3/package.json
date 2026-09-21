@@ -1,0 +1,24 @@
+{
+  "name": "@northgraindata/dsui-adapter-s3",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/adapter.ts"
+  },
+  "scripts": {
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1132.0",
+    "@aws-sdk/s3-request-presigner": "^3.1132.0",
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "@northgraindata/dsui-ui": "workspace:*",
+    "fflate": "^0.8.2",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0"
+  }
+}
