@@ -1,0 +1,39 @@
+---
+title: Create an adapter
+description: Start with one file, then add only the primitives your service needs.
+---
+
+## Minimal adapter
+
+```ts
+import {
+  defineAdapter,
+  definePage,
+  PageHeader,
+} from "@northgraindata/dsui-adapter-sdk";
+
+export default defineAdapter({
+  metadata: { id: "hello", name: "Hello", version: "1.0.0" },
+  pages: [
+    definePage({
+      path: "/",
+      render: () => [PageHeader({ title: "Hello" })],
+    }),
+  ],
+});
+```
+
+This adapter has no connection and no data. It still validates and renders.
+
+## Add capabilities
+
+Use a connection schema and `context` when the adapter needs a client. Add resources for reads and actions for mutations. Pages compose the existing DSUI components from those bindings.
+
+```text
+adapter.ts       adapter definition and context
+resources/       reads from the service
+actions/         mutations and commands
+pages/           routes composed from DSUI components
+```
+
+Every action should invalidate the resources it changes. Every client with a persistent connection should be released through `disposeContext`.

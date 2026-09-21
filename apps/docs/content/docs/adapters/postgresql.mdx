@@ -1,0 +1,37 @@
+---
+title: PostgreSQL
+description: Inspect PostgreSQL databases and run SQL queries.
+---
+
+## Setup
+
+```yaml
+services:
+  - id: postgres
+    adapter: postgresql
+    name: Local Postgres
+    connection:
+      host: postgres
+      port: 5432
+      database: app
+      databaseScope: all
+      username: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+```
+
+Use the Compose service name as `host` when DSUI and PostgreSQL run in the same project.
+
+`databaseScope` controls whether DSUI shows all accessible databases or only the connection database.
+
+## Available
+
+- Server info and overview metrics
+- Databases, schemas, relations, columns, indexes, and constraints
+- Relation previews
+- Run and cancel SQL queries, including database-aware queries
+- Activity and connection usage
+
+## Not yet available
+
+- Schema and data editing
+- Full administrative parity with PostgreSQL tooling

@@ -1,0 +1,41 @@
+---
+title: Releasing an adapter
+description: Package a manifest and a single bundle, then pin it in dsui.yaml.
+---
+
+A published adapter is `dsui.adapter.json` plus one self-contained `dist/adapter.mjs` bundle — and a browser bundle when it ships custom components.
+
+## Manifest
+
+The manifest declares identity, the SDK version it targets, the entry path, the ids for resources, actions, pages, and components, and the byte count and SHA-256 of each bundle. See `adapterManifestSchema` in the SDK for the exact shape.
+
+The bundle must be a single ESM file with all dependencies inlined — no native addons and no code splitting.
+
+## From npm
+
+Publish the package, then pin it with the tarball SRI.
+
+```yaml
+adapters:
+  example:
+    package: "@your-org/dsui-adapter-example"
+    version: "1.0.0"
+    integrity: "sha512-..."
+```
+
+## From git
+
+Commit the manifest and bundle, then pin the commit and the bundle's SRI.
+
+```yaml
+adapters:
+  example:
+    source: git
+    repository: "git+https://github.com/your-org/dsui-adapter-example"
+    commit: "<full-40-char-sha>"
+    integrity: "sha384-..."
+```
+
+Both install verified and run isolated in an `adapter-host` subprocess. Unpinned versions and floating refs are rejected.
+
+The [example adapter](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter) is the smallest complete package.

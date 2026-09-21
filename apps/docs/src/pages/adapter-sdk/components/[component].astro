@@ -1,0 +1,68 @@
+---
+import type { TOCItemType } from "fumadocs-core/toc";
+import { Docs } from "@/components/Docs";
+import Layout from "@/components/Layout.astro";
+import { components } from "@/lib/component-catalog";
+import { source } from "@/lib/source";
+
+export async function getStaticPaths() {
+  return components.map((comp) => ({
+    params: { component: comp.slug },
+    props: { comp },
+  }));
+}
+
+const { comp } = Astro.props;
+
+const toc: TOCItemType[] = [
+  { depth: 2, title: "Props", url: "#props" },
+  { depth: 2, title: "Example", url: "#example" },
+];
+---
+<Layout>
+  <Fragment slot="head">
+    <title>{comp.name} — DSUI docs</title>
+    <meta name="description" content={comp.description} />
+  </Fragment>
+  <Docs
+    tree={source.getPageTree()}
+    pathname={Astro.url.pathname}
+    params={Astro.params}
+    page={{ toc }}
+    client:load
+  >
+    <header class="docs-page-header">
+      <p class="docs-kicker">Builtin component</p>
+      <h1 class="text-3xl font-semibold">{comp.name}</h1>
+      <p class="docs-description text-lg text-fd-muted-foreground">{comp.description}</p>
+    </header>
+    <div class="prose flex-1">
+      <h2 id="props">Props</h2>
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Prop</th>
+              <th>Type</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comp.props.map((prop) => (
+              <tr>
+                <td><code>{prop.name}</code></td>
+                <td><code>{prop.type}</code></td>
+                <td>{prop.default ? <code>{prop.default}</code> : "—"}</td>
+                <td>{prop.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="example">Example</h2>
+      <pre><code class="language-ts">{comp.example}</code></pre>
+    </div>
+  </Docs>
+</Layout>

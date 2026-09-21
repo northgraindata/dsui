@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { type StructuredData, structure } from "fumadocs-core/mdx-plugins";
 import type { StaticSource } from "fumadocs-core/source";
 import { loader } from "fumadocs-core/source";
+import { components } from "./component-catalog";
 
 export const source = loader({
   source: await createSource(),
@@ -35,6 +36,25 @@ async function createSource() {
       type: "meta",
       path: path.relative("content/docs", filePath),
       data: meta.data,
+    });
+  }
+  for (const comp of components) {
+    const syntheticEntry = {
+      id: `adapter-sdk/components/${comp.slug}`,
+      body: "",
+      data: { title: comp.name, description: comp.description },
+      filePath: `content/docs/adapter-sdk/components/${comp.slug}.mdx`,
+      rendered: undefined,
+      digest: "",
+    } as unknown as CollectionEntry<"docs">;
+    out.files.push({
+      type: "page",
+      path: `adapter-sdk/components/${comp.slug}.mdx`,
+      data: {
+        title: comp.name,
+        description: comp.description,
+        _raw: syntheticEntry,
+      },
     });
   }
   return out;

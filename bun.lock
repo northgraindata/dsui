@@ -74,6 +74,18 @@
         "typescript": "^5.9.2",
       },
     },
+    "examples/example-adapter": {
+      "name": "@northgraindata/dsui-adapter-example",
+      "version": "1.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "react": "^19.0.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
+        "typescript": "^5.9.2",
+      },
+    },
     "packages/adapter-airflow": {
       "name": "@northgraindata/dsui-adapter-airflow",
       "version": "0.0.0",
@@ -580,6 +592,8 @@
     "@northgraindata/dsui-adapter-dbt": ["@northgraindata/dsui-adapter-dbt@workspace:packages/adapter-dbt"],
 
     "@northgraindata/dsui-adapter-duckdb": ["@northgraindata/dsui-adapter-duckdb@workspace:packages/adapter-duckdb"],
+
+    "@northgraindata/dsui-adapter-example": ["@northgraindata/dsui-adapter-example@workspace:examples/example-adapter"],
 
     "@northgraindata/dsui-adapter-postgresql": ["@northgraindata/dsui-adapter-postgresql@workspace:packages/adapter-postgresql"],
 

@@ -1,0 +1,170 @@
+---
+title: Pages
+description: Routes that compose components and bindings into views.
+---
+
+A page is a route. It receives typed params, query params, and store access — and returns a tree of DSUI components.
+
+## Basic page
+
+```ts
+import { definePage, PageHeader, Table } from "@northgraindata/dsui-adapter-sdk";
+
+export const overview = definePage({
+  path: "/",
+  render: () => [
+    PageHeader({ title: "Overview" }),
+    Table({ source: status() }),
+  ],
+});
+```
+
+## Route params
+
+Segments like `:database` become typed params:
+
+```ts
+export const schemaPage = definePage({
+  path: "/databases/:database/schemas/:schema",
+  render: ({ params }) => [
+    PageHeader({ title: `${params.database} / ${params.schema}` }),
+    Table({ source: tables({ database: params.database, schema: params.schema }) }),
+  ],
+});
+```
+
+`params` is `Record<string, string>` — every segment is a string. The route pattern is validated at definition time (must start with `/`).
+
+## Query params
+
+Access the URL query string via `query`:
+
+```ts
+export const searchPage = definePage({
+  path: "/search",
+  render: ({ query }) => [
+    PageHeader({ title: `Search: ${query.get("q") ?? ""}` }),
+    Table({ source: searchResults({ query: query.get("q") ?? "" }) }),
+  ],
+});
+```
+
+`query` is a standard `URLSearchParams` instance.
+
+## Composing components
+
+Pages compose DSUI components into trees. Components accept resources as `source` and actions as `action`:
+
+```ts
+import {
+  definePage, PageHeader, Section, Table, Button, Card, Value,
+} from "@northgraindata/dsui-adapter-sdk";
+
+definePage({
+  path: "/warehouses",
+  render: () => [
+    PageHeader({
+      title: "Warehouses",
+      actions: [
+        Button({ label: "Refresh", action: flush() }),
+      ],
+    }),
+    Section({
+      title: "Compute",
+      content: Table({
+        source: warehouses(),
+        rowActions: [
+          {
+            label: "Suspend",
+            action: suspendWarehouse({ warehouse: "row.name" }),
+            when: { field: "status", equals: "RUNNING" },
+          },
+        ],
+      }),
+    }),
+    Section({
+      title: "Summary",
+      content: Card({
+        content: Value({ source: warehouseSummary(), field: "total" }),
+      }),
+    }),
+  ],
+});
+```
+
+## Store access
+
+Pages receive a `stores` accessor for reading and subscribing to store state:
+
+```ts
+import { defineStore } from "@northgraindata/dsui-adapter-sdk";
+
+const filterStore = defineStore({
+  id: "filters",
+  scope: "page",
+  state: { status: "all" as string },
+  actions: ({ set }) => ({
+    setStatus: (status: string) => set({ status }),
+  }),
+});
+
+definePage({
+  path: "/warehouses",
+  stores: [filterStore],
+  render: ({ stores }) => {
+    const { status } = stores.use(filterStore); // subscribes to changes
+    return [
+      Table({ source: warehousesFiltered({ status }) }),
+    ];
+  },
+});
+```
+
+| Method | Behavior |
+| --- | --- |
+| `stores.use(def)` | Returns state + actions. Subscribes the page — re-renders on state change. |
+| `stores.get(def)` | Returns state only. No subscription — reads the current snapshot. |
+
+Use `use` when the UI depends on the store. Use `get` when you need a value but the page shouldn't re-render when it changes.
+
+## Page-scoped stores
+
+Pass `stores` to `definePage` to create page-scoped instances. These are destroyed when the page scope is disposed:
+
+```ts
+definePage({
+  path: "/editor",
+  stores: [editorStore],
+  render: ({ stores }) => {
+    const { content } = stores.use(editorStore);
+    return [CodeBlock({ label: "Editor", value: content })];
+  },
+});
+```
+
+Page-scoped stores get a fresh instance per page mount. Adapter-scoped stores survive across page navigation.
+
+## Multiple nodes
+
+A page can return a single node or an array:
+
+```ts
+// single
+render: () => PageHeader({ title: "Home" }),
+
+// array
+render: () => [
+  PageHeader({ title: "Home" }),
+  Section({ title: "...", content: Table({ source: data() }) }),
+],
+```
+
+## How pages are consumed
+
+The runtime matches a URL to a page path, creates a `PageScope`, and calls `render()`. The scope owns store instances and handles disposal. Components receive the serialized tree and render it in the browser.
+
+```ts
+const scope = instance.createPageScope("/databases/MAIN/schemas/PUBLIC");
+await scope.ready();
+const nodes = scope.render(); // PageNode[]
+```

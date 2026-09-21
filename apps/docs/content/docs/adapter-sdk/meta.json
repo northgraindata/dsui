@@ -1,0 +1,15 @@
+{
+  "title": "Adapter SDK",
+  "pages": [
+    "overview",
+    "create-an-adapter",
+    "resources",
+    "actions",
+    "pages",
+    "stores",
+    "custom-components",
+    "components",
+    "release",
+    "example"
+  ]
+}

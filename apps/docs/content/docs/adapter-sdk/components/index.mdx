@@ -1,0 +1,64 @@
+---
+title: Builtin components
+description: DSUI's UI primitives for building adapter pages.
+---
+
+DSUI ships 28 builtin components. Adapters compose them in `render` functions — no React, HTML, or CSS crosses the server boundary.
+
+## Layout
+
+| Component | Purpose |
+| --- | --- |
+| [Grid](/docs/adapter-sdk/components/grid) | CSS grid with 1-6 columns |
+| [Columns](/docs/adapter-sdk/components/columns) | Multi-column weighted layout |
+| [Flex](/docs/adapter-sdk/components/flex) | Flexbox row or column |
+| [Stack](/docs/adapter-sdk/components/stack) | Vertical stack with gap |
+| [SplitPane](/docs/adapter-sdk/components/split-pane) | Sidebar + content + inspector |
+
+## Data display
+
+| Component | Purpose |
+| --- | --- |
+| [Table](/docs/adapter-sdk/components/table) | Data table with rows, actions, filters |
+| [Value](/docs/adapter-sdk/components/value) | Single field from a data source |
+| [KeyValue](/docs/adapter-sdk/components/key-value) | Key-value pairs |
+| [Meter](/docs/adapter-sdk/components/meter) | Horizontal bar chart |
+| [Badge](/docs/adapter-sdk/components/badge) | Status indicator |
+| [Icon](/docs/adapter-sdk/components/icon) | Named icon |
+| [Collection](/docs/adapter-sdk/components/collection) | Iterate over a data source |
+| [ResourceTree](/docs/adapter-sdk/components/resource-tree) | Hierarchical tree navigator |
+
+## Containers
+
+| Component | Purpose |
+| --- | --- |
+| [Card](/docs/adapter-sdk/components/card) | Versatile container with title, badge, link |
+| [Section](/docs/adapter-sdk/components/section) | Titled content block |
+| [PageHeader](/docs/adapter-sdk/components/page-header) | Page-level header |
+| [Tabs](/docs/adapter-sdk/components/tabs) | Tabbed interface |
+| [Resource](/docs/adapter-sdk/components/resource) | Data-binding wrapper |
+
+## Input
+
+| Component | Purpose |
+| --- | --- |
+| [Button](/docs/adapter-sdk/components/button) | Clickable action trigger |
+| [Form](/docs/adapter-sdk/components/form) | Zod-driven form |
+| [Select](/docs/adapter-sdk/components/select) | Dropdown input |
+| [TextInput](/docs/adapter-sdk/components/text-input) | Text input field |
+
+## Code
+
+| Component | Purpose |
+| --- | --- |
+| [CodeBlock](/docs/adapter-sdk/components/code-block) | Read-only syntax-highlighted code |
+| [CodeEditor](/docs/adapter-sdk/components/code-editor) | Editable code editor (browser only) |
+| [QueryEditor](/docs/adapter-sdk/components/query-editor) | Query editor with explorer sidebar |
+
+## Notebook
+
+| Component | Purpose |
+| --- | --- |
+| [Notebook](/docs/adapter-sdk/components/notebook) | Full notebook with markdown + code blocks |
+| [NotebookCatalog](/docs/adapter-sdk/components/notebook-catalog) | Notebook listing view |
+| [Link](/docs/adapter-sdk/components/link) | Navigational link |

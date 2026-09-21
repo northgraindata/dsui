@@ -17,10 +17,13 @@ export async function getStaticPaths() {
 }
 const { page } = Astro.props;
 const { Content, headings } = await render(page);
+const section = page.id.includes("/")
+  ? page.id.split("/")[0].replaceAll("-", " ")
+  : "Documentation";
 const toc: TOCItemType[] = headings.map((heading) => ({
   depth: heading.depth,
   title: heading.text,
   url: `#${heading.slug}`,
 }));
 ---
-<Layout><Fragment slot="head"><title>{page.data.title} — DSUI docs</title><meta name="description" content={page.data.description} /><meta property="og:title" content={`${page.data.title} — DSUI docs`} /><meta property="og:description" content={page.data.description} /><meta name="twitter:title" content={`${page.data.title} — DSUI docs`} /><meta name="twitter:description" content={page.data.description} /></Fragment><Docs tree={source.getPageTree()} pathname={Astro.url.pathname} params={Astro.params} page={{ toc }} client:load><header class="docs-page-header"><p class="docs-kicker">DOCUMENTATION</p><h1 class="text-3xl font-semibold">{page.data.title}</h1><p class="docs-description text-lg text-fd-muted-foreground">{page.data.description}</p></header><div class="prose flex-1"><Content components={{ ...defaultMdxComponents }} /></div></Docs></Layout>
+<Layout><Fragment slot="head"><title>{page.data.title} — DSUI docs</title><meta name="description" content={page.data.description} /><meta property="og:title" content={`${page.data.title} — DSUI docs`} /><meta property="og:description" content={page.data.description} /><meta name="twitter:title" content={`${page.data.title} — DSUI docs`} /><meta name="twitter:description" content={page.data.description} /></Fragment><Docs tree={source.getPageTree()} pathname={Astro.url.pathname} params={Astro.params} page={{ toc }} client:load><header class="docs-page-header"><p class="docs-kicker">{section}</p><h1 class="text-3xl font-semibold">{page.data.title}</h1><p class="docs-description text-lg text-fd-muted-foreground">{page.data.description}</p></header><div class="prose flex-1"><Content components={{ ...defaultMdxComponents }} /></div></Docs></Layout>

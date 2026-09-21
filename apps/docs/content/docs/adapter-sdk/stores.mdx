@@ -1,0 +1,133 @@
+---
+title: Stores
+description: Client, session, and UI state.
+---
+
+A store holds local state — the selected warehouse, a filter value, editor content. External data belongs in [resources](/docs/adapter-sdk/resources).
+
+## Defining a store
+
+```ts
+import { defineStore } from "@northgraindata/dsui-adapter-sdk";
+
+export const sessionStore = defineStore({
+  id: "session",
+  scope: "adapter",
+  state: {
+    warehouse: null as string | null,
+    database: null as string | null,
+  },
+  actions: ({ get, set, reset }) => ({
+    setWarehouse: (warehouse: string | null) => set({ warehouse }),
+    setDatabase: (database: string | null) => set({ database }),
+    clear: () => reset(),
+  }),
+});
+```
+
+| Field | Purpose |
+| --- | --- |
+| `id` | Unique within its scope |
+| `scope` | `"adapter"` (one instance per adapter) or `"page"` (one instance per page mount) |
+| `state` | Initial state object. Copied per instance. |
+| `actions` | Factory receiving `{ get, set, reset }` and returning named actions. |
+
+## Store helpers
+
+The `actions` factory receives three helpers:
+
+| Helper | Signature | Behavior |
+| --- | --- | --- |
+| `get()` | `() => Readonly<TState>` | Read current state |
+| `set(patch)` | `(patch: Partial<TState>) => void` | Merge fields into state |
+| `reset()` | `() => void` | Restore initial state |
+
+```ts
+actions: ({ get, set, reset }) => ({
+  increment: () => set({ count: get().count + 1 }),
+  reset,
+})
+```
+
+## Scope
+
+| Scope | Lifetime | Use for |
+| --- | --- | --- |
+| `"adapter"` | One instance per adapter. Survives page navigation. | Selected warehouse, user preferences, session tokens. |
+| `"page"` | One instance per rendered page. Destroyed on scope disposal. | Filters, editor state, temporary UI selections. |
+
+## Persistence
+
+By default, stores are in-memory. Add `persistence` to survive page reloads:
+
+```ts
+defineStore({
+  id: "session",
+  scope: "adapter",
+  persistence: { type: "persistent", key: "dsui-session", version: 1 },
+  state: { warehouse: null as string | null },
+  actions: ({ set }) => ({
+    setWarehouse: (w: string | null) => set({ warehouse: w }),
+  }),
+});
+```
+
+| Type | Behavior |
+| --- | --- |
+| `{ type: "memory" }` | Default. No persistence. |
+| `{ type: "persistent", key?, version? }` | Saved to the host's persistence provider. `key` defaults to the store id. `version` triggers migration on change. |
+
+The runtime hydrates stores from persistence on creation and saves after action execution.
+
+## Using stores in pages
+
+Pass page-scoped stores to `definePage`. Use `stores.use(def)` to subscribe or `stores.get(def)` for a snapshot:
+
+```ts
+definePage({
+  path: "/warehouses",
+  stores: [filterStore],
+  render: ({ stores }) => {
+    const { status } = stores.use(filterStore);
+    return [
+      Table({ source: warehousesFiltered({ status }) }),
+    ];
+  },
+});
+```
+
+`use()` subscribes the page — when state changes, the page re-renders. `get()` reads without subscribing.
+
+## Using stores in actions
+
+Actions access stores via `ctx.stores.get(def)`:
+
+```ts
+import type { ActionRuntimeContext } from "@northgraindata/dsui-adapter-sdk";
+
+run: async (input, ctx: MyContext & ActionRuntimeContext) => {
+  const session = ctx.stores.get(sessionStore);
+  session.setWarehouse(input.warehouse);
+  ctx.invalidate(); // re-fetch all resources
+  return { ok: true };
+}
+```
+
+The runtime ensures stores are ready before the action runs and flushes pending persistence after it completes.
+
+## Store instance
+
+The runtime creates a `StoreInstance` per definition per scope. Instances expose:
+
+| Method | Behavior |
+| --- | --- |
+| `get()` | Current state snapshot |
+| `set(patch)` | Merge fields |
+| `reset()` | Restore initial state |
+| `subscribe(listener)` | Listen to state changes. Returns an unsubscribe function. |
+| `actions` | The named actions from the factory |
+| `ready()` | Resolves when hydration from persistence completes |
+| `flush()` | Persists pending state changes |
+| `destroy()` | Cleanup on scope disposal |
+
+Adapter code typically interacts with stores through `stores.use()` in pages and `ctx.stores.get()` in actions — not directly through instances.

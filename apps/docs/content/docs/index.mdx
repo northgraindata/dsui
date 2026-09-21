@@ -1,16 +1,82 @@
 ---
-title: DSUI documentation
-description: Practical guides for installing, configuring, using, and extending Data Stack UI.
+title: DSUI Developer Preview
+description: One lightweight interface for the data services you run locally.
 ---
 
-DSUI is one lightweight, local-first interface for the services in a developer data stack. Start with [Getting Started](/docs/getting-started), or go directly to [Docker Compose](/docs/docker-compose).
+> **Developer Preview**
+>
+> DSUI is under active development. Expect breaking changes, incomplete adapter coverage, and bugs.
 
-## What v0.1 covers
+DSUI keeps the everyday work around a local data stack in one place. Connect a service, inspect what is running, and use the workflows that matter without adding another admin UI to your Compose file.
 
-- Trino queries and metadata
-- Kafka topics, messages, groups, ACLs, schemas, and Kafka Connect
-- S3 and MinIO buckets, objects, previews, and downloads
-- Snowflake, BigQuery, Redshift, PostgreSQL, and Databricks data workflows
-- Apache Airflow, Dagster, and dbt Cloud operational workflows
-- UI-managed and declarative connections
-- Public community adapters distributed as pinned npm bundles or pinned GitHub commits
+## Start here
+
+[Run DSUI and connect DuckDB](/docs/getting-started/quickstart) in Docker. Two files and one `docker compose` command.
+
+## Why DSUI
+
+A data stack is really a stack of web consoles. Postgres wants pgAdmin, MinIO wants its console, DuckDB wants a SQL client, Airflow runs its own webserver. Each one adds a container, a port, credentials, and memory.
+
+DSUI collapses those consoles into one interface. You still run your services — Postgres, MinIO, Airflow, dbt — but you stop adding a UI for each of them.
+
+Before, every service carries its own interface:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16
+  pgadmin:
+    image: dpage/pgadmin4
+    ports: ["5050:80"]
+  minio:
+    image: minio/minio
+    ports: ["9000:9000", "9001:9001"]
+```
+
+After, one container and one file:
+
+```yaml
+services:
+  dsui:
+    image: ghcr.io/northgraindata/dsui:latest
+    ports: ["4192:4192"]
+    volumes:
+      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
+      - dsui-data:/data
+  postgres:
+    image: postgres:16
+  minio:
+    image: minio/minio
+```
+
+```yaml
+# dsui.yaml
+services:
+  - id: warehouse
+    adapter: postgresql
+    name: Postgres
+    connection:
+      host: postgres
+      database: app
+  - id: storage
+    adapter: s3
+    name: MinIO
+    connection:
+      endpoint: http://minio:9000
+      forcePathStyle: true
+```
+
+One port, one place to look. The configuration is declarative, runs the same every time, and keeps credentials server-side.
+
+## Current scope
+
+- Local-first, self-hosted DSUI
+- Declarative services from `dsui.yaml`
+- Airflow, DuckDB, dbt, PostgreSQL, and S3 adapters in preview
+- An experimental Adapter SDK
+
+## Not yet supported
+
+- Stable compatibility between preview releases
+- Complete adapter coverage
+- Enterprise features and hosted control planes
