@@ -9,17 +9,17 @@ Context is the environment one adapter instance runs in: the API
 client, the logger, the validated configuration. Every resource query
 and every action receives it. It holds runtime dependencies only.
 Selected warehouse goes in a store. Filters go in a store. The client
-that talks to Snowflake goes in context.
+that talks to the external service goes in context.
 
 ## Define the factory
 
-```ts title="snowflake/adapter.ts"
+```ts title="example-service/adapter.ts"
 defineAdapter({
-  metadata: { id: "snowflake", name: "Snowflake", version: "1.0.0" },
+  metadata: { id: "example-service", name: "Example Service", version: "1.0.0" },
   connectionMethods: {
-    snowflake: { label: "Snowflake", schema: snowflakeConnectionSchema },
+    default: { label: "Connection", schema: connectionSchema },
   },
-  context: (config) => createContext(createSnowflakeClient(config), config),
+  context: (config) => createContext(createClient(config), config),
   // ...
 });
 ```
