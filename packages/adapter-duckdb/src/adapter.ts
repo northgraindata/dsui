@@ -61,7 +61,6 @@ import {
   indexes,
   macros,
   overview,
-  recentQueries,
   recentTables,
   relations,
   schemas,
@@ -84,7 +83,6 @@ import {
   extensionProfileResource,
   extensions,
 } from "./resources/extensions.js";
-import { queryHistory } from "./resources/history.js";
 import { secrets } from "./resources/secrets.js";
 import {
   activityFiltersStore,
@@ -92,6 +90,7 @@ import {
   fileBrowserStore,
   notebookStore,
   queryEditorStore,
+  queryHistoryStore,
   sessionStore,
   settingsFilterStore,
 } from "./stores/index.js";
@@ -132,6 +131,7 @@ export function createDuckDbAdapter(
     stores: [
       sessionStore,
       queryEditorStore,
+      queryHistoryStore,
       dataExplorerStore,
       fileBrowserStore,
       notebookStore,
@@ -150,7 +150,6 @@ export function createDuckDbAdapter(
       tables,
       tableRowCounts,
       recentTables,
-      recentQueries,
       storageMeter,
       relations,
       tableColumns,
@@ -171,7 +170,6 @@ export function createDuckDbAdapter(
       extensionProfileResource,
       settings,
       secrets,
-      queryHistory,
     ],
     actions: [
       runQuery,

@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
 import type { DuckDbContext } from "../context.js";
 
@@ -81,6 +82,7 @@ export const recentTables = defineResource({
     );
     const perDatabase = await Promise.all(
       databases.map(async (database) => {
+        const lastModified = modifiedAt(database.path);
         const schemas = await ctx.client.listSchemas(database.name);
         const perSchema = await Promise.all(
           schemas.map(async (schema) => {
@@ -100,6 +102,7 @@ export const recentTables = defineResource({
                   schema.name,
                   table.name,
                 ),
+                lastModified,
               })),
             );
           }),
@@ -112,10 +115,10 @@ export const recentTables = defineResource({
       .sort((left, right) => right.rows - left.rows)
       .slice(0, limit);
   },
-  refresh: poll("60s"),
+  refresh: poll("15s"),
 });
 
-function ageLabel(startedAt: string): string {
+export function ageLabel(startedAt: string): string {
   const seconds = Math.max(
     0,
     Math.round((Date.now() - Date.parse(startedAt)) / 1000),
@@ -127,6 +130,28 @@ function ageLabel(startedAt: string): string {
   if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
   const days = Math.floor(hours / 24);
   return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function modifiedAt(path: string | null): string | null {
+  if (!path) return null;
+  try {
+    return ageLabel(statSync(path).mtime.toISOString());
+  } catch {
+    return null;
+  }
+}
+
+export function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+export function formatDuration(milliseconds: number): string {
+  if (milliseconds < 1000) return `${Math.round(milliseconds)} ms`;
+  const seconds = milliseconds / 1000;
+  if (seconds < 60) return `${seconds.toFixed(seconds < 10 ? 2 : 1)} s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.round(seconds % 60);
+  return `${minutes} min ${remainder} s`;
 }
 
 export const databaseCards = defineResource({
@@ -192,23 +217,6 @@ export const extensionCards = defineResource({
       }));
   },
   refresh: poll("60s"),
-});
-
-export const recentQueries = defineResource({
-  id: "recent-queries",
-  input: z.object({ limit: z.number().int().min(1).max(25).default(5) }),
-  query: async ({ limit }, ctx: DuckDbContext) => {
-    const entries = await ctx.client.listQueryHistory({
-      search: "",
-      status: "SUCCESS",
-    });
-    return entries.slice(0, limit).map((entry) => ({
-      query: entry.sql.length > 48 ? `${entry.sql.slice(0, 47)}…` : entry.sql,
-      age: ageLabel(entry.startedAt),
-      duration: `${entry.elapsedMs} ms`,
-    }));
-  },
-  refresh: poll("10s"),
 });
 
 export const databaseDetails = defineResource({

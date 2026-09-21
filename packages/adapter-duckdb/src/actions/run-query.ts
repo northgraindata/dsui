@@ -13,7 +13,7 @@ import {
   tables,
   views,
 } from "../resources/catalog.js";
-import { queryHistory } from "../resources/history.js";
+import { queryHistoryStore } from "../stores/query-history.js";
 
 type Ctx = DuckDbContext & ActionRuntimeContext;
 
@@ -25,7 +25,21 @@ export const runQuery = defineAction({
   run: async ({ sql }, ctx: Ctx) => {
     const started = Date.now();
     const result = await ctx.client.execute(sql, { signal: ctx.signal });
-    ctx.invalidate(queryHistory);
+    const elapsedMs = Date.now() - started;
+    const store = ctx.stores.get(queryHistoryStore);
+    store.set({
+      entries: [
+        {
+          id: crypto.randomUUID(),
+          sql,
+          status: "SUCCESS" as const,
+          rows: result.rows.length,
+          elapsedMs,
+          startedAt: new Date(started).toISOString(),
+        },
+        ...store.get().entries,
+      ].slice(0, 200),
+    });
     // The worksheet accepts arbitrary SQL, so a successful statement may have
     // changed any part of the catalog. Invalidating is intentionally broad here;
     // resources still reload lazily as their explorer branches become visible.
@@ -36,7 +50,7 @@ export const runQuery = defineAction({
     ctx.invalidate(views);
     ctx.invalidate(databaseSize);
     ctx.invalidate(overview);
-    return { ...result, elapsedMs: Date.now() - started };
+    return { ...result, elapsedMs };
   },
 });
 

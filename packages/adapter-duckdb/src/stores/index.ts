@@ -5,6 +5,7 @@ export { dataExplorerStore } from "./data-explorer.js";
 export { fileBrowserStore } from "./file-browser.js";
 export { notebookStore } from "./notebook.js";
 export { queryEditorStore } from "./query-editor.js";
+export { queryHistoryStore } from "./query-history.js";
 export { sessionStore } from "./session.js";
 
 export const settingsFilterStore = defineStore({
