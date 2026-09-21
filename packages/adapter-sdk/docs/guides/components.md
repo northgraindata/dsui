@@ -161,7 +161,7 @@ Form({
 
 `onSubmit` accepts the action definition itself; the runtime binds
 the validated data. Share the schema object between the action input
-and the form, as the Snowflake adapter does, and the two stay in sync
+and the form, and the two stay in sync
 by construction.
 
 ## Reuse composites

@@ -48,4 +48,4 @@ future major can detect incompatibility instead of failing obscurely.
 ## What to read next
 
 - [Quickstart](../getting-started/quickstart) for the minimal metadata shape
-- [Snowflake adapter](../examples/snowflake) for a complete definition
+- [Quickstart](../getting-started/quickstart) for a complete definition

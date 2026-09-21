@@ -6,9 +6,9 @@ import type {
 import type { HealthStatus } from "@northgraindata/dsui-core";
 
 /**
- * Where an adapter comes from. Every adapter — the default Snowflake
- * build included — resolves through the same loader; nothing in the
- * server names an adapter package directly.
+ * Where an adapter comes from. Every bundled or community adapter resolves
+ * through the same loader; nothing in the server names an adapter package
+ * directly.
  */
 export type AdapterPackageSource =
   | {
