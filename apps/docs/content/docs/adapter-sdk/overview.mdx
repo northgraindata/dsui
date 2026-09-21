@@ -3,7 +3,20 @@ title: Adapter SDK
 description: Build server-side adapters that DSUI can render safely.
 ---
 
-An adapter is a small TypeScript program. It describes a service; DSUI handles execution, refreshing, and rendering.
+An adapter is a small TypeScript program that connects one service to the DSUI
+workspace. It describes how to connect, read data, perform actions, and compose
+the service's workflows. DSUI handles execution, refreshing, lifecycle, and
+rendering.
+
+> **Diagram placeholder: Adapter mental model**
+>
+> **Image brief:** Diagram with `connection` and `context` at the top, branching
+> into `resources` for reads, `actions` for commands, `stores` for state, and
+> `pages/components` for the user experience. Show the adapter connecting an
+> external service to the shared DSUI workspace.
+>
+> **Purpose:** Help a contributor understand the SDK before reading individual
+> API pages.
 
 | Primitive | Use it for | Docs |
 | --- | --- | --- |
@@ -14,8 +27,16 @@ An adapter is a small TypeScript program. It describes a service; DSUI handles e
 | [Component](/docs/adapter-sdk/custom-components) | Reusable UI | Server composites and browser components |
 | Context | Per-instance clients | Built during adapter initialization |
 
-Keep external data in resources. Keep side effects in actions. Adapters do not ship React, HTML, or CSS — except through a [browser component](/docs/adapter-sdk/custom-components) shipped in the adapter's browser bundle.
+Keep external data in resources. Keep side effects in actions. Keep local or
+persistent UI state in stores. Adapters use DSUI's shared components instead of
+shipping a separate application. A limited [browser component](/docs/adapter-sdk/custom-components)
+is available when a service needs a specialized interaction.
 
 DSUI ships [28 builtin components](/docs/adapter-sdk/components) for building pages — tables, cards, forms, layouts, and more.
+
+Start with [create an adapter](/docs/adapter-sdk/create-an-adapter), then read
+the resource, action, page, and store guides. The same SDK can be used for a
+private adapter around an internal service, but the primary use case is
+connecting the systems already present in a data or infrastructure stack.
 
 Read the [contribution guide](/docs/contributing) before opening a PR.

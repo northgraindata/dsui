@@ -43,10 +43,34 @@ docker compose up -d
 
 Open `http://localhost:4192`.
 
+> **Visual placeholder: First workspace screen**
+>
+> **Image brief:** Screenshot of the freshly started DSUI workspace with the
+> configured **Analytics warehouse** service visible in the navigation or home
+> view. Keep the browser chrome out of the image and show enough surrounding UI
+> to establish where a new user should click next.
+>
+> **Purpose:** Confirm visually that the Docker setup produced the expected
+> workspace.
+
 ## Expected result
 
 DSUI opens with the **Analytics warehouse** service. Open it, go to **Query**, run `select 42 as answer`, and see one row with `42`.
 
+This example uses DuckDB because it needs no external database. The same
+`services` configuration model supports PostgreSQL, Airflow, dbt, S3, and other
+adapters. Continue to [configuration](/docs/getting-started/configuration) when
+you are ready to connect an existing stack.
+
+> **Visual placeholder: First successful query**
+>
+> **Image brief:** Screenshot of the DuckDB Query page with `select 42 as answer`
+> in the editor and a result table containing one row with `42`. The service
+> name and Query navigation should remain visible.
+>
+> **Purpose:** Show the first meaningful success state, not just that the
+> container is running.
+
 The database file lives in the `/data` volume and persists across restarts.
 
-Next: learn how [configuration](/docs/getting-started/configuration) works or connect [Airflow](/docs/adapters/airflow).
+Next: read [how DSUI works](/docs/how-dsui-works), learn [configuration](/docs/getting-started/configuration), or choose a service from the [adapter catalog](/docs/adapters).

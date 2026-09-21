@@ -1,23 +1,33 @@
 ---
 title: DSUI Developer Preview
-description: One lightweight interface for the data services you run locally.
+description: One workspace for the data and infrastructure services you already run.
 ---
 
 > **Developer Preview**
 >
 > DSUI is under active development. Expect breaking changes, incomplete adapter coverage, and bugs.
 
-DSUI keeps the everyday work around a local data stack in one place. Connect a service, inspect what is running, and use the workflows that matter without adding another admin UI to your Compose file.
+DSUI gives your data stack one workspace. Connect the databases, orchestration tools, transformation services, storage systems, and infrastructure you already run. Inspect what is happening and use the workflows that matter without adding a separate admin UI for every service.
+
+> **Visual placeholder: DSUI workspace overview**
+>
+> **Image brief:** A wide screenshot of the DSUI workspace showing one dashboard
+> with several connected services, for example PostgreSQL, Airflow, object
+> storage, and an internal application. The screenshot should make it obvious
+> that DSUI is one control surface for many systems, not a DuckDB-only console.
+>
+> **Purpose:** Communicate the product value before the reader starts reading
+> configuration details.
 
 ## Start here
 
-[Run DSUI and connect DuckDB](/docs/getting-started/quickstart) in Docker. Two files and one `docker compose` command.
+[Run DSUI and connect DuckDB](/docs/getting-started/quickstart) in Docker. DuckDB is the fastest way to see the workspace because it needs no additional service. Once it is running, use the same configuration model to connect the rest of your stack.
 
 ## Why DSUI
 
-A data stack is really a stack of web consoles. Postgres wants pgAdmin, MinIO wants its console, DuckDB wants a SQL client, Airflow runs its own webserver. Each one adds a container, a port, credentials, and memory.
+A data stack is often a stack of separate web consoles. Postgres wants pgAdmin, MinIO wants its console, DuckDB wants a SQL client, and Airflow runs its own webserver. Each one adds a container, a port, credentials, and another place for operators to learn.
 
-DSUI collapses those consoles into one interface. You still run your services — Postgres, MinIO, Airflow, dbt — but you stop adding a UI for each of them.
+DSUI brings those workflows into one interface. You still run your services — Postgres, MinIO, Airflow, dbt, and others — but you do not need a separate admin UI for each one.
 
 Before, every service carries its own interface:
 
@@ -66,17 +76,33 @@ services:
       forcePathStyle: true
 ```
 
-One port, one place to look. The configuration is declarative, runs the same every time, and keeps credentials server-side.
+One port, one place to look. The configuration is declarative, runs the same way every time, and keeps credentials on the server.
 
-## Current scope
+> **Diagram placeholder: From services to one workspace**
+>
+> **Image brief:** A simple before-and-after diagram. On the left, several
+> services each point to their own web console. On the right, the same services
+> point to one DSUI workspace. Include a small note that credentials stay on the
+> server and adapters provide the service-specific workflows.
+>
+> **Purpose:** Explain the consolidation benefit in one glance.
 
-- Local-first, self-hosted DSUI
-- Declarative services from `dsui.yaml`
-- Airflow, DuckDB, dbt, PostgreSQL, and S3 adapters in preview
-- An experimental Adapter SDK
+## What DSUI provides
 
-## Not yet supported
+- One workspace for multiple services
+- Declarative connections from `dsui.yaml`
+- Server-side execution and credential handling
+- Consistent resources, actions, pages, and workflows
+- Built-in adapters for common data-stack services
+- An Adapter SDK for extending the workspace
 
-- Stable compatibility between preview releases
-- Complete adapter coverage
-- Enterprise features and hosted control planes
+If a service is not supported yet, teams can build a private adapter around its
+API and use the same DSUI primitives. This is an extension path, not a
+requirement for using the built-in adapters.
+
+## Current status
+
+- Local-first, self-hosted Developer Preview
+- Partial adapter coverage
+- Breaking changes between preview releases are possible
+- Enterprise features and hosted control planes are not included yet

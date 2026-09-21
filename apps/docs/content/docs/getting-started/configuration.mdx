@@ -17,6 +17,108 @@ services:
 
 `id` must be kebab-case. `adapter` selects a loaded adapter. `connection` is validated by that adapter before DSUI connects.
 
+## Complete local example
+
+This is a complete file-backed DuckDB setup. The DuckDB file and DSUI's local
+state live in the `dsui-data` Docker volume, so both survive container restarts.
+
+Project layout:
+
+```text
+.
+├── compose.yaml
+└── dsui.yaml
+```
+
+Create `dsui.yaml`:
+
+```yaml
+services:
+  - id: warehouse
+    adapter: duckdb
+    name: Analytics warehouse
+    connection:
+      method: file
+      path: /data/warehouse.duckdb
+```
+
+Create `compose.yaml` next to it:
+
+```yaml
+services:
+  dsui:
+    image: ghcr.io/northgraindata/dsui:latest
+    ports:
+      - "4192:4192"
+    environment:
+      DSUI_CONFIG: /etc/dsui/dsui.yaml
+    volumes:
+      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
+      - dsui-data:/data
+
+volumes:
+  dsui-data:
+```
+
+Start the workspace:
+
+```bash
+docker compose up -d
+```
+
+Open [http://localhost:4192](http://localhost:4192), select **Analytics warehouse**,
+and open **Query**. You can now run SQL against `/data/warehouse.duckdb`.
+
+Stop the container without removing its data:
+
+```bash
+docker compose down
+```
+
+Use `docker compose down -v` only when you also want to delete the DuckDB file
+and DSUI's persisted local state.
+
+> **Diagram placeholder: Configuration and persistence boundary**
+>
+> **Image brief:** Diagram showing `dsui.yaml` mounted read-only into the DSUI
+> container, external services connected through adapter configuration, and the
+> `/data` volume holding DSUI state and file-backed data. Mark credentials and
+> environment variable interpolation as server-side.
+>
+> **Purpose:** Explain what belongs in configuration, what belongs in the
+> environment, and what survives a restart.
+
+## Connect an existing stack
+
+The same file can declare several services. Use the Compose service name as the
+host when DSUI and the service run in the same Compose project. Put credentials
+in the environment rather than committing them to `dsui.yaml`.
+
+```yaml
+services:
+  - id: postgres
+    adapter: postgresql
+    name: Application database
+    connection:
+      host: postgres
+      database: app
+      username: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+
+  - id: airflow
+    adapter: airflow
+    name: Airflow
+    connection:
+      method: airflow
+      baseUrl: http://airflow:8080
+      username: ${AIRFLOW_USERNAME}
+      password: ${AIRFLOW_PASSWORD}
+```
+
+Each service gets its own adapter context and appears as a separate service in
+the DSUI workspace. Adding a service here does not start that service; it tells
+DSUI how to connect to one that is already running.
+
 ## Secrets
 
 Use environment variables for credentials.

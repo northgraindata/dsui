@@ -5,6 +5,12 @@ description: Make a focused change and verify it before opening a pull request.
 
 Read the [contribution guide](https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md) before you start.
 
+The repository's engineering references explain the boundaries to preserve:
+
+- [Engineering standards](https://github.com/northgraindata/dsui/blob/main/docs/engineering/standards.md)
+- [Architecture](https://github.com/northgraindata/dsui/blob/main/docs/engineering/architecture.md)
+- [Decision records](https://github.com/northgraindata/dsui/blob/main/docs/engineering/decisions/README.md)
+
 ```bash
 bun install --frozen-lockfile
 bun run check
@@ -14,3 +20,8 @@ bun run build
 Keep a pull request focused. Add tests for behavior changes and update the docs when a public contract changes.
 
 For an adapter, start from the [Adapter SDK](/docs/adapter-sdk/overview). Validate the connection, keep credentials server-side, and state the coverage and limitations explicitly.
+
+The [complete example adapter](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter)
+shows package setup, tests, local loading, resources, actions, pages, and
+optional browser components. Use it as the practical starting point for a new
+adapter.

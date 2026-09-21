@@ -25,9 +25,32 @@ export default defineAdapter({
 
 This adapter has no connection and no data. It still validates and renders.
 
+> **Visual placeholder: Custom adapter in the workspace**
+>
+> **Image brief:** Side-by-side view of a small adapter source tree and the
+> resulting DSUI page. The page should look native to DSUI and use shared
+> components, demonstrating that an internal application can gain a usable UI
+> without shipping a separate frontend.
+>
+> **Purpose:** Make the SDK outcome tangible for contributors building private
+> or internal integrations.
+
 ## Add capabilities
 
-Use a connection schema and `context` when the adapter needs a client. Add resources for reads and actions for mutations. Pages compose the existing DSUI components from those bindings.
+Use a connection schema and `context` when the adapter needs a client. Add
+resources for reads and actions for mutations. Pages compose the existing DSUI
+components from those bindings.
+
+The smallest useful adapter normally has this shape:
+
+```text
+connection schema -> context/client -> resources and actions -> page
+```
+
+Resources are for reads and declare how they refresh. Actions are for commands
+and mutations; they should invalidate resources that may have changed. Stores
+hold adapter or page state and are the only persistence mechanism available to
+adapter code.
 
 ```text
 adapter.ts       adapter definition and context
@@ -37,3 +60,17 @@ pages/           routes composed from DSUI components
 ```
 
 Every action should invalidate the resources it changes. Every client with a persistent connection should be released through `disposeContext`.
+
+## Build and test locally
+
+The complete example adapter includes the package setup, a test, and instructions
+for loading the adapter from a local checkout. Use it as the working template
+instead of copying only the minimal definition above:
+
+[Open the complete example adapter](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter)
+
+For a private service, the same flow works with an internal API: define its
+connection fields, wrap its reads and commands as resources and actions, and
+compose the result with shared DSUI components. Private adapters are an
+extension path for unsupported services, not a requirement for using the
+built-in adapters.

@@ -16,7 +16,14 @@ docker run --rm -p 4192:4192 -v dsui-data:/data \
   ghcr.io/northgraindata/dsui:latest
 ```
 
-Open `http://localhost:4192`.
+This starts an empty workspace. Open `http://localhost:4192` to verify that DSUI
+is running, then add `DSUI_CONFIG` and mount a `dsui.yaml` when you are ready to
+connect services. The [quickstart](/docs/getting-started/quickstart) shows the
+configured path.
+
+The `/data` volume holds DSUI's local state and any file-backed data you mount
+there. DSUI does not start the services declared in `dsui.yaml`; it connects to
+services that are already running.
 
 For a configured workspace with adapters, use the [quickstart](/docs/getting-started/quickstart).
 

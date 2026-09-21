@@ -1,6 +1,6 @@
 ---
 title: Adapters
-description: Preview coverage is intentionally small and explicit.
+description: Connect the services in your data stack through one workspace.
 ---
 
 | Adapter | Status |
@@ -11,6 +11,32 @@ description: Preview coverage is intentionally small and explicit.
 | [PostgreSQL](/docs/adapters/postgresql) | Preview |
 | [S3](/docs/adapters/s3) | Preview |
 
-An adapter provides the connection schema, data resources, actions, and pages for one service. DSUI owns the browser UI and keeps credentials on the server.
+An adapter is the integration layer between DSUI and one service. It provides
+the connection details, data resources, actions, and pages that make that
+service useful inside the shared workspace.
+
+DSUI is designed to bring several kinds of systems together:
+
+- Databases and query engines
+- Orchestration and scheduling
+- Transformation and modeling
+- Object storage and file services
+- Infrastructure and operational tools
+- Private services built with the Adapter SDK
 
 Preview coverage is partial, not complete support. Each adapter page lists what is available and what is not.
+
+Built-in adapters are only the starting point. Community and private adapters
+can extend the same workspace without requiring DSUI to know every service in
+advance. See the [Adapter SDK](/docs/adapter-sdk) if you need to connect a
+service that is not in this catalog.
+
+> **Visual placeholder: Adapter landscape**
+>
+> **Image brief:** A clean collage or dashboard screenshot grouping adapters by
+> use case: databases, orchestration, transformation, storage, infrastructure,
+> and internal applications. Do not make DuckDB the visual center; it should be
+> one example among many.
+>
+> **Purpose:** Set expectations that DSUI is an extensible workspace and that
+> the built-in adapter list is only the starting point.

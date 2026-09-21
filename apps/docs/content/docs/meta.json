@@ -2,6 +2,7 @@
   "title": "DSUI",
   "pages": [
     "index",
+    "how-dsui-works",
     "getting-started",
     "adapters",
     "adapter-sdk",
