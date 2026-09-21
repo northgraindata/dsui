@@ -57,6 +57,10 @@ for (const [path, module] of Object.entries(localAdapterComponents)) {
     type: "sync",
     component: module.default,
   });
+  components.set(`./components/${file}.tsx`, {
+    type: "sync",
+    component: module.default,
+  });
 }
 
 /** Resolves a component by its declared path or stable id. */

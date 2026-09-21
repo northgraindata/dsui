@@ -11,3 +11,4 @@ coverage/
 .env.*
 !.env.example
 data/
+/s3-test/

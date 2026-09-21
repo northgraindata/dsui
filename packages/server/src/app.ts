@@ -218,6 +218,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             snowflake: {
               package: "@northgraindata/dsui-adapter-snowflake",
             },
+            s3: {
+              package: "@northgraindata/dsui-adapter-s3",
+            },
           }
         : loaded.adapters,
     );
