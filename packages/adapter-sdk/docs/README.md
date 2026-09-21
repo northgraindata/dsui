@@ -79,9 +79,7 @@ Look things up:
 
 - [TypeScript API](./reference/typescript-api)
 
-See it all working:
-
-- [Snowflake adapter](./examples/snowflake)
+See it all working in the [quickstart](./getting-started/quickstart).
 
 ## What to read next
 

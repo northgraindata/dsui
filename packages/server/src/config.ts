@@ -89,8 +89,8 @@ export type AdapterOverride = z.infer<typeof adapterOverrideSchema>;
  * or a presentation override for an already-registered adapter, e.g.:
  *
  * adapters:
- *   snowflake:
- *     package: "@northgraindata/dsui-adapter-snowflake"
+ *   example-service:
+ *     package: "@acme/dsui-adapter-example"
  *   acme-thing:
  *     package: "@acme/dsui-adapter-thing"
  *     version: "1.2.3"

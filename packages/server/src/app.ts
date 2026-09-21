@@ -215,9 +215,6 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             postgresql: {
               package: "@northgraindata/dsui-adapter-postgresql",
             },
-            snowflake: {
-              package: "@northgraindata/dsui-adapter-snowflake",
-            },
             s3: {
               package: "@northgraindata/dsui-adapter-s3",
             },

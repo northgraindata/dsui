@@ -5,8 +5,7 @@ description: How DSUI translates different data services into one safe, consiste
 
 ## Available
 
-Snowflake ships as the default adapter. Every adapter, default
-included, resolves by package name through the same loader: local
+Bundled adapters resolve by package name through the same loader: local
 packages import in-process, pinned npm packages install verified and
 run isolated in an `adapter-host` subprocess. No adapter id receives
 special handling anywhere in the server.
@@ -14,11 +13,10 @@ special handling anywhere in the server.
 ```yaml
 services:
   - id: analytics
-    adapter: snowflake
-    name: Analytics warehouse
+    adapter: duckdb
+    name: Analytics database
     connection:
-      accountIdentifier: org-account
-      token: ${SNOWFLAKE_TOKEN}
+      method: memory
 ```
 
 ## Model
