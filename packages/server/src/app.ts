@@ -212,6 +212,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             duckdb: {
               package: "@northgraindata/dsui-adapter-duckdb",
             },
+            dbt: {
+              package: "@northgraindata/dsui-adapter-dbt",
+            },
             postgresql: {
               package: "@northgraindata/dsui-adapter-postgresql",
             },

@@ -83,6 +83,13 @@
         "react": "^19.0.0",
       },
     },
+    "packages/adapter-dbt": {
+      "name": "@northgraindata/dsui-adapter-dbt",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
     "packages/adapter-duckdb": {
       "name": "@northgraindata/dsui-adapter-duckdb",
       "version": "0.1.0",
@@ -159,6 +166,7 @@
       "dependencies": {
         "@better-auth/sso": "1.7.1",
         "@northgraindata/dsui-adapter-airflow": "workspace:*",
+        "@northgraindata/dsui-adapter-dbt": "workspace:*",
         "@northgraindata/dsui-adapter-duckdb": "workspace:*",
         "@northgraindata/dsui-adapter-postgresql": "workspace:*",
         "@northgraindata/dsui-adapter-s3": "workspace:*",
@@ -568,6 +576,8 @@
     "@nodable/entities": ["@nodable/entities@3.0.0", "", {}, "sha512-8L9xFeTYKhm49xfIypoe2W5wV1m/3Z58kT+7kR9A8OyFxcPduI4VmxaUMQyKYrRjUoLLSXv6EKKID5Tvj9cUVw=="],
 
     "@northgraindata/dsui-adapter-airflow": ["@northgraindata/dsui-adapter-airflow@workspace:packages/adapter-airflow"],
+
+    "@northgraindata/dsui-adapter-dbt": ["@northgraindata/dsui-adapter-dbt@workspace:packages/adapter-dbt"],
 
     "@northgraindata/dsui-adapter-duckdb": ["@northgraindata/dsui-adapter-duckdb@workspace:packages/adapter-duckdb"],
 

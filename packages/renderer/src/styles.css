@@ -1024,7 +1024,7 @@
   align-items: stretch;
 }
 .ov-column > * {
-  flex: 1 0 auto;
+  flex: 0 0 auto;
 }
 .ov-section {
   border: 1px solid var(--color-border);

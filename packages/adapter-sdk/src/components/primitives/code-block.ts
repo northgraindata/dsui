@@ -5,6 +5,7 @@ export interface CodeBlockProps {
   label: string | FieldReference;
   value: string | FieldReference;
   language?: "python" | "sql" | "text" | FieldReference;
+  data?: Readonly<Record<string, unknown>>;
 }
 
 export interface CodeBlockNode {
