@@ -8,6 +8,10 @@ export interface RendererClient {
   /** Already-public connection details for presentation; never credentials. */
   connection?: { name: string; endpoint: string };
   executeResource(reference: ResourceReference): Promise<unknown>;
+  watchResource?(
+    reference: ResourceReference,
+    listener: (value: unknown) => void,
+  ): () => void;
   executeAction(
     reference: ActionReference,
   ): Promise<

@@ -20,8 +20,8 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(1)} ${units[unit]}`;
 }
 
-function formatValue(value: number, format: "bytes" | "number"): string {
-  return format === "number" ? value.toLocaleString() : formatBytes(value);
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat().format(value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -66,6 +66,9 @@ function asMeter(value: unknown): MeterData | null {
   }
   return {
     segments,
+    ...(record.format === "number" || record.format === "bytes"
+      ? { format: record.format }
+      : {}),
     ...(typeof record.footer === "string" ? { footer: record.footer } : {}),
   };
 }
@@ -83,6 +86,13 @@ export function Meter({
   const [error, setError] = useState<string>();
   useEffect(() => {
     if (!node.props.source) return;
+    if (node.props.source.refresh?.kind === "poll" && client.watchResource) {
+      return client.watchResource(node.props.source, (result) => {
+        const meter = asMeter(result);
+        if (meter) setData(meter);
+        else setError("Could not load storage");
+      });
+    }
     let active = true;
     client
       .executeResource(node.props.source)
@@ -115,13 +125,15 @@ export function Meter({
       </Surface>
     );
   const total = data.segments.reduce((sum, segment) => sum + segment.value, 0);
+  const format = data.format ?? "bytes";
+  const formatValue = (value: number) =>
+    format === "number" ? formatNumber(value) : formatBytes(value);
   const legend = data.segments.filter((segment) => segment.legend !== false);
   const legendTotal = legend.reduce((sum, segment) => sum + segment.value, 0);
-  const format = node.props.format ?? "bytes";
   const header =
     total === legendTotal
-      ? formatValue(total, format)
-      : `${formatValue(legendTotal, format)} / ${formatValue(total, format)}`;
+      ? formatValue(total)
+      : `${formatValue(legendTotal)} / ${formatValue(total)}`;
   return (
     <div className="ov-meter">
       <div className="ov-meter-head">
@@ -148,9 +160,7 @@ export function Meter({
               aria-hidden="true"
             />
             <span className="ov-meter-label">{segment.label}</span>
-            <span className="ov-meter-value">
-              {formatValue(segment.value, format)}
-            </span>
+            <span className="ov-meter-value">{formatValue(segment.value)}</span>
             <span className="ov-meter-pct">
               {total > 0 ? Math.round((segment.value / total) * 100) : 0}%
             </span>

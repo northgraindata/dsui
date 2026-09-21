@@ -10,6 +10,8 @@ import type {
 } from "../primitives/table";
 import type { ComponentProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
+import { LiveDuration } from "./live-duration";
+import { LiveEta, LiveProgress } from "./live-progress";
 
 type TableNodeProps = TableProps & { component?: string };
 
@@ -22,7 +24,11 @@ export function Table({ client, node, renderNode }: ComponentProps) {
   const reload = useCallback(() => setRefresh((value) => value + 1), []);
 
   useEffect(() => {
+    void refresh;
     if (!props?.source) return;
+    if (props.source.refresh?.kind === "poll" && client.watchResource) {
+      return client.watchResource(props.source, (result) => setData(result));
+    }
     let active = true;
     setError(undefined);
     client
@@ -47,6 +53,9 @@ export function Table({ client, node, renderNode }: ComponentProps) {
   if (!rows.length) return <p>No records.</p>;
   const columns: readonly TableColumn[] =
     props.columns ?? Object.keys(rows[0]).map((id) => ({ id, label: id }));
+  const rowLink = props.rowLink;
+  const rowActions = props.rowActions;
+  const actions = props.actions;
 
   return (
     <DataTable
@@ -54,32 +63,44 @@ export function Table({ client, node, renderNode }: ComponentProps) {
       rows={rows}
       renderCell={(columnId, value, row) => {
         const column = columns.find((candidate) => candidate.id === columnId);
+        if (column?.format === "duration")
+          return (
+            <LiveDuration
+              startedAt={row.queryStart}
+              active={row.state === "active"}
+            />
+          );
+        if (column?.format === "eta")
+          return <LiveEta etaSeconds={row.etaSeconds} />;
+        if (column?.format === "progress")
+          return (
+            <LiveProgress
+              active={row.state === "active"}
+              percent={row.progressPercent}
+            />
+          );
         if (!column?.renderCell) return formatCell(value);
         const cells = Array.isArray(column.renderCell)
           ? column.renderCell
           : [column.renderCell];
-        return cells.map((cell, index) => (
-          <span key={`${cell.kind}-${index}`}>
+        return cells.map((cell) => (
+          <span key={JSON.stringify(cell)}>
             {renderNode(client, cell, row) as ReactNode}
           </span>
         ));
       }}
       onRowClick={
-        props.rowLink
+        rowLink
           ? (row) => {
-              const href = resolveLink(
-                props.rowLink!.path,
-                props.rowLink!.params,
-                row,
-              );
+              const href = resolveLink(rowLink.path, rowLink.params, row);
               if (href) client.navigate(href);
             }
           : undefined
       }
       renderRowActions={
-        props.rowActions?.length
+        rowActions?.length
           ? (row) =>
-              props.rowActions!.map((spec) => (
+              rowActions.map((spec) => (
                 <RowAction
                   key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
                   client={client}
@@ -91,9 +112,9 @@ export function Table({ client, node, renderNode }: ComponentProps) {
           : undefined
       }
       renderRowMenu={
-        props.actions?.length
+        actions?.length
           ? (row) =>
-              props.actions!.map((spec) => (
+              actions.map((spec) => (
                 <RowMenuAction
                   key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
                   client={client}

@@ -16,6 +16,7 @@
     "@northgraindata/dsui-adapter-airflow": "workspace:*",
     "@northgraindata/dsui-adapter-dbt": "workspace:*",
     "@northgraindata/dsui-adapter-duckdb": "workspace:*",
+    "@northgraindata/dsui-adapter-postgresql": "workspace:*",
     "@northgraindata/dsui-adapter-s3": "workspace:*",
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
     "@northgraindata/dsui-core": "workspace:*",

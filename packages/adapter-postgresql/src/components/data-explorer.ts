@@ -1,10 +1,14 @@
 import { ResourceTree } from "@northgraindata/dsui-adapter-sdk";
-import { databases, relations, schemas } from "../resources/catalog.js";
+import {
+  databaseRelations,
+  databaseSchemas,
+  databases,
+} from "../resources/catalog.js";
 
 export function dataExplorer(selectedPath: string) {
   return ResourceTree({
     label: "Data explorer",
-    stateKey: "duckdb-data-explorer",
+    stateKey: "postgresql-data-explorer",
     selectedPath,
     searchPlaceholder: "Search schemas, tables, columns...",
     branch: {
@@ -15,27 +19,25 @@ export function dataExplorer(selectedPath: string) {
         params: { database: "name" },
       },
       children: {
-        source: schemas({ database: "$name" }),
+        source: databaseSchemas({ database: "$name" }),
         nameField: "name",
         rowLink: {
           path: "/data/:database/:schema",
           params: { database: "database", schema: "name" },
         },
         children: {
-          source: relations({
+          source: databaseRelations({
             database: "$database",
             schema: "$name",
-            type: "all",
           }),
           nameField: "name",
-          typeField: "type",
+          typeField: "kind",
           rowLink: {
-            path: "/data/:database/:schema/:relationType/:relation",
+            path: "/data/:database/:schema/:relation",
             params: {
               database: "database",
               schema: "schema",
-              relationType: "relationType",
-              relation: "relation",
+              relation: "name",
             },
           },
         },
