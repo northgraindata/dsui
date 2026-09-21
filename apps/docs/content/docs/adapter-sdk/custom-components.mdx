@@ -1,0 +1,42 @@
+---
+title: Custom components
+description: Reuse composites with defineComponent render, or ship a browser component with path.
+---
+
+`defineComponent` is the mechanism behind every SDK component. Adapters use it in two modes.
+
+## Server-side composites
+
+`render` returns builtin nodes evaluated on the server. Use it for reusable adapter chrome — a status card, a session bar, a standard detail header.
+
+```ts
+export const StatusCard = defineComponent<{ title?: string }, CardNode>({
+  id: "status-card",
+  render: ({ title }) =>
+    Card({ title, content: Value({ source: status(), field: "url" }) }),
+});
+```
+
+Composites compose SDK primitives. No browser code runs, and the composite renders anywhere the adapter does.
+
+## Browser components
+
+When a custom visual is needed, `path` points at a `.tsx` module in the adapter's `components/` folder. Calling it returns a `custom` node with JSON-serializable props — no React, HTML, or CSS crosses the server boundary.
+
+```ts
+export const Greeting = defineComponent<{ name: string }>({
+  id: "example/greeting",
+  path: "./components/greeting.tsx",
+});
+```
+
+The implementation receives the renderer `client` and its serialized node.
+
+```tsx
+export default function Greeting({ client, node }) {
+  const props = (node.kind === "custom" ? (node.props.props ?? {}) : {}) as GreetingProps;
+  // client.executeAction / client.executeResource / client.navigate
+}
+```
+
+Server composites render from source. Browser components render from the adapter's browser bundle, so they need [a release](/docs/adapter-sdk/release) before they appear.

@@ -5,14 +5,17 @@ description: Build server-side adapters that DSUI can render safely.
 
 An adapter is a small TypeScript program. It describes a service; DSUI handles execution, refreshing, and rendering.
 
-| Primitive | Use it for |
-| --- | --- |
-| Resource | External data |
-| Store | Local UI state |
-| Action | A command or mutation |
-| Page | A route made from DSUI components |
-| Context | Per-instance clients and configuration |
+| Primitive | Use it for | Docs |
+| --- | --- | --- |
+| [Resource](/docs/adapter-sdk/resources) | External data | Read-only data sources managed by the runtime |
+| [Action](/docs/adapter-sdk/actions) | Commands and mutations | Side effects with abort, invalidation, store access |
+| [Page](/docs/adapter-sdk/pages) | Routes | Compose components with typed params and stores |
+| [Store](/docs/adapter-sdk/stores) | Local UI state | Client/session state with persistence |
+| [Component](/docs/adapter-sdk/custom-components) | Reusable UI | Server composites and browser components |
+| Context | Per-instance clients | Built during adapter initialization |
 
-Keep external data in resources. Keep side effects in actions. Adapters do not ship React, HTML, CSS, or browser JavaScript.
+Keep external data in resources. Keep side effects in actions. Adapters do not ship React, HTML, or CSS — except through a [browser component](/docs/adapter-sdk/custom-components) shipped in the adapter's browser bundle.
+
+DSUI ships [28 builtin components](/docs/adapter-sdk/components) for building pages — tables, cards, forms, layouts, and more.
 
 Read the [contribution guide](/docs/contributing) before opening a PR.

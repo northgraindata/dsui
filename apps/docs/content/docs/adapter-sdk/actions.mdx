@@ -1,0 +1,143 @@
+---
+title: Actions
+description: Commands, mutations, and side effects.
+---
+
+An action is a command. It defines behavior only — never presentation.
+
+## Inputless action
+
+```ts
+import { defineAction } from "@northgraindata/dsui-adapter-sdk";
+import type { MyContext } from "./context.js";
+
+export const flush = defineAction({
+  id: "flush",
+  run: async (_input, ctx: MyContext) => {
+    await ctx.client.clearCache();
+    return { flushed: true };
+  },
+});
+```
+
+## Parameterized action
+
+Add a Zod `input` schema. Binding arguments are validated and typed.
+
+```ts
+import { defineAction, z } from "@northgraindata/dsui-adapter-sdk";
+
+export const suspendWarehouse = defineAction({
+  id: "suspend-warehouse",
+  input: z.object({ warehouse: z.string() }),
+  run: async ({ warehouse }, ctx: MyContext) => {
+    await ctx.client.suspend(warehouse);
+    return { warehouse, status: "SUSPENDED" };
+  },
+});
+```
+
+```ts
+suspendWarehouse({ warehouse: "COMPUTE_WH" }) // → ActionBinding
+```
+
+## Using bindings
+
+Pass action bindings to `Button`:
+
+```ts
+import { Button } from "@northgraindata/dsui-adapter-sdk";
+
+Button({
+  label: "Suspend",
+  action: suspendWarehouse({ warehouse: row.name }),
+  variant: "danger",
+  confirmation: {
+    title: "Suspend warehouse?",
+    description: "Running queries will be cancelled.",
+    confirmLabel: "Suspend",
+  },
+})
+```
+
+Or execute programmatically from the runtime:
+
+```ts
+const result = await instance.executeAction(
+  suspendWarehouse({ warehouse: "COMPUTE_WH" }),
+);
+```
+
+## Runtime context
+
+The `run` function receives your adapter context augmented with runtime helpers. Annotate the context type to see them:
+
+```ts
+import type { ActionRuntimeContext } from "@northgraindata/dsui-adapter-sdk";
+
+run: async (input, ctx: MyContext & ActionRuntimeContext) => {
+  // ctx.signal   — AbortSignal, fired when the user navigates away
+  // ctx.stores   — access store instances for mutations
+  // ctx.invalidate() — trigger resource re-fetch
+}
+```
+
+## Invalidation
+
+After a mutation, invalidate the resources it changes:
+
+```ts
+run: async ({ warehouse }, ctx: MyContext & ActionRuntimeContext) => {
+  await ctx.client.suspend(warehouse);
+  ctx.invalidate(warehouses);           // invalidate a specific resource
+  ctx.invalidate();                      // invalidate all resources
+  return { warehouse, status: "SUSPENDED" };
+}
+```
+
+The runtime re-fetches invalidated resources and updates every component watching them.
+
+## Abort signals
+
+The runtime passes an `AbortSignal` when the user navigates away or the action is superseded. Check it to avoid wasted work:
+
+```ts
+run: async (input, ctx: MyContext & ActionRuntimeContext) => {
+  const result = await ctx.client.longQuery(input, { signal: ctx.signal });
+  return result;
+}
+```
+
+## Store access from actions
+
+Actions can read and write adapter-scoped stores. This is how you wire a form submission to a store:
+
+```ts
+import type { ActionRuntimeContext } from "@northgraindata/dsui-adapter-sdk";
+import { sessionStore } from "./stores.js";
+
+run: async (input, ctx: MyContext & ActionRuntimeContext) => {
+  const session = ctx.stores.get(sessionStore);
+  session.setSelectedWarehouse(input.warehouse);
+  return { ok: true };
+}
+```
+
+Use `ctx.stores.get(def)` — the runtime ensures stores are ready before the action runs and flushes pending persistence after it completes.
+
+## Return value
+
+Actions return an `ActionResult`:
+
+| Status | Shape |
+| --- | --- |
+| `success` | `{ status: "success", data: TOutput }` |
+| `error` | `{ status: "error", error: Error }` |
+
+The runtime never throws from actions — errors are returned inside the result.
+
+## Actions are declarative
+
+Calling `suspendWarehouse({ warehouse: "X" })` does **not** execute the action. It produces an `ActionBinding` — a serializable descriptor. Execution happens only when the runtime processes it (via a button click or `executeAction`).
+
+This means action bindings are safe to pass across the server boundary and serialize into page nodes.

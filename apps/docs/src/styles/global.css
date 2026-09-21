@@ -753,6 +753,23 @@ html {
   outline-offset: 2px;
 }
 
+#nd-sidebar [data-open] + a,
+#nd-sidebar [data-open] ~ a:not([data-open]) {
+  margin-top: 0.5rem;
+}
+
+#nd-sidebar [data-open]:has(+ [data-open]) {
+  margin-bottom: 0;
+}
+
+#nd-sidebar [data-open]:last-of-type {
+  margin-top: 0.5rem;
+}
+
+#nd-sidebar > div:first-child > [data-open]:first-of-type {
+  margin-top: 0.5rem;
+}
+
 #nd-page {
   padding-inline: clamp(0rem, 1vw, 0.75rem);
 }

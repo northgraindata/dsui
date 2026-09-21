@@ -1,0 +1,112 @@
+---
+title: Resources
+description: Read-only data sources managed by the runtime.
+---
+
+A resource is a parameterized data source. It describes *what* data is wanted — the runtime controls execution, refreshing, and cleanup.
+
+## Inputless resource
+
+No parameters. The query runs with `undefined` input.
+
+```ts
+import { defineResource } from "@northgraindata/dsui-adapter-sdk";
+import type { MyContext } from "./context.js";
+
+export const status = defineResource({
+  id: "status",
+  query: async (_input, ctx: MyContext) => ({
+    url: ctx.config.baseUrl,
+    ok: await ctx.client.ping(),
+  }),
+});
+```
+
+Call it without arguments to create a binding:
+
+```ts
+status() // → ResourceBinding
+```
+
+## Parameterized resource
+
+Add a Zod `input` schema. Binding arguments are validated and typed.
+
+```ts
+import { defineResource, z } from "@northgraindata/dsui-adapter-sdk";
+
+export const schemas = defineResource({
+  id: "schemas",
+  input: z.object({ database: z.string() }),
+  query: ({ database }, ctx: MyContext) => ctx.client.listSchemas(database),
+});
+```
+
+```ts
+schemas({ database: "ANALYTICS" }) // → ResourceBinding
+```
+
+The `input` schema drives both runtime validation and TypeScript inference. The `query` function receives the parsed output, not the raw input.
+
+## Refresh strategies
+
+Resources default to `manual()` — fetched on mount and on explicit invalidation only.
+
+```ts
+import { manual, poll } from "@northgraindata/dsui-adapter-sdk";
+
+defineResource({
+  id: "warehouses",
+  query: (_, ctx) => ctx.client.listWarehouses(),
+  refresh: poll("5s"),   // re-fetch every 5 seconds while watched
+});
+```
+
+`poll()` accepts `"500ms"`, `"5s"`, `"2m"`, or a raw number of milliseconds.
+
+| Strategy | Behavior |
+| --- | --- |
+| `manual()` | Fetch on mount and on `invalidate()` only |
+| `poll(interval)` | Re-fetch on a fixed interval while the page is mounted |
+
+## Using bindings
+
+Pass resource bindings to DSUI components via `source`:
+
+```ts
+import { Table, Value, Card } from "@northgraindata/dsui-adapter-sdk";
+
+definePage({
+  path: "/",
+  render: () => [
+    Table({ source: schemas({ database: "MAIN" }) }),
+    Value({ source: status(), field: "url" }),
+    Card({ content: Value({ source: status(), field: "ok" }) }),
+  ],
+});
+```
+
+The runtime executes the query, manages polling, and delivers results to the component. The resource never runs in the page — it runs in the adapter host.
+
+## How the runtime executes
+
+1. A page calls `schemas({ database: "MAIN" })` — produces a `ResourceBinding` (declarative, no execution).
+2. The runtime serializes the binding and schedules execution.
+3. The query function runs with the validated input and the adapter context.
+4. Results flow to every component watching that binding.
+5. On `poll()` resources, the runtime re-executes on the interval. On `manual()` resources, only `invalidate()` triggers a re-fetch.
+
+## Context
+
+The second argument to `query` is the adapter context — the same object returned by `context()` in `defineAdapter`. Use it to access clients, configuration, and anything built during adapter initialization.
+
+```ts
+export const tables = defineResource({
+  id: "tables",
+  input: z.object({ schema: z.string() }),
+  query: ({ schema }, ctx: MyContext) =>
+    ctx.client.listTables(schema),
+});
+```
+
+If your adapter has no `context`, the second argument is `Record<string, never>`.
