@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import {
@@ -414,6 +415,19 @@ export function defaultHostCommand(
 }
 
 async function importModule(specifier: string): Promise<unknown> {
+  const adapterId = specifier.match(
+    /^@northgraindata\/dsui-adapter-(.+)$/,
+  )?.[1];
+  if (adapterId) {
+    const runtimeAdapterPath = join(
+      process.env.DSUI_RUNTIME_ADAPTERS ?? "/app/adapters",
+      `${adapterId}.mjs`,
+    );
+    if (existsSync(runtimeAdapterPath)) {
+      return import(pathToFileURL(runtimeAdapterPath).href);
+    }
+  }
+
   const target =
     specifier.startsWith("./") ||
     specifier.startsWith("../") ||

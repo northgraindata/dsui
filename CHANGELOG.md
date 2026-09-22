@@ -4,6 +4,14 @@ All notable changes to DSUI are documented here. The format follows [Keep a Chan
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] - 2026-09-22
+
+### Fixed
+
+- Bundle built-in adapters and DuckDB's native runtime dependencies in Docker images.
+- Preserve writable ownership of the persistent `/data` directory for the non-root image user.
+- Generate release-note author links from GitHub commit metadata.
+
 ## [0.1.0-alpha.1] - 2026-09-22
 
 This is the first public Developer Preview. Breaking changes, incomplete

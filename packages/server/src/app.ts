@@ -240,6 +240,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           detail: `${loadedAdapter.metadata.name}`,
         });
       } catch (error) {
+        console.error(`Could not load adapter "${id}"`, error);
         readiness.set(id, {
           status: "unavailable",
           detail: error instanceof Error ? error.message : "Load failed",

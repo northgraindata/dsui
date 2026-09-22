@@ -84,6 +84,7 @@ jobs:
 
       - name: Generate release notes
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: bun run scripts/generate-release-notes.ts > release-notes.md
 
