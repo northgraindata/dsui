@@ -3,11 +3,9 @@ title: Installation
 description: Run DSUI locally with npx or use the official container image.
 ---
 
-## Recommended: npx
+## npx
 
-The npx installation is the preferred path for local development. It runs DSUI
-on the host, so local adapters can use host executables, project directories,
-and tools such as dbt Core or dbt Fusion.
+Run DSUI on the host for local development and project files.
 
 Install [Bun](https://bun.sh) 1.3.12 or newer, then run:
 
@@ -40,10 +38,11 @@ The `/data` volume holds DSUI's local state and any file-backed data you mount
 there. DSUI does not start the services declared in `dsui.yaml`; it connects to
 services that are already running.
 
-Docker is intentionally isolated from the host. The official image includes
-the bundled DSUI adapters, but does not include dbt Core or dbt Fusion and
-cannot execute a host-only `dbt` binary. Use npx for `dbt local`, or provide a
-custom image with the dbt runtime installed.
+### Limitations
+
+Docker is intentionally isolated from the host. If an adapter requires an
+executable or runtime, provide it in the image used to run DSUI. Host binaries
+are not available inside the official image.
 
 For a configured workspace with adapters, use the [quickstart](/docs/getting-started/quickstart).
 
