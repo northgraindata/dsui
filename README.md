@@ -16,8 +16,7 @@ A data stack can mean a separate interface, container, configuration, and port f
 
 ## Get started
 
-For local development, run DSUI on your host. This is the recommended path when
-you want to use local tools such as dbt Core, dbt Fusion, and project files:
+Run DSUI on your host for local development and project files:
 
 ```bash
 npx dsui
@@ -29,8 +28,8 @@ when present and keeps local state in `~/.local/share/dsui`.
 ## Docker deployment
 
 Use Docker when you want an isolated, reproducible deployment. It connects to
-services reachable from the container, but it cannot execute host-only tools
-such as a macOS or Windows `dbt` binary.
+services reachable from the container. If an adapter requires an executable or
+runtime, provide it in the image used to run DSUI.
 
 ## One setup, across your stack
 
@@ -87,20 +86,11 @@ Connect Apache Airflow, dbt, PostgreSQL, Trino, S3-compatible storage such as Mi
 **Need another tool?**
 The TypeScript [Adapter SDK](https://dsui.northgraindata.com/docs/adapter-sdk) lets you bring internal services and community adapters into the same workspace.
 
-## Self-hosted with Docker
-
 DSUI runs in your environment and keeps its local state in `/data`. It does not need a separate database or control plane. The official container image is published through GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/northgraindata/dsui:latest
 ```
-
-Docker is the isolated deployment option. It connects to services that are
-already reachable from the container, but it cannot use host-only executables
-such as a macOS or Windows `dbt` binary. Use the npx install for `dbt local`, or
-build a custom Docker image that includes the required dbt runtime.
-
-
 
 ## Contributing
 
