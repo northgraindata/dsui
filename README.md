@@ -19,7 +19,7 @@ A data stack can mean a separate interface, container, configuration, and port f
 Run DSUI on your host for local development and project files:
 
 ```bash
-npx dsui
+npx @northgraindata/dsui
 ```
 
 Install [Bun](https://bun.sh) 1.3.12 or newer first. DSUI loads `./dsui.yaml`

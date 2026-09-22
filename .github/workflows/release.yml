@@ -121,7 +121,7 @@ jobs:
             echo 'Recommended for local development, including dbt local:'
             echo
             echo '```sh'
-            echo "npx dsui@${VERSION}"
+            echo "npx @northgraindata/dsui@${VERSION}"
             echo '```'
             echo
             echo 'Docker image for isolated deployments:'
