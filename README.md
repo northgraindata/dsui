@@ -14,7 +14,23 @@ Connect, explore and operate the data and infrastructure tools you already run.
 
 A data stack can mean a separate interface, container, configuration, and port for every service. DSUI gives the tools you already run one consistent workspace.
 
-Configure a connection, run the DSUI container alongside your stack, and start working from one place.
+## Get started
+
+For local development, run DSUI on your host. This is the recommended path when
+you want to use local tools such as dbt Core, dbt Fusion, and project files:
+
+```bash
+npx dsui
+```
+
+Install [Bun](https://bun.sh) 1.3.12 or newer first. DSUI loads `./dsui.yaml`
+when present and keeps local state in `~/.local/share/dsui`.
+
+## Docker deployment
+
+Use Docker when you want an isolated, reproducible deployment. It connects to
+services reachable from the container, but it cannot execute host-only tools
+such as a macOS or Windows `dbt` binary.
 
 ## One setup, across your stack
 
@@ -70,19 +86,6 @@ Connect Apache Airflow, dbt, PostgreSQL, Trino, S3-compatible storage such as Mi
 
 **Need another tool?**
 The TypeScript [Adapter SDK](https://dsui.northgraindata.com/docs/adapter-sdk) lets you bring internal services and community adapters into the same workspace.
-
-## Run locally with npx
-
-The recommended developer install runs DSUI on your host. That lets local
-adapters use host tools such as dbt Core, dbt Fusion, and local project files.
-Install [Bun](https://bun.sh), then run:
-
-```bash
-npx dsui
-```
-
-DSUI looks for `dsui.yaml` in the current directory and keeps local state in
-`~/.local/share/dsui` by default.
 
 ## Self-hosted with Docker
 
