@@ -29,11 +29,29 @@ const tags = git(
 const previousTag = tags[tags.indexOf(tag) + 1];
 const range = previousTag ? `${previousTag}..${tag}` : tag;
 const log = git("log", "--no-merges", `--format=%H%x09%an%x09%ae%x09%s`, range);
-const prpAuthorEmails = new Set(
-  ["me@joachimhodana.com", "stylek777@gmail.com"].map((email) =>
-    email.toLowerCase(),
-  ),
-);
+const githubAuthors = new Map<string, string | undefined>();
+function githubLogin(sha: string, email: string): string | undefined {
+  const normalizedEmail = email.toLowerCase();
+  if (githubAuthors.has(normalizedEmail)) {
+    return githubAuthors.get(normalizedEmail);
+  }
+
+  const result = spawnSync(
+    "gh",
+    ["api", `repos/${repository}/commits/${sha}`, "--jq", ".author.login"],
+    { encoding: "utf8" },
+  );
+  if (result.status !== 0) {
+    throw new Error(
+      result.stderr || `Could not resolve GitHub author for ${sha}`,
+    );
+  }
+
+  const login = result.stdout.trim();
+  const resolvedLogin = login && login !== "null" ? login : undefined;
+  githubAuthors.set(normalizedEmail, resolvedLogin);
+  return resolvedLogin;
+}
 const commits = log
   ? log.split("\n").map((line) => {
       const [sha, author, email, ...subjectParts] = line.split("\t");
@@ -41,8 +59,11 @@ const commits = log
         throw new Error(`Could not parse git log entry: ${line}`);
       }
       const subject = subjectParts.join("\t");
-      const marker = prpAuthorEmails.has(email.toLowerCase()) ? " · PRP" : "";
-      return `- ${subject} — ${author}${marker} ([${sha.slice(0, 7)}](${`https://github.com/${repository}/commit/${sha}`}))`;
+      const login = githubLogin(sha, email);
+      const authorLabel = login
+        ? `[${login}](https://github.com/${login})`
+        : author;
+      return `- ${subject} — ${authorLabel} ([${sha.slice(0, 7)}](${`https://github.com/${repository}/commit/${sha}`}))`;
     })
   : [];
 
