@@ -4,6 +4,11 @@ All notable changes to DSUI are documented here. The format follows [Keep a Chan
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-09-22
+
+This is the first public Developer Preview. Breaking changes, incomplete
+adapter coverage, and bugs are expected.
+
 ### Added
 
 - Initial Bun and Turborepo workspace.
