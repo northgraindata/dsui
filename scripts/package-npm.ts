@@ -5,6 +5,7 @@ const root = resolve(import.meta.dir, "..");
 const output = join(root, "dist", "npm");
 const version = process.env.DSUI_VERSION ?? "0.1.0-dev";
 const duckdbVersion = "1.5.5-r.4";
+const bunVersion = "1.3.12";
 
 async function run(command: string[]): Promise<void> {
   const process = Bun.spawn(command, {
@@ -71,14 +72,22 @@ await writeFile(
   join(output, "bin", "dsui.mjs"),
   `#!/usr/bin/env node
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const bun = process.env.DSUI_BUN ?? (process.platform === "win32" ? "bun.exe" : "bun");
-if (spawnSync(bun, ["--version"], { stdio: "ignore" }).error) {
-  console.error("DSUI requires Bun 1.3.12 or newer. Install it from https://bun.sh");
+const require = createRequire(import.meta.url);
+let bundledBun = "";
+try {
+  bundledBun = join(dirname(require.resolve("bun/package.json")), "bin", "bun.exe");
+} catch {
+  // Let the error below explain that the npm dependency is missing.
+}
+const bun = process.env.DSUI_BUN ?? bundledBun;
+if (!bun || spawnSync(bun, ["--version"], { stdio: "ignore" }).error) {
+  console.error("DSUI could not find its bundled runtime. Reinstall the package with npm scripts enabled.");
   process.exit(1);
 }
 
@@ -113,7 +122,8 @@ await writeFile(
       type: "module",
       bin: { dsui: "bin/dsui.mjs" },
       files: ["bin", "dist", "web"],
-      engines: { bun: ">=1.3.12" },
+      engines: { node: ">=18" },
+      dependencies: { bun: bunVersion },
       optionalDependencies: {
         "@duckdb/node-bindings-darwin-arm64": duckdbVersion,
         "@duckdb/node-bindings-darwin-x64": duckdbVersion,
@@ -138,7 +148,7 @@ await writeFile(
 
 await writeFile(
   join(output, "README.md"),
-  "# DSUI\n\nRun DSUI locally with your host tools, including dbt:\n\n```sh\nnpx @northgraindata/dsui\n```\n\nThe runtime requires Bun 1.3.12 or newer. Docker remains available for isolated deployments.\n",
+  "# DSUI\n\nRun DSUI locally with your host tools, including dbt:\n\n```sh\nnpx @northgraindata/dsui\n```\n\nDocker remains available for isolated deployments.\n",
   "utf8",
 );
 
