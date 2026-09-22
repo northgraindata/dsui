@@ -22,8 +22,8 @@ Run DSUI on your host for local development and project files:
 npx @northgraindata/dsui
 ```
 
-Install [Bun](https://bun.sh) 1.3.12 or newer first. DSUI loads `./dsui.yaml`
-when present and keeps local state in `~/.local/share/dsui`.
+The runtime requires [Bun](https://bun.sh) 1.3.12 or newer. DSUI loads
+`./dsui.yaml` when present and keeps local state in `~/.local/share/dsui`.
 
 ## Docker deployment
 

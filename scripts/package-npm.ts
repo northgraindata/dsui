@@ -138,7 +138,7 @@ await writeFile(
 
 await writeFile(
   join(output, "README.md"),
-  "# DSUI\n\nRun DSUI locally with your host tools, including dbt:\n\n```sh\nnpx @northgraindata/dsui\n```\n\nRequires Bun 1.3.12 or newer. Docker remains available for isolated deployments.\n",
+  "# DSUI\n\nRun DSUI locally with your host tools, including dbt:\n\n```sh\nnpx @northgraindata/dsui\n```\n\nThe runtime requires Bun 1.3.12 or newer. Docker remains available for isolated deployments.\n",
   "utf8",
 );
 

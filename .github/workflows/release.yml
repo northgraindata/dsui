@@ -118,13 +118,13 @@ jobs:
             echo
             echo "## Install"
             echo
-            echo 'Recommended for local development, including dbt local:'
+            echo 'Run locally with npx:'
             echo
             echo '```sh'
             echo "npx @northgraindata/dsui@${VERSION}"
             echo '```'
             echo
-            echo 'Docker image for isolated deployments:'
+            echo 'Or run the isolated Docker image:'
             echo
             echo '```sh'
             echo "docker pull ghcr.io/northgraindata/dsui:${VERSION}"
