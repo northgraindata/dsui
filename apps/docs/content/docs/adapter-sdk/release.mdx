@@ -39,3 +39,17 @@ adapters:
 Both install verified and run isolated in an `adapter-host` subprocess. Unpinned versions and floating refs are rejected.
 
 The [example adapter](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter) is the smallest complete package.
+
+## Publishing DSUI
+
+DSUI releases publish both runtime forms:
+
+- `ghcr.io/northgraindata/dsui:<version>` for isolated Docker deployments.
+- `dsui@<version>` on npm for the npx-first local runtime.
+
+The npm package requires Bun 1.3.12 or newer because the server uses Bun's
+SQLite and process APIs. The short command is:
+
+```bash
+npx dsui@latest
+```

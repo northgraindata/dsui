@@ -13,13 +13,14 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   publish:
-    name: Publish image and GitHub release
+    name: Publish Docker image, npm packages, and GitHub release
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
       contents: write
       packages: write
+      id-token: write
     steps:
       - name: Check out full history
         uses: actions/checkout@v6
@@ -69,6 +70,23 @@ jobs:
         id: release-version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Build npm package
+        env:
+          DSUI_VERSION: ${{ steps.release-version.outputs.version }}
+        run: bun run package:npm
+
+      - name: Configure npm registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish npm packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish ./dist/npm --provenance --access public
+
       - name: Build and publish multi-architecture image
         uses: docker/build-push-action@v6
         with:
@@ -87,6 +105,28 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: bun run scripts/generate-release-notes.ts > release-notes.md
+
+      - name: Add installation commands to release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          {
+            echo
+            echo "## Install"
+            echo
+            echo 'Recommended for local development, including dbt local:'
+            echo
+            echo '```sh'
+            echo "npx dsui@${VERSION}"
+            echo '```'
+            echo
+            echo 'Docker image for isolated deployments:'
+            echo
+            echo '```sh'
+            echo "docker pull ghcr.io/northgraindata/dsui:${VERSION}"
+            echo '```'
+          } >> release-notes.md
 
       - name: Generate release banner
         run: bun run scripts/generate-release-banner.ts "${GITHUB_REF_NAME}" release-banner.png

@@ -19,7 +19,9 @@ services:
       apiToken: ${DBT_API_TOKEN}
 ```
 
-Connect to a dbt Core or Fusion project on the DSUI host.
+Connect to a dbt Core or Fusion project on the DSUI host. This is supported by
+the npx/native runtime, which can execute the host's `dbt` or `dbt-fusion`
+binary.
 
 ```yaml
 connection:
@@ -27,6 +29,13 @@ connection:
   projectPath: /data/dbt
   target: dev
 ```
+
+### Docker limitation
+
+The official Docker image does not bundle dbt Core or dbt Fusion. A Docker
+container also cannot execute a macOS or Windows `dbt` binary mounted from the
+host. Use `npx dsui` for local dbt projects, or build a custom image that
+contains the matching dbt runtime and project files.
 
 ## Available
 
