@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": ["DSUI_VERSION"],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".astro/**"] },
     "dev": { "cache": false, "persistent": true },

@@ -19,6 +19,7 @@
     "format:check": "biome check . --formatter-enabled=true --linter-enabled=false --assist-enabled=false",
     "check": "biome check . && turbo typecheck",
     "test": "turbo test",
+    "package:npm": "bun run scripts/package-npm.ts",
     "prepare": "if [ -d .git ]; then lefthook install; fi"
   },
   "devDependencies": {

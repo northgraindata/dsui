@@ -1,7 +1,20 @@
 ---
 title: Quickstart
-description: Run DSUI in Docker and open a DuckDB database.
+description: Run DSUI with npx or Docker and open a DuckDB database.
 ---
+
+## Choose a runtime
+
+Use npx for local development and host tools such as dbt:
+
+```bash
+npx dsui
+```
+
+Use Docker when you want an isolated, reproducible deployment. The Docker
+image does not provide the host's dbt executable; see the [installation
+guide](/docs/getting-started/installation) for the boundary between the two
+runtime modes.
 
 ## 1. Create `dsui.yaml`
 

@@ -71,13 +71,31 @@ Connect Apache Airflow, dbt, PostgreSQL, Trino, S3-compatible storage such as Mi
 **Need another tool?**
 The TypeScript [Adapter SDK](https://dsui.northgraindata.com/docs/adapter-sdk) lets you bring internal services and community adapters into the same workspace.
 
-## Self-hosted
+## Run locally with npx
+
+The recommended developer install runs DSUI on your host. That lets local
+adapters use host tools such as dbt Core, dbt Fusion, and local project files.
+Install [Bun](https://bun.sh), then run:
+
+```bash
+npx dsui
+```
+
+DSUI looks for `dsui.yaml` in the current directory and keeps local state in
+`~/.local/share/dsui` by default.
+
+## Self-hosted with Docker
 
 DSUI runs in your environment and keeps its local state in `/data`. It does not need a separate database or control plane. The official container image is published through GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/northgraindata/dsui:latest
 ```
+
+Docker is the isolated deployment option. It connects to services that are
+already reachable from the container, but it cannot use host-only executables
+such as a macOS or Windows `dbt` binary. Use the npx install for `dbt local`, or
+build a custom Docker image that includes the required dbt runtime.
 
 
 
