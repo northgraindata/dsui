@@ -6,7 +6,7 @@
 
 Connect, explore and operate the data and infrastructure tools you already run.
 
-![CI](https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg)![Release](https://img.shields.io/github/v/release/northgraindata/dsui)![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)![Container](https://img.shields.io/badge/ghcr.io-dsui-536edb)
+![CI](https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg)![Release](https://img.shields.io/github/v/release/northgraindata/dsui?include_prereleases)![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)![Container](https://img.shields.io/badge/ghcr.io-dsui-536edb)
 
 ![DSUI workspace overview showing connected data and infrastructure services](./assets/readme/product.png)
 
