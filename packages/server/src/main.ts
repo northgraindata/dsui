@@ -3,8 +3,9 @@ import { runAdapterHost } from "./adapter-host";
 import { loadAdapter } from "./adapters/loader";
 import { createRuntime } from "./app";
 import { isAdapterSource, loadConfig, toAdapterPackageSource } from "./config";
+import { DSUI_VERSION } from "./version";
 
-const VERSION = "0.1.0";
+const VERSION = DSUI_VERSION;
 
 function usage(): string {
   return `DSUI ${VERSION}

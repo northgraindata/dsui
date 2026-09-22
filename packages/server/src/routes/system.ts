@@ -3,13 +3,14 @@ import { join } from "node:path";
 import type { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import type { AuthMode } from "../auth.js";
+import { DSUI_VERSION } from "../version.js";
 
 export function registerSystemRoutes(
   app: Hono,
   deps: { authMode: AuthMode; webRoot?: string },
 ): void {
   app.get("/health", (context) =>
-    context.json({ status: "ok", version: "0.1.0" }),
+    context.json({ status: "ok", version: DSUI_VERSION }),
   );
   app.get("/api/v1/health", (context) =>
     context.json({ status: "ok", authMode: deps.authMode }),
