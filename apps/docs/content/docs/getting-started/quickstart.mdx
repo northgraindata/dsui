@@ -1,22 +1,73 @@
 ---
 title: Quickstart
-description: Run DSUI with npx or Docker and open a DuckDB database.
+description: Run DSUI locally with npx, open a DuckDB workspace, and see your first result.
 ---
 
-## Choose a runtime
+> **Developer Preview**
+>
+> DSUI is changing quickly. This first-run path uses npx because it is the
+> shortest way to try the workspace on a local machine. Docker is available
+> below when you need an isolated deployment.
 
-Use npx for local development and project files:
+## 1. Run DSUI with npx
+
+Create an empty directory for the example, then add a local configuration file:
+
+```bash
+mkdir dsui-quickstart
+cd dsui-quickstart
+```
+
+Create `dsui.yaml`:
+
+```yaml
+services:
+  - id: local-duckdb
+    adapter: duckdb
+    name: Local DuckDB
+    connection:
+      method: memory
+      readOnly: false
+```
+
+Start DSUI from that directory:
 
 ```bash
 npx @northgraindata/dsui
 ```
 
-Use Docker when you want an isolated, reproducible deployment. If an adapter
-requires an executable or runtime, provide it in the image used to run DSUI.
-See the [installation guide](/docs/getting-started/installation) for the
-runtime boundary.
+The CLI prints `http://0.0.0.0:4192` when it is ready. Open
+`http://localhost:4192` in your browser. DSUI loads `dsui.yaml` from the
+current directory and keeps its local state in `~/.local/share/dsui`.
 
-## 1. Create `dsui.yaml`
+![DSUI workspace overview with a connected service and query workflow](/docs/assets/dsui-workspace-overview.png)
+
+## 2. See the first result
+
+Select **Local DuckDB**, open **Query**, and run:
+
+```sql
+select 42 as answer;
+```
+
+The result should contain one row with `42`. This confirms that the CLI,
+configuration loader, bundled DuckDB adapter, server, and browser workspace are
+all working together.
+
+Stop DSUI with `Ctrl+C`. Run the same `npx` command again from the directory to
+reopen the workspace. DSUI stores its generated local encryption key alongside
+the runtime data, so saved UI-managed connections remain available after a
+restart.
+
+## Docker alternative
+
+Choose Docker when you want an isolated, reproducible deployment or are already
+running the rest of your stack in Compose. If an adapter requires an executable
+or runtime, provide it in the image used to run DSUI. See the [installation
+guide](/docs/getting-started/installation) for the runtime boundary.
+
+The Docker example uses a file-backed DuckDB database in a persistent volume.
+Create `dsui.yaml`:
 
 ```yaml
 services:
@@ -28,7 +79,7 @@ services:
       path: /data/warehouse.duckdb
 ```
 
-## 2. Create `compose.yaml`
+Create `compose.yaml` next to it:
 
 ```yaml
 services:
@@ -46,27 +97,17 @@ volumes:
   dsui-data:
 ```
 
-## 3. Start DSUI
+Start DSUI:
 
 ```bash
 docker compose up -d
 ```
 
-## 4. Open the workspace
+Open the workspace:
 
 Open `http://localhost:4192`.
 
-> **Visual placeholder: First workspace screen**
->
-> **Image brief:** Screenshot of the freshly started DSUI workspace with the
-> configured **Analytics warehouse** service visible in the navigation or home
-> view. Keep the browser chrome out of the image and show enough surrounding UI
-> to establish where a new user should click next.
->
-> **Purpose:** Confirm visually that the Docker setup produced the expected
-> workspace.
-
-## Expected result
+## Expected Docker result
 
 DSUI opens with the **Analytics warehouse** service. Open it, go to **Query**, run `select 42 as answer`, and see one row with `42`.
 
@@ -74,15 +115,6 @@ This example uses DuckDB because it needs no external database. The same
 `services` configuration model supports PostgreSQL, Airflow, dbt, S3, and other
 adapters. Continue to [configuration](/docs/getting-started/configuration) when
 you are ready to connect an existing stack.
-
-> **Visual placeholder: First successful query**
->
-> **Image brief:** Screenshot of the DuckDB Query page with `select 42 as answer`
-> in the editor and a result table containing one row with `42`. The service
-> name and Query navigation should remain visible.
->
-> **Purpose:** Show the first meaningful success state, not just that the
-> container is running.
 
 The database file lives in the `/data` volume and persists across restarts.
 

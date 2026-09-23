@@ -43,6 +43,10 @@ export {
   loadConfig,
   type NpmAdapterSource,
 } from "./config";
-export { ConnectionCipher, type EncryptedValue } from "./db/crypto";
+export {
+  ConnectionCipher,
+  type EncryptedValue,
+  resolveMasterKey,
+} from "./db/crypto";
 export { DsuiDatabase } from "./db/database";
 export type { Migration } from "./db/migrate";

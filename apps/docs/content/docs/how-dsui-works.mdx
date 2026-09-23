@@ -99,12 +99,7 @@ use a persistent store supplied by the runtime.
 Start with the [adapter SDK overview](/docs/adapter-sdk), or follow the
 [quickstart](/docs/getting-started/quickstart) to see the workspace running.
 
-> **Diagram placeholder: DSUI runtime flow**
->
-> **Image brief:** A simple left-to-right diagram showing browser, DSUI server,
-> isolated adapter host, adapter context, and external service. Add a visual
-> boundary around the server-side portion and a note that credentials never
-> cross into the browser.
->
-> **Purpose:** Make the execution and security model understandable without
-> requiring the reader to inspect the repository.
+![Editorial illustration of services connected to one DSUI workspace](/docs/assets/dsui-runtime-overview.png)
+
+The browser only talks to DSUI. Credentials and service clients remain on the
+server side of this boundary.

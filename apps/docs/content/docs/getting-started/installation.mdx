@@ -3,7 +3,7 @@ title: Installation
 description: Run DSUI locally with npx or use the official container image.
 ---
 
-## npx
+## Recommended: npx
 
 Run DSUI on the host for local development and project files.
 
@@ -13,6 +13,16 @@ npx @northgraindata/dsui
 
 DSUI loads `./dsui.yaml` when present and stores local state in
 `~/.local/share/dsui`.
+
+Follow the [npx quickstart](/docs/getting-started/quickstart) for a complete
+first-run example. Docker is an alternative when you need process isolation or
+are already using Compose.
+
+On first start, DSUI generates and persists a local encryption key at
+`~/.local/share/dsui/.master-key`, so UI-managed connections work without extra
+setup. Keep this file with the local data directory. Set `DSUI_MASTER_KEY`
+explicitly when you need to control key storage in Docker, CI, or a
+multi-instance deployment.
 
 ## Docker
 

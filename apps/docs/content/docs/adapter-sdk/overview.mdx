@@ -8,15 +8,15 @@ workspace. It describes how to connect, read data, perform actions, and compose
 the service's workflows. DSUI handles execution, refreshing, lifecycle, and
 rendering.
 
-> **Diagram placeholder: Adapter mental model**
->
-> **Image brief:** Diagram with `connection` and `context` at the top, branching
-> into `resources` for reads, `actions` for commands, `stores` for state, and
-> `pages/components` for the user experience. Show the adapter connecting an
-> external service to the shared DSUI workspace.
->
-> **Purpose:** Help a contributor understand the SDK before reading individual
-> API pages.
+The adapter mental model is deliberately small:
+
+```text
+connection + context
+       ├── resources  (reads)
+       ├── actions    (commands)
+       ├── stores     (state)
+       └── pages      (workflow)
+```
 
 | Primitive | Use it for | Docs |
 | --- | --- | --- |

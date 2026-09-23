@@ -13,7 +13,11 @@ DSUI gives your data stack one workspace. Connect the databases, orchestration t
 
 ## Start here
 
-[Run DSUI and connect DuckDB](/docs/getting-started/quickstart) in Docker. DuckDB is the fastest way to see the workspace because it needs no additional service. Once it is running, use the same configuration model to connect the rest of your stack.
+[Run DSUI with npx](/docs/getting-started/quickstart) and connect an in-memory
+DuckDB workspace in a few minutes. Choose Docker when you need isolation or are
+already running the rest of your stack in Compose.
+
+![DSUI infrastructure overview showing services converging on one workspace](/docs/assets/dsui-runtime-overview.png)
 
 ## Why DSUI
 
@@ -69,15 +73,6 @@ services:
 ```
 
 One port, one place to look. The configuration is declarative, runs the same way every time, and keeps credentials on the server.
-
-> **Diagram placeholder: From services to one workspace**
->
-> **Image brief:** A simple before-and-after diagram. On the left, several
-> services each point to their own web console. On the right, the same services
-> point to one DSUI workspace. Include a small note that credentials stay on the
-> server and adapters provide the service-specific workflows.
->
-> **Purpose:** Explain the consolidation benefit in one glance.
 
 ## What DSUI provides
 

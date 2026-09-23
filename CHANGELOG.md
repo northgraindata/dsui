@@ -4,6 +4,13 @@ All notable changes to DSUI are documented here. The format follows [Keep a Chan
 
 ## [Unreleased]
 
+### Fixed
+
+- Make the public onboarding path npx-first with a complete local DuckDB quickstart.
+- Fix landing-page setup links to point to the published quickstart route.
+- Add consistent Developer Preview messaging across the landing page and docs.
+- Replace unfinished public documentation placeholders with real product visuals and explicit technical diagrams.
+
 ## [0.1.0-alpha.2] - 2026-09-22
 
 ### Fixed

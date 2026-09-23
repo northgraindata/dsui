@@ -19,6 +19,7 @@ const npxCommand = "npx @northgraindata/dsui";
 const docsBaseUrl = import.meta.env.DEV
   ? "http://localhost:4322/docs"
   : "/docs";
+const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
 ---
 
 <section
@@ -58,7 +59,7 @@ const docsBaseUrl = import.meta.env.DEV
       </p>
       <a
         class="mt-8 inline-flex min-h-11 items-center text-sm font-semibold text-copy transition-colors hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-4 focus-visible:ring-offset-canvas"
-        href={`${docsBaseUrl}/getting-started`}
+        href={gettingStartedUrl}
       >
         Read the setup guide
         <span class="ml-2 text-brand-muted" aria-hidden="true">→</span>
@@ -116,10 +117,9 @@ const docsBaseUrl = import.meta.env.DEV
             it.
           </p>
 
-          <!-- Replace this placeholder with a recording of the Connection → Test → Finish flow. -->
           <div
             class="relative mt-7 aspect-video max-w-xl overflow-hidden rounded-lg border border-brand-muted/15 bg-surface"
-            aria-label="Add service dashboard walkthrough video placeholder"
+            aria-label="Add service dashboard walkthrough preview"
           >
             <div
               aria-hidden="true"
