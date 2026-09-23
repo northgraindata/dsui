@@ -18,7 +18,7 @@ import {
   loadConfig,
   toAdapterPackageSource,
 } from "./config.js";
-import { ConnectionCipher } from "./db/crypto.js";
+import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
@@ -120,12 +120,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     "none";
   if (!["none", "local", "enterprise"].includes(authMode))
     throw new Error("DSUI_AUTH_MODE must be none, local, or enterprise");
-  const cipher =
-    (options.masterKey ?? process.env.DSUI_MASTER_KEY)
-      ? new ConnectionCipher(
-          options.masterKey ?? process.env.DSUI_MASTER_KEY ?? "",
-        )
-      : undefined;
+  const masterKey = resolveMasterKey(
+    dataDir,
+    options.masterKey ?? process.env.DSUI_MASTER_KEY,
+  );
+  const cipher = new ConnectionCipher(masterKey);
   const enterpriseAuth = (() => {
     if (authMode !== "enterprise") return undefined;
     if (!cipher)

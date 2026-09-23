@@ -10,6 +10,7 @@ import Base from "../layouts/Base.astro";
 const docsBaseUrl = import.meta.env.DEV
   ? "http://localhost:4322/docs"
   : "/docs";
+const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
 ---
 
 <Base>
@@ -70,7 +71,7 @@ const docsBaseUrl = import.meta.env.DEV
           </a>
           <a
             class="hero-action inline-flex min-h-10 items-center rounded-lg bg-action-primary px-3.5 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover"
-            href={`${docsBaseUrl}/getting-started`}
+            href={gettingStartedUrl}
             >Get started <span class="ml-2 text-brand-softest" aria-hidden="true"
               >→</span
             ></a
@@ -90,6 +91,10 @@ const docsBaseUrl = import.meta.env.DEV
       </div>
       <div class="relative z-10 w-full max-w-6xl py-32 text-center sm:py-40">
         <div class="mx-auto max-w-4xl">
+          <div class="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-brand-muted/20 bg-brand/8 px-3 py-1.5 text-left text-xs text-copy">
+            <span class="size-1.5 rounded-full bg-warning" aria-hidden="true"></span>
+            Developer Preview · breaking changes and incomplete adapters expected
+          </div>
           <div class="mb-7 flex justify-center"><StarOnGithub /></div>
           <h1
             class="text-balance text-6xl font-semibold tracking-tighter sm:text-8xl"
@@ -107,7 +112,7 @@ const docsBaseUrl = import.meta.env.DEV
           >
             <a
               class="hero-action inline-flex h-12 w-full items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none sm:w-auto"
-              href={`${docsBaseUrl}/getting-started`}
+              href={gettingStartedUrl}
               >Get started <span
                 class="hero-action-icon ml-2 text-brand-softest"
                 aria-hidden="true">→</span

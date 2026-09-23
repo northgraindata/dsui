@@ -1,6 +1,56 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 export type EncryptedValue = { ciphertext: string; iv: string; tag: string };
+
+const MASTER_KEY_FILENAME = ".master-key";
+
+/**
+ * Returns the configured key, or creates one for a local runtime and persists
+ * it next to the runtime data. Explicit environment configuration always wins.
+ */
+export function resolveMasterKey(
+  dataDir: string,
+  explicitKey: string | undefined,
+): string {
+  if (explicitKey !== undefined) {
+    new ConnectionCipher(explicitKey);
+    return explicitKey;
+  }
+
+  mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+  const path = join(dataDir, MASTER_KEY_FILENAME);
+
+  try {
+    const storedKey = readFileSync(path, "utf8").trim();
+    new ConnectionCipher(storedKey);
+    chmodSync(path, 0o600);
+    return storedKey;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code !== "ENOENT")
+      throw new Error(
+        `Could not read DSUI master key at ${path}; remove it only if you are intentionally resetting local connection credentials`,
+      );
+  }
+
+  const generatedKey = randomBytes(32).toString("base64");
+  try {
+    writeFileSync(path, `${generatedKey}\n`, {
+      encoding: "utf8",
+      flag: "wx",
+      mode: 0o600,
+    });
+    return generatedKey;
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "EEXIST"))
+      throw error;
+    const storedKey = readFileSync(path, "utf8").trim();
+    new ConnectionCipher(storedKey);
+    chmodSync(path, 0o600);
+    return storedKey;
+  }
+}
 
 /** Encrypts UI-managed connection JSON with AES-256-GCM. */
 export class ConnectionCipher {

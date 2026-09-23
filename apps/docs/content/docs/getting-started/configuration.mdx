@@ -78,15 +78,15 @@ docker compose down
 Use `docker compose down -v` only when you also want to delete the DuckDB file
 and DSUI's persisted local state.
 
-> **Diagram placeholder: Configuration and persistence boundary**
->
-> **Image brief:** Diagram showing `dsui.yaml` mounted read-only into the DSUI
-> container, external services connected through adapter configuration, and the
-> `/data` volume holding DSUI state and file-backed data. Mark credentials and
-> environment variable interpolation as server-side.
->
-> **Purpose:** Explain what belongs in configuration, what belongs in the
-> environment, and what survives a restart.
+Configuration is read by the DSUI process, while credentials should come from
+environment variables. In Docker, the `/data` volume persists DSUI state and
+file-backed databases; in the npx runtime, local state lives under
+`~/.local/share/dsui`.
+
+DSUI automatically generates `~/.local/share/dsui/.master-key` for local
+UI-managed connections. Do not delete or replace it if the data directory
+contains saved connections. For controlled deployments, provide a stable
+32-byte base64 key through `DSUI_MASTER_KEY` and keep it in your secret store.
 
 ## Connect an existing stack
 

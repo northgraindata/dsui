@@ -25,6 +25,10 @@ npx @northgraindata/dsui
 DSUI loads `./dsui.yaml` when present and keeps local state in
 `~/.local/share/dsui`.
 
+The first local run also generates `~/.local/share/dsui/.master-key` for
+encrypting connections added through the UI. Keep it with the local data
+directory; set `DSUI_MASTER_KEY` explicitly for controlled deployments.
+
 ## Docker deployment
 
 Use Docker when you want an isolated, reproducible deployment. It connects to
