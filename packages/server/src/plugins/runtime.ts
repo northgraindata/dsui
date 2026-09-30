@@ -2,14 +2,15 @@ import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  type PageDocument,
   PLUGIN_API_VERSION,
   type PluginCatalog,
   type PluginNavigationItem,
-  type PluginPage,
   type PluginServiceCatalog,
   type PluginUiSlot,
   type PreparedPlugin,
   type RuntimePluginDefinition,
+  type RuntimePluginPage,
   type RuntimePluginProcedure,
 } from "@northgraindata/dsui-plugin-sdk";
 import type { PluginSource } from "../config.js";
@@ -28,7 +29,7 @@ type ActivePlugin = {
 };
 
 type Contributions = {
-  pages: PluginPage[];
+  pages: RuntimePluginPage[];
   navigation: PluginNavigationItem[];
   slots: PluginUiSlot[];
   procedures: RegisteredProcedure[];
@@ -245,12 +246,12 @@ export class PluginRuntime {
     const pendingContributions = new Map<string, Contributions>();
     for (const request of ordered) {
       const contributions = emptyContributions();
-      const seenPages: PluginPage[] = [];
+      const seenPages: RuntimePluginPage[] = [];
       const seenNavigation: PluginNavigationItem[] = [];
       const seenSlots: PluginUiSlot[] = [];
       const seenProcedures: RegisteredProcedure[] = [];
       const registry = {
-        page: (page: PluginPage) =>
+        page: (page: RuntimePluginPage) =>
           uniqueId(seenPages, page, "page", request.id),
         navigation: (item: PluginNavigationItem) =>
           uniqueId(seenNavigation, item, "navigation", request.id),
@@ -330,7 +331,14 @@ export class PluginRuntime {
     const navigation: PluginCatalog["navigation"] = [];
     const slots: PluginCatalog["slots"] = [];
     for (const [pluginId, items] of this.contributions) {
-      pages.push(...items.pages.map((item) => ({ ...item, pluginId })));
+      pages.push(
+        ...items.pages.map(({ id, title, description }) => ({
+          id,
+          title,
+          ...(description ? { description } : {}),
+          pluginId,
+        })),
+      );
       navigation.push(
         ...items.navigation.map((item) => ({ ...item, pluginId })),
       );
@@ -349,6 +357,21 @@ export class PluginRuntime {
         left.id.localeCompare(right.id),
     );
     return { plugins, pages, navigation, slots };
+  }
+
+  async renderPage(
+    pluginId: string,
+    pageId: string,
+    params: Record<string, string> = {},
+  ): Promise<PageDocument | null> {
+    const page = this.contributions
+      .get(pluginId)
+      ?.pages.find((candidate) => candidate.id === pageId);
+    if (!page || !this.active.has(pluginId)) return null;
+    return {
+      path: `/${pageId}`,
+      nodes: await page.render(params),
+    };
   }
 
   procedure(

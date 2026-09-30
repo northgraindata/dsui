@@ -11,6 +11,23 @@ export function registerPluginRoutes(
 ): void {
   app.get("/api/v1/plugins", (context) => context.json(deps.runtime.catalog()));
 
+  app.get("/api/v1/plugins/:pluginId/pages/:pageId", async (context) => {
+    try {
+      const page = await deps.runtime.renderPage(
+        context.req.param("pluginId"),
+        context.req.param("pageId"),
+        context.req.query(),
+      );
+      if (!page) return context.json({ message: "Plugin page not found" }, 404);
+      return context.json(page);
+    } catch {
+      return context.json(
+        { message: "Plugin page could not be rendered" },
+        500,
+      );
+    }
+  });
+
   app.post(
     "/api/v1/plugins/:pluginId/procedures/:procedureId",
     async (context) => {

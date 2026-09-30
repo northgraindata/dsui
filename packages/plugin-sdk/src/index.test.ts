@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod";
-import { definePlugin, PLUGIN_API_VERSION } from "./index";
+import { definePlugin, PageHeader, PLUGIN_API_VERSION } from "./index";
 
 describe("definePlugin", () => {
   test("marks a plugin definition with the current kind and API version", () => {
@@ -13,7 +13,11 @@ describe("definePlugin", () => {
       },
       configSchema: z.object({ enabled: z.boolean() }),
       setup(registry, config) {
-        registry.page({ id: "home", title: config.enabled ? "Home" : "Off" });
+        registry.page({
+          id: "home",
+          title: config.enabled ? "Home" : "Off",
+          render: () => PageHeader({ title: config.enabled ? "Home" : "Off" }),
+        });
       },
     });
 

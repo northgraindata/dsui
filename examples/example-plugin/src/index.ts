@@ -1,4 +1,9 @@
-import { definePlugin } from "@northgraindata/dsui-plugin-sdk";
+import {
+  Card,
+  definePlugin,
+  Grid,
+  Section,
+} from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
 
 const serviceSummarySchema = z.object({
@@ -24,6 +29,30 @@ export default definePlugin({
       title: "Plugin example",
       description:
         "A trusted extension can add navigation and call the sanitized service catalog.",
+      render: async ({ context }) => {
+        const { items } = await context.services.list({ limit: 12 });
+        return [
+          Section({
+            title: "Connected services",
+            content:
+              items.length > 0
+                ? Grid({
+                    columns: 2,
+                    content: items.map((service) =>
+                      Card({
+                        title: service.name,
+                        description: service.adapter,
+                        variant: "panel",
+                      }),
+                    ),
+                  })
+                : Card({
+                    title: "No services configured",
+                    description: "Add a service to see it listed here.",
+                  }),
+          }),
+        ];
+      },
     });
     registry.navigation({
       id: "overview-link",

@@ -1,6 +1,6 @@
 # Example plugin
 
-This workspace package demonstrates the current trusted plugin SDK: typed config, startup contributions for a page/navigation item/UI slot, a namespaced procedure, and the sanitized `context.services.list()` host capability.
+This workspace package demonstrates the current trusted plugin SDK: typed config, a declarative page built from shared adapter SDK components, a navigation item/UI slot, namespaced procedures, and the sanitized `context.services.list()` host capability.
 
 Configure an installed package in `dsui.yaml`:
 
@@ -13,4 +13,4 @@ plugins:
       greeting: "Welcome"
 ```
 
-Trusted plugins currently load in the DSUI server process. Only install plugin packages whose code you trust. Dynamic browser page rendering and custom React bundles are not part of this first runtime slice yet; page and slot contributions are registered in the plugin catalog for the host UI work.
+Trusted plugins currently load in the DSUI server process. Only install plugin packages whose code you trust. Declarative page nodes render through the shared renderer. Custom browser bundles and visible UI slot rendering are the next implementation increment.

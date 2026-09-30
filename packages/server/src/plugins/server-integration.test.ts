@@ -73,6 +73,9 @@ describe("plugin server integration", () => {
         body: JSON.stringify({ limit: 2 }),
       },
     );
+    const pageResponse = await runtime.app.request(
+      "/api/v1/plugins/example-plugin/pages/overview",
+    );
     const nextServicesResponse = await runtime.app.request(
       "/api/v1/plugins/example-plugin/procedures/list-services",
       {
@@ -133,5 +136,11 @@ describe("plugin server integration", () => {
         ],
       },
     });
+    expect(pageResponse.status).toBe(200);
+    const page = await pageResponse.json();
+    expect(page.path).toBe("/overview");
+    expect(page.nodes[0].kind).toBe("section");
+    expect(JSON.stringify(page)).not.toContain("must-not-leak");
+    expect(JSON.stringify(page)).not.toContain("also-private");
   });
 });
