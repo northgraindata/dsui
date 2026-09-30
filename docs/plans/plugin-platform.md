@@ -1,6 +1,6 @@
 # Plugin platform: staged implementation plan
 
-Status: implementation underway in [DSUI-20](https://linear.app/northgrain-data/issue/DSUI-20/build-oss-plugin-foundation-with-typed-host-capabilities-and-ui-slots); contracts below are targets for ADR review, not all implemented APIs. The first vertical slice now includes the plugin SDK/runtime, trusted package loading from the DSUI working directory, strict plugin config, dependency/lifecycle handling, a sanitized service catalog, permission-checked plugin procedures, catalog-driven sidebar/page shell and an example plugin. Custom browser components/slot rendering, auth provider replacement, storage and jobs remain follow-up work. Keep API modernization and durable jobs in separate stacked PRs.
+Status: implementation underway in [DSUI-20](https://linear.app/northgrain-data/issue/DSUI-20/build-oss-plugin-foundation-with-typed-host-capabilities-and-ui-slots). Agreed direction: plugin pages reuse DSUI's existing declarative component model; plugins may compose core components and define custom components with the same `defineComponent` contract as adapters. Plugin packages are built-in or loaded from an immutable, verified GitHub revision; the adapter loader remains a separate subsystem. The first vertical slice now includes the plugin SDK/runtime, trusted package loading from the DSUI working directory, strict plugin config, dependency/lifecycle handling, a sanitized service catalog, permission-checked plugin procedures, catalog-driven sidebar/page shell and an example plugin. Declarative page rendering, custom component bundles/visible slot rendering, GitHub artifact loading, auth provider replacement, storage and jobs remain follow-up work. Keep backend API modernization and durable jobs in separate stacked PRs.
 
 ## Outcome and boundaries
 
@@ -27,12 +27,24 @@ interface PluginDefinition<TConfig> {
   stop?(): Promise<void> | void;
 }
 
+interface PluginPageDefinition {
+  id: string;
+  title: string;
+  description?: string;
+  render(input: PluginPageRenderInput): PageNode | readonly PageNode[];
+}
+
+interface PluginPageRenderInput {
+  params: Record<string, string>;
+  client: { call(procedureId: string, input: unknown): Promise<unknown> };
+}
+
 interface PluginRegistry<TConfig> {
-  page(input: { id: string; render: PluginPageRenderer }): void;
+  page(page: PluginPageDefinition): void;
   navigation(input: { id: string; area: "primary" | "secondary";
     label: string; icon?: KnownIcon; pageId: string; order?: number }): void;
   slot<K extends PluginSlotName>(input: { id: string; slot: K;
-    order?: number; render: SlotRenderer<K> }): void;
+    componentId: string; order?: number }): void;
   procedure(input: PluginProcedureDefinition): void; // named, schema-validated
   authentication?(provider: AuthenticationProvider): void; // singleton provider
   authorization?(provider: AuthorizationProvider): void; // singleton provider
@@ -47,24 +59,35 @@ interface PluginStartContext<TConfig> {
 }
 ```
 
+`PageNode` is imported from the adapter SDK shared component contract. A plugin page composes the same built-ins and can emit custom references with `defineComponent`; those references resolve from the plugin's verified browser bundle. The `PluginPageClient` is namespaced to the current plugin and only invokes its declared procedures, not adapter resources/actions.
+
+`ComponentDefinition` is the adapter SDK component contract: compositions use existing core nodes such as `PageHeader`, `Card`, `Button` and `Grid`; a custom component uses `defineComponent` with a typed/validated props schema and a package-relative browser entry. Plugin page render functions produce the same serializable node tree consumed by `DeclarativePageRenderer`. Keep adapter-specific connection/resource bindings out of plugin pages: plugin reads/actions call the plugin's typed procedures through a plugin-specific browser client. The shared renderer is allowed to render both kinds of page, while host-owned execution context distinguishes adapter references from plugin procedures.
+
 The contract is host-facing and transport-independent. Plugin backend calls `context.services.list()` rather than making HTTP requests to DSUI or importing `routes/services.ts`/`DsuiDatabase`. The current slice returns sanitized, paginated summaries and no connection secrets; it deliberately omits health probes. The backend PR must strengthen user-triggered calls with caller/permission scope and add a separately scoped system principal for future background callers. Do not reuse today's `publicService()` directly for lists: it probes each adapter's health and `refreshConfig()` reloads adapters per request. The current host implementation is a thin composition-root facade to be extracted behind the DSUI-22 application service.
 
 Plugin procedures carry Zod input/output contracts and a permission identifier; the host owns validation, authorization, errors, auditing and URL namespace (`/api/v1/plugins/:pluginId/...`). Existing Hono endpoints remain usable in the foundation PR. [DSUI-22](https://linear.app/northgrain-data/issue/DSUI-22/standardize-backend-and-web-contracts-with-orpc-for-plugin-procedures) later supplies the oRPC transport and typed client, without changing the host facade. No raw `app: Hono`, SQL handle, or arbitrary middleware in a plugin context. Binary uploads, OAuth callbacks and streaming require explicit, separately reviewed route capabilities rather than a catch-all.
 
-Configuration is owned by `dsui.yaml`, validated first by the host and then by the plugin schema. Example shape (subject to ADR):
+Configuration is owned by `dsui.yaml`, validated first by the host and then by the plugin schema. Package sources are either built-in/installed packages or GitHub repositories pinned to a full immutable commit and verified artifact integrity. Floating branches, runtime builds and package install hooks are not supported; final manifest fields need an ADR.
 
 ```yaml
 plugins:
   code-repository:
+    package: "@northgraindata/dsui-plugin-code-repository"
     enabled: true
     config:
       local:
         allowedRoots: [/workspace]
-      github:
-        token: { fromEnv: GITHUB_TOKEN }
+  health-intelligence:
+    source: git
+    repository: "git+https://github.com/acme/dsui-plugin-health"
+    commit: "<full-40-character-commit-sha>"
+    integrity: "sha512-<verified-artifact-digest>"
+    entry: "./dist/plugin.mjs"
 ```
 
-No configured entry means installed built-ins follow documented defaults; `enabled: false` removes all its contributions. Keep YAML-managed values distinct from UI-managed values; reject duplicate IDs rather than silently overriding. `fromEnv` is resolved just-in-time server-side and redacted in diagnostics. UI-managed encrypted secrets and external secret providers are separate work: no plaintext config or decrypted value reaches navigation metadata, page JSON, logs, or browser bundles. Startup validates ID/version/dependencies and rejects duplicate contribution IDs, missing page targets, cycles and conflicting singleton auth providers. Register atomically, record per-plugin readiness, dispose in reverse dependency order. Explicitly specify what happens on config refresh: v1 requires restart for plugin-set/config changes; existing service/adapter refresh behavior is unchanged.
+Built-ins are regular installed packages. GitHub sources must pin an immutable commit and integrity for the built server and browser artifacts. Reuse the adapter installer's verification requirements as a reference, but implement and own plugin discovery/install/lifecycle separately: plugins add server APIs and UI and therefore do not use `adapter-host`. In v1 only trusted first-party/private Pro or explicitly trusted operator-installed plugin code may execute in-process; a commit hash and digest establish immutability, not trust, and this is not a sandbox for arbitrary community code. Public GitHub source is the initial remote target; private GitHub authentication and marketplace UX require a separate decision. Existing adapter support already includes installed local packages plus verified pinned npm/Git bundles in an isolated adapter host; do not refactor or rename that system in DSUI-20.
+
+No configured entry means no optional plugins; `enabled: false` removes all its contributions. Keep YAML-managed values distinct from UI-managed values; reject duplicate IDs rather than silently overriding. The current slice uses the existing config environment interpolation, but plugin-specific secret references/redaction need an explicit secrets capability before credentials are accepted. UI-managed encrypted secrets and external secret providers are separate work: no plaintext config or decrypted value reaches navigation metadata, page JSON or browser bundles. Startup validates ID/version/dependencies and rejects duplicate contribution IDs, missing page targets, cycles and conflicting singleton auth providers. Register atomically, record per-plugin readiness, dispose in reverse dependency order. Plugin-set/config changes require restart in v1; service/adapter refresh behavior remains unchanged.
 
 ### UI reference
 
@@ -76,7 +99,7 @@ Host-owned, typed slots; no XPath, DOM selectors, global CSS patches, or compone
 | `service.workspace.after-header` | `apps/web/src/components/adapter-workspace.tsx` after `.adapter-heading`, before adapter page content | `{ service: ServiceSummary }` | health progress bar |
 | `settings.sections` | `apps/web/src/features/settings/settings-screen.tsx` | sanitized principal | plugin settings (add when needed) |
 
-Navigation belongs in `apps/web/src/components/app-chrome.tsx` and a single host-owned route in `apps/web/src/router.tsx` (`/plugins/$pluginId/$`), with page resolution and a 404 for disabled or unknown plugins. Do not add a separate React router per plugin. Current page contributions supply host-rendered title/description only. Full page content and UI slot renderers require a reviewed trusted-bundle or server-driven renderer contract; they are not completed by catalog registration alone. `packages/renderer/src/registry/external-components.ts` currently handles adapter bundles only; do not reuse its adapter-ID URL convention for plugin bundles or let a third-party bundle import a second React copy. The health visuals themselves come later. Reserve deterministic space/fallback states for failed widgets and keep the host in charge of focus, keyboard behavior, responsive layout, and error boundaries. Batch plugin data per dashboard rather than one network request per card.
+Navigation belongs in `apps/web/src/components/app-chrome.tsx` and a single host-owned route in `apps/web/src/router.tsx` (`/plugins/$pluginId/$`), with page resolution and a 404 for disabled or unknown plugins. Do not add a separate React router per plugin. The current slice renders page title/description only. Next, render serializable page nodes with `DeclarativePageRenderer` and shared adapter SDK primitives. Add a `definePluginPage` wrapper that uses the same node model with a plugin-scoped client for namespaced procedures; do not reuse adapter connection/resource/action bindings for plugin API calls. Extend the renderer's external-component resolver to use namespaced plugin IDs and the same `ComponentProps` contract as adapters. The server must serve only the verified browser bundle declared by the plugin manifest, with a unique plugin namespace and bounded bundle size. Do not reuse the adapter-ID URL convention or let plugin bundles ship a second React copy. Widget slot registration references `defineComponent` IDs; host-owned components mount them at the exact slot and pass only public typed context. Reserve deterministic space/fallback states for failed widgets and keep the host in charge of focus, keyboard behavior, responsive layout, and error boundaries. Batch plugin data per dashboard rather than one network request per card.
 
 ### Authorization boundary
 
@@ -86,7 +109,7 @@ One active authentication provider and one authorization provider, selected dete
 
 | PR / issue | Base branch | Owns | Explicitly excludes |
 | --- | --- | --- | --- |
-| Plugin foundation — DSUI-20 | `main` | ADR, plugin SDK/runtime/loader/config, limited host facades, optional plugin routes/pages/nav and two UI slots, sample plugin and conformance tests | oRPC migration, route cleanup, background execution, feature plugins, enterprise auth deletion |
+| Plugin foundation — DSUI-20 | `main` | plugin SDK/runtime/config, trusted built-in and pinned GitHub artifacts, shared declarative pages/`defineComponent`, visible custom components/UI slots, sidebar, limited host facades, sample plugin and conformance tests | oRPC migration, route cleanup, background execution, feature plugins, enterprise auth deletion |
 | Backend API — DSUI-22 | DSUI-20 branch (change base to `main` after parent merges) | application `ServiceCatalog`, oRPC contracts/transport/web client, structured errors and auth/audit middleware, REST-compatible migration | plugin loader/UI slots, jobs, removal of `packages/core` unless independently justified |
 | Durable jobs — DSUI-82 | DSUI-22 branch (change base after parents merge) | job registration extension, SQLite migrations, worker/scheduler/leases, run API, lifecycle and tests | agent, health, lineage, repository scanning |
 
@@ -94,11 +117,11 @@ The backend API can be designed concurrently, but its stacked PR should be based
 
 ### Foundation change map
 
-- `packages/plugin-sdk/` (new): manifest types, typed contributions, config schema, plugin API version, browser-safe contracts separated from server-only context.
-- `packages/server/src/plugins/` (new): discovery of explicit trusted packages, dependency ordering, atomic registry, lifecycle/readiness, scoped facades and route dispatch. `packages/server/src/app.ts`: one composition point; register plugin routes before the static catch-all in `routes/system.ts`, dispose plugin runtime in `close()`.
+- `packages/plugin-sdk/` (new): manifest types, typed contributions, config schema, plugin API version, shared component/page contract imported from the adapter SDK, browser-safe contracts separated from server-only context.
+- `packages/server/src/plugins/` (new): discovery/install of trusted built-in and pinned GitHub artifacts, dependency ordering, atomic registry, lifecycle/readiness, scoped facades and route dispatch. `packages/server/src/app.ts`: one composition point; register plugin routes in the API surface, dispose plugin runtime in `close()`.
 - `packages/server/src/config.ts`: strict `plugins` field without silently accepting malformed plugin config; preserve existing `services` and `adapters` behavior. `packages/server/src/routes/`: catalog, page and namespaced procedure dispatch; reuse existing auth before any plugin endpoint.
 - `apps/web/src/router.tsx`, `features/plugins/plugin-page-screen.tsx`, `components/app-chrome.tsx`: generic title/description page route/nav. `components/home-dashboard.tsx` and `components/adapter-workspace.tsx`: add actual host-owned slot renderers in a follow-up within DSUI-20; catalog slot metadata alone is not UI rendering. `apps/web/src/api.ts`: catalog fetch; typed procedure client belongs to DSUI-22.
-- `packages/renderer`: only if declarative page rendering needs a host-owned bridge; do not change adapter SDK page wire format. Add example plugin in `examples/` and document install/config/enable/disable/development.
+- `packages/renderer`: reuse its declarative renderer, `ComponentProps` and external-component failure states; add plugin namespace and verified bundle URL resolution without changing adapter wire format. Use adapter SDK `defineComponent`/component primitives rather than a parallel plugin component DSL. Add example plugin in `examples/` and document install/config/enable/disable/development.
 
 ### Backend and job change map
 
