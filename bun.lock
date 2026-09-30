@@ -171,6 +171,7 @@
       "name": "@northgraindata/dsui-plugin-sdk",
       "version": "0.1.0",
       "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "zod": "^3.24.2",
       },
       "devDependencies": {

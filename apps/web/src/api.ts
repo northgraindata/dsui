@@ -319,6 +319,25 @@ export async function getAdapters() {
 export function getPluginCatalog() {
   return request<PluginCatalog>("/plugins");
 }
+export function getPluginPage(pluginId: string, pageId: string) {
+  return request<PageDocument>(
+    `/plugins/${encodeURIComponent(pluginId)}/pages/${encodeURIComponent(pageId)}`,
+  );
+}
+export async function executePluginProcedure(
+  pluginId: string,
+  procedureId: string,
+  input: unknown,
+) {
+  const result = await request<{ data: unknown }>(
+    `/plugins/${encodeURIComponent(pluginId)}/procedures/${encodeURIComponent(procedureId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+  return result.data;
+}
 export async function getServicePages(id: string) {
   return request<{ pages: Array<{ path: string }> }>(`/services/${id}/pages`);
 }

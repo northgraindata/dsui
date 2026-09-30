@@ -1,4 +1,18 @@
+import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
+import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
 import type { z } from "zod";
+
+export type { PageDocument, PageNode } from "@northgraindata/dsui-adapter-sdk";
+export {
+  Badge,
+  Button,
+  Card,
+  defineComponent,
+  Grid,
+  PageHeader,
+  Section,
+  serializeNodes,
+} from "@northgraindata/dsui-adapter-sdk";
 
 export const PLUGIN_API_VERSION = 1 as const;
 
@@ -13,6 +27,23 @@ export type PluginPage = {
   readonly id: string;
   readonly title: string;
   readonly description?: string;
+};
+
+export type PluginPageRenderInput<TConfig = unknown> = {
+  readonly context: PluginContext<TConfig>;
+  readonly params: Record<string, string>;
+};
+
+export type PluginPageDefinition<TConfig = unknown> = PluginPage & {
+  readonly render: (
+    input: PluginPageRenderInput<TConfig>,
+  ) => PageNode | readonly PageNode[] | Promise<PageNode | readonly PageNode[]>;
+};
+
+export type RuntimePluginPage = PluginPage & {
+  readonly render: (
+    params: Record<string, string>,
+  ) => Promise<readonly PageNode[]>;
 };
 
 export type PluginNavigationItem = {
@@ -83,14 +114,14 @@ export type RuntimePluginProcedure = {
 };
 
 export interface RuntimePluginRegistry {
-  page(page: PluginPage): void;
+  page(page: RuntimePluginPage): void;
   navigation(item: PluginNavigationItem): void;
   slot(slot: PluginUiSlot): void;
   procedure(procedure: RuntimePluginProcedure): void;
 }
 
 export interface PluginRegistry<TConfig = unknown> {
-  page(page: PluginPage): void;
+  page(page: PluginPageDefinition<TConfig>): void;
   navigation(item: PluginNavigationItem): void;
   slot(slot: PluginUiSlot): void;
   procedure<TInput, TOutput = unknown>(
@@ -156,7 +187,15 @@ export function definePlugin<TConfig>(
       return {
         setup(runtimeRegistry) {
           const registry: PluginRegistry<TConfig> = {
-            page: (page) => runtimeRegistry.page(page),
+            page: (page) =>
+              runtimeRegistry.page({
+                id: page.id,
+                title: page.title,
+                description: page.description,
+                render: async (params) => {
+                  return serializeNodes(await page.render({ context, params }));
+                },
+              }),
             navigation: (item) => runtimeRegistry.navigation(item),
             slot: (slot) => runtimeRegistry.slot(slot),
             procedure: (procedure) =>

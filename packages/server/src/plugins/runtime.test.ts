@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { definePlugin } from "@northgraindata/dsui-plugin-sdk";
+import { definePlugin, PageHeader } from "@northgraindata/dsui-plugin-sdk";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { PluginSource } from "../config";
@@ -28,7 +28,11 @@ describe("PluginRuntime", () => {
       },
       configSchema: z.object({ label: z.string().default("Base page") }),
       setup(registry, config) {
-        registry.page({ id: "home", title: config.label ?? "Base page" });
+        registry.page({
+          id: "home",
+          title: config.label ?? "Base page",
+          render: () => PageHeader({ title: config.label ?? "Base page" }),
+        });
         registry.navigation({
           id: "home-link",
           area: "primary",
@@ -108,7 +112,11 @@ describe("PluginRuntime", () => {
       },
       configSchema: z.object({}),
       setup(registry) {
-        registry.page({ id: "page", title: "Page" });
+        registry.page({
+          id: "page",
+          title: "Page",
+          render: () => PageHeader({ title: "Page" }),
+        });
       },
     });
     const runtime = new PluginRuntime(noServices, async (specifier) =>
@@ -159,7 +167,11 @@ describe("PluginRuntime", () => {
       },
       configSchema: z.object({}),
       setup(registry) {
-        registry.page({ id: "home", title: "Home" });
+        registry.page({
+          id: "home",
+          title: "Home",
+          render: () => PageHeader({ title: "Home" }),
+        });
       },
     });
     const runtime = new PluginRuntime(noServices, async (specifier) =>

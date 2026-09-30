@@ -1,7 +1,15 @@
-import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
-import { useParams } from "@tanstack/react-router";
+import type {
+  PageDocument,
+  PluginCatalog,
+} from "@northgraindata/dsui-plugin-sdk";
+import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getPluginCatalog } from "../../api";
+import {
+  executePluginProcedure,
+  getPluginCatalog,
+  getPluginPage,
+} from "../../api";
 import {
   PageHeading,
   pageClass,
@@ -9,20 +17,23 @@ import {
 } from "../../components/page";
 
 export function PluginPageScreen() {
+  const navigate = useNavigate();
   const { pluginId } = useParams({ from: "/plugins/$pluginId/$" });
   const pageId = useParams({
     from: "/plugins/$pluginId/$",
     select: (params) => params._splat,
   });
   const [page, setPage] = useState<PluginCatalog["pages"][number]>();
+  const [document, setDocument] = useState<PageDocument>();
   const [error, setError] = useState<string>();
 
   useEffect(() => {
     let active = true;
     setPage(undefined);
+    setDocument(undefined);
     setError(undefined);
     getPluginCatalog()
-      .then((catalog) => {
+      .then(async (catalog) => {
         if (!active) return;
         const found = catalog.pages.find(
           (candidate) =>
@@ -32,7 +43,10 @@ export function PluginPageScreen() {
           setError("Plugin page not found or plugin is disabled.");
           return;
         }
+        const pageDocument = await getPluginPage(pluginId, found.id);
+        if (!active) return;
         setPage(found);
+        setDocument(pageDocument);
       })
       .catch((cause: unknown) => {
         if (!active) return;
@@ -54,7 +68,7 @@ export function PluginPageScreen() {
       </div>
     );
 
-  if (!page)
+  if (!page || !document)
     return (
       <div className={pageClass}>
         <p role="status" className="py-10 text-center text-[12px] text-muted">
@@ -66,6 +80,46 @@ export function PluginPageScreen() {
   return (
     <div className={pageClass}>
       <PageHeading title={page.title} detail={page.description} />
+      <DeclarativePageRenderer
+        nodes={document.nodes}
+        client={{
+          executeResource: async () => {
+            throw new Error(
+              "Plugin pages must read data through plugin procedures.",
+            );
+          },
+          executeAction: async (reference) => {
+            try {
+              return {
+                status: "success" as const,
+                data: await executePluginProcedure(
+                  pluginId,
+                  reference.actionId,
+                  reference.input,
+                ),
+              };
+            } catch (cause) {
+              return {
+                status: "error" as const,
+                message:
+                  cause instanceof Error
+                    ? cause.message
+                    : "Plugin action failed",
+              };
+            }
+          },
+          executePluginProcedure: (procedureId, input) =>
+            executePluginProcedure(pluginId, procedureId, input),
+          navigate: (path) =>
+            navigate({
+              to: "/plugins/$pluginId/$",
+              params: {
+                pluginId,
+                _splat: path.replace(/^\/+/, ""),
+              },
+            }),
+        }}
+      />
     </div>
   );
 }

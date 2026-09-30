@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { RuntimePluginProcedure } from "@northgraindata/dsui-plugin-sdk";
+import type {
+  RuntimePluginPage,
+  RuntimePluginProcedure,
+} from "@northgraindata/dsui-plugin-sdk";
 import plugin from "./index";
 
 describe("example plugin", () => {
   test("registers typed host procedures for greeting and service listing", async () => {
     const procedures: RuntimePluginProcedure[] = [];
+    let page: RuntimePluginPage | undefined;
     const prepared = plugin.prepare(
       { greeting: "Welcome" },
       {
@@ -25,7 +29,9 @@ describe("example plugin", () => {
       },
     );
     prepared.setup({
-      page() {},
+      page(definition) {
+        page = definition;
+      },
       navigation() {},
       slot() {},
       procedure(procedure) {
@@ -48,5 +54,7 @@ describe("example plugin", () => {
         },
       ],
     });
+    const pageNodes = await page?.render({});
+    expect(pageNodes?.[0]?.kind).toBe("section");
   });
 });
