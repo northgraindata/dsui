@@ -21,6 +21,8 @@ import {
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
+import { registerPluginRoutes } from "./plugins/routes.js";
+import { type PluginModuleLoader, PluginRuntime } from "./plugins/runtime.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
 import { type EnterpriseAuthKit, registerAuthRoutes } from "./routes/auth.js";
 import { registerExecuteRoutes } from "./routes/execute.js";
@@ -55,6 +57,8 @@ export type CreateRuntimeOptions = {
    * re-entering this executable in adapter-host mode. Tests inject fakes.
    */
   spawnHost?: AdapterLoadOptions["spawnHost"];
+  /** Loader for trusted, already-installed plugin packages. Tests inject fakes. */
+  pluginModuleLoader?: PluginModuleLoader;
 };
 
 function requiredEnterpriseAuthUrl(value: string | undefined): string {
@@ -182,6 +186,71 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     });
   })();
   let config = options.config ?? { services: [] };
+  const listPluginServiceSummaries = () => {
+    const configured = config.services.map((service) => {
+      let name = service.name;
+      if (!name) {
+        try {
+          name = registry.get(service.adapter).metadata.name;
+        } catch {
+          name = service.adapter;
+        }
+      }
+      return {
+        id: service.id,
+        name,
+        adapter: service.adapter,
+        managedBy: "configuration" as const,
+      };
+    });
+    const uiManaged = database
+      .listUiServices()
+      .filter(
+        (service) => !config.services.some((item) => item.id === service.id),
+      )
+      .map((service) => {
+        let name = service.name;
+        try {
+          name ||= registry.get(service.adapter).metadata.name;
+        } catch {
+          name ||= service.adapter;
+        }
+        return {
+          id: service.id,
+          name,
+          adapter: service.adapter,
+          managedBy: "ui" as const,
+        };
+      });
+    return [...configured, ...uiManaged].sort((left, right) =>
+      left.id.localeCompare(right.id),
+    );
+  };
+  const pluginRuntime = new PluginRuntime(
+    {
+      list: async (input) => {
+        const limit = input?.limit ?? 50;
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+          throw new Error(
+            "Service catalog page size must be between 1 and 100",
+          );
+        const remaining = listPluginServiceSummaries().filter(
+          (service) => !input?.cursor || service.id > input.cursor,
+        );
+        const items = remaining.slice(0, limit);
+        return {
+          items,
+          ...(remaining.length > limit ? { nextCursor: items.at(-1)?.id } : {}),
+        };
+      },
+      get: async (id) =>
+        listPluginServiceSummaries().find((service) => service.id === id) ??
+        null,
+    },
+    options.pluginModuleLoader,
+  );
+  let pluginsLoaded = false;
+  let pluginSync: Promise<void> | undefined;
   const loaderOptions: AdapterLoadOptions = {
     dataDir: options.adaptersDataDir ?? dataDir,
     fetch: options.adapterFetch,
@@ -251,6 +320,19 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       if (!isAdapterSource(override)) registry.applyMetadata(id, override);
   };
 
+  const syncPlugins = async (loaded: DsuiConfig) => {
+    const sources = loaded.plugins ?? {};
+    if (pluginsLoaded) return;
+    if (pluginSync) return pluginSync;
+    pluginSync = pluginRuntime.load(sources);
+    try {
+      await pluginSync;
+      pluginsLoaded = true;
+    } finally {
+      pluginSync = undefined;
+    }
+  };
+
   const refreshConfig = async () => {
     const loaded = options.config ?? (await loadConfig(configPath));
     const duplicates = loaded.services
@@ -262,8 +344,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       throw new Error(
         `Service IDs are managed twice; remove them from one source: ${duplicates.join(", ")}`,
       );
-    await syncAdapters(loaded);
     config = loaded;
+    await syncAdapters(loaded);
+    await syncPlugins(loaded);
     return config;
   };
 
@@ -318,6 +401,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     enterprisePrincipal,
     enterpriseRole,
   });
+  registerPluginRoutes(app, { runtime: pluginRuntime, audit });
   registerAdapterRoutes(app, {
     registry,
     readiness: () => readiness,
@@ -329,7 +413,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     app,
     database,
     registry,
+    pluginRuntime,
     refreshConfig,
-    close: () => database.close(),
+    close: async () => {
+      await pluginRuntime.close();
+      database.close();
+    },
   };
 }

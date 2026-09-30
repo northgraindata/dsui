@@ -1,3 +1,4 @@
+export type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 export {
   type AdapterFetch,
   assertSafeAdapterUrl,
@@ -42,6 +43,8 @@ export {
   type LocalAdapterSource,
   loadConfig,
   type NpmAdapterSource,
+  type PluginSource,
+  pluginSourceSchema,
 } from "./config";
 export {
   ConnectionCipher,
@@ -50,3 +53,7 @@ export {
 } from "./db/crypto";
 export { DsuiDatabase } from "./db/database";
 export type { Migration } from "./db/migrate";
+export {
+  type PluginReadiness,
+  PluginRuntime,
+} from "./plugins/runtime";

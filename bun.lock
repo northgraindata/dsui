@@ -58,6 +58,7 @@
       "dependencies": {
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
+        "@northgraindata/dsui-plugin-sdk": "workspace:*",
         "@northgraindata/dsui-renderer": "workspace:*",
         "@northgraindata/dsui-ui": "workspace:*",
         "@tailwindcss/vite": "^4.1.13",
@@ -83,6 +84,18 @@
       },
       "devDependencies": {
         "@types/react": "^19.2.0",
+        "typescript": "^5.9.2",
+      },
+    },
+    "examples/example-plugin": {
+      "name": "@northgraindata/dsui-plugin-example",
+      "version": "1.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-plugin-sdk": "workspace:*",
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
         "typescript": "^5.9.2",
       },
     },
@@ -154,6 +167,17 @@
       "name": "@northgraindata/dsui-core",
       "version": "0.0.0",
     },
+    "packages/plugin-sdk": {
+      "name": "@northgraindata/dsui-plugin-sdk",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "typescript": "^5.9.2",
+      },
+    },
     "packages/renderer": {
       "name": "@northgraindata/dsui-renderer",
       "version": "0.0.0",
@@ -184,6 +208,7 @@
         "@northgraindata/dsui-adapter-s3": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
+        "@northgraindata/dsui-plugin-sdk": "workspace:*",
         "better-auth": "1.7.1",
         "hono": "^4.11.7",
         "yaml": "^2.8.2",
@@ -191,6 +216,7 @@
         "zod-to-json-schema": "3.25.2",
       },
       "devDependencies": {
+        "@northgraindata/dsui-plugin-example": "workspace:*",
         "@types/bun": "^1.3.0",
         "typescript": "^5.9.2",
       },
@@ -604,6 +630,10 @@
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],
 
     "@northgraindata/dsui-docs": ["@northgraindata/dsui-docs@workspace:apps/docs"],
+
+    "@northgraindata/dsui-plugin-example": ["@northgraindata/dsui-plugin-example@workspace:examples/example-plugin"],
+
+    "@northgraindata/dsui-plugin-sdk": ["@northgraindata/dsui-plugin-sdk@workspace:packages/plugin-sdk"],
 
     "@northgraindata/dsui-renderer": ["@northgraindata/dsui-renderer@workspace:packages/renderer"],
 

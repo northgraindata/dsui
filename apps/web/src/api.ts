@@ -4,6 +4,7 @@ import type {
   PublicAdapter,
   PublicService,
 } from "@northgraindata/dsui-core";
+import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 
 /** Canonical server contracts. New code uses these; see legacy aliases below. */
 export type { HealthStatus, PageDocument, PublicAdapter, PublicService };
@@ -314,6 +315,9 @@ export async function getAdapters() {
     "/adapters",
   );
   return (Array.isArray(r) ? r : r.data).map(adapterFromPublicAdapter);
+}
+export function getPluginCatalog() {
+  return request<PluginCatalog>("/plugins");
 }
 export async function getServicePages(id: string) {
   return request<{ pages: Array<{ path: string }> }>(`/services/${id}/pages`);

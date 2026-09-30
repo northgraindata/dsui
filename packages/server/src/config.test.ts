@@ -86,3 +86,29 @@ describe("config adapter sources", () => {
     ).toThrow();
   });
 });
+
+describe("plugin config", () => {
+  test("defaults configured plugin state and plugin settings", () => {
+    const config = configSchema.parse({
+      plugins: { "health-plugin": { package: "@acme/dsui-plugin-health" } },
+    });
+    expect(config.plugins?.["health-plugin"]).toEqual({
+      package: "@acme/dsui-plugin-health",
+      enabled: true,
+      config: {},
+    });
+  });
+
+  test("rejects plugin entries without a package or with unknown entry fields", () => {
+    expect(() =>
+      configSchema.parse({ plugins: { health: { enabled: true } } }),
+    ).toThrow();
+    expect(() =>
+      configSchema.parse({
+        plugins: {
+          health: { package: "@acme/plugin", unexpected: true },
+        },
+      }),
+    ).toThrow();
+  });
+});

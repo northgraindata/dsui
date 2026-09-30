@@ -16,6 +16,7 @@ import {
 } from "./features/adapters/adapter-screens";
 import { LoginScreen, SetupScreen } from "./features/auth/auth-screens";
 import { DashboardScreen } from "./features/dashboard/dashboard-screen";
+import { PluginPageScreen } from "./features/plugins/plugin-page-screen";
 import { SettingsScreen } from "./features/settings/settings-screen";
 
 const rootRoute = createRootRoute({ component: AppShell });
@@ -69,6 +70,11 @@ const setupRoute = createRoute({
   path: "/setup",
   component: SetupScreen,
 });
+const pluginPageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/plugins/$pluginId/$",
+  component: PluginPageScreen,
+});
 const routeTree = rootRoute.addChildren([
   indexRoute,
   servicesRoute,
@@ -80,6 +86,7 @@ const routeTree = rootRoute.addChildren([
   pageRoute,
   loginRoute,
   setupRoute,
+  pluginPageRoute,
 ]);
 export const router = createRouter({ routeTree, defaultPreload: "intent" });
 declare module "@tanstack/react-router" {

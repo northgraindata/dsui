@@ -3,6 +3,15 @@ import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import type { AdapterPackageSource } from "./adapters/types.js";
 
+export const pluginSourceSchema = z
+  .object({
+    package: z.string().min(1),
+    enabled: z.boolean().default(true),
+    config: z.record(z.unknown()).default({}),
+  })
+  .strict();
+export type PluginSource = z.infer<typeof pluginSourceSchema>;
+
 const envToken = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
 
 export class ConfigError extends Error {}
@@ -194,6 +203,7 @@ export const configSchema = z
       .object({ mode: z.enum(["none", "local", "enterprise"]).optional() })
       .optional(),
     adapters: z.record(adapterEntrySchema).optional(),
+    plugins: z.record(pluginSourceSchema).optional(),
   })
   .passthrough();
 

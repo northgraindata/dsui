@@ -1,5 +1,7 @@
+import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { getPluginCatalog } from "../api";
 import { Icon } from "./icon";
 import { Wordmark } from "./wordmark";
 
@@ -19,11 +21,23 @@ export function AppChrome({
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
   const [topbarHidden, setTopbarHidden] = useState(false);
+  const [pluginNavigation, setPluginNavigation] = useState<
+    PluginCatalog["navigation"]
+  >([]);
   useEffect(() => {
     const onScroll = () => setTopbarHidden(window.scrollY > 10);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  useEffect(() => {
+    let active = true;
+    getPluginCatalog()
+      .then((catalog) => active && setPluginNavigation(catalog.navigation))
+      .catch(() => active && setPluginNavigation([]));
+    return () => {
+      active = false;
+    };
   }, []);
   const navigation = destinations.map((item) => (
     <Link
@@ -60,6 +74,26 @@ export function AppChrome({
         {!inAdapter && (
           <aside className="app-sidebar">
             <nav aria-label="Main navigation">{navigation}</nav>
+            {pluginNavigation.length > 0 && (
+              <nav aria-label="Extensions">
+                {pluginNavigation.map((item) => (
+                  <Link
+                    key={`${item.pluginId}/${item.id}`}
+                    to="/plugins/$pluginId/$"
+                    params={{ pluginId: item.pluginId, _splat: item.pageId }}
+                    className="app-nav-link"
+                    aria-current={
+                      pathname === `/plugins/${item.pluginId}/${item.pageId}`
+                        ? "page"
+                        : undefined
+                    }
+                  >
+                    <Icon name="plug" />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
+            )}
             <div className="app-sidebar-bottom">
               <a
                 className="sidebar-star-banner"
