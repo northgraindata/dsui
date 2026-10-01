@@ -111,4 +111,41 @@ describe("plugin config", () => {
       }),
     ).toThrow();
   });
+
+  test("accepts only an immutable GitHub source with a manifest integrity pin", () => {
+    const valid = {
+      source: "git",
+      repository: "git+https://github.com/acme/dsui-plugin",
+      commit: "a".repeat(40),
+      integrity: `sha512-${"A".repeat(86)}==`,
+    };
+    expect(
+      configSchema.parse({ plugins: { sample: valid } }).plugins?.sample,
+    ).toMatchObject(valid);
+    expect(() =>
+      configSchema.parse({ plugins: { sample: { ...valid, commit: "main" } } }),
+    ).toThrow();
+    expect(() =>
+      configSchema.parse({
+        plugins: {
+          sample: { ...valid, repository: "https://example.com/plugin" },
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      configSchema.parse({
+        plugins: {
+          sample: {
+            ...valid,
+            repository: "git+https://github.com/../plugin",
+          },
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      configSchema.parse({
+        plugins: { sample: { ...valid, integrity: "sha512-invalid" } },
+      }),
+    ).toThrow();
+  });
 });

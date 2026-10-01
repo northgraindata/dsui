@@ -44,6 +44,10 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await run(["bun", "run", "--filter", "@northgraindata/dsui-web", "build"]);
 await bundle("packages/server/src/main.ts", join(output, "dist", "server.mjs"));
+await bundle(
+  "packages/plugin-sdk/src/index.ts",
+  join(output, "dist", "plugin-sdk.mjs"),
+);
 
 for (const adapter of ["airflow", "dbt", "duckdb", "postgresql", "s3"]) {
   await bundle(
@@ -63,6 +67,15 @@ for (const adapter of ["airflow", "dbt", "duckdb", "postgresql", "s3"]) {
       : [],
   );
 }
+
+await bundle(
+  "examples/example-plugin/src/index.ts",
+  join(output, "dist", "runtime", "plugins", "example-plugin.mjs"),
+);
+await cp(
+  join(root, "examples", "example-plugin", "src", "browser.mjs"),
+  join(output, "dist", "runtime", "plugins", "example-plugin.browser.mjs"),
+);
 
 await cp(join(root, "apps", "web", "dist"), join(output, "web"), {
   recursive: true,
@@ -96,6 +109,7 @@ const env = {
   DSUI_VERSION: "${version}",
   DSUI_WEB_ROOT: join(packageRoot, "web"),
   DSUI_RUNTIME_ADAPTERS: join(packageRoot, "dist", "runtime", "adapters"),
+  DSUI_RUNTIME_PLUGINS: join(packageRoot, "dist", "runtime", "plugins"),
 };
 if (!env.DSUI_CONFIG) {
   const localConfig = join(process.cwd(), "dsui.yaml");
@@ -121,6 +135,7 @@ await writeFile(
       description: "A local operational workspace for your data stack.",
       type: "module",
       bin: { dsui: "bin/dsui.mjs" },
+      exports: { "./plugin-sdk": "./dist/plugin-sdk.mjs" },
       files: ["bin", "dist", "web"],
       engines: { node: ">=18" },
       dependencies: { bun: bunVersion },

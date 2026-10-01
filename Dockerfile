@@ -25,6 +25,9 @@ RUN mkdir -p /out/data /out/runtime && \
     --outfile /out/runtime/adapters/duckdb.mjs && \
   bun build packages/adapter-postgresql/src/adapter.ts --bundle --target bun --format esm --outfile /out/runtime/adapters/postgresql.mjs && \
   bun build packages/adapter-s3/src/adapter.ts --bundle --target bun --format esm --outfile /out/runtime/adapters/s3.mjs && \
+  mkdir -p /out/runtime/plugins && \
+  bun build examples/example-plugin/src/index.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/example-plugin.mjs && \
+  cp examples/example-plugin/src/browser.mjs /out/runtime/plugins/example-plugin.browser.mjs && \
   mkdir -p /out/runtime/adapters/node_modules && \
   for package in packages/adapter-*; do \
     if [ -d "$package/node_modules" ]; then cp -aL "$package/node_modules/." /out/runtime/adapters/node_modules/; fi; \
@@ -40,6 +43,7 @@ COPY --from=build --chown=65532:65532 /out/dsui /usr/local/bin/dsui
 COPY --from=build --chown=65532:65532 /src/apps/web/dist /app/web
 COPY --from=build --chown=65532:65532 /out/data /data
 COPY --from=build --chown=65532:65532 /out/runtime/adapters /app/adapters
+COPY --from=build --chown=65532:65532 /out/runtime/plugins /app/plugins
 
 ARG DSUI_VERSION=0.1.0
 ENV     DSUI_HOST=0.0.0.0 \
@@ -47,6 +51,7 @@ ENV     DSUI_HOST=0.0.0.0 \
     DSUI_DATA_DIR=/data \
     DSUI_WEB_ROOT=/app/web \
     DSUI_RUNTIME_ADAPTERS=/app/adapters \
+    DSUI_RUNTIME_PLUGINS=/app/plugins \
     DSUI_VERSION=$DSUI_VERSION
 EXPOSE 4192
 VOLUME ["/data"]

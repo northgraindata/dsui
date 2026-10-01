@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.mjs"
   },
   "scripts": {
     "test": "bun test",
@@ -16,6 +17,8 @@
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "typescript": "^5.9.2"
   }
 }

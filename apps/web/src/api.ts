@@ -4,7 +4,10 @@ import type {
   PublicAdapter,
   PublicService,
 } from "@northgraindata/dsui-core";
-import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
+import type {
+  PluginCatalog,
+  PluginSlotResult,
+} from "@northgraindata/dsui-plugin-sdk";
 
 /** Canonical server contracts. New code uses these; see legacy aliases below. */
 export type { HealthStatus, PageDocument, PublicAdapter, PublicService };
@@ -322,6 +325,12 @@ export function getPluginCatalog() {
 export function getPluginPage(pluginId: string, pageId: string) {
   return request<PageDocument>(
     `/plugins/${encodeURIComponent(pluginId)}/pages/${encodeURIComponent(pageId)}`,
+  );
+}
+export function getPluginSlots(slot: string, serviceIds: string[]) {
+  return request<{ items: PluginSlotResult[] }>(
+    `/plugins/slots/${encodeURIComponent(slot)}`,
+    { method: "POST", body: JSON.stringify({ serviceIds }) },
   );
 }
 export async function executePluginProcedure(

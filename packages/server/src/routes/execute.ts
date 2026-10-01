@@ -30,7 +30,14 @@ export function registerExecuteRoutes(
 ): void {
   app.post("/api/v1/services/:id/resources/:resourceId", async (context) => {
     const principal = context.get("principal");
-    if (!allowed(principal, "inspect"))
+    if (
+      !allowed(principal, "inspect") ||
+      (deps.pluginRuntime &&
+        !(await deps.pluginRuntime.authorize(principal, "inspect", {
+          type: "service",
+          id: context.req.param("id"),
+        })))
+    )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
       await deps.refreshConfig();
@@ -60,7 +67,14 @@ export function registerExecuteRoutes(
 
   app.post("/api/v1/services/:id/actions/:actionId", async (context) => {
     const principal = context.get("principal");
-    if (!allowed(principal, "execute"))
+    if (
+      !allowed(principal, "execute") ||
+      (deps.pluginRuntime &&
+        !(await deps.pluginRuntime.authorize(principal, "execute", {
+          type: "service",
+          id: context.req.param("id"),
+        })))
+    )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
       await deps.refreshConfig();

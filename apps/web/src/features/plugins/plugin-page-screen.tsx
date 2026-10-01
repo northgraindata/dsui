@@ -5,16 +5,14 @@ import type {
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  executePluginProcedure,
-  getPluginCatalog,
-  getPluginPage,
-} from "../../api";
+import { getPluginCatalog, getPluginPage } from "../../api";
 import {
   PageHeading,
   pageClass,
   UnavailableState,
 } from "../../components/page";
+import { pluginRendererClient } from "./plugin-client";
+import { PluginErrorBoundary } from "./plugin-error-boundary";
 
 export function PluginPageScreen() {
   const navigate = useNavigate();
@@ -80,37 +78,10 @@ export function PluginPageScreen() {
   return (
     <div className={pageClass}>
       <PageHeading title={page.title} detail={page.description} />
-      <DeclarativePageRenderer
-        nodes={document.nodes}
-        client={{
-          executeResource: async () => {
-            throw new Error(
-              "Plugin pages must read data through plugin procedures.",
-            );
-          },
-          executeAction: async (reference) => {
-            try {
-              return {
-                status: "success" as const,
-                data: await executePluginProcedure(
-                  pluginId,
-                  reference.actionId,
-                  reference.input,
-                ),
-              };
-            } catch (cause) {
-              return {
-                status: "error" as const,
-                message:
-                  cause instanceof Error
-                    ? cause.message
-                    : "Plugin action failed",
-              };
-            }
-          },
-          executePluginProcedure: (procedureId, input) =>
-            executePluginProcedure(pluginId, procedureId, input),
-          navigate: (path) =>
+      <PluginErrorBoundary key={`${pluginId}/${pageId}`}>
+        <DeclarativePageRenderer
+          nodes={document.nodes}
+          client={pluginRendererClient(pluginId, (path) =>
             navigate({
               to: "/plugins/$pluginId/$",
               params: {
@@ -118,8 +89,9 @@ export function PluginPageScreen() {
                 _splat: path.replace(/^\/+/, ""),
               },
             }),
-        }}
-      />
+          )}
+        />
+      </PluginErrorBoundary>
     </div>
   );
 }
