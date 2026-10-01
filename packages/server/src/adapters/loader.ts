@@ -1,34 +1,33 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
-import {
-  type ActionBinding,
-  type AdapterDefinition,
-  type AdapterInfo,
-  createAdapterInstance,
-  type ResourceBinding,
-  type StorePersistenceProvider,
-  serializeNodes,
+import { fileURLToPath } from "node:url";
+import type {
+  AdapterInfo,
+  PageDocument,
+  StorePersistenceProvider,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
-import zodToJsonSchema from "zod-to-json-schema";
+import {
+  type AdapterBuildPhase,
+  type AdapterSourceLocation,
+  buildAdapter,
+} from "./build.js";
 import { assertAdapterDefinition } from "./definition.js";
+import type { AdapterFetch } from "./fetch.js";
 import { AdapterHostClient } from "./host.js";
-import { type AdapterFetch, ExternalAdapterManager } from "./installer.js";
+import { resolveSdkRoot } from "./sdk.js";
 import type {
   AdapterBackend,
   AdapterCatalog,
   AdapterExecutionContext,
-  AdapterPackageSource,
-  JsonSchema,
   LoadedAdapter,
+  LoadedConnectionMethod,
 } from "./types.js";
 import { AdapterExecutionError, AdapterLoadError } from "./types.js";
 
 export interface AdapterLoadOptions {
   dataDir?: string;
   fetch?: AdapterFetch;
+  /** Reuse the stored bundle and never open the network. */
   offline?: boolean;
   /** Subprocess host factory; callers can inject a controlled host. */
   spawnHost?: (bundlePath: string) => {
@@ -46,79 +45,13 @@ export interface AdapterLoadOptions {
   persistenceProvider?: (namespace: string) => StorePersistenceProvider;
   /** SQLite path passed to isolated adapter hosts. */
   persistenceDatabasePath?: string;
+  /** Version stamped on the adapter SDK; defaults to the running DSUI. */
+  version?: string;
+  /** Called as an adapter build moves between phases. */
+  onPhase?: (phase: AdapterBuildPhase) => void;
 }
-
-type CallableResource = (
-  input: unknown,
-) => ResourceBinding<unknown, unknown, unknown>;
-type CallableAction = (
-  input: unknown,
-) => ActionBinding<unknown, unknown, unknown>;
 
 export { assertAdapterDefinition } from "./definition.js";
-
-function toJsonSchema(schema: unknown): JsonSchema | undefined {
-  if (!schema || typeof schema !== "object") return undefined;
-  try {
-    return zodToJsonSchema(
-      schema as Parameters<typeof zodToJsonSchema>[0],
-    ) as JsonSchema;
-  } catch {
-    return undefined;
-  }
-}
-
-function toConnectionMethods(
-  definition: AdapterDefinition,
-): LoadedAdapter["connectionMethods"] {
-  if (!definition.connectionMethods) return undefined;
-  return definition.connectionMethods.map((method) => ({
-    id: method.id,
-    label: method.label,
-    ...(method.description ? { description: method.description } : {}),
-    schema: toJsonSchema(method.schema) ?? {},
-    ...(method.group ? { group: { ...method.group } } : {}),
-  }));
-}
-
-function findMember<T extends { id: string }>(
-  list: readonly T[],
-  kind: string,
-  id: string,
-): T {
-  const member = list.find((item) => item.id === id);
-  if (!member) throw new AdapterExecutionError(`Unknown ${kind}: ${id}`);
-  return member;
-}
-
-/** Catalog derived from a live definition (same zod copy: strict). */
-export function catalogFromDefinition<TContext, TConfig>(
-  definition: AdapterDefinition<TContext, TConfig>,
-): AdapterCatalog {
-  return {
-    resources: definition.resources.map((resource) => ({
-      id: resource.id,
-      // Runtime members are callables carrying the full definition.
-      inputSchema: toJsonSchema(
-        (resource as { definition?: { inputSchema?: unknown } }).definition
-          ?.inputSchema,
-      ),
-      refresh:
-        resource.refresh.kind === "poll"
-          ? { kind: "poll", intervalMs: resource.refresh.intervalMs }
-          : { kind: "manual" },
-    })),
-    actions: definition.actions.map((action) => ({
-      id: action.id,
-      inputSchema: toJsonSchema(
-        (action as { definition?: { inputSchema?: unknown } }).definition
-          ?.inputSchema,
-      ),
-    })),
-    pages: definition.pages.map((page) => ({ path: page.path })),
-    components: [],
-  };
-}
 
 function healthy(started: number): HealthStatus {
   return {
@@ -134,129 +67,72 @@ function unhealthy(started: number, error: unknown): HealthStatus {
     checkedAt: new Date().toISOString(),
     latencyMs: Date.now() - started,
     detail: error instanceof Error ? error.message : "Health probe failed",
+    score: 0,
+    checks: [
+      {
+        id: "reachability",
+        label: "Service reachable",
+        ok: false,
+        detail: error instanceof Error ? error.message : "Health probe failed",
+      },
+    ],
   };
 }
 
-class LocalBackend implements AdapterBackend {
-  constructor(
-    private readonly definition: AdapterDefinition,
-    private readonly persistenceProvider?: AdapterLoadOptions["persistenceProvider"],
-  ) {}
-
-  private instanceOptions(context?: AdapterExecutionContext) {
-    return context && this.persistenceProvider
-      ? {
-          persistenceProvider: this.persistenceProvider(
-            context.persistenceNamespace,
-          ),
-        }
-      : {};
-  }
-
-  validateConnection(connection: unknown): unknown {
-    return this.definition.connectionSchema?.parse(connection) ?? connection;
-  }
-
-  async checkHealth(
-    connection: unknown,
-    context?: AdapterExecutionContext,
-  ): Promise<HealthStatus> {
-    const started = Date.now();
-    try {
-      const instance = await createAdapterInstance(
-        this.definition,
-        connection,
-        this.instanceOptions(context),
-      );
-      try {
-        return healthy(started);
-      } finally {
-        await instance.dispose();
-      }
-    } catch (error) {
-      return unhealthy(started, error);
-    }
-  }
-
-  async renderPage(
-    connection: unknown,
-    path: string,
-    context?: AdapterExecutionContext,
-  ): Promise<PageDocument> {
-    const instance = await createAdapterInstance(
-      this.definition,
-      connection,
-      this.instanceOptions(context),
-    );
-    try {
-      const scope = instance.createPageScope(path);
-      try {
-        await scope.ready();
-        return { path, nodes: serializeNodes(scope.render()) };
-      } finally {
-        scope.dispose();
-      }
-    } finally {
-      await instance.dispose();
-    }
-  }
-
-  async executeResource(
-    resourceId: string,
-    connection: unknown,
-    input: unknown,
-    context?: AdapterExecutionContext,
-  ): Promise<{ data: unknown }> {
-    const resource = findMember(
-      this.definition.resources,
-      "resource",
-      resourceId,
-    );
-    const instance = await createAdapterInstance(
-      this.definition,
-      connection,
-      this.instanceOptions(context),
-    );
-    try {
-      const binding = (resource as unknown as CallableResource)(input);
-      const result = await instance.executeResource(binding);
-      if (result.status === "error") throw result.error;
-      return { data: result.data };
-    } catch (error) {
-      if (error instanceof AdapterExecutionError) throw error;
-      throw new AdapterExecutionError(
-        error instanceof Error ? error.message : "Resource execution failed",
-      );
-    } finally {
-      await instance.dispose();
-    }
-  }
-
-  async executeAction(
-    actionId: string,
-    connection: unknown,
-    input: unknown,
-    signal?: AbortSignal,
-    context?: AdapterExecutionContext,
-  ): Promise<
-    { status: "success"; data: unknown } | { status: "error"; message: string }
-  > {
-    const action = findMember(this.definition.actions, "action", actionId);
-    const instance = await createAdapterInstance(
-      this.definition,
-      connection,
-      this.instanceOptions(context),
-    );
-    try {
-      const binding = (action as unknown as CallableAction)(input);
-      const result = await instance.executeAction(binding, { signal });
-      if (result.status === "error")
-        return { status: "error", message: result.error.message };
-      return { status: "success", data: result.data };
-    } finally {
-      await instance.dispose();
-    }
-  }
+function assertHealthReport(
+  value: unknown,
+  fallbackLatencyMs: number,
+): HealthStatus {
+  const report = value as {
+    status?: unknown;
+    score?: unknown;
+    latencyMs?: unknown;
+    checks?: unknown;
+  };
+  const rawScore = typeof report.score === "number" ? report.score : undefined;
+  const score =
+    rawScore === undefined || !Number.isFinite(rawScore)
+      ? undefined
+      : Math.min(100, Math.max(0, Math.round(rawScore)));
+  const status =
+    report.status === "healthy" ||
+    report.status === "warning" ||
+    report.status === "unavailable" ||
+    report.status === "unknown"
+      ? report.status
+      : "unknown";
+  const checks = Array.isArray(report.checks)
+    ? report.checks.flatMap((entry) => {
+        const check = entry as {
+          id?: unknown;
+          label?: unknown;
+          ok?: unknown;
+          detail?: unknown;
+        };
+        if (typeof check?.id !== "string" || typeof check.ok !== "boolean")
+          return [];
+        return [
+          {
+            id: check.id,
+            label: typeof check.label === "string" ? check.label : check.id,
+            ok: check.ok,
+            ...(typeof check.detail === "string"
+              ? { detail: check.detail }
+              : {}),
+          },
+        ];
+      })
+    : undefined;
+  return {
+    status,
+    checkedAt: new Date().toISOString(),
+    latencyMs:
+      typeof report.latencyMs === "number" && Number.isFinite(report.latencyMs)
+        ? report.latencyMs
+        : fallbackLatencyMs,
+    ...(score !== undefined ? { score } : {}),
+    ...(checks !== undefined ? { checks } : {}),
+  };
 }
 
 function assertCatalog(value: unknown, from: string): AdapterCatalog {
@@ -273,7 +149,7 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
 function assertHealthStatus(value: unknown, from: string): HealthStatus {
   if (!value || typeof value !== "object")
     throw new AdapterLoadError(`Invalid health status from ${from}`);
-  return value as HealthStatus;
+  return assertHealthReport(value, 0);
 }
 
 class RemoteBackend implements AdapterBackend {
@@ -377,9 +253,12 @@ class RemoteBackend implements AdapterBackend {
 }
 
 /**
- * Command that runs one adapter-host subprocess for a verified bundle.
- * Source checkouts execute adapter-host.ts directly; the compiled binary
- * re-enters itself in adapter-host mode. Never inferred from argv, which
+ * Command that runs one adapter-host subprocess for a built bundle.
+ *
+ * Three ways DSUI can be running, and the host has to be reached differently in
+ * each: a source checkout has `adapter-host.ts` on disk, a compiled binary
+ * re-enters itself, and a bundled `server.mjs` has to be named as the script
+ * for bun. Mode is taken from what exists on disk rather than argv, which
  * cannot distinguish normal CLI execution from adapter-host mode.
  */
 export function defaultHostCommand(
@@ -389,167 +268,69 @@ export function defaultHostCommand(
   command: string;
   args: string[];
 } {
-  const databaseArgs = databasePath ? ["--database", databasePath] : [];
-  try {
-    const hostPath = fileURLToPath(
-      new URL("../adapter-host.ts", import.meta.url),
-    );
-    if (existsSync(hostPath))
-      return {
-        command: process.execPath,
-        args: [
-          hostPath,
-          "adapter-host",
-          "--bundle",
-          bundlePath,
-          ...databaseArgs,
-        ],
-      };
-  } catch {
-    // Compiled binary: adapter-host.ts is not on disk; re-enter below.
-  }
-  return {
-    command: process.execPath,
-    args: ["adapter-host", "--bundle", bundlePath, ...databaseArgs],
-  };
+  const hostArgs = [
+    "adapter-host",
+    "--bundle",
+    bundlePath,
+    ...(databasePath ? ["--database", databasePath] : []),
+  ];
+  for (const candidate of [
+    fileURLToPath(new URL("../adapter-host.ts", import.meta.url)),
+    fileURLToPath(import.meta.url),
+  ])
+    if (existsSync(candidate))
+      return { command: process.execPath, args: [candidate, ...hostArgs] };
+  // Compiled binary: its own image is not on disk, so it re-enters itself.
+  return { command: process.execPath, args: hostArgs };
 }
 
-async function importModule(specifier: string): Promise<unknown> {
-  const adapterId = specifier.match(
-    /^@northgraindata\/dsui-adapter-(.+)$/,
-  )?.[1];
-  if (adapterId) {
-    const runtimeAdapterPath = join(
-      process.env.DSUI_RUNTIME_ADAPTERS ?? "/app/adapters",
-      `${adapterId}.mjs`,
-    );
-    if (existsSync(runtimeAdapterPath)) {
-      return import(pathToFileURL(runtimeAdapterPath).href);
-    }
-  }
-
-  const target =
-    specifier.startsWith("./") ||
-    specifier.startsWith("../") ||
-    specifier.startsWith("/") ||
-    specifier.startsWith("file:")
-      ? pathToFileURL(specifier).href
-      : specifier;
-  return import(target);
-}
-
-function asDefinitionModule(module: unknown, from: string): AdapterDefinition {
-  const definition =
-    (module as { default?: unknown })?.default ??
-    (module as { adapter?: unknown })?.adapter;
-  return assertAdapterDefinition(definition, from);
+function toConnectionMethods(
+  value: unknown,
+): LoadedConnectionMethod[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.map((method) => {
+    const entry = method as LoadedConnectionMethod;
+    return {
+      id: entry.id,
+      label: entry.label,
+      ...(entry.description ? { description: entry.description } : {}),
+      schema: entry.schema ?? {},
+      ...(entry.group ? { group: { ...entry.group } } : {}),
+    };
+  });
 }
 
 /**
- * Loads one adapter by logical id. Local packages (no version) import
- * in-process; pinned npm and git sources install verified and run
- * isolated in an adapter-host subprocess. Either way the result
- * satisfies the same contract.
+ * Builds one adapter from source and prepares it to serve.
+ *
+ * There is one path for every adapter: source is materialized, bundled, and run
+ * in an `adapter-host` subprocess. Whether the source is a directory in this
+ * repository or a subdirectory on GitHub, the result is identical.
  */
 export async function loadAdapter(
   id: string,
-  source: AdapterPackageSource,
+  source: AdapterSourceLocation,
   options: AdapterLoadOptions = {},
 ): Promise<LoadedAdapter> {
-  if (source.source === "git") {
-    return loadExternalAdapter(
-      id,
-      {
-        source: "git",
-        repository: source.repository,
-        commit: source.commit,
-        integrity: source.integrity,
-        ...(source.entry ? { entry: source.entry } : {}),
-      },
-      source.repository,
-      options,
-    );
-  }
-  if (source.version) {
-    if (!source.integrity)
-      throw new AdapterLoadError(
-        `Pinned adapter "${source.package}" requires an integrity digest`,
-      );
-    return loadExternalAdapter(
-      id,
-      {
-        source: "npm",
-        package: source.package,
-        version: source.version,
-        integrity: source.integrity,
-        ...(source.entry ? { entry: source.entry } : {}),
-      },
-      source.package,
-      options,
-    );
-  }
-  const definition = asDefinitionModule(
-    await importModule(source.package).catch((error: unknown) => {
-      throw new AdapterLoadError(
-        `Cannot load adapter package "${source.package}": ${error instanceof Error ? error.message : "unknown error"}`,
-      );
-    }),
-    source.package,
-  );
-  if (definition.metadata.id !== id)
-    throw new AdapterLoadError(
-      `Adapter package declares id "${definition.metadata.id}" but is registered as "${id}"`,
-    );
-  return {
-    id,
-    metadata: { ...definition.metadata },
-    connectionSchema: toJsonSchema(definition.connectionSchema),
-    connectionMethods: toConnectionMethods(definition),
-    catalog: catalogFromDefinition(definition),
-    backend: new LocalBackend(definition, options.persistenceProvider),
-    definition,
-  };
-}
+  const dataDir = options.dataDir;
+  if (!dataDir)
+    throw new AdapterLoadError("Adapter loading requires a data directory");
 
-async function loadExternalAdapter(
-  id: string,
-  source:
-    | {
-        source: "npm";
-        package: string;
-        version: string;
-        integrity: string;
-        entry?: string;
-      }
-    | {
-        source: "git";
-        repository: string;
-        commit: string;
-        integrity: string;
-        entry?: string;
-      },
-  label: string,
-  options: AdapterLoadOptions,
-): Promise<LoadedAdapter> {
-  const manager = new ExternalAdapterManager({
-    dataDir: options.dataDir,
-    fetch: options.fetch,
-    offline: options.offline,
+  const built = await buildAdapter(id, source, {
+    dataDir,
+    sdkPackageRoot: await resolveSdkRoot({
+      dataDir,
+      version: options.version ?? process.env.DSUI_VERSION ?? "0.0.0",
+    }),
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+    ...(options.offline ? { offline: options.offline } : {}),
+    ...(options.onPhase ? { onPhase: options.onPhase } : {}),
+  }).catch((error: unknown) => {
+    throw new AdapterLoadError(
+      `Cannot build adapter "${id}": ${error instanceof Error ? error.message : "build failed"}`,
+    );
   });
-  const installed = await manager
-    .installedFor(source)
-    .catch((error: unknown) => {
-      throw new AdapterLoadError(
-        `Cannot resolve adapter "${label}": ${error instanceof Error ? error.message : "unknown error"}`,
-      );
-    });
-  const found =
-    installed ??
-    (await manager.install(source).catch((error: unknown) => {
-      throw new AdapterLoadError(
-        `Cannot install adapter "${label}": ${error instanceof Error ? error.message : "unknown error"}`,
-      );
-    }));
+
   const spawn =
     options.spawnHost ??
     ((bundlePath: string) => {
@@ -563,20 +344,29 @@ async function loadExternalAdapter(
         timeoutMs: options.hostTimeoutMs ?? 600_000,
       });
     });
-  const host = spawn(found.bundlePath);
-  const catalog = assertCatalog(
-    await host.request({ method: "describe" }).catch((error: unknown) => {
+  const host = spawn(built.bundlePath);
+  const described = (await host
+    .request({ method: "describe" })
+    .catch((error: unknown) => {
       throw new AdapterLoadError(
         `Adapter host describe failed for "${id}": ${error instanceof Error ? error.message : "unknown error"}`,
       );
-    }),
-    found.bundlePath,
-  );
-  const metadata = (catalog as { metadata?: AdapterInfo }).metadata;
+    })) as {
+    metadata?: AdapterInfo;
+    connectionSchema?: LoadedAdapter["connectionSchema"];
+    connectionMethods?: unknown;
+    resources?: AdapterCatalog["resources"];
+    actions?: AdapterCatalog["actions"];
+    pages?: AdapterCatalog["pages"];
+    components?: AdapterCatalog["components"];
+  };
+  const catalog = assertCatalog(described, built.bundlePath);
+  const metadata = described.metadata;
   if (!metadata || metadata.id !== id)
     throw new AdapterLoadError(
-      `Adapter bundle declares id "${metadata?.id ?? "?"}" but is registered as "${id}"`,
+      `Adapter declares id "${metadata?.id ?? "?"}" but is registered as "${id}"`,
     );
+  const connectionMethods = toConnectionMethods(described.connectionMethods);
   return {
     id,
     metadata: { ...metadata },
@@ -584,11 +374,15 @@ async function loadExternalAdapter(
       resources: catalog.resources,
       actions: catalog.actions,
       pages: catalog.pages,
-      components: found.manifest.components,
+      components: built.components ?? [],
     },
+    ...(described.connectionSchema
+      ? { connectionSchema: described.connectionSchema }
+      : {}),
+    ...(connectionMethods ? { connectionMethods } : {}),
     backend: new RemoteBackend(host),
-    ...(found.browserBundlePath
-      ? { browserBundlePath: found.browserBundlePath }
+    ...(built.browserBundlePath
+      ? { browserBundlePath: built.browserBundlePath }
       : {}),
   };
 }
