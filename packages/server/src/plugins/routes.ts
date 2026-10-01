@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import type { Hono } from "hono";
 import { z } from "zod";
+import zodToJsonSchema from "zod-to-json-schema";
 import type { PluginRuntime } from "./runtime.js";
 
 export function registerPluginRoutes(
@@ -14,10 +15,21 @@ export function registerPluginRoutes(
 ): void {
   app.get("/api/v1/plugins", async (context) => {
     const catalog = deps.runtime.catalog();
+    const principal = context.get("principal");
+    // An anonymous caller is here to reach a public page — the sign-in screen,
+    // most often. It learns which pages exist and nothing else: no plugin
+    // names, no versions, no navigation, no slots.
+    if (!principal)
+      return context.json({
+        plugins: [],
+        pages: catalog.pages.filter((page) => page.public),
+        navigation: [],
+        slots: [],
+      });
     const visible = new Set<string>();
     for (const plugin of catalog.plugins)
       if (
-        await deps.runtime.authorize(context.get("principal"), "inspect", {
+        await deps.runtime.authorize(principal, "inspect", {
           type: "plugin",
           id: plugin.id,
         })
@@ -141,26 +153,32 @@ export function registerPluginRoutes(
   });
 
   app.get("/api/v1/plugins/:pluginId/pages/:pageId", async (context) => {
+    const pluginId = context.req.param("pluginId");
+    const pageId = context.req.param("pageId");
+    // A public page belongs to a security plugin and is the one surface a
+    // logged-out browser may reach, so it renders without a principal and
+    // without an authorization check. Every other page is authorized as usual.
+    const isPublic = deps.runtime.pageIsPublic(pluginId, pageId);
     if (
+      !isPublic &&
       !(await deps.runtime.authorize(context.get("principal"), "inspect", {
         type: "plugin",
-        id: context.req.param("pluginId"),
+        id: pluginId,
       }))
     )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
-      const page = await deps.runtime.withPrincipal(
-        context.get("principal"),
-        () =>
-          deps.runtime.renderPage(
-            context.req.param("pluginId"),
-            context.req.param("pageId"),
-            context.req.query(),
-          ),
-      );
+      const page = isPublic
+        ? await deps.runtime.renderPage(pluginId, pageId, context.req.query())
+        : await deps.runtime.withPrincipal(context.get("principal"), () =>
+            deps.runtime.renderPage(pluginId, pageId, context.req.query()),
+          );
       if (!page) return context.json({ message: "Plugin page not found" }, 404);
       return context.json(page);
-    } catch {
+    } catch (error) {
+      // The browser only learns "could not be rendered", which names no cause.
+      // Logged so a broken page is diagnosable from the server side.
+      console.error("Plugin page render failed", error);
       return context.json(
         { message: "Plugin page could not be rendered" },
         500,
@@ -219,4 +237,80 @@ export function registerPluginRoutes(
       }
     },
   );
+
+  app.get("/api/v1/plugins/:pluginId/resources", async (context) => {
+    const pluginId = context.req.param("pluginId");
+    if (
+      !(await deps.runtime.authorize(context.get("principal"), "inspect", {
+        type: "plugin",
+        id: pluginId,
+      }))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
+    const resources = deps.runtime.resources(pluginId);
+    return context.json({
+      resources: resources.map((resource) => ({
+        id: resource.id,
+        inputSchema: jsonSchemaOf(resource.input, `resource "${resource.id}"`),
+        refresh: { ...resource.refresh },
+      })),
+    });
+  });
+
+  app.post(
+    "/api/v1/plugins/:pluginId/resources/:resourceId",
+    async (context) => {
+      const principal = context.get("principal");
+      const pluginId = context.req.param("pluginId");
+      const resourceId = context.req.param("resourceId");
+      const resource = deps.runtime
+        .resources(pluginId)
+        .find((item) => item.id === resourceId);
+      if (!resource)
+        return context.json({ message: "Plugin resource not found" }, 404);
+      if (
+        !(await deps.runtime.authorize(principal, "inspect", {
+          type: "plugin",
+          id: pluginId,
+        }))
+      )
+        return context.json({ message: "Insufficient permission" }, 403);
+
+      let input: unknown;
+      try {
+        input = await context.req.json();
+      } catch {
+        return context.json(
+          { message: "Request body must be valid JSON" },
+          400,
+        );
+      }
+      try {
+        const data = await deps.runtime.withPrincipal(principal, () =>
+          Promise.resolve(resource.invoke(input)),
+        );
+        return context.json({ data });
+      } catch (error) {
+        return context.json(
+          {
+            message:
+              error instanceof Error && error.name === "ZodError"
+                ? "Plugin resource input is invalid"
+                : "Plugin resource failed",
+          },
+          error instanceof Error && error.name === "ZodError" ? 422 : 500,
+        );
+      }
+    },
+  );
+}
+
+/** Converts a Zod schema to JSON Schema, or `undefined` when absent. */
+function jsonSchemaOf(schema: unknown, what: string): unknown {
+  if (!schema || typeof schema !== "object") return undefined;
+  try {
+    return zodToJsonSchema(schema as Parameters<typeof zodToJsonSchema>[0]);
+  } catch {
+    throw new Error(`Cannot convert ${what} to JSON Schema`);
+  }
 }

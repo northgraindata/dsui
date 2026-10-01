@@ -14,6 +14,7 @@
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
     "@northgraindata/dsui-ui": "workspace:*",
     "@tanstack/react-virtual": "^3.14.11",
+    "liveline": "^0.0.7",
     "modern-monaco": "^0.4.2"
   },
   "peerDependencies": {

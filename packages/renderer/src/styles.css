@@ -1875,3 +1875,50 @@ button.ov-card-title:hover {
 .sql-token-comment {
   color: #6e85a8;
 }
+.ov-gauge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  flex: none;
+}
+.ov-gauge svg {
+  inline-size: 100%;
+  block-size: 100%;
+}
+.ov-gauge-track,
+.ov-gauge-fill {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.ov-gauge-track {
+  stroke: var(--color-border);
+}
+.ov-gauge-fill {
+  stroke: var(--color-accent);
+}
+.ov-gauge[data-tone="healthy"] .ov-gauge-fill {
+  stroke: var(--color-healthy);
+}
+.ov-gauge[data-tone="warning"] .ov-gauge-fill {
+  stroke: var(--color-warning);
+}
+.ov-gauge[data-tone="unavailable"] .ov-gauge-fill {
+  stroke: var(--color-unavailable);
+}
+.ov-gauge[data-tone="muted"] .ov-gauge-fill {
+  stroke: var(--color-muted);
+}
+.ov-gauge-number {
+  position: absolute;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text);
+}
+.ov-gauge[data-tone="muted"] .ov-gauge-number {
+  color: var(--color-muted);
+}

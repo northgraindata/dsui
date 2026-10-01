@@ -244,7 +244,10 @@ export async function writeTree(
  * `bundleWithExtras` acts on them. Echoing as it arrives would interleave
  * build chatter with the caller's own progress output.
  */
-export const defaultRun = async (command: string[], cwd: string): Promise<void> => {
+export const defaultRun = async (
+  command: string[],
+  cwd: string,
+): Promise<void> => {
   const child = Bun.spawn(command, {
     cwd,
     stdout: "pipe",

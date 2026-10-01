@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["DSUI_VERSION"],
+  "globalPassThroughEnv": ["DSUI_VERSION", "DSUI_CONFIG", "DSUI_DATA_DIR", "DSUI_MASTER_KEY", "DSUI_HOST", "DSUI_PORT", "DSUI_WEB_ROOT", "DSUI_SDK_ROOT", "DSUI_BUN"],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".astro/**"] },
     "dev": { "cache": false, "persistent": true },

@@ -10,6 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@northgraindata/dsui-adapter-sdk": "workspace:*"
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "@northgraindata/dsui-ui": "workspace:*",
+    "react": "^19.0.0"
+  },
+  "dsui": {
+    "browser": "./src/browser.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0"
   }
 }

@@ -13,6 +13,7 @@
     "./components/ui/query-editor/sql-editor": "./src/components/ui/query-editor/sql-editor.tsx"
   },
   "scripts": {
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

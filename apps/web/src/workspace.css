@@ -874,8 +874,13 @@
   margin: 0;
   font-size: 12px;
 }
-.service-settings-content dt { color: var(--color-muted); }
-.service-settings-content dd { color: var(--color-primary); text-align: right; }
+.service-settings-content dt {
+  color: var(--color-muted);
+}
+.service-settings-content dd {
+  color: var(--color-primary);
+  text-align: right;
+}
 .service-settings-note {
   display: block;
   max-width: 480px;

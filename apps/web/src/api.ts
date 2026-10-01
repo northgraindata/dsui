@@ -1,4 +1,7 @@
-import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
+import type {
+  PageDocument,
+  RefreshStrategy,
+} from "@northgraindata/dsui-adapter-sdk";
 import type {
   HealthStatus,
   PublicAdapter,
@@ -347,6 +350,36 @@ export async function executePluginProcedure(
   );
   return result.data;
 }
+/**
+ * Declared resources for a plugin, with the freshness policy each was
+ * registered with. The browser reads the interval from here, the same way it
+ * does for an adapter, so a polled plugin resource needs no plugin-specific
+ * polling path.
+ */
+export async function getPluginResources(pluginId: string) {
+  const result = await request<{
+    resources: {
+      id: string;
+      inputSchema?: unknown;
+      refresh: RefreshStrategy;
+    }[];
+  }>(`/plugins/${encodeURIComponent(pluginId)}/resources`);
+  return result.resources;
+}
+
+/** Runs one plugin resource's query. */
+export async function executePluginResource(
+  pluginId: string,
+  resourceId: string,
+  input: unknown,
+) {
+  const result = await request<{ data: unknown }>(
+    `/plugins/${encodeURIComponent(pluginId)}/resources/${encodeURIComponent(resourceId)}`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  return result.data;
+}
+
 export async function getServicePages(id: string) {
   return request<{ pages: Array<{ path: string }> }>(`/services/${id}/pages`);
 }
@@ -416,20 +449,15 @@ export async function runOperation(
     body: JSON.stringify(input),
   });
 }
-export async function login(input: { email: string; password: string }) {
-  return request<{ id: string; email: string; role: string }>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-export async function setupOwner(input: { email: string; password: string }) {
-  return request<{ id: string; email: string; role: string }>("/auth/setup", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-export async function logout() {
-  return request<void>("/auth/logout", { method: "POST" });
+/**
+ * Who the caller is, if anyone.
+ *
+ * Returns null rather than throwing when nobody is signed in, so a caller can
+ * branch on it. With no authentication plugin installed the server reports the
+ * local owner.
+ */
+export async function currentPrincipal() {
+  return request<{ id: string; role: string } | null>("/auth/me");
 }
 export function titleFor(id: string) {
   return (

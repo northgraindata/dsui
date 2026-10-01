@@ -5,7 +5,6 @@ import {
   type ResourceBinding,
   serializeNodes,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { HealthStatus } from "@northgraindata/dsui-core";
 import zodToJsonSchema from "zod-to-json-schema";
 import { assertAdapterDefinition } from "./adapters/definition.js";
 import { DsuiDatabase } from "./db/database.js";
@@ -47,18 +46,21 @@ function argument(name: string): string | undefined {
   return position === -1 ? undefined : process.argv[position + 1];
 }
 
+function jsonSchemaOf(schema: unknown, what: string): unknown {
+  if (!schema || typeof schema !== "object") return undefined;
+  try {
+    return zodToJsonSchema(schema as Parameters<typeof zodToJsonSchema>[0]);
+  } catch {
+    throw new Error(`Cannot convert ${what} to JSON Schema`);
+  }
+}
+
 function inputSchemaOf(member: object, what: string): unknown {
   // Runtime members are callables carrying the full definition.
   const inputSchema = (member as { definition?: { inputSchema?: unknown } })
     .definition?.inputSchema;
   if (!inputSchema) return undefined;
-  try {
-    return zodToJsonSchema(
-      inputSchema as Parameters<typeof zodToJsonSchema>[0],
-    );
-  } catch {
-    throw new Error(`Cannot convert ${what} input schema to JSON Schema`);
-  }
+  return jsonSchemaOf(inputSchema, `${what} input schema`);
 }
 
 /**
@@ -117,9 +119,33 @@ export async function runAdapterHost(): Promise<number> {
   try {
     switch (method) {
       case "describe": {
+        const methods = definition.connectionMethods;
+        const connectionSchema = jsonSchemaOf(
+          definition.connectionSchema,
+          "connection schema",
+        );
         reply(request.id, {
           metadata: definition.metadata,
           sdkVersion: definition.sdkVersion,
+          // The connection form is served from the host, so the schema has to
+          // cross the process boundary with the rest of the description.
+          ...(connectionSchema ? { connectionSchema } : {}),
+          ...(methods
+            ? {
+                connectionMethods: methods.map((method) => ({
+                  id: method.id,
+                  label: method.label,
+                  ...(method.description
+                    ? { description: method.description }
+                    : {}),
+                  schema: jsonSchemaOf(
+                    method.schema,
+                    `connection method "${method.id}"`,
+                  ),
+                  ...(method.group ? { group: { ...method.group } } : {}),
+                })),
+              }
+            : {}),
           resources: definition.resources.map((resource) => ({
             id: resource.id,
             inputSchema: inputSchemaOf(resource, `resource "${resource.id}"`),
@@ -135,23 +161,17 @@ export async function runAdapterHost(): Promise<number> {
         break;
       }
       case "health": {
+        // The adapter decides what healthy means; this host only supplies the
+        // connection, times the call and validates the report before it
+        // crosses the process boundary.
         const started = Date.now();
+        let instance: Awaited<ReturnType<typeof createAdapterInstance>>;
         try {
-          const instance = await createAdapterInstance(
+          instance = await createAdapterInstance(
             definition,
             params.connection,
             runtimeOptions,
           );
-          try {
-            const status: HealthStatus = {
-              status: "healthy",
-              checkedAt: new Date().toISOString(),
-              latencyMs: Date.now() - started,
-            };
-            reply(request.id, status);
-          } finally {
-            await instance.dispose();
-          }
         } catch (error) {
           reply(request.id, {
             status: "unavailable",
@@ -159,7 +179,63 @@ export async function runAdapterHost(): Promise<number> {
             latencyMs: Date.now() - started,
             detail:
               error instanceof Error ? error.message : "Health probe failed",
+            score: 0,
+            checks: [
+              {
+                id: "reachability",
+                label: "Service reachable",
+                ok: false,
+                detail:
+                  error instanceof Error
+                    ? error.message
+                    : "Health probe failed",
+              },
+            ],
           });
+          break;
+        }
+        try {
+          const report =
+            typeof definition.health === "function"
+              ? await definition.health(instance.context)
+              : {
+                  status: "healthy" as const,
+                  score: 100,
+                  checks: [
+                    {
+                      id: "reachability",
+                      label: "Service reachable",
+                      ok: true,
+                    },
+                  ],
+                };
+          reply(request.id, {
+            ...report,
+            checkedAt: new Date().toISOString(),
+            latencyMs: report.latencyMs ?? Date.now() - started,
+          });
+        } catch (error) {
+          reply(request.id, {
+            status: "unavailable",
+            checkedAt: new Date().toISOString(),
+            latencyMs: Date.now() - started,
+            detail:
+              error instanceof Error ? error.message : "Health probe failed",
+            score: 0,
+            checks: [
+              {
+                id: "reachability",
+                label: "Service reachable",
+                ok: false,
+                detail:
+                  error instanceof Error
+                    ? error.message
+                    : "Health probe failed",
+              },
+            ],
+          });
+        } finally {
+          await instance.dispose();
         }
         break;
       }

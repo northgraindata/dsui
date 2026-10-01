@@ -45,6 +45,11 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
       `Adapter version must be SemVer: ${metadata.version}`,
     );
 
+  if (typeof options.health !== "function")
+    throw new InvalidDefinitionError(
+      `Adapter "${metadata.id}" must declare a health function so it can state what healthy means for the system it integrates with`,
+    );
+
   const stores = options.stores ? [...options.stores] : [];
   const resources = options.resources ? [...options.resources] : [];
   const actions = options.actions ? [...options.actions] : [];
@@ -84,6 +89,10 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
     connectionMethods,
     createContext,
     disposeContext: options.disposeContext,
+    health: options.health,
+    ...(options.latencyBudgetMs !== undefined
+      ? { latencyBudgetMs: options.latencyBudgetMs }
+      : {}),
     stores,
     resources,
     actions,
