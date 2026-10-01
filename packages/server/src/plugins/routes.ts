@@ -8,6 +8,7 @@ export function registerPluginRoutes(
   app: Hono,
   deps: {
     runtime: PluginRuntime;
+    logError?: (pluginId: string, error: unknown) => void;
     audit(actor: string, action: string, target: string): void;
   },
 ): void {
@@ -124,7 +125,8 @@ export function registerPluginRoutes(
               slotId: contribution.id,
               nodes,
             });
-        } catch {
+        } catch (error) {
+          deps.logError?.(contribution.pluginId, error);
           result.push({
             serviceId: id,
             pluginId: contribution.pluginId,

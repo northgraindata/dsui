@@ -23,6 +23,10 @@ import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 import type { PluginFetch } from "./plugins/installer.js";
 import { registerPluginRoutes } from "./plugins/routes.js";
+import {
+  BUILT_IN_PLUGIN_IDS,
+  builtInSourceMap,
+} from "./plugins/built-in.js";
 import { type PluginModuleLoader, PluginRuntime } from "./plugins/runtime.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
 import { type EnterpriseAuthKit, registerAuthRoutes } from "./routes/auth.js";
@@ -335,7 +339,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     const sources = loaded.plugins ?? {};
     if (pluginsLoaded) return;
     if (pluginSync) return pluginSync;
-    pluginSync = pluginRuntime.load(sources);
+    pluginSync = pluginRuntime.load(
+      sources,
+      builtInSourceMap(),
+      BUILT_IN_PLUGIN_IDS,
+    );
     try {
       await pluginSync;
       if (enterpriseAuth && pluginRuntime.hasAuthentication())

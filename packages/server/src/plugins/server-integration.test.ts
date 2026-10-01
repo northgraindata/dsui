@@ -2,7 +2,13 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { definePlugin } from "@northgraindata/dsui-plugin-sdk";
+import {
+  Card,
+  defineComponent,
+  definePlugin,
+  Grid,
+  Section,
+} from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
 import { createRuntime } from "../app";
 
@@ -47,6 +53,114 @@ describe("plugin server integration", () => {
   });
 
   test("loads an enabled plugin from config and serves its catalog and procedure", async () => {
+    const plugin = definePlugin({
+      metadata: {
+        id: "custom-plugin",
+        name: "Custom plugin",
+        version: "1.0.0",
+        apiVersion: 1,
+      },
+      configSchema: z.object({ greeting: z.string().default("Hello") }),
+      setup(registry) {
+        registry.page({
+          id: "overview",
+          title: "Plugin example",
+          render: async ({ context }) => {
+            const { items } = await context.services.list({ limit: 12 });
+            return [
+              Section({
+                title: "Connected services",
+                content: Grid({
+                  columns: 2,
+                  content: items.map((service) =>
+                    Card({
+                      title: service.name,
+                      description: service.adapter,
+                      content: defineComponent<{
+                        name: string;
+                        adapter: string;
+                      }>({
+                        id: "custom-plugin/service-summary",
+                        path: "./browser.mjs",
+                        props: z.object({
+                          name: z.string(),
+                          adapter: z.string(),
+                        }),
+                      })({ name: service.name, adapter: service.adapter }),
+                    }),
+                  ),
+                }),
+              }),
+            ];
+          },
+        });
+        registry.navigation({
+          id: "overview-link",
+          area: "primary",
+          label: "Plugin example",
+          pageId: "overview",
+          order: 100,
+        });
+        registry.slot({
+          id: "service-card-status",
+          slot: "dashboard.service-card.trailing",
+          order: 100,
+          render: ({ service }) =>
+            defineComponent<{ name: string; adapter: string }>({
+              id: "custom-plugin/service-summary",
+              path: "./browser.mjs",
+              props: z.object({ name: z.string(), adapter: z.string() }),
+            })({ name: service.name, adapter: service.adapter }),
+        });
+        registry.slot({
+          id: "workspace-summary",
+          slot: "service.workspace.after-header",
+          order: 100,
+          render: ({ service }) =>
+            Card({
+              title: "Plugin extension",
+              content: Section({
+                title: service.name,
+                content: Grid({ columns: 1, content: [] }),
+              }),
+            }),
+        });
+        registry.procedure({
+          id: "list-services",
+          permission: "inspect",
+          input: z.object({
+            cursor: z.string().optional(),
+            limit: z.number().int().positive().max(100).optional(),
+          }),
+          output: z.object({
+            items: z.array(
+              z.object({
+                id: z.string(),
+                name: z.string(),
+                adapter: z.string(),
+                managedBy: z.enum(["configuration", "ui"]),
+              }),
+            ),
+            nextCursor: z.string().optional(),
+          }),
+          handler: (context, input) => context.services.list(input),
+        });
+        registry.procedure({
+          id: "greet",
+          permission: "inspect",
+          input: z.object({ name: z.string().min(1) }),
+          output: z.string(),
+          handler: (context, input) =>
+            `${context.config.greeting}, ${input.name}`,
+        });
+      },
+    });
+    const bundleRoot = mkdtempSync(join(tmpdir(), "dsui-plugin-bundle-"));
+    temporaryDirectories.push(bundleRoot);
+    writeFileSync(
+      join(bundleRoot, "custom-plugin.browser.mjs"),
+      "export function createComponents(React) { return {}; }",
+    );
     const webRoot = mkdtempSync(join(tmpdir(), "dsui-plugin-web-"));
     temporaryDirectories.push(webRoot);
     writeFileSync(join(webRoot, "index.html"), "<!doctype html>");
@@ -77,13 +191,17 @@ describe("plugin server integration", () => {
         ],
         adapters: {},
         plugins: {
-          "example-plugin": {
-            package: "@northgraindata/dsui-plugin-example",
-            browserBundle: "@northgraindata/dsui-plugin-example/browser",
+          "custom-plugin": {
+            package: "@acme/custom-plugin",
+            browserBundle: join(bundleRoot, "custom-plugin.browser.mjs"),
             enabled: true,
             config: { greeting: "Hi" },
           },
         },
+      },
+      pluginModuleLoader: async (specifier) => {
+        if (specifier === "@acme/custom-plugin") return { default: plugin };
+        throw new Error(`Unexpected module ${specifier}`);
       },
     });
     runtimes.push(runtime);
@@ -91,7 +209,7 @@ describe("plugin server integration", () => {
     await runtime.refreshConfig();
     const catalogResponse = await runtime.app.request("/api/v1/plugins");
     const procedureResponse = await runtime.app.request(
-      "/api/v1/plugins/example-plugin/procedures/greet",
+      "/api/v1/plugins/custom-plugin/procedures/greet",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -99,7 +217,7 @@ describe("plugin server integration", () => {
       },
     );
     const servicesResponse = await runtime.app.request(
-      "/api/v1/plugins/example-plugin/procedures/list-services",
+      "/api/v1/plugins/custom-plugin/procedures/list-services",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -107,10 +225,10 @@ describe("plugin server integration", () => {
       },
     );
     const pageResponse = await runtime.app.request(
-      "/api/v1/plugins/example-plugin/pages/overview",
+      "/api/v1/plugins/custom-plugin/pages/overview",
     );
     const bundleResponse = await runtime.app.request(
-      "/api/v1/plugins/example-plugin/components.mjs",
+      "/api/v1/plugins/custom-plugin/components.mjs",
     );
     const slotResponse = await runtime.app.request(
       "/api/v1/plugins/slots/dashboard.service-card.trailing",
@@ -129,10 +247,10 @@ describe("plugin server integration", () => {
       },
     );
     const missingPage = await runtime.app.request(
-      "/api/v1/plugins/example-plugin/pages/unknown",
+      "/api/v1/plugins/custom-plugin/pages/unknown",
     );
     const nextServicesResponse = await runtime.app.request(
-      "/api/v1/plugins/example-plugin/procedures/list-services",
+      "/api/v1/plugins/custom-plugin/procedures/list-services",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -142,19 +260,19 @@ describe("plugin server integration", () => {
 
     expect(catalogResponse.status).toBe(200);
     expect(await catalogResponse.json()).toMatchObject({
-      plugins: [{ id: "example-plugin", status: "ready" }],
-      pages: [{ id: "overview", pluginId: "example-plugin" }],
-      navigation: [{ id: "overview-link", pluginId: "example-plugin" }],
+      plugins: [{ id: "custom-plugin", status: "ready" }],
+      pages: [{ id: "overview", pluginId: "custom-plugin" }],
+      navigation: [{ id: "overview-link", pluginId: "custom-plugin" }],
       slots: [
         {
           id: "service-card-status",
           slot: "dashboard.service-card.trailing",
-          pluginId: "example-plugin",
+          pluginId: "custom-plugin",
         },
         {
           id: "workspace-summary",
           slot: "service.workspace.after-header",
-          pluginId: "example-plugin",
+          pluginId: "custom-plugin",
         },
       ],
     });
@@ -203,7 +321,7 @@ describe("plugin server integration", () => {
     expect(JSON.stringify(page)).not.toContain("must-not-leak");
     expect(JSON.stringify(page)).not.toContain("also-private");
     expect(JSON.stringify(page)).toContain(
-      "/api/v1/plugins/example-plugin/components.mjs",
+      "/api/v1/plugins/custom-plugin/components.mjs",
     );
     expect(bundleResponse.status).toBe(200);
     expect(await bundleResponse.text()).toContain("createComponents");
@@ -212,7 +330,7 @@ describe("plugin server integration", () => {
       items: [
         {
           serviceId: "dbt-prod",
-          pluginId: "example-plugin",
+          pluginId: "custom-plugin",
           slotId: "service-card-status",
           nodes: [{ kind: "custom" }],
         },
@@ -223,7 +341,7 @@ describe("plugin server integration", () => {
       items: [
         {
           serviceId: "dbt-prod",
-          pluginId: "example-plugin",
+          pluginId: "custom-plugin",
           slotId: "workspace-summary",
           nodes: [{ kind: "card" }],
         },

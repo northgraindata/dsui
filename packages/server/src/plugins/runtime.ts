@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   type PageDocument,
@@ -62,6 +62,7 @@ export type PluginModuleLoader = (specifier: string) => Promise<unknown>;
 function resolveInstalledBundle(specifier: string): string {
   const builtIn = builtInPluginPath(specifier);
   if (builtIn) return builtIn;
+  if (isAbsolute(specifier)) return specifier;
   return requireFromWorkingDirectory.resolve(specifier);
 }
 
@@ -253,7 +254,11 @@ export class PluginRuntime {
     } = {},
   ) {}
 
-  async load(sources: Record<string, PluginSource>): Promise<void> {
+  async load(
+    sources: Record<string, PluginSource>,
+    builtIns: Record<string, PluginSource> = {},
+    reservedIds: ReadonlySet<string> = new Set(Object.keys(builtIns)),
+  ): Promise<void> {
     if (this.stopped) throw new Error("Plugin runtime is stopped");
     await this.stopActive();
     this.securityFailure = false;
@@ -262,9 +267,30 @@ export class PluginRuntime {
     this.authenticationProvider = undefined;
     this.authorizationProvider = undefined;
 
-    const requests: PluginLoadRequest[] = [];
+    // Built-ins load first and always. A `dsui.yaml` entry claiming a
+    // built-in id is rejected rather than allowed to shadow it, so an
+    // operator cannot substitute a different package for a shipped one.
+    const resolved = new Map<string, PluginSource>(Object.entries(builtIns));
     for (const [id, source] of Object.entries(sources)) {
+      if (reservedIds.has(id)) {
+        // A configuration entry can never replace, reconfigure or disable a
+        // built-in. When the built-in ships, it loads normally and the entry
+        // is ignored; when it is not shipped, the reserved id is reported
+        // as unavailable so the entry does not silently do nothing.
+        if (!resolved.has(id))
+          this.readiness.set(id, {
+            status: "unavailable",
+            detail: `"${id}" is a reserved built-in plugin id and is not configurable`,
+          });
+        continue;
+      }
+      resolved.set(id, source);
+    }
+
+    const requests: PluginLoadRequest[] = [];
+    for (const [id, source] of resolved) {
       let securityPlugin = false;
+      const builtIn = Object.hasOwn(builtIns, id);
       if (!pluginIdPattern.test(id)) {
         this.readiness.set(id, {
           status: "unavailable",
@@ -272,7 +298,7 @@ export class PluginRuntime {
         });
         continue;
       }
-      if (!source.enabled) {
+      if (!source.enabled && !builtIn) {
         this.readiness.set(id, { status: "disabled" });
         continue;
       }

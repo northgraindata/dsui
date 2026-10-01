@@ -386,6 +386,111 @@ describe("PluginRuntime", () => {
     await runtime.close();
   });
 
+  test("loads built-in plugins without any configuration entry", async () => {
+    const builtIns = { "example-plugin": source("example-plugin") };
+    const builtIn = definePlugin({
+      metadata: {
+        id: "example-plugin",
+        name: "Example",
+        version: "1.0.0",
+        apiVersion: 1,
+      },
+      configSchema: z.object({}),
+      setup(registry) {
+        registry.page({
+          id: "home",
+          title: "Home",
+          render: () => PageHeader({ title: "Home" }),
+        });
+      },
+    });
+    const runtime = new PluginRuntime(noServices, async () => ({
+      default: builtIn,
+    }));
+
+    await runtime.load({}, builtIns, new Set(Object.keys(builtIns)));
+
+    expect(runtime.catalog().plugins).toEqual([
+      expect.objectContaining({ id: "example-plugin", status: "ready" }),
+    ]);
+    await runtime.close();
+  });
+
+  test("cannot disable a built-in plugin through configuration", async () => {
+    const builtIn = definePlugin({
+      metadata: {
+        id: "example-plugin",
+        name: "Example",
+        version: "1.0.0",
+        apiVersion: 1,
+      },
+      configSchema: z.object({}),
+      setup() {},
+    });
+    const builtIns = { "example-plugin": source("example-plugin") };
+    const runtime = new PluginRuntime(noServices, async () => ({
+      default: builtIn,
+    }));
+
+    await runtime.load(
+      { "example-plugin": source("substitute", false) },
+      builtIns,
+      new Set(Object.keys(builtIns)),
+    );
+
+    expect(runtime.catalog().plugins).toEqual([
+      expect.objectContaining({ id: "example-plugin", status: "ready" }),
+    ]);
+    await runtime.close();
+  });
+
+  test("ignores a configuration entry that shadows a shipped built-in plugin", async () => {
+    const builtIns = { "example-plugin": source("example-plugin") };
+    const runtime = new PluginRuntime(noServices, async () => ({
+      default: definePlugin({
+        metadata: {
+          id: "example-plugin",
+          name: "Example",
+          version: "1.0.0",
+          apiVersion: 1,
+        },
+        configSchema: z.object({}),
+        setup() {},
+      }),
+    }));
+
+    await runtime.load(
+      { "example-plugin": source("attacker-package") },
+      builtIns,
+      new Set(Object.keys(builtIns)),
+    );
+
+    expect(runtime.catalog().plugins).toEqual([
+      expect.objectContaining({ id: "example-plugin", status: "ready" }),
+    ]);
+    await runtime.close();
+  });
+
+  test("reports a reserved built-in id as unavailable when it is not shipped", async () => {
+    const runtime = new PluginRuntime(noServices, async () => ({}));
+
+    await runtime.load(
+      { "example-plugin": source("attacker-package") },
+      {},
+      new Set(["example-plugin"]),
+    );
+
+    expect(runtime.catalog().plugins).toEqual([
+      expect.objectContaining({
+        id: "example-plugin",
+        status: "unavailable",
+        detail:
+          '"example-plugin" is a reserved built-in plugin id and is not configurable',
+      }),
+    ]);
+    await runtime.close();
+  });
+
   test("rejects conflicting authentication providers", async () => {
     const makeSecurity = (id: string) =>
       definePlugin({

@@ -54,6 +54,11 @@ export {
 export { DsuiDatabase } from "./db/database";
 export type { Migration } from "./db/migrate";
 export {
+  builtInSourceMap,
+  BUILT_IN_PLUGIN_IDS,
+  BUILT_IN_PLUGINS,
+} from "./plugins/built-in";
+export {
   type PluginReadiness,
   PluginRuntime,
 } from "./plugins/runtime";
