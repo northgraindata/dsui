@@ -37,6 +37,8 @@ describe("example plugin", () => {
       procedure(procedure) {
         procedures.push(procedure);
       },
+      authentication() {},
+      authorization() {},
     });
 
     const greeting = procedures.find((procedure) => procedure.id === "greet");

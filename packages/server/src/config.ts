@@ -3,13 +3,41 @@ import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import type { AdapterPackageSource } from "./adapters/types.js";
 
-export const pluginSourceSchema = z
+const installedPluginSourceSchema = z
   .object({
     package: z.string().min(1),
+    browserBundle: z.string().min(1).optional(),
     enabled: z.boolean().default(true),
+    critical: z.boolean().optional(),
     config: z.record(z.unknown()).default({}),
   })
   .strict();
+const gitPluginSourceSchema = z
+  .object({
+    source: z.literal("git"),
+    repository: z
+      .string()
+      .regex(
+        /^git\+https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/,
+      )
+      .refine((repository) =>
+        repository
+          .replace(/\.git$/, "")
+          .split("/")
+          .slice(-2)
+          .every((segment) => segment !== "." && segment !== ".."),
+      ),
+    commit: z.string().regex(/^[a-f0-9]{40}$/),
+    integrity: z.string().regex(/^sha512-[A-Za-z0-9+/]{86}==$/),
+    enabled: z.boolean().default(true),
+    critical: z.boolean().optional(),
+    config: z.record(z.unknown()).default({}),
+  })
+  .strict();
+export const pluginSourceSchema = z.union([
+  installedPluginSourceSchema,
+  gitPluginSourceSchema,
+]);
 export type PluginSource = z.infer<typeof pluginSourceSchema>;
 
 const envToken = /\$\{([A-Z_][A-Z0-9_]*)\}/g;

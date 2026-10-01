@@ -3,6 +3,7 @@ import type { Hono } from "hono";
 import { z } from "zod";
 import { type AuthMode, authentication, type Principal } from "../auth.js";
 import type { DsuiDatabase } from "../db/database.js";
+import type { PluginRuntime } from "../plugins/runtime.js";
 import { errorMessage, httpStatus } from "./errors.js";
 
 export type EnterpriseAuthKit =
@@ -48,6 +49,7 @@ export interface AuthRouteDeps {
   enterpriseAuth: EnterpriseAuthKit;
   enterprisePrincipal?: (request: Request) => Promise<{ id: string } | null>;
   enterpriseRole?: (userId: string) => Principal["role"] | null;
+  pluginRuntime?: PluginRuntime;
 }
 
 export function registerAuthMiddleware(
@@ -59,6 +61,7 @@ export function registerAuthMiddleware(
     | "enterpriseAuth"
     | "enterprisePrincipal"
     | "enterpriseRole"
+    | "pluginRuntime"
   >,
 ): void {
   app.use("/api/v1/*", async (context, next) => {
@@ -70,6 +73,19 @@ export function registerAuthMiddleware(
       ].includes(context.req.path)
     )
       return next();
+    if (deps.pluginRuntime?.hasAuthentication()) {
+      try {
+        const principal = await deps.pluginRuntime.authenticate(
+          context.req.raw,
+        );
+        if (!principal)
+          return context.json({ message: "Authentication required" }, 401);
+        context.set("principal", principal);
+        return next();
+      } catch {
+        return context.json({ message: "Authentication required" }, 401);
+      }
+    }
     return authentication(
       deps.authMode,
       (token) => localPrincipal(deps.database, token),

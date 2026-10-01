@@ -24,8 +24,11 @@ export function Custom({
   context?: Record<string, unknown>;
 }) {
   const entry = resolveComponent(node.props.component, node.props.path);
-  const [ExternalComponent, setExternalComponent] =
-    useState<ComponentType<ComponentProps> | null>(null);
+  const key = `${node.props.component}:${node.props.browserUrl ?? ""}`;
+  const [external, setExternal] = useState<{
+    key: string;
+    component: ComponentType<ComponentProps> | null;
+  }>();
   useEffect(() => {
     if (entry) return;
     let active = true;
@@ -33,18 +36,21 @@ export function Custom({
       node.props.component,
       node.props.browserUrl,
     ).then((component) => {
-      if (active) setExternalComponent(component);
+      if (active) setExternal({ key, component });
     });
     return () => {
       active = false;
     };
-  }, [entry, node.props.component, node.props.browserUrl]);
-  const Component = entry?.component ?? ExternalComponent;
+  }, [entry, key, node.props.component, node.props.browserUrl]);
+  const Component =
+    entry?.component ?? (external?.key === key ? external.component : null);
+  if (!entry && external?.key !== key)
+    return <span role="status">Loading extension…</span>;
   if (!Component)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
-        Unknown component “{node.props.component}”. The adapter declaring it is
-        not installed or its browser path is not available in this build.
+        Unknown component “{node.props.component}”. Its browser bundle is not
+        available in this build.
       </Surface>
     );
   return (

@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { definePlugin, PageHeader } from "@northgraindata/dsui-plugin-sdk";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -16,6 +20,91 @@ const noServices = {
 };
 
 describe("PluginRuntime", () => {
+  test("loads a pinned GitHub plugin only after verifying its manifest and bundles", async () => {
+    const plugin = definePlugin({
+      metadata: {
+        id: "remote-plugin",
+        name: "Remote",
+        version: "1.0.0",
+        apiVersion: 1,
+      },
+      configSchema: z.object({}),
+      setup(registry) {
+        registry.page({
+          id: "home",
+          title: "Remote",
+          render: () => PageHeader({ title: "Remote" }),
+        });
+      },
+    });
+    const server = "export default {};";
+    const browser = "export function createComponents() { return {}; }";
+    const hash = (value: string, algorithm: "sha256" | "sha512") =>
+      createHash(algorithm)
+        .update(value)
+        .digest(algorithm === "sha256" ? "hex" : "base64");
+    const manifest = JSON.stringify({
+      id: "remote-plugin",
+      version: "1.0.0",
+      apiVersion: 1,
+      server: {
+        entry: "./dist/plugin.mjs",
+        sha256: hash(server, "sha256"),
+        bytes: server.length,
+      },
+      browser: {
+        entry: "./dist/browser.mjs",
+        sha256: hash(browser, "sha256"),
+        bytes: browser.length,
+      },
+    });
+    const files = new Map([
+      ["plugin.json", manifest],
+      ["dist/plugin.mjs", server],
+      ["dist/browser.mjs", browser],
+    ]);
+    const dataDir = mkdtempSync(join(tmpdir(), "dsui-plugin-runtime-"));
+    const imported: string[] = [];
+    const runtime = new PluginRuntime(
+      noServices,
+      async (specifier) => {
+        imported.push(specifier);
+        return { default: plugin };
+      },
+      {
+        dataDir,
+        fetch: async (url) => {
+          const entry = new URL(url).pathname.split(`/${"a".repeat(40)}/`)[1];
+          const bytes = files.get(entry ?? "");
+          return new Response(bytes ?? "", { status: bytes ? 200 : 404 });
+        },
+      },
+    );
+    try {
+      await runtime.load({
+        "remote-plugin": {
+          source: "git",
+          repository: "git+https://github.com/acme/remote-plugin",
+          commit: "a".repeat(40),
+          integrity: `sha512-${hash(manifest, "sha512")}`,
+          enabled: true,
+          config: {},
+        },
+      });
+      expect(runtime.catalog().plugins).toMatchObject([
+        { id: "remote-plugin", status: "ready" },
+      ]);
+      expect(imported).toHaveLength(1);
+      expect(imported[0]).toEndWith("/server.mjs");
+      expect(runtime.browserBundle("remote-plugin")?.path).toEndWith(
+        "/browser.mjs",
+      );
+    } finally {
+      await runtime.close();
+      rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
   test("validates config, registers pages and navigation, and starts in dependency order", async () => {
     const started: string[] = [];
     const stopped: string[] = [];
@@ -143,6 +232,9 @@ describe("PluginRuntime", () => {
     expect(catalog.pages).toEqual([
       expect.objectContaining({ id: "page", pluginId: "available-plugin" }),
     ]);
+    expect(runtime.procedure("disabled-plugin", "read")).toBeNull();
+    expect(await runtime.renderPage("disabled-plugin", "page")).toBeNull();
+    expect(runtime.browserBundle("disabled-plugin")).toBeUndefined();
     await runtime.close();
   });
 
@@ -272,6 +364,55 @@ describe("PluginRuntime", () => {
     expect(await result.json()).toEqual({ data: 42 });
     expect(invalid.status).toBe(422);
     expect(forbidden.status).toBe(403);
+    await runtime.close();
+  });
+
+  test("fails closed when a critical security plugin cannot load", async () => {
+    const runtime = new PluginRuntime(noServices, async () => {
+      throw new Error("secret from dependency");
+    });
+    await expect(
+      runtime.load({ security: { ...source("security"), critical: true } }),
+    ).rejects.toThrow("Security plugin");
+    expect(runtime.hasAuthentication()).toBe(true);
+    expect(
+      await runtime.authenticate(
+        new Request("http://localhost/api/v1/services"),
+      ),
+    ).toBeNull();
+    expect(
+      await runtime.authorize({ id: "local", role: "owner" }, "manage"),
+    ).toBe(false);
+    await runtime.close();
+  });
+
+  test("rejects conflicting authentication providers", async () => {
+    const makeSecurity = (id: string) =>
+      definePlugin({
+        metadata: {
+          id,
+          name: id,
+          version: "1.0.0",
+          apiVersion: 1,
+          security: true,
+        },
+        configSchema: z.object({}),
+        setup(registry) {
+          registry.authentication({
+            authenticate: () => ({ id: "user", role: "viewer" }),
+          });
+        },
+      });
+    const runtime = new PluginRuntime(noServices, async (id) => ({
+      default: makeSecurity(id),
+    }));
+    await expect(
+      runtime.load({
+        first: { ...source("first"), critical: true },
+        second: { ...source("second"), critical: true },
+      }),
+    ).rejects.toThrow("only one authentication");
+    expect(runtime.hasAuthentication()).toBe(true);
     await runtime.close();
   });
 });

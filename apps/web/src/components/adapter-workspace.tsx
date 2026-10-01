@@ -1,6 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { Service } from "../api";
+import {
+  PluginSlot,
+  usePluginSlotBatch,
+} from "../features/plugins/plugin-slots";
 import { navigablePagePaths } from "../service-pages";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
@@ -40,6 +44,10 @@ export function AdapterWorkspace({
   children: ReactNode;
 }) {
   const pages = navigablePagePaths(paths);
+  const pluginSlots = usePluginSlotBatch(
+    "service.workspace.after-header",
+    service.id,
+  );
   const active = (item: string) =>
     item === path || (item !== "/" && path?.startsWith(`${item}/`));
   const pageLink = (item: string, icons: boolean) => (
@@ -94,6 +102,11 @@ export function AdapterWorkspace({
             </div>
           </div>
         </header>
+        <PluginSlot
+          serviceId={service.id}
+          results={pluginSlots.results}
+          error={pluginSlots.error}
+        />
         {children}
       </div>
     </div>

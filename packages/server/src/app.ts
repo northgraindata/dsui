@@ -21,6 +21,7 @@ import {
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
+import type { PluginFetch } from "./plugins/installer.js";
 import { registerPluginRoutes } from "./plugins/routes.js";
 import { type PluginModuleLoader, PluginRuntime } from "./plugins/runtime.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
@@ -59,6 +60,8 @@ export type CreateRuntimeOptions = {
   spawnHost?: AdapterLoadOptions["spawnHost"];
   /** Loader for trusted, already-installed plugin packages. Tests inject fakes. */
   pluginModuleLoader?: PluginModuleLoader;
+  pluginFetch?: PluginFetch;
+  offlinePlugins?: boolean;
 };
 
 function requiredEnterpriseAuthUrl(value: string | undefined): string {
@@ -226,7 +229,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       left.id.localeCompare(right.id),
     );
   };
-  const pluginRuntime = new PluginRuntime(
+  const pluginRuntime: PluginRuntime = new PluginRuntime(
     {
       list: async (input) => {
         const limit = input?.limit ?? 50;
@@ -234,9 +237,13 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           throw new Error(
             "Service catalog page size must be between 1 and 100",
           );
-        const remaining = listPluginServiceSummaries().filter(
+        const candidates = listPluginServiceSummaries().filter(
           (service) => !input?.cursor || service.id > input.cursor,
         );
+        const remaining = [];
+        for (const candidate of candidates)
+          if (await pluginRuntime.canAccessService(candidate.id))
+            remaining.push(candidate);
         const items = remaining.slice(0, limit);
         return {
           items,
@@ -244,10 +251,14 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         };
       },
       get: async (id) =>
-        listPluginServiceSummaries().find((service) => service.id === id) ??
-        null,
+        (await pluginRuntime.canAccessService(id))
+          ? (listPluginServiceSummaries().find(
+              (service) => service.id === id,
+            ) ?? null)
+          : null,
     },
     options.pluginModuleLoader,
+    { dataDir, fetch: options.pluginFetch, offline: options.offlinePlugins },
   );
   let pluginsLoaded = false;
   let pluginSync: Promise<void> | undefined;
@@ -327,6 +338,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     pluginSync = pluginRuntime.load(sources);
     try {
       await pluginSync;
+      if (enterpriseAuth && pluginRuntime.hasAuthentication())
+        throw new Error(
+          "Enterprise authentication cannot run alongside a plugin authentication provider",
+        );
       pluginsLoaded = true;
     } finally {
       pluginSync = undefined;
@@ -384,6 +399,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   }
   const serviceDeps = {
     registry,
+    pluginRuntime,
     database,
     cipher,
     getConfig,
@@ -400,6 +416,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     enterpriseAuth: enterpriseAuth as EnterpriseAuthKit,
     enterprisePrincipal,
     enterpriseRole,
+    pluginRuntime,
   });
   registerPluginRoutes(app, { runtime: pluginRuntime, audit });
   registerAdapterRoutes(app, {

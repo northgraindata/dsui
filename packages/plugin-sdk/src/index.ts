@@ -21,6 +21,7 @@ export type PluginMetadata = {
   readonly name: string;
   readonly version: string;
   readonly apiVersion: typeof PLUGIN_API_VERSION;
+  readonly security?: boolean;
 };
 
 export type PluginPage = {
@@ -54,10 +55,30 @@ export type PluginNavigationItem = {
   readonly order?: number;
 };
 
+export type PluginSlotName =
+  | "dashboard.service-card.trailing"
+  | "service.workspace.after-header";
+
 export type PluginUiSlot = {
   readonly id: string;
-  readonly slot: string;
+  readonly slot: PluginSlotName;
   readonly order?: number;
+};
+
+export type PluginSlotDefinition<TConfig = unknown> = PluginUiSlot & {
+  readonly render: (input: {
+    readonly context: PluginContext<TConfig>;
+    readonly service: PluginServiceSummary;
+  }) =>
+    | PageNode
+    | readonly PageNode[]
+    | Promise<PageNode | readonly PageNode[]>;
+};
+
+export type RuntimePluginSlot = PluginUiSlot & {
+  readonly render: (input: {
+    service: PluginServiceSummary;
+  }) => Promise<readonly PageNode[]>;
 };
 
 export type PluginServiceSummary = {
@@ -90,6 +111,36 @@ export type PluginCatalog = {
   slots: Array<PluginUiSlot & { pluginId: string }>;
 };
 
+export type PluginSlotResult = {
+  serviceId: string;
+  pluginId: string;
+  slotId: string;
+  nodes: readonly PageNode[];
+  error?: string;
+};
+
+export type PluginPrincipal = {
+  id: string;
+  role: "owner" | "admin" | "operator" | "viewer";
+};
+
+export type PluginPermission = "inspect" | "execute" | "manage";
+export type PluginResource = { type: "service" | "plugin"; id: string };
+
+export interface PluginAuthenticationProvider {
+  authenticate(
+    request: Request,
+  ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
+}
+
+export interface PluginAuthorizationProvider {
+  authorize(input: {
+    principal: PluginPrincipal;
+    permission: PluginPermission;
+    resource?: PluginResource;
+  }): Promise<boolean> | boolean;
+}
+
 export type PluginProcedure<
   TContext = unknown,
   TInput = unknown,
@@ -116,17 +167,21 @@ export type RuntimePluginProcedure = {
 export interface RuntimePluginRegistry {
   page(page: RuntimePluginPage): void;
   navigation(item: PluginNavigationItem): void;
-  slot(slot: PluginUiSlot): void;
+  slot(slot: RuntimePluginSlot): void;
   procedure(procedure: RuntimePluginProcedure): void;
+  authentication(provider: PluginAuthenticationProvider): void;
+  authorization(provider: PluginAuthorizationProvider): void;
 }
 
 export interface PluginRegistry<TConfig = unknown> {
   page(page: PluginPageDefinition<TConfig>): void;
   navigation(item: PluginNavigationItem): void;
-  slot(slot: PluginUiSlot): void;
+  slot(slot: PluginSlotDefinition<TConfig>): void;
   procedure<TInput, TOutput = unknown>(
     procedure: PluginProcedure<PluginContext<TConfig>, TInput, TOutput>,
   ): void;
+  authentication(provider: PluginAuthenticationProvider): void;
+  authorization(provider: PluginAuthorizationProvider): void;
 }
 
 export interface PluginContext<TConfig = unknown> {
@@ -197,7 +252,14 @@ export function definePlugin<TConfig>(
                 },
               }),
             navigation: (item) => runtimeRegistry.navigation(item),
-            slot: (slot) => runtimeRegistry.slot(slot),
+            slot: (slot) =>
+              runtimeRegistry.slot({
+                id: slot.id,
+                slot: slot.slot,
+                order: slot.order,
+                render: async ({ service }) =>
+                  serializeNodes(await slot.render({ context, service })),
+              }),
             procedure: (procedure) =>
               runtimeRegistry.procedure({
                 id: procedure.id,
@@ -212,6 +274,20 @@ export function definePlugin<TConfig>(
                     : result;
                 },
               }),
+            authentication: (provider) => {
+              if (!definition.metadata.security)
+                throw new Error(
+                  "Authentication plugins must declare security: true",
+                );
+              runtimeRegistry.authentication(provider);
+            },
+            authorization: (provider) => {
+              if (!definition.metadata.security)
+                throw new Error(
+                  "Authorization plugins must declare security: true",
+                );
+              runtimeRegistry.authorization(provider);
+            },
           };
           definition.setup(registry, config);
         },

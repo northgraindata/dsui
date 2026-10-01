@@ -1,12 +1,14 @@
 import type { ComponentType } from "react";
+import * as React from "react";
 import type { ComponentProps } from "./component-registry";
 
-type ComponentBundle =
-  | Record<string, ComponentType<ComponentProps>>
-  | {
-      default?: Record<string, ComponentType<ComponentProps>>;
-      components?: Record<string, ComponentType<ComponentProps>>;
-    };
+type ComponentBundle = {
+  default?: Record<string, ComponentType<ComponentProps>>;
+  components?: Record<string, ComponentType<ComponentProps>>;
+  createComponents?: (
+    react: typeof React,
+  ) => Record<string, ComponentType<ComponentProps>>;
+};
 
 const bundles = new Map<string, Promise<ComponentBundle>>();
 
@@ -16,25 +18,27 @@ export function loadExternalComponent(
 ): Promise<ComponentType<ComponentProps> | null> {
   const adapterId = componentId.split("/", 1)[0];
   if (!adapterId) return Promise.resolve(null);
-  let bundle = bundles.get(adapterId);
+  const url =
+    browserUrl ??
+    `/api/v1/adapters/${encodeURIComponent(adapterId)}/components.mjs`;
+  let bundle = bundles.get(url);
   if (!bundle) {
-    bundle = import(
-      /* @vite-ignore */
-      browserUrl ??
-        `/api/v1/adapters/${encodeURIComponent(adapterId)}/components.mjs`
-    ) as Promise<ComponentBundle>;
-    bundles.set(adapterId, bundle);
+    bundle = import(/* @vite-ignore */ url) as Promise<ComponentBundle>;
+    bundles.set(url, bundle);
   }
   return bundle
     .then((module) => {
-      const components = (
-        "default" in module
-          ? module.default
-          : "components" in module
-            ? module.components
-            : module
-      ) as Record<string, ComponentType<ComponentProps>> | undefined;
-      return components?.[componentId] ?? null;
+      const components = module.createComponents
+        ? module.createComponents(React)
+        : (module.default ?? module.components);
+      if (components) return components[componentId] ?? null;
+      const legacy = Object.getOwnPropertyDescriptor(
+        module,
+        componentId,
+      )?.value;
+      return typeof legacy === "function"
+        ? (legacy as ComponentType<ComponentProps>)
+        : null;
     })
     .catch(() => null);
 }
