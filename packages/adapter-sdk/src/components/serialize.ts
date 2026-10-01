@@ -619,6 +619,18 @@ export function serializeNode(node: PageNode): PageNode {
         },
       };
     }
+    case "gauge":
+      return {
+        kind: node.kind,
+        props: {
+          value: node.props.value,
+          ...(node.props.max !== undefined ? { max: node.props.max } : {}),
+          ...(node.props.tone ? { tone: node.props.tone } : {}),
+          ...(node.props.scale ? { scale: node.props.scale } : {}),
+          ...(node.props.showValue === false ? { showValue: false } : {}),
+          ...(node.props.label ? { label: node.props.label } : {}),
+        },
+      };
     case "meter":
       return {
         kind: node.kind,

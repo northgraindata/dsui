@@ -1,18 +1,108 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
-import type { z } from "zod";
+import { z } from "zod";
 
-export type { PageDocument, PageNode } from "@northgraindata/dsui-adapter-sdk";
+// Re-exported so a plugin writes `import { z } from "@northgraindata/dsui-plugin-sdk"`
+// exactly as an adapter does, rather than taking a second dependency on zod.
+export { z };
+
+import type { PluginActionDefinition, PluginActionPermission } from "./action";
+import {
+  type AnyPluginPage,
+  definePage,
+  type ExtractRouteParams,
+  matchRoute,
+  type PluginPageContext,
+  type PluginPageDefinition,
+  type PluginResourceReader,
+  queryResource,
+} from "./page";
+import type { RefreshStrategy } from "./refresh";
+import type {
+  AnyPluginResource,
+  PluginResourceDefinition,
+  PluginResourceLike,
+} from "./resource";
+import { InvalidDefinitionError } from "./shared/errors";
+import type {
+  PluginStorage,
+  PluginStoreDefinition,
+  PluginStoreInstance,
+} from "./store.js";
+
+/**
+ * Every shared page primitive is re-exported so a plugin can compose the same
+ * UI as an adapter without the host adding a case for it. The list is the
+ * adapter SDK's public component set rather than a hand-picked subset, so
+ * adding a primitive there makes it available to plugins at the same time.
+ */
+export type {
+  CardBadgeTone,
+  CardProps,
+  ChartKind,
+  ChartPoint,
+  ChartProps,
+  ChartScale,
+  ChartWindow,
+  FlexProps,
+  GaugeProps,
+  GaugeTone,
+  GridProps,
+  PageDocument,
+  PageHeaderProps,
+  PageNode,
+  SectionProps,
+} from "@northgraindata/dsui-adapter-sdk";
 export {
   Badge,
   Button,
   Card,
+  Chart,
+  CodeBlock,
+  CodeEditor,
+  Collection,
+  Columns,
   defineComponent,
+  Flex,
+  Form,
+  Gauge,
   Grid,
+  Icon,
+  KeyValue,
+  Link,
+  Meter,
+  Notebook,
+  NotebookCatalog,
   PageHeader,
+  QueryEditor,
+  ResourceTree,
   Section,
+  Select,
+  SplitPane,
+  Stack,
   serializeNodes,
+  Table,
+  Tabs,
+  TextInput,
+  toneForValue,
+  Value,
 } from "@northgraindata/dsui-adapter-sdk";
+export type {
+  CreatePluginStoreOptions,
+  PluginStorage,
+  PluginStoreDefinition,
+  PluginStoreHelpers,
+  PluginStoreInstance,
+  PluginStorePersistence,
+  PluginStorePersistenceProvider,
+  PluginStorePersistenceRequest,
+  PluginStoreStatus,
+} from "./store.js";
+export {
+  assertDatabaseName,
+  createPluginStore,
+  defineStore,
+} from "./store.js";
 
 export const PLUGIN_API_VERSION = 1 as const;
 
@@ -28,17 +118,24 @@ export type PluginPage = {
   readonly id: string;
   readonly title: string;
   readonly description?: string;
-};
-
-export type PluginPageRenderInput<TConfig = unknown> = {
-  readonly context: PluginContext<TConfig>;
-  readonly params: Record<string, string>;
-};
-
-export type PluginPageDefinition<TConfig = unknown> = PluginPage & {
-  readonly render: (
-    input: PluginPageRenderInput<TConfig>,
-  ) => PageNode | readonly PageNode[] | Promise<PageNode | readonly PageNode[]>;
+  /**
+   * Serves this page without a principal.
+   *
+   * Only a plugin declaring `security: true` may publish a public page;
+   * `definePlugin` rejects it otherwise. An authentication plugin needs one
+   * for its sign-in screen, which by definition exists before anyone is
+   * signed in. Any other plugin asking for this has no legitimate use, and
+   * failing setup is clearer than quietly exposing content.
+   */
+  readonly public?: boolean;
+  /**
+   * How the web app frames this page.
+   *
+   * `"app"` is the default: sidebar, command palette, the normal chrome.
+   * `"bare"` renders the page's own content with no shell around it, which is
+   * what a sign-in screen wants.
+   */
+  readonly shell?: "app" | "bare";
 };
 
 export type RuntimePluginPage = PluginPage & {
@@ -55,25 +152,20 @@ export type PluginNavigationItem = {
   readonly order?: number;
 };
 
-export type PluginSlotName =
-  | "dashboard.service-card.trailing"
-  | "service.workspace.after-header";
-
 export type PluginUiSlot = {
   readonly id: string;
   readonly slot: PluginSlotName;
   readonly order?: number;
 };
 
-export type PluginSlotDefinition<TConfig = unknown> = PluginUiSlot & {
-  readonly render: (input: {
-    readonly context: PluginContext<TConfig>;
-    readonly service: PluginServiceSummary;
-  }) =>
-    | PageNode
-    | readonly PageNode[]
-    | Promise<PageNode | readonly PageNode[]>;
-};
+import type {
+  AnyPluginSlot,
+  PluginSlotDefinition,
+  PluginSlotName,
+} from "./slot";
+import { defineSlot } from "./slot";
+
+export type { PluginSlotDefinition, PluginSlotName };
 
 export type RuntimePluginSlot = PluginUiSlot & {
   readonly render: (input: {
@@ -88,12 +180,59 @@ export type PluginServiceSummary = {
   readonly managedBy: "configuration" | "ui";
 };
 
+export type PluginServiceHealth =
+  | "healthy"
+  | "warning"
+  | "unavailable"
+  | "unknown";
+
+/**
+ * One measured health signal, as reported by the service's adapter.
+ *
+ * `id` is an open string. The host and the SDK never interpret it, so a new
+ * signal needs no change in either.
+ */
+export type PluginServiceHealthCheck = {
+  readonly id: string;
+  readonly label: string;
+  readonly ok: boolean;
+  readonly detail?: string;
+};
+
+export type PluginServiceProbe = {
+  readonly id: string;
+  readonly health: PluginServiceHealth;
+  readonly detail?: string;
+  readonly latencyMs?: number;
+  /**
+   * Health from 0 to 100, computed by the adapter from its own signals.
+   *
+   * Absent when the adapter reports no score; a consumer must treat absence as
+   * "not scored" rather than as zero.
+   */
+  readonly score?: number;
+  readonly checks?: readonly PluginServiceHealthCheck[];
+};
+
 export interface PluginServiceCatalog {
   list(input?: { readonly cursor?: string; readonly limit?: number }): Promise<{
     readonly items: PluginServiceSummary[];
     readonly nextCursor?: string;
   }>;
   get(id: string): Promise<PluginServiceSummary | null>;
+  /**
+   * Asks the host to probe a service connection and report its health.
+   *
+   * The host owns connection decryption and the adapter call, so a plugin
+   * never sees connection secrets. Probing is explicit rather than part of
+   * `list`: health is not knowable without contacting the external system,
+   * so callers choose when to pay that cost. `null` means the service is
+   * unknown to the host.
+   */
+  probe(
+    id: string,
+    options?: { readonly timeoutMs?: number },
+  ): Promise<PluginServiceProbe | null>;
 }
 
 export type PluginReadinessStatus = "ready" | "disabled" | "unavailable";
@@ -119,21 +258,68 @@ export type PluginSlotResult = {
   error?: string;
 };
 
+/**
+ * DSUI's built-in roles.
+ *
+ * These are a convenience, not the identity model. A plugin that manages
+ * richer access control (teams, groups, per-resource grants) still returns a
+ * principal; the extra structure travels in `attributes` and is evaluated by
+ * that plugin's own `authorize`. The role only selects the default
+ * permission set, so OSS can ship without an identity provider and a
+ * first-party RBAC plugin can layer on top without changing this contract.
+ */
+export type PluginRole = "owner" | "admin" | "operator" | "viewer";
+
+/**
+ * The identity a request runs as.
+ *
+ * `role` is required so the host can apply a sane default permission set
+ * without knowing anything about the plugin that authenticated the request.
+ * `attributes` carries plugin-specific structure (team ids, scopes, tenancy)
+ * and is never interpreted by the host.
+ */
 export type PluginPrincipal = {
   id: string;
-  role: "owner" | "admin" | "operator" | "viewer";
+  role: PluginRole;
+  /** Plugin-defined context. Opaque to the host; visible to plugins. */
+  attributes?: Readonly<Record<string, unknown>>;
 };
 
 export type PluginPermission = "inspect" | "execute" | "manage";
-export type PluginResource = { type: "service" | "plugin"; id: string };
+export type PluginResource = {
+  type: "service" | "plugin";
+  id: string;
+};
 
 export interface PluginAuthenticationProvider {
   authenticate(
     request: Request,
   ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
+  /**
+   * Serves the plugin's own identity endpoints.
+   *
+   * Sign-in, registration, sign-out, session lookup and SSO callbacks are the
+   * plugin's business: it owns the credential store and the session cookie
+   * format. What it cannot do is decide who reaches the rest of DSUI — that
+   * stays with `authenticate`, which the host calls on every API request.
+   *
+   * The host mounts this under a fixed prefix ahead of the authentication
+   * middleware, because these endpoints are the ones a logged-out browser has
+   * to reach. It is deliberately not a router: a plugin cannot add middleware,
+   * intercept another plugin's routes, or reach a path outside its own prefix.
+   */
+  routes?(request: Request): Promise<Response> | Response;
 }
 
 export interface PluginAuthorizationProvider {
+  /**
+   * Narrows what the principal's role already allows.
+   *
+   * A provider cannot widen the role's default permissions: the host applies
+   * the role grant first and this runs only to reduce it. That keeps an OSS
+   * role a hard ceiling, so a plugin shipping a bug cannot accidentally grant
+   * more than the role implies.
+   */
   authorize(input: {
     principal: PluginPrincipal;
     permission: PluginPermission;
@@ -164,22 +350,72 @@ export type RuntimePluginProcedure = {
   readonly invoke: (input: unknown) => Promise<unknown> | unknown;
 };
 
+/** A resource as the host publishes it for browser scheduling. */
+export type RuntimePluginResource = {
+  readonly id: string;
+  readonly input?: z.ZodTypeAny;
+  readonly refresh: RefreshStrategy;
+  readonly invoke: (input: unknown) => Promise<unknown>;
+};
+
 export interface RuntimePluginRegistry {
   page(page: RuntimePluginPage): void;
   navigation(item: PluginNavigationItem): void;
   slot(slot: RuntimePluginSlot): void;
   procedure(procedure: RuntimePluginProcedure): void;
+  action(action: RuntimePluginAction): void;
+  resource(resource: RuntimePluginResource): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
 }
 
+/** A declared action as the host publishes it. */
+export type RuntimePluginAction = {
+  readonly id: string;
+  readonly input: z.ZodTypeAny;
+  readonly output?: z.ZodTypeAny;
+  readonly permission: PluginActionPermission;
+  readonly invoke: (input: unknown) => Promise<unknown>;
+};
+
+/**
+ * Registers a page declared with `definePage`.
+ *
+ * A definition is inert; this binds it to the runtime. `id`, `title` and the
+ * rest come from the plugin rather than the page, because a page describes a
+ * route and the host owns how that route is presented.
+ */
+export interface PluginRegisteredPage {
+  id: string;
+  title: string;
+  description?: string;
+  public?: boolean;
+  shell?: "app" | "bare";
+  definition: PluginPageDefinition<unknown>;
+}
+
 export interface PluginRegistry<TConfig = unknown> {
-  page(page: PluginPageDefinition<TConfig>): void;
+  /** Binds a `definePage` declaration to a host route. */
+  page(
+    page: AnyPluginPage,
+    presentation: {
+      id: string;
+      title: string;
+      description?: string;
+      public?: boolean;
+      shell?: "app" | "bare";
+    },
+  ): void;
   navigation(item: PluginNavigationItem): void;
-  slot(slot: PluginSlotDefinition<TConfig>): void;
+  /** Binds a `defineSlot` declaration to a named host UI slot. */
+  slot(slot: AnyPluginSlot): void;
   procedure<TInput, TOutput = unknown>(
     procedure: PluginProcedure<PluginContext<TConfig>, TInput, TOutput>,
   ): void;
+  /** Binds a `defineAction` declaration. */
+  action(action: PluginActionDefinition<PluginContext<TConfig>>): void;
+  /** Binds a `defineResource` declaration and its freshness policy. */
+  resource(resource: AnyPluginResource): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
 }
@@ -188,6 +424,23 @@ export interface PluginContext<TConfig = unknown> {
   readonly pluginId: string;
   readonly config: Readonly<TConfig>;
   readonly services: PluginServiceCatalog;
+  /**
+   * Relational storage in this plugin's own directory.
+   *
+   * A plugin owns everything it writes here: its schema, its migrations, its
+   * file. The host creates the directory and never reads the contents, which is
+   * what lets an auth plugin hold users and sessions while the host schema
+   * stays unaware of them.
+   */
+  readonly storage: PluginStorage;
+  /**
+   * Typed JSON state, namespaced to this plugin.
+   *
+   * The mirror of the adapter SDK's store layer, for values a plugin reads and
+   * writes as one whole — the selected team, a dismissed notice. Use
+   * `storage` instead for anything queried relationally.
+   */
+  readonly stores: PluginStores;
   readonly logger: {
     info(message: string, metadata?: Record<string, unknown>): void;
     warn(message: string, metadata?: Record<string, unknown>): void;
@@ -195,10 +448,44 @@ export interface PluginContext<TConfig = unknown> {
   };
 }
 
+/**
+ * Creates store instances bound to the calling plugin.
+ *
+ * The returned instances persist under the plugin's namespace, so two plugins
+ * may define a store with the same id without colliding.
+ */
+export interface PluginStores {
+  /**
+   * The instance for a declared store, created on first use.
+   *
+   * Reads as `get(series)` because a plugin author thinks in terms of the
+   * declaration they wrote, not the instance behind it. The two routes to the
+   * same object: declaring the store registers it, and `get` returns it.
+   */
+  get<
+    TState extends Record<string, unknown>,
+    TActions extends Record<string, (...args: never[]) => unknown>,
+  >(
+    definition: PluginStoreDefinition<TState, TActions>,
+  ): PluginStoreInstance<TState, TActions>;
+  create<
+    TState extends Record<string, unknown>,
+    TActions extends Record<string, (...args: never[]) => unknown>,
+  >(
+    definition: PluginStoreDefinition<TState, TActions>,
+  ): PluginStoreInstance<TState, TActions>;
+}
+
 export interface PluginDefinition<TConfig = unknown> {
   readonly kind: "dsui-plugin";
   readonly metadata: PluginMetadata;
-  readonly configSchema: z.ZodType<TConfig>;
+  /**
+   * Typed as the schema's *output*, so `TConfig` reflects values after
+   * defaults are applied. Declaring the input as `unknown` lets a plugin
+   * write `z.object({ timeoutMs: z.number().default(5_000) })` and still
+   * receive a fully populated `config` in its procedures.
+   */
+  readonly configSchema: z.ZodType<TConfig, z.ZodTypeDef, unknown>;
   readonly requires?: readonly string[];
   readonly setup: (
     registry: PluginRegistry<TConfig>,
@@ -220,7 +507,10 @@ export interface RuntimePluginDefinition {
   readonly requires?: readonly string[];
   readonly prepare: (
     config: unknown,
-    host: Pick<PluginContext<unknown>, "services" | "logger">,
+    host: Pick<
+      PluginContext<unknown>,
+      "services" | "storage" | "stores" | "logger"
+    >,
   ) => PreparedPlugin;
   readonly stop?: () => Promise<void> | void;
 }
@@ -237,20 +527,43 @@ export function definePlugin<TConfig>(
         pluginId: definition.metadata.id,
         config,
         services: host.services,
+        storage: host.storage,
+        stores: {
+          // `get` must go through the host's own `get`: the host caches one
+          // instance per definition there, and routing `get` to `create` gave
+          // every caller a fresh instance that re-read its row.
+          get: (definition) => host.stores.get(definition),
+          create: (definition) => host.stores.create(definition),
+        },
         logger: host.logger,
       };
       return {
         setup(runtimeRegistry) {
           const registry: PluginRegistry<TConfig> = {
-            page: (page) =>
+            page: (page, presentation) => {
+              if (presentation.public && !definition.metadata.security)
+                throw new InvalidDefinitionError(
+                  "Only plugins declaring security: true may register a public page",
+                );
               runtimeRegistry.page({
-                id: page.id,
-                title: page.title,
-                description: page.description,
-                render: async (params) => {
-                  return serializeNodes(await page.render({ context, params }));
-                },
-              }),
+                id: presentation.id,
+                title: presentation.title,
+                ...(presentation.description
+                  ? { description: presentation.description }
+                  : {}),
+                ...(presentation.public ? { public: presentation.public } : {}),
+                ...(presentation.shell ? { shell: presentation.shell } : {}),
+                render: async (params) =>
+                  serializeNodes(
+                    await page.render({
+                      context,
+                      params,
+                      resource: (resource, input) =>
+                        queryResource(resource, input, context),
+                    }),
+                  ),
+              });
+            },
             navigation: (item) => runtimeRegistry.navigation(item),
             slot: (slot) =>
               runtimeRegistry.slot({
@@ -259,6 +572,34 @@ export function definePlugin<TConfig>(
                 order: slot.order,
                 render: async ({ service }) =>
                   serializeNodes(await slot.render({ context, service })),
+              }),
+            // A declared action is a procedure: same invoke path, same
+            // validation, one name for the concept across both tiers.
+            action: (action) =>
+              runtimeRegistry.action({
+                id: action.id,
+                input: action.input ?? z.undefined(),
+                ...(action.output ? { output: action.output } : {}),
+                permission: action.permission,
+                invoke: async (input) => {
+                  const parsed =
+                    action.input == null ? input : action.input.parse(input);
+                  const result = await action.run(parsed, context);
+                  return action.output ? action.output.parse(result) : result;
+                },
+              }),
+            resource: (resource) =>
+              runtimeRegistry.resource({
+                id: resource.id,
+                ...(resource.input ? { input: resource.input } : {}),
+                refresh: resource.refresh,
+                invoke: async (input) => {
+                  const parsed =
+                    resource.input == null
+                      ? input
+                      : resource.input.parse(input);
+                  return resource.query(parsed, context);
+                },
               }),
             procedure: (procedure) =>
               runtimeRegistry.procedure({
@@ -297,3 +638,34 @@ export function definePlugin<TConfig>(
   };
   return plugin;
 }
+
+// The defineX family, mirroring the adapter SDK so a plugin author uses one
+// vocabulary across both tiers.
+export {
+  defineAction,
+  type PluginActionDefinition,
+  type PluginActionPermission,
+  type PluginActionReference,
+} from "./action";
+export {
+  manual,
+  type PollInterval,
+  poll,
+  type RefreshStrategy,
+} from "./refresh";
+export {
+  catalogResource,
+  defineResource,
+  type PluginResourceDefinition,
+  type PluginResourceLike,
+} from "./resource";
+export { InvalidDefinitionError, SdkError } from "./shared/errors";
+export {
+  definePage,
+  defineSlot,
+  type ExtractRouteParams,
+  matchRoute,
+  type PluginPageContext,
+  type PluginResourceReader,
+  queryResource,
+};

@@ -16,8 +16,13 @@ export function loadExternalComponent(
   componentId: string,
   browserUrl?: string,
 ): Promise<ComponentType<ComponentProps> | null> {
+  // `browserUrl` is filled in by the host, which knows whether the component
+  // came from an adapter or a plugin. Guessing the URL from the id prefix sent
+  // a plugin's own component to `/api/v1/adapters/...`, where no such adapter
+  // exists, so the lookup failed on a 404 for a bundle that was served all
+  // along. Only adapters fall back to a derived path.
   const adapterId = componentId.split("/", 1)[0];
-  if (!adapterId) return Promise.resolve(null);
+  if (!browserUrl && !adapterId) return Promise.resolve(null);
   const url =
     browserUrl ??
     `/api/v1/adapters/${encodeURIComponent(adapterId)}/components.mjs`;

@@ -103,16 +103,20 @@ composite works from source; the `path` component needs the release
 bundle (or the renderer's dev glob for `packages/adapter-*`) before it
 appears.
 
-## Load it locally
+## Load it
 
-Because this package is in the monorepo workspaces, DSUI can load it
-in-process by name — no npm or git publish needed.
+Point DSUI at the adapter's source. DSUI installs its dependencies, bundles
+`src/adapter.ts` into a single file, and runs it in an isolated `adapter-host`
+subprocess. The same applies to a first-party adapter and a third-party one.
+
+From a directory on this machine:
 
 ```yaml
 # dsui.yaml
 adapters:
   example:
-    package: "@northgraindata/dsui-adapter-example"
+    source: local
+    path: ./examples/example-adapter
 
 services:
   - id: demo
@@ -121,11 +125,32 @@ services:
       baseUrl: http://localhost:4192
 ```
 
+From a GitHub repository. Paste the URL from the tree view; the ref and
+subdirectory are read out of it:
+
+```yaml
+adapters:
+  example:
+    repository: "https://github.com/your-org/dsui-adapter-example/tree/main/packages/adapter-example"
+```
+
+Or spell out each part:
+
+```yaml
+adapters:
+  example:
+    source: git
+    repository: your-org/dsui-adapter-example
+    ref: v1.2.0
+    path: packages/adapter-example
+```
+
+Nothing is loaded implicitly. With no `adapters:` section DSUI starts with an
+empty adapter registry.
+
 ```bash
 DSUI_CONFIG=./dsui.yaml bun run --filter @northgraindata/dsui-server start
 ```
-
-A local path also works: `package: "./examples/example-adapter/src/adapter.ts"`.
 
 ## Test it
 
@@ -134,46 +159,20 @@ bun run --filter @northgraindata/dsui-adapter-example test
 bun run --filter @northgraindata/dsui-adapter-example typecheck
 ```
 
-## Releasing an adapter
+## What an adapter needs
 
-A published adapter is two artifacts plus an optional browser bundle:
+A `package.json` and `src/adapter.ts`. Declare `@northgraindata/dsui-adapter-sdk`
+as a dependency with any range; DSUI rewrites `workspace:` and `file:` ranges
+onto the SDK it ships, so a monorepo adapter and a standalone one resolve the
+same SDK. Ordinary npm dependencies are installed from the registry.
 
-- `dsui.adapter.json` — the manifest.
-- `dist/adapter.mjs` — one self-contained ESM bundle (no native addons,
-  no code splitting).
-- `dist/components.mjs` — browser bundle, only when the adapter declares
-  browser components.
+Native dependencies work without extra configuration: a package that ships a
+platform binary is kept out of the bundle and loaded at runtime for the
+platform DSUI is running on.
 
-The manifest declares identity, the SDK version it targets, the entry
-path, and the ids for resources, actions, pages, and components, plus
-the byte count and SHA-256 of each bundle. See
-`adapterManifestSchema` in the SDK for the exact shape.
+## Trust
 
-### From npm
-
-Publish the package, then pin it with the tarball SRI:
-
-```yaml
-adapters:
-  example:
-    package: "@your-org/dsui-adapter-example"
-    version: "1.0.0"
-    integrity: "sha512-..."   # npm dist.integrity for the tarball
-```
-
-### From git
-
-Commit the manifest and bundle to a repository, then pin the commit and
-the bundle's SRI:
-
-```yaml
-adapters:
-  example:
-    source: git
-    repository: "git+https://github.com/your-org/dsui-adapter-example"
-    commit: "<full-40-char-sha>"
-    integrity: "sha384-..."   # SRI of dist/adapter.mjs
-```
-
-Both install verified and run isolated in an `adapter-host` subprocess.
-Floating refs and unpinned versions are rejected.
+Building an adapter runs a package manager and a bundler over its source.
+Lifecycle scripts are disabled, and downloads are restricted to allowlisted
+HTTPS hosts, but the adapter build is not sandboxed. Treat an adapter as
+trusted third-party server code, and review its source before configuring it.

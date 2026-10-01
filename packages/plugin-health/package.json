@@ -1,0 +1,17 @@
+{
+  "name": "@northgraindata/dsui-plugin-health",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/plugin.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-plugin-sdk": "workspace:*",
+    "zod": "^3.24.2"
+  }
+}

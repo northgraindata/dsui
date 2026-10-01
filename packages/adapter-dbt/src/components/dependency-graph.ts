@@ -16,5 +16,5 @@ export interface DependencyGraphProps {
 // The browser renderer reuses the interactive graph implementation used by Airflow.
 export const DependencyGraph = defineComponent<DependencyGraphProps>({
   id: "airflow/dependency-graph",
-  path: "./dependency-graph.tsx",
+  path: "./dependency-graph-view.tsx",
 });

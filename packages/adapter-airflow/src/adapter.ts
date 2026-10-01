@@ -26,6 +26,7 @@ import {
   airflowConnectionSchema,
   createContext,
 } from "./context.js";
+import { airflowHealth } from "./health.js";
 import {
   connectionsPage,
   createConnectionPage,
@@ -120,6 +121,9 @@ export function createAirflowAdapter(
       }
     },
     disposeContext: (ctx) => ctx.client.dispose(),
+    // A remote HTTP API; a couple of seconds is normal for DAG enumeration.
+    latencyBudgetMs: 3_000,
+    health: airflowHealth,
     resources: [
       overview,
       overviewDags,

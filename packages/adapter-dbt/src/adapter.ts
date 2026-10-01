@@ -4,6 +4,7 @@ import { triggerJob } from "./actions/jobs.js";
 import { execute } from "./actions/local.js";
 import { cancelRun } from "./actions/runs.js";
 import { createContext, dbtConnectionMethods } from "./context.js";
+import { dbtHealth } from "./health.js";
 import { artifactDetailPage, artifactsPage } from "./pages/artifacts.js";
 import { sourcesPage, testsPage } from "./pages/catalog.js";
 import { jobsPage, projectsPage } from "./pages/cloud.js";
@@ -55,6 +56,9 @@ export function createDbtAdapter() {
     },
     connectionMethods: dbtConnectionMethods,
     context: createContext,
+    // Cloud round trips dominate; a local project reports near-zero latency.
+    latencyBudgetMs: 2_000,
+    health: dbtHealth,
     stores: [dbtRunStore],
     resources: [
       overview,

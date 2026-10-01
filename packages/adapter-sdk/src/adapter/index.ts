@@ -1,6 +1,15 @@
 export { defineAdapter } from "./define";
+export {
+  healthReport,
+  reachabilityCheck,
+  type SignalWeight,
+  scoreChecks,
+  statusFor,
+} from "./health";
 export type {
   AdapterDefinition,
+  AdapterHealthCheck,
+  AdapterHealthReport,
   AdapterInfo,
   ConnectionMethodDefinition,
   DefineAdapterOptions,

@@ -11,7 +11,8 @@
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "indentWidth": 2
+    "indentWidth": 2,
+    "lineWidth": 80
   },
   "css": {
     "parser": {
@@ -21,13 +22,108 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "a11y": {
+        "noAutofocus": "error",
+        "noPositiveTabindex": "error",
+        "noSvgWithoutTitle": "error",
+        "useAriaPropsSupportedByRole": "error",
+        "useButtonType": "error",
+        "useFocusableInteractive": "error",
+        "useHtmlLang": "error",
+        "useKeyWithClickEvents": "error",
+        "useSemanticElements": "error",
+        "useValidAriaRole": "error"
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "warn",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        },
+        "noExcessiveLinesPerFunction": {
+          "level": "warn",
+          "options": {
+            "maxLines": 80,
+            "skipBlankLines": true
+          }
+        },
+        "noStaticOnlyClass": "error",
+        "noUselessEmptyExport": "error",
+        "noUselessFragments": "error",
+        "noUselessTernary": "error",
+        "useMaxParams": {
+          "level": "warn",
+          "options": {
+            "max": 4
+          }
+        }
+      },
+      "correctness": {
+        "noNestedComponentDefinitions": "error",
+        "noUndeclaredDependencies": "error",
+        "noUnusedFunctionParameters": "warn",
+        "useExhaustiveDependencies": "error",
+        "useHookAtTopLevel": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error",
+        "noLoopFunc": "error",
+        "noMisusedPromises": "error"
+      },
+      "performance": {
+        "noAccumulatingSpread": "warn",
+        "noDynamicNamespaceImportAccess": "error",
+        "noSyncScripts": "error"
+      },
+      "security": {
+        "noSecrets": "off"
+      },
+      "style": {
+        "noExcessiveClassesPerFile": {
+          "level": "warn",
+          "options": {
+            "maxClasses": 3
+          }
+        },
+        "noExcessiveLinesPerFile": {
+          "level": "warn",
+          "options": {
+            "maxLines": 500,
+            "skipBlankLines": true
+          }
+        },
+        "noMagicNumbers": "off",
+        "noNestedTernary": "warn",
+        "noParameterAssign": "error",
+        "useExportType": "error",
+        "useImportType": "error",
+        "useNodejsImportProtocol": "error",
+        "useSelfClosingElements": "error",
+        "useTemplate": "error"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "error",
+        "noCommentText": "error",
+        "noConfusingLabels": "error",
+        "noConsole": "off",
+        "noDoubleEquals": "error",
+        "noEmptyBlockStatements": "error",
+        "noEvolvingTypes": "error",
+        "noExplicitAny": "warn",
+        "noImportCycles": "error",
+        "noShadowRestrictedNames": "error",
+        "noTsIgnore": "error",
+        "useGuardForIn": "error"
+      }
     }
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "double",
-      "semicolons": "always"
+      "semicolons": "always",
+      "arrowParentheses": "always"
     }
   },
   "overrides": [
@@ -38,6 +134,54 @@
           "correctness": {
             "noUnusedImports": "off",
             "noUnusedVariables": "off"
+          },
+          "suspicious": {
+            "useAwait": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": "off",
+            "useMaxParams": "off"
+          },
+          "style": {
+            "noExcessiveLinesPerFile": "off"
+          },
+          "suspicious": {
+            "noExportsInTest": "error"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/db/migrations/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": "off"
+          },
+          "style": {
+            "noExcessiveLinesPerFile": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDescendingSpecificity": "off"
           }
         }
       }

@@ -8,6 +8,7 @@ import {
   type PostgreSQLContext,
   postgresqlConnectionSchema,
 } from "./context.js";
+import { postgresqlHealth } from "./health.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -74,6 +75,9 @@ export function createPostgreSQLAdapter() {
       }
     },
     disposeContext: (ctx) => ctx.dispose(),
+    // A network round trip to a managed instance; sub-second is normal.
+    latencyBudgetMs: 1_000,
+    health: postgresqlHealth,
     stores: [queryEditorStore, activityFiltersStore],
     resources: [
       serverInfo,

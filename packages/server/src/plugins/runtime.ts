@@ -15,15 +15,24 @@ import {
   type PluginResource,
   type PluginServiceCatalog,
   type PluginServiceSummary,
+  type PluginStores,
   type PreparedPlugin,
+  type RuntimePluginAction,
   type RuntimePluginDefinition,
   type RuntimePluginPage,
   type RuntimePluginProcedure,
+  type RuntimePluginResource,
   type RuntimePluginSlot,
 } from "@northgraindata/dsui-plugin-sdk";
+import { resolveSdkRoot } from "../adapters/sdk.js";
 import { allowed } from "../auth.js";
 import type { PluginSource } from "../config.js";
-import { installGitPlugin, type PluginFetch } from "./installer.js";
+import { buildPlugin, type PluginFetch } from "./build.js";
+import {
+  createMemoryPluginStores,
+  createPluginStorage,
+  type PluginStorageHandle,
+} from "./storage.js";
 
 const pluginIdPattern = /^[a-z][a-z0-9-]*$/;
 
@@ -45,6 +54,18 @@ type Contributions = {
   navigation: PluginNavigationItem[];
   slots: RuntimePluginSlot[];
   procedures: RegisteredProcedure[];
+  /**
+   * Declared actions, kept alongside procedures so a plugin that uses either
+   * name resolves to the same runtime call. An action is a procedure; the two
+   * collections differ only in which declaration produced them.
+   */
+  actions: RuntimePluginAction[];
+  /**
+   * Declared resources with their freshness policies. The host publishes the
+   * policy so a browser can schedule polling without knowing whether it is
+   * watching an adapter or a plugin.
+   */
+  resources: RuntimePluginResource[];
   authentication?: PluginAuthenticationProvider;
   authorization?: PluginAuthorizationProvider;
 };
@@ -59,14 +80,36 @@ type PluginLoadRequest = {
 
 export type PluginModuleLoader = (specifier: string) => Promise<unknown>;
 
+/**
+ * Host-provided capabilities the runtime hands to each plugin.
+ *
+ * Passed in rather than built from the host database so the runtime stays
+ * ignorant of host storage, and so a test can inject in-memory versions.
+ */
+export type PluginHostCapabilities = {
+  /** Relational storage rooted in the plugin's own directory. */
+  storage(pluginId: string): PluginStorageHandle;
+  /** Typed JSON state, namespaced to the plugin. */
+  stores(pluginId: string): PluginStores;
+};
+
 function resolveInstalledBundle(specifier: string): string {
-  const builtIn = builtInPluginPath(specifier);
-  if (builtIn) return builtIn;
+  const bundled = bundledPluginPath(specifier);
+  if (bundled) return bundled;
   if (isAbsolute(specifier)) return specifier;
   return requireFromWorkingDirectory.resolve(specifier);
 }
 
-function builtInPluginPath(specifier: string): string | undefined {
+/**
+ * Resolves a plugin artifact from the bundled runtime directory.
+ *
+ * A release image and the npm package ship prebuilt plugin bundles in
+ * `DSUI_RUNTIME_PLUGINS`, named `<plugin-id>-plugin.mjs` and
+ * `<plugin-id>-plugin.browser.mjs`. Configuration names the package; this maps
+ * it to the shipped artifact so a released install runs bundled code rather
+ * than whatever node_modules happens to contain.
+ */
+function bundledPluginPath(specifier: string): string | undefined {
   const match =
     /^@northgraindata\/dsui-plugin-([a-z][a-z0-9-]*)(\/browser)?$/.exec(
       specifier,
@@ -85,8 +128,8 @@ const requireFromWorkingDirectory = createRequire(
 );
 
 async function loadInstalledPlugin(specifier: string): Promise<unknown> {
-  const builtIn = builtInPluginPath(specifier);
-  if (builtIn) return import(pathToFileURL(builtIn).href);
+  const bundled = bundledPluginPath(specifier);
+  if (bundled) return import(pathToFileURL(bundled).href);
   if (
     specifier.startsWith("/") ||
     specifier.startsWith("./") ||
@@ -168,7 +211,14 @@ function pluginLogger(pluginId: string): PluginContextLogger {
 }
 
 function emptyContributions(): Contributions {
-  return { pages: [], navigation: [], slots: [], procedures: [] };
+  return {
+    pages: [],
+    navigation: [],
+    slots: [],
+    procedures: [],
+    actions: [],
+    resources: [],
+  };
 }
 
 function uniqueId<T extends { id: string }>(
@@ -238,11 +288,14 @@ export class PluginRuntime {
   private readonly readiness = new Map<string, PluginReadiness>();
   private readonly active = new Map<string, ActivePlugin>();
   private readonly contributions = new Map<string, Contributions>();
+  private readonly host: PluginHostCapabilities;
+  private readonly pluginStorage = new Map<string, PluginStorageHandle>();
   private stopped = false;
   private securityFailure = false;
   private readonly principalContext = new AsyncLocalStorage<PluginPrincipal>();
   private authenticationProvider?: PluginAuthenticationProvider;
   private authorizationProvider?: PluginAuthorizationProvider;
+  private authenticationPluginId_?: string;
 
   constructor(
     private readonly services: PluginServiceCatalog,
@@ -251,46 +304,37 @@ export class PluginRuntime {
       dataDir?: string;
       fetch?: PluginFetch;
       offline?: boolean;
+      /** Prepared SDK packages a source-built plugin links against. */
+      sdkPackageRoot?: string;
     } = {},
-  ) {}
+    host?: PluginHostCapabilities,
+  ) {
+    const dataDir = sourceOptions.dataDir ?? process.cwd();
+    this.host = host ?? {
+      storage: (pluginId) => createPluginStorage(dataDir, pluginId),
+      stores: () => createMemoryPluginStores(),
+    };
+  }
 
-  async load(
-    sources: Record<string, PluginSource>,
-    builtIns: Record<string, PluginSource> = {},
-    reservedIds: ReadonlySet<string> = new Set(Object.keys(builtIns)),
-  ): Promise<void> {
+  async load(sources: Record<string, PluginSource>): Promise<void> {
     if (this.stopped) throw new Error("Plugin runtime is stopped");
     await this.stopActive();
     this.securityFailure = false;
     this.readiness.clear();
     this.contributions.clear();
     this.authenticationProvider = undefined;
+    this.authenticationPluginId_ = undefined;
     this.authorizationProvider = undefined;
 
-    // Built-ins load first and always. A `dsui.yaml` entry claiming a
-    // built-in id is rejected rather than allowed to shadow it, so an
-    // operator cannot substitute a different package for a shipped one.
-    const resolved = new Map<string, PluginSource>(Object.entries(builtIns));
-    for (const [id, source] of Object.entries(sources)) {
-      if (reservedIds.has(id)) {
-        // A configuration entry can never replace, reconfigure or disable a
-        // built-in. When the built-in ships, it loads normally and the entry
-        // is ignored; when it is not shipped, the reserved id is reported
-        // as unavailable so the entry does not silently do nothing.
-        if (!resolved.has(id))
-          this.readiness.set(id, {
-            status: "unavailable",
-            detail: `"${id}" is a reserved built-in plugin id and is not configurable`,
-          });
-        continue;
-      }
-      resolved.set(id, source);
-    }
+    // `sources` is the operator's configured plugin set, and the only one: a
+    // plugin that is not configured does not run. This is what lets Pro,
+    // Enterprise and third-party plugins all be enabled the same way, with no
+    // host-side knowledge of which exist.
+    const resolved = new Map<string, PluginSource>(Object.entries(sources));
 
     const requests: PluginLoadRequest[] = [];
     for (const [id, source] of resolved) {
       let securityPlugin = false;
-      const builtIn = Object.hasOwn(builtIns, id);
       if (!pluginIdPattern.test(id)) {
         this.readiness.set(id, {
           status: "unavailable",
@@ -298,21 +342,58 @@ export class PluginRuntime {
         });
         continue;
       }
-      if (!source.enabled && !builtIn) {
+      if (!source.enabled) {
         this.readiness.set(id, { status: "disabled" });
         continue;
       }
       try {
-        const installed =
-          "source" in source && source.source === "git"
-            ? await installGitPlugin(id, source, {
-                dataDir: this.sourceOptions.dataDir ?? process.cwd(),
-                fetch: this.sourceOptions.fetch,
-                offline: this.sourceOptions.offline,
-              })
+        // A GitHub source is built from the tree, like a local one. The old
+        // path fetched a prebuilt bundle from a pinned commit and verified an
+        // SRI hash; that only ever worked for a plugin that had already been
+        // built and published, which is exactly the case `buildPlugin` removes
+        // the need for.
+        const installed = undefined;
+        // `package:` still resolves a shipped package; a source-built plugin
+        // goes through the same pipeline an adapter uses, so a plugin with a
+        // `dsui.browser` entry gets a real bundle instead of a hand-written one.
+        const buildable =
+          "source" in source &&
+          (source.source === "local" || source.source === "git")
+            ? source
             : undefined;
+        const built = buildable
+          ? await buildPlugin(
+              id,
+              buildable.source === "local"
+                ? { kind: "local", path: buildable.path }
+                : {
+                    kind: "git",
+                    repository: buildable.repository,
+                    ref: buildable.ref ?? "main",
+                    ...(buildable.path ? { path: buildable.path } : {}),
+                  },
+              {
+                dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+                // A source-built plugin links against the prepared SDK the
+                // same way an adapter does, so both resolve the same
+                // workspace packages instead of two copies.
+                sdkPackageRoot:
+                  this.sourceOptions.sdkPackageRoot ??
+                  (await resolveSdkRoot({
+                    dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+                    version: process.env.DSUI_VERSION ?? "0.0.0",
+                  })),
+                ...(this.sourceOptions.fetch
+                  ? { fetch: this.sourceOptions.fetch }
+                  : {}),
+                ...(this.sourceOptions.offline
+                  ? { offline: this.sourceOptions.offline }
+                  : {}),
+              },
+            )
+          : undefined;
         const module = await this.loadModule(
-          installed?.serverPath ?? ("package" in source ? source.package : ""),
+          built?.bundlePath ?? ("package" in source ? source.package : ""),
         );
         const definition = asPluginDefinition(module, id);
         securityPlugin = Boolean(definition.metadata.security);
@@ -322,28 +403,24 @@ export class PluginRuntime {
           throw new Error(
             `Package declares plugin id "${definition.metadata.id}" but is configured as "${id}"`,
           );
+        const storage = this.host.storage(id);
+        this.pluginStorage.set(id, storage);
         const prepared = definition.prepare(source.config, {
           services: this.services,
+          storage,
+          stores: this.host.stores(id),
           logger: pluginLogger(id),
         });
         const browserPath =
-          installed?.browserPath ??
+          built?.browserBundlePath ??
           ("browserBundle" in source && source.browserBundle
             ? resolveInstalledBundle(source.browserBundle)
             : undefined);
-        if (
-          installed &&
-          installed.manifest.version !== definition.metadata.version
-        )
-          throw new Error(
-            "Plugin manifest version differs from bundle metadata",
-          );
         requests.push({
           id,
           definition,
           prepared,
           browserPath,
-          browserSha256: installed?.manifest.browser?.sha256,
         });
       } catch {
         if (source.critical || securityPlugin)
@@ -370,15 +447,62 @@ export class PluginRuntime {
       const seenNavigation: PluginNavigationItem[] = [];
       const seenSlots: RuntimePluginSlot[] = [];
       const seenProcedures: RegisteredProcedure[] = [];
+      const seenActions: RuntimePluginAction[] = [];
+      const seenResources: RuntimePluginResource[] = [];
       const registry = {
-        page: (page: RuntimePluginPage) =>
-          uniqueId(seenPages, page, "page", request.id),
+        page: (page: RuntimePluginPage) => {
+          // Re-checked here, not only in `definePlugin`: the host validates a
+          // duck-typed definition it did not construct, and an unauthenticated
+          // page is exactly the thing a host must not take on trust.
+          if (page.public && !request.definition.metadata.security)
+            throw new Error(
+              "Only plugins declaring security: true may register a public page",
+            );
+          if (
+            page.shell !== undefined &&
+            page.shell !== "app" &&
+            page.shell !== "bare"
+          )
+            throw new Error(
+              `Plugin "${request.id}" has invalid page shell "${page.shell}"`,
+            );
+          uniqueId(seenPages, page, "page", request.id);
+        },
         navigation: (item: PluginNavigationItem) =>
           uniqueId(seenNavigation, item, "navigation", request.id),
         slot: (slot: RuntimePluginSlot) =>
           uniqueId(seenSlots, slot, "slot", request.id),
-        procedure: (procedure: RegisteredProcedure) =>
-          uniqueId(seenProcedures, procedure, "procedure", request.id),
+        procedure: (procedure: RegisteredProcedure) => {
+          uniqueId(seenProcedures, procedure, "procedure", request.id);
+          contributions.procedures.push(procedure);
+        },
+        // `action` and `procedure` are the same runtime shape; both are kept so
+        // an id declared either way resolves through one lookup.
+        action: (action: RuntimePluginAction) => {
+          uniqueId(seenActions, action, "action", request.id);
+          if (
+            action.permission !== "inspect" &&
+            action.permission !== "execute" &&
+            action.permission !== "manage"
+          )
+            throw new Error(
+              `Plugin "${request.id}" action "${action.id}" has invalid permission "${String(action.permission)}"`,
+            );
+          seenActions.push(action);
+        },
+        resource: (resource: RuntimePluginResource) => {
+          uniqueId(seenResources, resource, "resource", request.id);
+          // A resource with no policy would never refresh, so reject it rather
+          // than serve data that silently goes stale.
+          if (
+            resource.refresh?.kind !== "manual" &&
+            resource.refresh?.kind !== "poll"
+          )
+            throw new Error(
+              `Plugin "${request.id}" resource "${resource.id}" has an invalid refresh policy`,
+            );
+          contributions.resources.push(resource);
+        },
         authentication: (provider: PluginAuthenticationProvider) => {
           if (typeof provider?.authenticate !== "function")
             throw new Error("Invalid authentication provider");
@@ -402,6 +526,7 @@ export class PluginRuntime {
         } catch {
           // Keep the original setup failure as the plugin readiness outcome.
         }
+        this.closeStorage(request.id);
         if (
           request.definition.metadata.security ||
           sources[request.id]?.critical
@@ -417,6 +542,7 @@ export class PluginRuntime {
       contributions.navigation = seenNavigation;
       contributions.slots = seenSlots;
       contributions.procedures = seenProcedures;
+      contributions.actions = seenActions;
       pendingContributions.set(request.id, contributions);
     }
 
@@ -473,10 +599,12 @@ export class PluginRuntime {
 
       try {
         await request.prepared.start();
-        if (pendingContributions.get(request.id)?.authentication)
+        if (pendingContributions.get(request.id)?.authentication) {
           this.authenticationProvider = pendingContributions.get(
             request.id,
           )?.authentication;
+          this.authenticationPluginId_ = request.id;
+        }
         if (pendingContributions.get(request.id)?.authorization)
           this.authorizationProvider = pendingContributions.get(
             request.id,
@@ -497,6 +625,7 @@ export class PluginRuntime {
         } catch {
           // Keep the original startup failure as the plugin readiness outcome.
         }
+        this.closeStorage(request.id);
         if (
           request.definition.metadata.security ||
           sources[request.id]?.critical ||
@@ -527,12 +656,16 @@ export class PluginRuntime {
     const slots: PluginCatalog["slots"] = [];
     for (const [pluginId, items] of this.contributions) {
       pages.push(
-        ...items.pages.map(({ id, title, description }) => ({
-          id,
-          title,
-          ...(description ? { description } : {}),
-          pluginId,
-        })),
+        ...items.pages.map(
+          ({ id, title, description, public: isPublic, shell }) => ({
+            id,
+            title,
+            ...(description ? { description } : {}),
+            ...(isPublic ? { public: true } : {}),
+            ...(shell && shell !== "app" ? { shell } : {}),
+            pluginId,
+          }),
+        ),
       );
       navigation.push(
         ...items.navigation.map((item) => ({ ...item, pluginId })),
@@ -605,6 +738,17 @@ export class PluginRuntime {
         typeof record.props === "object"
       ) {
         const props = record.props as Record<string, unknown>;
+        // Two kinds of `custom` node reach a plugin page. One points at a
+        // component the renderer already bundles — an SDK primitive, which
+        // always declares `./ui/...` — and needs no URL. The other is a
+        // component the plugin itself ships, and its `path` points at the
+        // plugin's own browser module, so the URL has to be attached or the
+        // browser looks for an adapter that does not exist. Deciding on the
+        // path rather than the id keeps both working: a primitive is named
+        // "chart", not "<plugin>/chart".
+        const path = typeof props.path === "string" ? props.path : "";
+        const builtin = path.startsWith("./ui/");
+        if (builtin) return record;
         if (
           typeof props.component === "string" &&
           props.component.startsWith(`${pluginId}/`)
@@ -648,6 +792,86 @@ export class PluginRuntime {
     return this.securityFailure || Boolean(this.authenticationProvider);
   }
 
+  /**
+   * The active authentication plugin's identity endpoints.
+   *
+   * The host mounts these itself at `/api/auth/<pluginId>/*` rather than
+   * letting the plugin route: the mount has to happen ahead of the
+   * authentication middleware, because these are the endpoints a logged-out
+   * browser is trying to reach.
+   *
+   * A path that resolves to no plugin is not a match, so a request cannot be
+   * routed to a plugin that is not installed.
+   */
+  authenticationRoutes(
+    pluginId: string,
+  ): ((request: Request) => Promise<Response> | Response) | undefined {
+    if (this.securityFailure) return undefined;
+    if (pluginId !== this.authenticationPluginId) return undefined;
+    return this.authenticationProvider?.routes?.bind(
+      this.authenticationProvider,
+    );
+  }
+
+  /** The plugin currently providing authentication, if any. */
+  get authenticationPluginId(): string | undefined {
+    return this.securityFailure ? undefined : this.authenticationPluginId_;
+  }
+
+  /**
+   * Whether a request to this path must resolve a principal.
+   *
+   * The middleware consults this before rejecting a logged-out caller. A public
+   * page is the one case where an anonymous request is legitimate, and it is
+   * reachable only because a `security: true` plugin declared it.
+   */
+  requiresPrincipal(pathname: string): boolean {
+    if (this.securityFailure) return true;
+    if (!this.authenticationProvider) return false;
+    // The catalog is answerable anonymously because it redacts itself for an
+    // anonymous caller: it reports public pages and withholds everything else,
+    // which is what lets a client reach a sign-in screen it cannot yet
+    // authorize.
+    if (pathname === "/api/v1/plugins") return false;
+    return !this.isPublicPagePath(pathname);
+  }
+
+  private isPublicPagePath(pathname: string): boolean {
+    for (const [pluginId, contributions] of this.contributions)
+      for (const page of contributions.pages)
+        if (
+          page.public &&
+          pathname ===
+            `/api/v1/plugins/${encodeURIComponent(pluginId)}/pages/${page.id}`
+        )
+          return true;
+    return false;
+  }
+
+  /**
+   * Whether a page was declared public by a security plugin.
+   *
+   * The page route uses this instead of resolving the path, so a public page
+   * serves without a principal and everything else is still authorized.
+   */
+  pageIsPublic(pluginId: string, pageId: string): boolean {
+    if (this.securityFailure) return false;
+    return Boolean(
+      this.contributions.get(pluginId)?.pages.find((page) => page.id === pageId)
+        ?.public,
+    );
+  }
+
+  /**
+   * Asks the authentication plugin to resolve the request identity.
+   *
+   * The role must be one the host knows, because the host applies the role's
+   * permission grants before consulting any `authorize` provider. A plugin
+   * modelling richer access control expresses that in `attributes` and uses
+   * `authorize` to narrow; it does not invent a new role name. An
+   * unrecognised role is rejected rather than treated as least-privileged, so
+   * a malformed principal cannot accidentally gain access.
+   */
   async authenticate(request: Request): Promise<PluginPrincipal | null> {
     const principal = await this.authenticationProvider?.authenticate(request);
     if (
@@ -694,16 +918,32 @@ export class PluginRuntime {
     return this.authorize(principal, "inspect", { type: "service", id });
   }
 
+  /**
+   * Resolves a callable by id, whether the plugin declared it with
+   * `defineAction` or as a procedure. Both produce the same invoke shape, so a
+   * caller should not have to care which name was used.
+   */
   procedure(
     pluginId: string,
     procedureId: string,
   ): {
     procedure: RegisteredProcedure;
   } | null {
-    const procedure = this.contributions
-      .get(pluginId)
-      ?.procedures.find((item) => item.id === procedureId);
+    const contributions = this.contributions.get(pluginId);
+    const procedure =
+      contributions?.procedures.find((item) => item.id === procedureId) ??
+      contributions?.actions.find((item) => item.id === procedureId);
     return procedure && this.active.has(pluginId) ? { procedure } : null;
+  }
+
+  /**
+   * Declared resources for one plugin, with the freshness policy each was
+   * registered with. The host serves this so a browser can poll on the same
+   * terms it polls an adapter.
+   */
+  resources(pluginId: string): RuntimePluginResource[] {
+    if (!this.active.has(pluginId)) return [];
+    return this.contributions.get(pluginId)?.resources ?? [];
   }
 
   async close(): Promise<void> {
@@ -711,6 +951,7 @@ export class PluginRuntime {
     await this.stopActive();
     this.contributions.clear();
     this.authenticationProvider = undefined;
+    this.authenticationPluginId_ = undefined;
     this.authorizationProvider = undefined;
   }
 
@@ -728,6 +969,24 @@ export class PluginRuntime {
       } catch {
         console.error(`Could not stop plugin "${id}"`);
       }
+      this.closeStorage(id);
+    }
+  }
+
+  /**
+   * Closes the databases a plugin opened.
+   *
+   * Only once the plugin has stopped: a handle it still holds would otherwise
+   * be closed out from under it.
+   */
+  private closeStorage(id: string): void {
+    const storage = this.pluginStorage.get(id);
+    if (!storage) return;
+    this.pluginStorage.delete(id);
+    try {
+      storage.close();
+    } catch {
+      console.error(`Could not close storage for plugin "${id}"`);
     }
   }
 }
