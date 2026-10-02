@@ -57,10 +57,18 @@ export interface ChartProps {
   kind?: ChartKind;
   /**
    * Tighten the value axis so small movements fill the height. Defaults to
-   * true, because a load average moving between 3.8 and 4.2 is invisible on a
-   * 0-100 axis and that is exactly the movement worth watching.
+   * false.
+   *
+   * A load average moving between 3.8 and 4.2 is invisible on a 0-100 axis, so
+   * some callers want the axis tightened. Left on by default it also does the
+   * opposite of what it looks like: with almost no margin, every
+   * sample-to-sample wobble becomes a full-height spike and a once-a-second
+   * series reads as noise rather than as a trend. Widen the axis and the
+   * movement shows without the spikes.
    */
   exaggerate?: boolean;
+  /** Stroke width of the plotted line. Defaults to 2. */
+  lineWidth?: number;
   /** Print the latest value over the chart. */
   showValue?: boolean;
   /** Accessible description of what is plotted. */
@@ -103,6 +111,7 @@ export const Chart = defineComponent<ChartProps>({
       windows: z.array(windowSchema).optional(),
       kind: z.enum(["line", "area"]).optional(),
       exaggerate: z.boolean().optional(),
+      lineWidth: z.number().optional(),
       showValue: z.boolean().optional(),
       label: z.string().min(1).optional(),
       scale: z.enum(["higher-is-better", "higher-is-worse"]).optional(),

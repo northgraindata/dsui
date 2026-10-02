@@ -232,7 +232,13 @@ export function Chart({ client, node }: ComponentProps) {
           windowStyle="rounded"
           fill={props.kind === "area"}
           showValue={props.showValue}
-          exaggerate={props.exaggerate ?? true}
+          // Off unless a caller asks for it. Exaggeration squeezes the scale
+          // onto the data's own range with almost no margin, which turns every
+          // sample-to-sample wobble into a full-height spike: a load average
+          // read once a second came out looking like an ECG rather than a line.
+          // A wider margin is the difference between a trend and noise.
+          exaggerate={props.exaggerate ?? false}
+          lineWidth={props.lineWidth ?? 2}
           paused={paused}
           formatValue={formatValue}
           formatTime={(seconds) => formatTime(seconds * 1000, spanMs)}
