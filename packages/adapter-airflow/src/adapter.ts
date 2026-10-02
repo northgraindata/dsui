@@ -27,6 +27,7 @@ import {
   createContext,
 } from "./context.js";
 import { airflowHealth } from "./health.js";
+import { airflowJobs, airflowSignals } from "./jobs.js";
 import {
   connectionsPage,
   createConnectionPage,
@@ -124,6 +125,8 @@ export function createAirflowAdapter(
     // A remote HTTP API; a couple of seconds is normal for DAG enumeration.
     latencyBudgetMs: 3_000,
     health: airflowHealth,
+    jobs: airflowJobs,
+    signals: airflowSignals,
     resources: [
       overview,
       overviewDags,

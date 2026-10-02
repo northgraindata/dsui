@@ -79,7 +79,7 @@ export class PluginJobService {
   async start(): Promise<void> {
     if (this.timer) return;
     this.stopped = false;
-    this.syncDefinitions();
+    this.refreshDefinitions();
     this.timer = setInterval(() => {
       if (!this.polling)
         this.polling = this.poll()
@@ -112,7 +112,7 @@ export class PluginJobService {
     await this.activeRun?.done;
   }
 
-  private syncDefinitions(): void {
+  refreshDefinitions(): void {
     const current = this.registeredJobs();
     const currentIds = new Set(
       current.map(({ pluginId, job }) => `${pluginId}:${job.id}`),

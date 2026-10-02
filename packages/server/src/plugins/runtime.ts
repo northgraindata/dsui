@@ -544,6 +544,19 @@ export class PluginRuntime {
               `Plugin "${request.id}" job "${job.id}" cannot set both schedule and intervalMs`,
             );
           if (
+            job.onSignals !== undefined &&
+            (job.onSignals.length === 0 ||
+              job.onSignals.some(
+                (signalId) =>
+                  typeof signalId !== "string" ||
+                  !/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(signalId),
+              ) ||
+              new Set(job.onSignals).size !== job.onSignals.length)
+          )
+            throw new Error(
+              `Plugin "${request.id}" job "${job.id}" has invalid onSignals declarations`,
+            );
+          if (
             job.intervalMs !== undefined &&
             (!Number.isInteger(job.intervalMs) || job.intervalMs < 250)
           )
@@ -901,9 +914,7 @@ export class PluginRuntime {
     // authorize.
     if (pathname === "/api/v1/plugins") return false;
     const browserBundleMatch =
-      /^\/api\/v1\/plugins\/([a-z][a-z0-9-]*)\/components\.mjs$/.exec(
-        pathname,
-      );
+      /^\/api\/v1\/plugins\/([a-z][a-z0-9-]*)\/components\.mjs$/.exec(pathname);
     if (
       browserBundleMatch &&
       this.browserBundleIsPublic(browserBundleMatch[1]!)
@@ -921,9 +932,7 @@ export class PluginRuntime {
       return false;
     return Boolean(
       this.active.get(pluginId)?.browserPath &&
-        this.contributions
-          .get(pluginId)
-          ?.pages.some((page) => page.public),
+        this.contributions.get(pluginId)?.pages.some((page) => page.public),
     );
   }
 

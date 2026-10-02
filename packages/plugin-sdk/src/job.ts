@@ -83,6 +83,8 @@ export interface JobDefinition<
   readonly schedule?: string;
   /** Fixed interval in milliseconds. Use for sub-minute recurring work. */
   readonly intervalMs?: number;
+  /** Fully qualified adapter signal ids that enqueue this job. */
+  readonly onSignals?: readonly string[];
   readonly concurrency: JobConcurrency;
   readonly timeoutMs: number;
   readonly retry: JobRetry;
@@ -98,6 +100,8 @@ export interface DefineJobOptions<
   schedule?: string;
   /** Fixed interval in milliseconds; mutually exclusive with `schedule`. */
   intervalMs?: number;
+  /** Enqueue this job when any fully qualified adapter signal is published. */
+  onSignals?: readonly string[];
   /** Defaults to `"singleton"`. */
   concurrency?: JobConcurrency;
   /** Abort the run after this long. Defaults to 5 minutes. */
@@ -157,6 +161,21 @@ export function defineJob<
     throw new InvalidJobDefinitionError(
       `Job "${options.id}" intervalMs must be an integer of at least 250`,
     );
+  if (options.onSignals !== undefined) {
+    if (
+      options.onSignals.length === 0 ||
+      options.onSignals.some(
+        (signalId) => !/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(signalId),
+      )
+    )
+      throw new InvalidJobDefinitionError(
+        `Job "${options.id}" onSignals must contain qualified ids like "airflow.dag-failed"`,
+      );
+    if (new Set(options.onSignals).size !== options.onSignals.length)
+      throw new InvalidJobDefinitionError(
+        `Job "${options.id}" onSignals cannot contain duplicates`,
+      );
+  }
   return {
     kind: "job",
     id: options.id,
@@ -165,6 +184,7 @@ export function defineJob<
     ...(options.intervalMs !== undefined
       ? { intervalMs: options.intervalMs }
       : {}),
+    ...(options.onSignals ? { onSignals: [...options.onSignals] } : {}),
     concurrency: options.concurrency ?? "singleton",
     timeoutMs,
     retry,

@@ -83,6 +83,7 @@ export interface ServiceDeps {
   cipher: ConnectionCipher | undefined;
   getConfig(): DsuiConfig;
   refreshConfig(): Promise<DsuiConfig>;
+  refreshJobs?(): void;
 }
 
 export async function publicService(
@@ -215,6 +216,7 @@ export function registerServiceRoutes(
         { id, name: input.name, adapter: input.adapter },
         deps.cipher.encrypt(connection),
       );
+      deps.refreshJobs?.();
       deps.audit(principal.id, "service.create", id, {
         adapter: input.adapter,
       });
@@ -248,6 +250,7 @@ export function registerServiceRoutes(
           "Configuration-managed services cannot be deleted here",
         );
       deps.database.deleteUiService(source.service.id);
+      deps.refreshJobs?.();
       deps.audit(principal.id, "service.delete", source.service.id, {
         adapter: source.service.adapter,
       });

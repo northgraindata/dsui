@@ -5,6 +5,8 @@
     "create-an-adapter",
     "resources",
     "actions",
+    "jobs",
+    "signals",
     "pages",
     "stores",
     "custom-components",

@@ -31,6 +31,12 @@ Airflow 3 uses `method: airflow`. Airflow 2.10 uses `method: airflow-2` with the
 - Retry or clear task instances
 - Browse assets, connections, variables, pools, users, and event logs
 
+The adapter polls recent DAG runs every minute and emits typed
+`airflow.dag-failed` and `airflow.dag-succeeded` signals for terminal runs from
+the last three minutes. A repeated poll of the same run is deduplicated by its
+DAG and run IDs. A plugin can react by declaring a job with
+`onSignals: ["airflow.dag-failed"]`.
+
 ## Not yet available
 
 - DAG authoring and deployment

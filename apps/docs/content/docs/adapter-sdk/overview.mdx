@@ -14,6 +14,8 @@ The adapter mental model is deliberately small:
 connection + context
        ├── resources  (reads)
        ├── actions    (commands)
+       ├── jobs      (background work)
+       ├── signals   (events)
        ├── stores     (state)
        └── pages      (workflow)
 ```
@@ -22,6 +24,8 @@ connection + context
 | --- | --- | --- |
 | [Resource](/docs/adapter-sdk/resources) | External data | Read-only data sources managed by the runtime |
 | [Action](/docs/adapter-sdk/actions) | Commands and mutations | Side effects with abort, invalidation, store access |
+| [Jobs](/docs/adapter-sdk/jobs) | Background work | Scheduled polling for each configured service |
+| [Signals](/docs/adapter-sdk/signals) | Events | Typed, durable events emitted into DSUI's event stream |
 | [Page](/docs/adapter-sdk/pages) | Routes | Compose components with typed params and stores |
 | [Store](/docs/adapter-sdk/stores) | Local UI state | Client/session state with persistence |
 | [Component](/docs/adapter-sdk/custom-components) | Reusable UI | Server composites and browser components |

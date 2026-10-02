@@ -1,7 +1,9 @@
 import type { z } from "zod";
 import type { AnyActionDefinition } from "../action/index";
+import type { AnyJobDefinition } from "../job";
 import type { AnyPageDefinition } from "../page/index";
 import type { AnyResourceDefinition } from "../resource/index";
+import type { AnySignalDefinition } from "../signal";
 import type { AnyStoreDefinition } from "../store/index";
 
 /**
@@ -164,6 +166,10 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
   readonly actions: readonly AnyActionDefinition[];
   /** Route definitions. */
   readonly pages: readonly AnyPageDefinition[];
+  /** Scheduled background work, instantiated once per configured service. */
+  readonly jobs: readonly AnyJobDefinition<TContext>[];
+  /** Signals this adapter is allowed to emit into DSUI's event stream. */
+  readonly signals: readonly AnySignalDefinition[];
 }
 
 /**
@@ -223,4 +229,8 @@ export interface DefineAdapterOptions<TContext, TConfig> {
   actions?: readonly AnyActionDefinition[];
   /** Page definitions used by this adapter. */
   pages?: readonly AnyPageDefinition[];
+  /** Scheduled background jobs run once for every configured service. */
+  jobs?: readonly AnyJobDefinition<TContext>[];
+  /** Signal definitions referenced by the adapter's jobs. */
+  signals?: readonly AnySignalDefinition[];
 }

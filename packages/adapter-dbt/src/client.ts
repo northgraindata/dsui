@@ -54,7 +54,7 @@ export interface DbtCloudClient {
     input: { cause: string; stepsOverride?: string[] },
     signal?: AbortSignal,
   ): Promise<DbtCloudRun>;
-  listRuns(signal?: AbortSignal): Promise<DbtCloudRun[]>;
+  listRuns(signal?: AbortSignal, limit?: number): Promise<DbtCloudRun[]>;
   getRun(runId: string, signal?: AbortSignal): Promise<DbtCloudRun>;
   getRunLogs(runId: string, signal?: AbortSignal): Promise<string>;
   listArtifacts(
@@ -185,7 +185,17 @@ export function createDbtCloudClient(config: DbtCloudConfig): DbtCloudClient {
         )
       ).data;
     },
-    async listRuns(signal) {
+    async listRuns(signal, limit) {
+      if (limit !== undefined) {
+        const boundedLimit = Math.min(Math.max(Math.floor(limit), 1), pageSize);
+        return (
+          await request(
+            `/api/v2/accounts/${encodeURIComponent(config.accountId)}/runs/?limit=${boundedLimit}&page=1`,
+            z.object({ data: z.array(runSchema) }),
+            signal,
+          )
+        ).data;
+      }
       return listPages(
         `/api/v2/accounts/${encodeURIComponent(config.accountId)}/runs/`,
         z.object({ data: z.array(runSchema) }),

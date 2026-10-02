@@ -52,6 +52,11 @@ export {
 export { DsuiDatabase } from "./db/database";
 export type { Migration } from "./db/migrate";
 export {
+  type PublishSignalInput,
+  SignalBus,
+  type SignalEvent,
+} from "./events/signal-bus";
+export {
   type PluginReadiness,
   PluginRuntime,
 } from "./plugins/runtime";

@@ -54,6 +54,8 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
   const resources = options.resources ? [...options.resources] : [];
   const actions = options.actions ? [...options.actions] : [];
   const pages = options.pages ? [...options.pages] : [];
+  const jobs = options.jobs ? [...options.jobs] : [];
+  const signals = options.signals ? [...options.signals] : [];
 
   assertUnique(
     stores.map((s) => s.id),
@@ -70,6 +72,14 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
   assertUnique(
     pages.map((p) => p.path),
     "page path",
+  );
+  assertUnique(
+    jobs.map((job) => job.id),
+    "job",
+  );
+  assertUnique(
+    signals.map((signal) => signal.id),
+    "signal",
   );
 
   const createContext =
@@ -97,6 +107,8 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
     resources,
     actions,
     pages,
+    jobs,
+    signals,
   };
 }
 

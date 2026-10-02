@@ -1,0 +1,73 @@
+---
+title: Signals
+description: Declare typed events and publish them to DSUI's durable event stream.
+---
+
+A signal defines the shape of an event an adapter may publish. Declare it
+with `defineSignal`, then list it in the adapter's `signals` array. A
+[background job](/docs/adapter-sdk/jobs) can emit it using the typed `emit`
+function it receives when it runs.
+
+```ts
+import { z } from "zod";
+import { defineAdapter, defineJob, defineSignal } from "@northgraindata/dsui-adapter-sdk";
+
+const dagFailed = defineSignal({
+  id: "dag-failed",
+  type: "error",
+  schema: z.object({
+    dagId: z.string(),
+    runId: z.string(),
+    failedAt: z.string(),
+  }),
+});
+
+export default defineAdapter({
+  // metadata, context and health omitted
+  signals: [dagFailed],
+  jobs: [
+    defineJob({
+      id: "poll-dag-runs",
+      intervalMs: 30_000,
+      run: async ({ context, signal, emit }) => {
+        const failures = await context.client.listRecentFailures({ signal });
+        for (const failure of failures)
+          emit(dagFailed, failure, { idempotencyKey: failure.runId });
+      },
+    }),
+  ],
+});
+```
+
+The adapter host validates every payload against its declared schema. Events
+are stored in the DSUI database, scoped to the adapter service, and available
+to in-process subscribers through the runtime's `signalBus`. The `type` field
+is one of `info`, `success`, `warning`, or `error`. Event IDs are qualified by
+adapter, for example `airflow.dag-failed`.
+
+A plugin can enqueue an investigation job when that event arrives by declaring
+`onSignals`. The job input receives the complete event envelope, including its
+typed `payload`:
+
+```ts
+defineJob({
+  id: "investigate-dag-failure",
+  onSignals: ["airflow.dag-failed"],
+  inputSchema: z.object({
+    signalId: z.literal("airflow.dag-failed"),
+    type: z.literal("error"),
+    payload: z.object({ dagId: z.string(), runId: z.string() }),
+  }),
+  run: async ({ input, context }) => {
+    await investigateDagRun(input.payload, context);
+  },
+});
+```
+
+Reuse the same idempotency key for the same external event so a retried poll
+does not create duplicate events or investigations.
+
+Authenticated clients with inspect permission can read recent events from
+`GET /api/v1/events`. Optional query parameters are `serviceId`, `signalId`,
+`after` (an ISO timestamp), and `limit` (1–500). Results are ordered newest
+first.

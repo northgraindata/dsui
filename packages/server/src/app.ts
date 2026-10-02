@@ -16,6 +16,8 @@ import {
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
+import { registerEventRoutes } from "./events/routes.js";
+import { SignalBus } from "./events/signal-bus.js";
 import type { PluginFetch } from "./plugins/build.js";
 import { PluginJobService } from "./plugins/job-service.js";
 import { registerPluginRoutes } from "./plugins/routes.js";
@@ -100,6 +102,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   const registry = new AdapterRegistry();
   const readiness = new Map<string, AdapterReadiness>();
   const database = new DsuiDatabase(databasePath);
+  const signalBus = new SignalBus(database);
   const masterKey = resolveMasterKey(
     dataDir,
     options.masterKey ?? process.env.DSUI_MASTER_KEY,
@@ -236,7 +239,96 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       stores: (pluginId) => createPluginStores(database, pluginId),
     },
   );
-  const pluginJobs = new PluginJobService(database, () => pluginRuntime.jobs());
+  const registeredJobs = () => {
+    const pluginJobs = pluginRuntime.jobs();
+    const adapterJobs = listPluginServiceSummaries().flatMap((service) => {
+      let adapter: ReturnType<AdapterRegistry["get"]>;
+      try {
+        adapter = registry.get(service.adapter);
+      } catch {
+        return [];
+      }
+      const source = serviceSource(config, database, service.id);
+      if (!source) return [];
+      return adapter.catalog.jobs.map((definition) => ({
+        pluginId: `adapter:${service.id}`,
+        job: {
+          id: definition.id,
+          ...(definition.schedule ? { schedule: definition.schedule } : {}),
+          ...(definition.intervalMs !== undefined
+            ? { intervalMs: definition.intervalMs }
+            : {}),
+          concurrency: definition.concurrency,
+          timeoutMs: definition.timeoutMs,
+          retry: definition.retry,
+          invoke: async (
+            input: unknown,
+            context: {
+              runId: string;
+              signal: AbortSignal;
+              logger: {
+                info(message: string): void;
+                warn(message: string): void;
+                error(message: string): void;
+              };
+              reportSideEffect(): void;
+            },
+          ) => {
+            const current = serviceSource(config, database, service.id);
+            if (!current)
+              throw new Error(`Adapter service "${service.id}" was removed`);
+            const currentAdapter = registry.get(current.service.adapter);
+            const emissions = await currentAdapter.backend.executeJob(
+              definition.id,
+              connectionFor(cipher, current),
+              input,
+              {
+                runId: context.runId,
+                signal: context.signal,
+                timeoutMs: definition.timeoutMs,
+              },
+              { persistenceNamespace: service.id },
+            );
+            for (const emission of emissions) {
+              const declared = currentAdapter.catalog.signals.find(
+                (signal) => signal.id === emission.signalId,
+              );
+              if (!declared)
+                throw new Error(
+                  `Adapter job emitted undeclared signal "${emission.signalId}"`,
+                );
+              signalBus.publish({
+                signalId: `${currentAdapter.id}.${emission.signalId}`,
+                type: declared.type,
+                sourceType: "adapter",
+                sourceId: service.id,
+                serviceId: service.id,
+                payload: emission.payload,
+                ...(emission.idempotencyKey
+                  ? { idempotencyKey: emission.idempotencyKey }
+                  : {}),
+              });
+            }
+          },
+        },
+      }));
+    });
+    return [...pluginJobs, ...adapterJobs];
+  };
+  const pluginJobs = new PluginJobService(database, registeredJobs);
+  const unsubscribeSignalJobs = signalBus.subscribe((event) => {
+    for (const { pluginId, job } of pluginRuntime.jobs()) {
+      if (!job.onSignals?.includes(event.signalId)) continue;
+      try {
+        pluginJobs.enqueue(pluginId, job.id, event, event.id);
+      } catch (error) {
+        console.error(
+          `Could not enqueue plugin job "${pluginId}/${job.id}" for signal "${event.signalId}"`,
+          error,
+        );
+      }
+    }
+  });
   let pluginsLoaded = false;
   let pluginSync: Promise<void> | undefined;
   let adapterSync: Promise<void> | undefined;
@@ -366,6 +458,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     config = loaded;
     await syncAdapters(loaded);
     await syncPlugins(loaded);
+    pluginJobs.refreshDefinitions();
     return config;
   };
 
@@ -385,6 +478,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     registry,
     pluginRuntime,
     pluginJobs,
+    refreshJobs: () => pluginJobs.refreshDefinitions(),
     database,
     cipher,
     getConfig,
@@ -397,6 +491,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   });
   registerAuthRoutes(app, { pluginRuntime });
   registerPluginRoutes(app, { runtime: pluginRuntime, audit });
+  registerEventRoutes(app, { bus: signalBus, runtime: pluginRuntime });
   registerAdapterRoutes(app, {
     registry,
     readiness: () => readiness,
@@ -410,8 +505,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     registry,
     pluginRuntime,
     pluginJobs,
+    signalBus,
     refreshConfig,
     close: async () => {
+      unsubscribeSignalJobs();
       await pluginJobs.close();
       await pluginRuntime.close();
       database.close();
