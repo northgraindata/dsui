@@ -63,7 +63,18 @@ export function registerAuthMiddleware(app: Hono, deps: AuthRouteDeps): void {
     const { pathname } = new URL(context.req.url);
     // A page a security plugin declared public is the one request an anonymous
     // caller may make. Everything else still needs an identity.
-    if (!runtime.requiresPrincipal(pathname)) return next();
+    if (!runtime.requiresPrincipal(pathname)) {
+      // The plugin catalog is public so a logged-out browser can discover the
+      // sign-in page, but authenticated callers still need their principal so
+      // the route can return the full, permission-filtered catalog.
+      if (pathname === "/api/v1/plugins") {
+        const principal = await runtime
+          .authenticate(context.req.raw)
+          .catch(() => null);
+        if (principal) context.set("principal", principal);
+      }
+      return next();
+    }
     try {
       const principal: Principal | null = await runtime.authenticate(
         context.req.raw,

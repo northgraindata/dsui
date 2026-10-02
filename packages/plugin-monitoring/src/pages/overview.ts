@@ -134,13 +134,20 @@ async function renderOverview(input: {
         columns: 1,
         content: [
           Card({
-            title: "Load per core",
-            description: "One sample per second, kept for seven days.",
+            title: "CPU load",
+            description: `One-minute load average. Fixed 0–${cpu.cores} core scale.`,
             content: Chart({
               source: seriesSource("host-cpu-series"),
               windows,
-              label: "Load per core over time",
-              referenceLine: { value: 1, label: "one core busy" },
+              label: "CPU load average",
+              yRange: { min: 0, max: Math.max(cpu.cores, 1) },
+              referenceLines: Array.from(
+                { length: Math.max(cpu.cores, 1) },
+                (_, index) => ({
+                  value: index + 1,
+                  label: `${index + 1} ${index === 0 ? "CPU" : "CPUs"} busy`,
+                }),
+              ),
             }),
           }),
           Card({
@@ -150,6 +157,7 @@ async function renderOverview(input: {
               source: seriesSource("host-memory-series"),
               windows,
               label: "Memory used over time",
+              yRange: { min: 0, max: 100, unit: "%" },
             }),
           }),
         ],

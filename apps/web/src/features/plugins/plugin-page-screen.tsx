@@ -5,7 +5,7 @@ import type {
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { getPluginCatalog, getPluginPage } from "../../api";
+import { currentPrincipal, getPluginCatalog, getPluginPage } from "../../api";
 import {
   PageHeading,
   pageClass,
@@ -38,12 +38,26 @@ export function PluginPageScreen() {
             candidate.pluginId === pluginId && candidate.id === pageId,
         );
         if (!found) {
+          const principal = await currentPrincipal().catch(() => undefined);
+          const signInPage = catalog.pages.find(
+            (candidate) => candidate.public && candidate.shell === "bare",
+          );
+          if (!principal && signInPage) {
+            navigate({
+              to: "/plugins/$pluginId/$",
+              params: {
+                pluginId: signInPage.pluginId,
+                _splat: signInPage.id,
+              },
+            });
+            return;
+          }
           setError("Plugin page not found or plugin is disabled.");
           return;
         }
+        setPage(found);
         const pageDocument = await getPluginPage(pluginId, found.id);
         if (!active) return;
-        setPage(found);
         setDocument(pageDocument);
       })
       .catch((cause: unknown) => {
@@ -66,6 +80,16 @@ export function PluginPageScreen() {
       </div>
     );
 
+  if (page?.shell === "bare" && !document)
+    return (
+      <div
+        className="grid min-h-screen place-items-center bg-background px-4 text-[12px] text-muted"
+        role="status"
+      >
+        Loading page…
+      </div>
+    );
+
   if (!page || !document)
     return (
       <div className={pageClass}>
@@ -73,6 +97,24 @@ export function PluginPageScreen() {
           Loading plugin page…
         </p>
       </div>
+    );
+
+  if (page.shell === "bare")
+    return (
+      <PluginErrorBoundary key={`${pluginId}/${pageId}`}>
+        <DeclarativePageRenderer
+          nodes={document.nodes}
+          client={pluginRendererClient(pluginId, (path) =>
+            navigate({
+              to: "/plugins/$pluginId/$",
+              params: {
+                pluginId,
+                _splat: path.replace(/^\/+/, ""),
+              },
+            }),
+          )}
+        />
+      </PluginErrorBoundary>
     );
 
   return (

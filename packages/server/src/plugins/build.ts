@@ -61,6 +61,8 @@ export interface PluginBuildOptions {
   sdkPackageRoot: string;
   /** Where build artifacts and sources are kept. */
   dataDir: string;
+  /** GitHub token for private repository archives. */
+  githubToken?: string;
   fetch?: AdapterFetch;
   /** Reuse the previous build; never touches the network. */
   offline?: boolean;
@@ -131,20 +133,66 @@ export async function buildPlugin(
   } else {
     if (!repository.test(location.repository))
       throw new ExternalAdapterError("Invalid GitHub repository");
-    const rootPrefix = `${location.repository.split("/")[1]}-`;
-    const url = assertSafeAdapterUrl(
-      `https://codeload.github.com/${location.repository}/tar.gz/${encodeURIComponent(location.ref)}`,
-    );
-    const response = await (options.fetch ?? fetch)(url.toString(), {
-      redirect: "error",
-      headers: { accept: "application/octet-stream" },
-    });
+    const fetchSource = options.fetch ?? fetch;
+    let response: Response;
+    if (options.githubToken) {
+      const apiUrl = assertSafeAdapterUrl(
+        `https://api.github.com/repos/${location.repository}/tarball/${encodeURIComponent(location.ref)}`,
+      );
+      const archive = await fetchSource(apiUrl.toString(), {
+        redirect: "manual",
+        headers: {
+          accept: "application/vnd.github+json",
+          authorization: `Bearer ${options.githubToken}`,
+          "x-github-api-version": "2022-11-28",
+        },
+      });
+      if (archive.status !== 302) {
+        const reason =
+          archive.status === 404
+            ? "; check that the token has Contents: read access and the ref exists"
+            : "";
+        throw new ExternalAdapterError(
+          `GitHub archive request failed (${archive.status})${reason}`,
+        );
+      }
+      const locationHeader = archive.headers.get("location");
+      if (!locationHeader)
+        throw new ExternalAdapterError(
+          "GitHub archive response did not include a download location",
+        );
+      const downloadUrl = assertSafeAdapterUrl(
+        new URL(locationHeader, apiUrl).toString(),
+      );
+      if (downloadUrl.hostname !== "codeload.github.com")
+        throw new ExternalAdapterError(
+          "GitHub archive redirected to an unexpected host",
+        );
+      // The API's short-lived codeload URL carries its own authorization. Do
+      // not forward the GitHub token to the archive host.
+      response = await fetchSource(downloadUrl.toString(), {
+        redirect: "error",
+        headers: { accept: "application/octet-stream" },
+      });
+    } else {
+      const url = assertSafeAdapterUrl(
+        `https://codeload.github.com/${location.repository}/tar.gz/${encodeURIComponent(location.ref)}`,
+      );
+      response = await fetchSource(url.toString(), {
+        redirect: "error",
+        headers: { accept: "application/octet-stream" },
+      });
+      if (response.status === 404)
+        throw new ExternalAdapterError(
+          'Plugin source download failed (404); private GitHub repositories need a token configured as token: "${GITHUB_TOKEN}"',
+        );
+    }
     const archive = await readResponseBytes(
       response,
       MAX_ARCHIVE_BYTES,
       "Plugin source",
     );
-    const files = extractTar(await gunzip(archive), rootPrefix);
+    const files = extractTar(await gunzip(archive), location.repository);
     await writeTree(sourceDir, files, location.path);
     commit = _SHA.test(location.ref) ? location.ref : undefined;
   }

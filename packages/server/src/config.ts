@@ -36,6 +36,8 @@ const gitPluginSourceSchema = z
   .object({
     source: z.literal("git"),
     repository: z.string().min(1),
+    /** GitHub token for private repositories; normally interpolated from env. */
+    token: z.string().min(1).optional(),
     /**
      * Branch, tag, or commit. Defaults to `main`.
      *

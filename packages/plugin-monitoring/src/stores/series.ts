@@ -59,7 +59,7 @@ function seriesStore(id: string, initial: readonly SeriesPoint[] = []) {
 }
 
 /** Load average, one series so the axis has a single meaning. */
-export const cpuSeries = seriesStore("host-cpu-series");
+export const cpuSeries = seriesStore("host-cpu-load-series");
 
 /** Memory used, in bytes. */
 export const memorySeries = seriesStore("host-memory-series");

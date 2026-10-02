@@ -1,0 +1,296 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 4709730f1d6608dee4ffb3a386d1732f776c5f5c..22d50f7a0ba3e8e892555c26baa86a92730b01d2 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -126,7 +126,8 @@ function lerp(current, target, speed, dt = 16.67) {
+ }
+
+ // src/math/range.ts
+-function computeRange(visible, currentValue, referenceValue, exaggerate) {
++function computeRange(visible, currentValue, referenceValue, exaggerate, yRange, referenceLines) {
++  if (yRange) return { min: yRange.min, max: yRange.max };
+   let targetMin = Infinity;
+   let targetMax = -Infinity;
+   for (const p of visible) {
+@@ -139,6 +140,10 @@ function computeRange(visible, currentValue, referenceValue, exaggerate) {
+     if (referenceValue < targetMin) targetMin = referenceValue;
+     if (referenceValue > targetMax) targetMax = referenceValue;
+   }
++  for (const line of referenceLines ?? []) {
++    if (line.value < targetMin) targetMin = line.value;
++    if (line.value > targetMax) targetMax = line.value;
++  }
+   const rawRange = targetMax - targetMin;
+   const marginFactor = exaggerate ? 0.01 : 0.12;
+   const minRange = rawRange * (exaggerate ? 0.02 : 0.1) || (exaggerate ? 0.04 : 0.4);
+@@ -786,6 +791,12 @@ function drawReferenceLine(ctx, layout, palette, ref) {
+   }
+ }
+
++function drawReferenceLines(ctx, layout, palette, line, lines) {
++  if (line) drawReferenceLine(ctx, layout, palette, line);
++  for (const reference of lines ?? [])
++    drawReferenceLine(ctx, layout, palette, reference);
++}
++
+ // src/math/intervals.ts
+ function niceTimeInterval(windowSecs) {
+   if (windowSecs <= 15) return 2;
+@@ -1475,10 +1486,10 @@ function drawFrame(ctx, layout, palette, opts) {
+     const t = Math.max(0, Math.min(1, (reveal - start) / (end - start)));
+     return t * t * (3 - 2 * t);
+   };
+-  if (opts.referenceLine && reveal > 0.01) {
++  if ((opts.referenceLine || opts.referenceLines?.length) && reveal > 0.01) {
+     ctx.save();
+     if (reveal < 1) ctx.globalAlpha = reveal;
+-    drawReferenceLine(ctx, layout, palette, opts.referenceLine);
++    drawReferenceLines(ctx, layout, palette, opts.referenceLine, opts.referenceLines);
+     ctx.restore();
+   }
+   if (opts.showGrid) {
+@@ -1602,10 +1613,10 @@ function drawMultiFrame(ctx, layout, opts) {
+     const t = Math.max(0, Math.min(1, (reveal - start) / (end - start)));
+     return t * t * (3 - 2 * t);
+   };
+-  if (opts.referenceLine && reveal > 0.01) {
++  if ((opts.referenceLine || opts.referenceLines?.length) && reveal > 0.01) {
+     ctx.save();
+     if (reveal < 1) ctx.globalAlpha = reveal;
+-    drawReferenceLine(ctx, layout, palette, opts.referenceLine);
++    drawReferenceLines(ctx, layout, palette, opts.referenceLine, opts.referenceLines);
+     ctx.restore();
+   }
+   if (opts.showGrid) {
+@@ -2030,7 +2041,7 @@ function updateWindowTransition(cfg, wt, displayWindow, displayMin, displayMax,
+       }
+     }
+     if (targetVisible.length > 0) {
+-      const targetRange = computeRange(targetVisible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate);
++      const targetRange = computeRange(targetVisible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+       wt.rangeToMin = targetRange.min;
+       wt.rangeToMax = targetRange.max;
+     }
+@@ -3146,7 +3157,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+             if (p.time >= targetLeftEdge - 2 && p.time <= targetRightEdge) targetVisible.push(p);
+           }
+           if (targetVisible.length > 0) {
+-            const range = computeRange(targetVisible, sv, cfg.referenceLine?.value, cfg.exaggerate);
++            const range = computeRange(targetVisible, sv, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+             if (range.min < unionMin) unionMin = range.min;
+             if (range.max > unionMax) unionMax = range.max;
+           }
+@@ -3177,7 +3188,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         const alpha = seriesAlphas.get(s.id) ?? 1;
+         if (visible.length >= 2) {
+           if (alpha > 0.01) {
+-            const range = computeRange(visible, sv, cfg.referenceLine?.value, cfg.exaggerate);
++            const range = computeRange(visible, sv, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+             if (range.min < globalMin) globalMin = range.min;
+             if (range.max > globalMax) globalMax = range.max;
+           }
+@@ -3281,6 +3292,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         showGrid: cfg.showGrid,
+         showPulse: cfg.showPulse,
+         referenceLine: cfg.referenceLine,
++        referenceLines: cfg.referenceLines,
+         hoverX: drawHoverX,
+         hoverTime: drawHoverTime,
+         hoverEntries,
+@@ -3364,7 +3376,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         rafRef.current = requestAnimationFrame(draw);
+         return;
+       }
+-      const computedRange = computeRange(visible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate);
++      const computedRange = computeRange(visible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+       const isWindowTransitioning = transition.startMs > 0;
+       const rangeResult = updateRange(
+         computedRange,
+@@ -3434,6 +3446,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         showPulse: cfg.showPulse,
+         showFill: cfg.showFill,
+         referenceLine: cfg.referenceLine,
++        referenceLines: cfg.referenceLines,
+         hoverX: drawHoverX,
+         hoverValue: drawHoverValue,
+         hoverTime: drawHoverTime,
+@@ -3542,6 +3555,8 @@ function Liveline({
+   tooltipOutline = true,
+   orderbook,
+   referenceLine,
++  referenceLines,
++  yRange,
+   formatValue = defaultFormatValue,
+   formatTime = defaultFormatTime,
+   lerpSpeed = 0.08,
+@@ -3668,6 +3683,8 @@ function Liveline({
+     momentumOverride,
+     showFill: isMultiSeries ? false : fill,
+     referenceLine,
++    referenceLines,
++    yRange,
+     formatValue,
+     formatTime,
+     padding: pad,
+diff --git a/dist/index.d.cts b/dist/index.d.cts
+index 414c4e61bac1017c49bbaedbd1691bcd9cdd667c..587a2dbcea7d557628dde34898604a5719db6b24 100644
+--- a/dist/index.d.cts
++++ b/dist/index.d.cts
+@@ -74,6 +74,9 @@ interface LivelineProps {
+     tooltipOutline?: boolean;
+     orderbook?: OrderbookData;
+     referenceLine?: ReferenceLine;
++    referenceLines?: ReferenceLine[];
++    /** Keep the value axis at a fixed minimum and maximum. */
++    yRange?: { min: number; max: number };
+     formatValue?: (v: number) => string;
+     formatTime?: (t: number) => string;
+     lerpSpeed?: number;
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 414c4e61bac1017c49bbaedbd1691bcd9cdd667c..587a2dbcea7d557628dde34898604a5719db6b24 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -74,6 +74,9 @@ interface LivelineProps {
+     tooltipOutline?: boolean;
+     orderbook?: OrderbookData;
+     referenceLine?: ReferenceLine;
++    referenceLines?: ReferenceLine[];
++    /** Keep the value axis at a fixed minimum and maximum. */
++    yRange?: { min: number; max: number };
+     formatValue?: (v: number) => string;
+     formatTime?: (t: number) => string;
+     lerpSpeed?: number;
+diff --git a/dist/index.js b/dist/index.js
+index fd0506272e9a54432a0882c3a389ee74302e4718..e2fc25bec1a31d7cdb1ab364a85cdf732e82bf15 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -99,7 +99,8 @@ function lerp(current, target, speed, dt = 16.67) {
+ }
+
+ // src/math/range.ts
+-function computeRange(visible, currentValue, referenceValue, exaggerate) {
++function computeRange(visible, currentValue, referenceValue, exaggerate, yRange, referenceLines) {
++  if (yRange) return { min: yRange.min, max: yRange.max };
+   let targetMin = Infinity;
+   let targetMax = -Infinity;
+   for (const p of visible) {
+@@ -112,6 +113,10 @@ function computeRange(visible, currentValue, referenceValue, exaggerate) {
+     if (referenceValue < targetMin) targetMin = referenceValue;
+     if (referenceValue > targetMax) targetMax = referenceValue;
+   }
++  for (const line of referenceLines ?? []) {
++    if (line.value < targetMin) targetMin = line.value;
++    if (line.value > targetMax) targetMax = line.value;
++  }
+   const rawRange = targetMax - targetMin;
+   const marginFactor = exaggerate ? 0.01 : 0.12;
+   const minRange = rawRange * (exaggerate ? 0.02 : 0.1) || (exaggerate ? 0.04 : 0.4);
+@@ -759,6 +764,12 @@ function drawReferenceLine(ctx, layout, palette, ref) {
+   }
+ }
+
++function drawReferenceLines(ctx, layout, palette, line, lines) {
++  if (line) drawReferenceLine(ctx, layout, palette, line);
++  for (const reference of lines ?? [])
++    drawReferenceLine(ctx, layout, palette, reference);
++}
++
+ // src/math/intervals.ts
+ function niceTimeInterval(windowSecs) {
+   if (windowSecs <= 15) return 2;
+@@ -1448,10 +1459,10 @@ function drawFrame(ctx, layout, palette, opts) {
+     const t = Math.max(0, Math.min(1, (reveal - start) / (end - start)));
+     return t * t * (3 - 2 * t);
+   };
+-  if (opts.referenceLine && reveal > 0.01) {
++  if ((opts.referenceLine || opts.referenceLines?.length) && reveal > 0.01) {
+     ctx.save();
+     if (reveal < 1) ctx.globalAlpha = reveal;
+-    drawReferenceLine(ctx, layout, palette, opts.referenceLine);
++    drawReferenceLines(ctx, layout, palette, opts.referenceLine, opts.referenceLines);
+     ctx.restore();
+   }
+   if (opts.showGrid) {
+@@ -1575,10 +1586,10 @@ function drawMultiFrame(ctx, layout, opts) {
+     const t = Math.max(0, Math.min(1, (reveal - start) / (end - start)));
+     return t * t * (3 - 2 * t);
+   };
+-  if (opts.referenceLine && reveal > 0.01) {
++  if ((opts.referenceLine || opts.referenceLines?.length) && reveal > 0.01) {
+     ctx.save();
+     if (reveal < 1) ctx.globalAlpha = reveal;
+-    drawReferenceLine(ctx, layout, palette, opts.referenceLine);
++    drawReferenceLines(ctx, layout, palette, opts.referenceLine, opts.referenceLines);
+     ctx.restore();
+   }
+   if (opts.showGrid) {
+@@ -2003,7 +2014,7 @@ function updateWindowTransition(cfg, wt, displayWindow, displayMin, displayMax,
+       }
+     }
+     if (targetVisible.length > 0) {
+-      const targetRange = computeRange(targetVisible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate);
++      const targetRange = computeRange(targetVisible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+       wt.rangeToMin = targetRange.min;
+       wt.rangeToMax = targetRange.max;
+     }
+@@ -3119,7 +3130,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+             if (p.time >= targetLeftEdge - 2 && p.time <= targetRightEdge) targetVisible.push(p);
+           }
+           if (targetVisible.length > 0) {
+-            const range = computeRange(targetVisible, sv, cfg.referenceLine?.value, cfg.exaggerate);
++            const range = computeRange(targetVisible, sv, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+             if (range.min < unionMin) unionMin = range.min;
+             if (range.max > unionMax) unionMax = range.max;
+           }
+@@ -3150,7 +3161,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         const alpha = seriesAlphas.get(s.id) ?? 1;
+         if (visible.length >= 2) {
+           if (alpha > 0.01) {
+-            const range = computeRange(visible, sv, cfg.referenceLine?.value, cfg.exaggerate);
++            const range = computeRange(visible, sv, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+             if (range.min < globalMin) globalMin = range.min;
+             if (range.max > globalMax) globalMax = range.max;
+           }
+@@ -3254,6 +3265,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         showGrid: cfg.showGrid,
+         showPulse: cfg.showPulse,
+         referenceLine: cfg.referenceLine,
++        referenceLines: cfg.referenceLines,
+         hoverX: drawHoverX,
+         hoverTime: drawHoverTime,
+         hoverEntries,
+@@ -3337,7 +3349,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         rafRef.current = requestAnimationFrame(draw);
+         return;
+       }
+-      const computedRange = computeRange(visible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate);
++      const computedRange = computeRange(visible, smoothValue, cfg.referenceLine?.value, cfg.exaggerate, cfg.yRange, cfg.referenceLines);
+       const isWindowTransitioning = transition.startMs > 0;
+       const rangeResult = updateRange(
+         computedRange,
+@@ -3407,6 +3419,7 @@ function useLivelineEngine(canvasRef, containerRef, config) {
+         showPulse: cfg.showPulse,
+         showFill: cfg.showFill,
+         referenceLine: cfg.referenceLine,
++        referenceLines: cfg.referenceLines,
+         hoverX: drawHoverX,
+         hoverValue: drawHoverValue,
+         hoverTime: drawHoverTime,
+@@ -3515,6 +3528,8 @@ function Liveline({
+   tooltipOutline = true,
+   orderbook,
+   referenceLine,
++  referenceLines,
++  yRange,
+   formatValue = defaultFormatValue,
+   formatTime = defaultFormatTime,
+   lerpSpeed = 0.08,
+@@ -3641,6 +3656,8 @@ function Liveline({
+     momentumOverride,
+     showFill: isMultiSeries ? false : fill,
+     referenceLine,
++    referenceLines,
++    yRange,
+     formatValue,
+     formatTime,
+     padding: pad,

@@ -77,6 +77,10 @@ export interface ChartProps {
   scale?: ChartScale;
   /** Fixed value to mark, e.g. a threshold or a target. */
   referenceLine?: { value: number; label?: string };
+  /** Multiple fixed values to mark on the chart. */
+  referenceLines?: readonly { value: number; label?: string }[];
+  /** Fixed vertical axis range. Samples outside the range are clipped. */
+  yRange?: { min: number; max: number; unit?: string };
 }
 
 export interface ChartNode {
@@ -117,6 +121,21 @@ export const Chart = defineComponent<ChartProps>({
       scale: z.enum(["higher-is-better", "higher-is-worse"]).optional(),
       referenceLine: z
         .object({ value: z.number(), label: z.string().optional() })
+        .optional(),
+      referenceLines: z
+        .array(
+          z.object({ value: z.number(), label: z.string().optional() }),
+        )
+        .optional(),
+      yRange: z
+        .object({
+          min: z.number().finite(),
+          max: z.number().finite(),
+          unit: z.string().optional(),
+        })
+        .refine((range) => range.max > range.min, {
+          message: "Chart yRange max must be greater than min",
+        })
         .optional(),
     })
     .refine((value) => !(value.source && value.points), {

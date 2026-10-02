@@ -121,8 +121,12 @@ function tarNumber(block: Uint8Array, start: number, length: number): number {
 /** Minimal tar reader. Regular files and directories only; no links. */
 export function extractTar(
   archive: Uint8Array,
-  rootPrefix: string,
+  repository: string,
 ): Map<string, Uint8Array> {
+  const [owner, name] = repository.split("/");
+  if (!owner || !name)
+    throw new ExternalAdapterError("Invalid GitHub repository");
+  const rootPrefixes = [`${name}-`, `${owner}-${name}-`];
   if (archive.length > MAX_ARCHIVE_BYTES)
     throw new ExternalAdapterError("Adapter source archive exceeds size limit");
   const files = new Map<string, Uint8Array>();
@@ -142,10 +146,13 @@ export function extractTar(
     offset = dataStart + padded;
     if (type !== "0" && type !== "\0" && type !== "5") continue;
     const normalized = name.replace(/\/+$/, "");
-    if (normalized !== rootPrefix && !normalized.startsWith(`${rootPrefix}/`))
+    const separator = normalized.indexOf("/");
+    if (separator === -1) continue;
+    const archiveRoot = normalized.slice(0, separator);
+    if (!rootPrefixes.some((prefix) => archiveRoot.startsWith(prefix)))
       continue;
     if (type === "5") continue;
-    const relative = normalized.slice(rootPrefix.length + 1);
+    const relative = normalized.slice(separator + 1);
     if (!relative) continue;
     assertSafeRelativePath(relative);
     total += size;
@@ -231,8 +238,8 @@ export async function writeTree(
   if (!written)
     throw new ExternalAdapterError(
       subdirectory
-        ? `Adapter source has no package in "${subdirectory}"`
-        : "Adapter source archive contains no files",
+        ? `Source archive has no package in "${subdirectory}"`
+        : "Source archive contains no files",
     );
 }
 
@@ -479,7 +486,6 @@ export async function buildAdapter(
   } else {
     if (!repository.test(location.repository))
       throw new ExternalAdapterError("Invalid GitHub repository");
-    const rootPrefix = `${location.repository.split("/")[1]}-`;
     const url = assertSafeAdapterUrl(
       `https://codeload.github.com/${location.repository}/tar.gz/${encodeURIComponent(location.ref)}`,
     );
@@ -492,7 +498,7 @@ export async function buildAdapter(
       MAX_ARCHIVE_BYTES,
       "Adapter source",
     );
-    const files = extractTar(await gunzip(archive), rootPrefix);
+    const files = extractTar(await gunzip(archive), location.repository);
     await writeTree(sourceDir, files, location.subdirectory);
     // A pinned commit is recorded verbatim; a floating ref resolves to the
     // archive actually fetched, which is what the build consumed.

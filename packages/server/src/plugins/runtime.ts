@@ -387,6 +387,9 @@ export class PluginRuntime {
                   },
               {
                 dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+                ...("token" in buildable && buildable.token
+                  ? { githubToken: buildable.token }
+                  : {}),
                 // A source-built plugin links against the prepared SDK the
                 // same way an adapter does, so both resolve the same
                 // workspace packages instead of two copies.
@@ -437,7 +440,7 @@ export class PluginRuntime {
         });
       } catch (error) {
         if (source.critical || securityPlugin)
-          this.failSecurity(id, "could not load");
+          this.failSecurity(id, `could not load: ${errorMessage(error)}`);
         this.readiness.set(id, {
           status: "unavailable",
           detail: `Plugin package, metadata, or configuration is invalid: ${errorMessage(error)}`,
@@ -897,7 +900,31 @@ export class PluginRuntime {
     // which is what lets a client reach a sign-in screen it cannot yet
     // authorize.
     if (pathname === "/api/v1/plugins") return false;
+    const browserBundleMatch =
+      /^\/api\/v1\/plugins\/([a-z][a-z0-9-]*)\/components\.mjs$/.exec(
+        pathname,
+      );
+    if (
+      browserBundleMatch &&
+      this.browserBundleIsPublic(browserBundleMatch[1]!)
+    )
+      return false;
     return !this.isPublicPagePath(pathname);
+  }
+
+  /**
+   * Whether an anonymous browser may fetch a plugin bundle to render its
+   * public sign-in page. Other plugins' bundles remain behind authentication.
+   */
+  browserBundleIsPublic(pluginId: string): boolean {
+    if (this.securityFailure || pluginId !== this.authenticationPluginId_)
+      return false;
+    return Boolean(
+      this.active.get(pluginId)?.browserPath &&
+        this.contributions
+          .get(pluginId)
+          ?.pages.some((page) => page.public),
+    );
   }
 
   private isPublicPagePath(pathname: string): boolean {
