@@ -17,6 +17,7 @@ import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 import type { PluginFetch } from "./plugins/build.js";
+import { PluginJobService } from "./plugins/job-service.js";
 import { registerPluginRoutes } from "./plugins/routes.js";
 import { type PluginModuleLoader, PluginRuntime } from "./plugins/runtime.js";
 import { createPluginStorage, createPluginStores } from "./plugins/storage.js";
@@ -235,6 +236,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       stores: (pluginId) => createPluginStores(database, pluginId),
     },
   );
+  const pluginJobs = new PluginJobService(database, () => pluginRuntime.jobs());
   let pluginsLoaded = false;
   let pluginSync: Promise<void> | undefined;
   let adapterSync: Promise<void> | undefined;
@@ -305,8 +307,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ms: performance.now() - started,
           });
         } catch (error) {
-          const detail =
-            error instanceof Error ? error.message : "Load failed";
+          const detail = error instanceof Error ? error.message : "Load failed";
           // Reported through onAdapterLoad rather than logged here: a failed
           // adapter is a startup state the CLI already renders, and printing an
           // Error object also printed its stack.
@@ -344,6 +345,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     pluginSync = pluginRuntime.load(sources);
     try {
       await pluginSync;
+      await pluginJobs.start();
       pluginsLoaded = true;
     } finally {
       pluginSync = undefined;
@@ -382,6 +384,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   const serviceDeps = {
     registry,
     pluginRuntime,
+    pluginJobs,
     database,
     cipher,
     getConfig,
@@ -406,8 +409,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     database,
     registry,
     pluginRuntime,
+    pluginJobs,
     refreshConfig,
     close: async () => {
+      await pluginJobs.close();
       await pluginRuntime.close();
       database.close();
     },

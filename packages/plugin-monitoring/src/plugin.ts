@@ -1,5 +1,5 @@
 import { homedir, tmpdir } from "node:os";
-import { definePlugin } from "@northgraindata/dsui-plugin-sdk";
+import { defineJob, definePlugin } from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
 import {
   sampleCpu,
@@ -71,14 +71,6 @@ export const sampleOutputSchema = z.object({
   ),
 });
 
-/**
- * The active sampling timer.
- *
- * Module-scoped because `start` and `stop` are separate hooks with no shared
- * instance to hang state on, and exactly one monitoring plugin can be active.
- */
-let sampler: ReturnType<typeof setInterval> | undefined;
-
 export function createMonitoringPlugin() {
   return definePlugin({
     metadata: {
@@ -97,12 +89,21 @@ export function createMonitoringPlugin() {
       registry.resource(hostMemory);
       registry.resource(hostDisk);
 
-      // The historical series behind the charts, and the sampler that fills
-      // them. Sampling is a timer rather than a render, so history accumulates
-      // whether or not anyone is looking at the page.
+      // The historical series behind the charts, read independently of the
+      // sampler so history accumulates even when nobody opens the page.
       registry.resource(hostCpuSeries);
       registry.resource(hostMemorySeries);
       registry.resource(hostDiskSeries);
+
+      registry.job(
+        defineJob({
+          id: "sample-series",
+          intervalMs: LIVE_INTERVAL_MS,
+          timeoutMs: 5_000,
+          retry: { maxAttempts: 2, backoffMs: 1_000 },
+          run: async ({ context }) => sampleAll(context.stores, volumes),
+        }),
+      );
 
       registry.procedure({
         id: "sample",
@@ -138,33 +139,6 @@ export function createMonitoringPlugin() {
         pageId: "overview",
         order: 60,
       });
-    },
-
-    /**
-     * Records one sample of every series per second.
-     *
-     * Started by the host after setup so history accumulates even when nobody
-     * opens the page, which is the whole point of keeping seven days: the data
-     * for a window that is opened later has to already exist. The timer is
-     * unref'd so a sampling DSUI can still exit.
-     */
-    async start(context) {
-      await sampleAll(context);
-      const timer = setInterval(() => {
-        void sampleAll(context).catch((error: unknown) => {
-          context.logger.warn("Failed to sample host resources", {
-            detail: error instanceof Error ? error.message : "unknown",
-          });
-        });
-      }, LIVE_INTERVAL_MS);
-      if (typeof timer === "object" && timer !== null && "unref" in timer)
-        (timer as unknown as { unref(): void }).unref();
-      sampler = timer;
-    },
-
-    async stop() {
-      if (sampler) clearInterval(sampler);
-      sampler = undefined;
     },
   });
 }

@@ -88,6 +88,17 @@ export {
   Value,
 } from "@northgraindata/dsui-adapter-sdk";
 export type {
+  JobConcurrency,
+  JobContext,
+  JobDefinition,
+  JobRetry,
+  JobRunInput,
+} from "./job";
+export {
+  defineJob,
+  InvalidJobDefinitionError,
+} from "./job";
+export type {
   CreatePluginStoreOptions,
   PluginStorage,
   PluginStoreDefinition,
@@ -158,6 +169,12 @@ export type PluginUiSlot = {
   readonly order?: number;
 };
 
+import type {
+  JobConcurrency,
+  JobContext,
+  JobDefinition,
+  JobRetry,
+} from "./job";
 import type {
   AnyPluginSlot,
   PluginSlotDefinition,
@@ -365,9 +382,30 @@ export interface RuntimePluginRegistry {
   procedure(procedure: RuntimePluginProcedure): void;
   action(action: RuntimePluginAction): void;
   resource(resource: RuntimePluginResource): void;
+  job(job: RuntimePluginJob): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
 }
+
+/** A declared job as the host publishes it. */
+export type RuntimePluginJob = {
+  readonly id: string;
+  readonly input?: z.ZodTypeAny;
+  readonly schedule?: string;
+  readonly intervalMs?: number;
+  readonly concurrency: JobConcurrency;
+  readonly timeoutMs: number;
+  readonly retry: JobRetry;
+  readonly invoke: (
+    input: unknown,
+    context: {
+      runId: string;
+      signal: AbortSignal;
+      logger: JobContext["logger"];
+      reportSideEffect(): void;
+    },
+  ) => Promise<void>;
+};
 
 /** A declared action as the host publishes it. */
 export type RuntimePluginAction = {
@@ -416,6 +454,14 @@ export interface PluginRegistry<TConfig = unknown> {
   action(action: PluginActionDefinition<PluginContext<TConfig>>): void;
   /** Binds a `defineResource` declaration and its freshness policy. */
   resource(resource: AnyPluginResource): void;
+  /**
+   * Binds a `defineJob` declaration.
+   *
+   * The host validates the cron expression and rejects a duplicate job id at
+   * load, so a job that could never fire is a startup error rather than a
+   * silent no-op that only shows up when someone waits for it.
+   */
+  job(job: JobDefinition): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
 }
@@ -586,6 +632,42 @@ export function definePlugin<TConfig>(
                     action.input == null ? input : action.input.parse(input);
                   const result = await action.run(parsed, context);
                   return action.output ? action.output.parse(result) : result;
+                },
+              }),
+            job: (job) =>
+              runtimeRegistry.job({
+                id: job.id,
+                ...(job.inputSchema ? { input: job.inputSchema } : {}),
+                ...(job.schedule ? { schedule: job.schedule } : {}),
+                ...(job.intervalMs !== undefined
+                  ? { intervalMs: job.intervalMs }
+                  : {}),
+                concurrency: job.concurrency,
+                timeoutMs: job.timeoutMs,
+                retry: job.retry,
+                invoke: async (input, runContext) => {
+                  const parsed =
+                    job.inputSchema == null
+                      ? input
+                      : job.inputSchema.parse(input);
+                  await job.run({
+                    input: parsed,
+                    runId: runContext.runId,
+                    context: {
+                      pluginId: definition.metadata.id,
+                      config: context.config,
+                      services: context.services,
+                      storage: context.storage,
+                      stores: context.stores,
+                      signal: runContext.signal,
+                      logger: {
+                        info: runContext.logger.info,
+                        warn: runContext.logger.warn,
+                        error: runContext.logger.error,
+                      },
+                      reportSideEffect: () => runContext.reportSideEffect(),
+                    },
+                  });
                 },
               }),
             resource: (resource) =>

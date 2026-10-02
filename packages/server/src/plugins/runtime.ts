@@ -19,6 +19,7 @@ import {
   type PreparedPlugin,
   type RuntimePluginAction,
   type RuntimePluginDefinition,
+  type RuntimePluginJob,
   type RuntimePluginPage,
   type RuntimePluginProcedure,
   type RuntimePluginResource,
@@ -28,6 +29,7 @@ import { resolveSdkRoot } from "../adapters/sdk.js";
 import { allowed } from "../auth.js";
 import type { PluginSource } from "../config.js";
 import { buildPlugin, type PluginFetch } from "./build.js";
+import { parseCron } from "./cron.js";
 import {
   createMemoryPluginStores,
   createPluginStorage,
@@ -66,6 +68,12 @@ type Contributions = {
    * watching an adapter or a plugin.
    */
   resources: RuntimePluginResource[];
+  /**
+   * Declared durable jobs. Held until the plugin is active so a job only runs
+   * once its own plugin has started; a job registered by a plugin that later
+   * fails to load leaves nothing scheduled.
+   */
+  jobs: RuntimePluginJob[];
   authentication?: PluginAuthenticationProvider;
   authorization?: PluginAuthorizationProvider;
 };
@@ -210,6 +218,10 @@ function pluginLogger(pluginId: string): PluginContextLogger {
   };
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function emptyContributions(): Contributions {
   return {
     pages: [],
@@ -218,6 +230,7 @@ function emptyContributions(): Contributions {
     procedures: [],
     actions: [],
     resources: [],
+    jobs: [],
   };
 }
 
@@ -422,12 +435,12 @@ export class PluginRuntime {
           prepared,
           browserPath,
         });
-      } catch {
+      } catch (error) {
         if (source.critical || securityPlugin)
           this.failSecurity(id, "could not load");
         this.readiness.set(id, {
           status: "unavailable",
-          detail: "Plugin package, metadata, or configuration is invalid",
+          detail: `Plugin package, metadata, or configuration is invalid: ${errorMessage(error)}`,
         });
       }
     }
@@ -503,6 +516,57 @@ export class PluginRuntime {
             );
           contributions.resources.push(resource);
         },
+        job: (job: RuntimePluginJob) => {
+          uniqueId(contributions.jobs, job, "job", request.id);
+          // An unparseable schedule is rejected here rather than silently never
+          // firing: a job that looks scheduled and never runs is worse than a
+          // startup error naming the expression.
+          if (job.schedule !== undefined) {
+            const schedule = parseCron(job.schedule);
+            if (!schedule.valid)
+              throw new Error(
+                `Plugin "${request.id}" job "${job.id}" has an invalid cron expression: "${job.schedule}"`,
+              );
+            if (schedule.nextAfter(new Date()) === null)
+              throw new Error(
+                `Plugin "${request.id}" job "${job.id}" schedule never fires: "${job.schedule}"`,
+              );
+          }
+          if (!Number.isInteger(job.timeoutMs) || job.timeoutMs < 1)
+            throw new Error(
+              `Plugin "${request.id}" job "${job.id}" timeout must be a positive integer`,
+            );
+          if (job.schedule !== undefined && job.intervalMs !== undefined)
+            throw new Error(
+              `Plugin "${request.id}" job "${job.id}" cannot set both schedule and intervalMs`,
+            );
+          if (
+            job.intervalMs !== undefined &&
+            (!Number.isInteger(job.intervalMs) || job.intervalMs < 250)
+          )
+            throw new Error(
+              `Plugin "${request.id}" job "${job.id}" intervalMs must be an integer of at least 250`,
+            );
+          if (
+            !Number.isInteger(job.retry.maxAttempts) ||
+            job.retry.maxAttempts < 1
+          )
+            throw new Error(
+              `Plugin "${request.id}" job "${job.id}" needs at least one attempt`,
+            );
+          if (
+            !Number.isInteger(job.retry.backoffMs) ||
+            job.retry.backoffMs < 0 ||
+            (job.retry.maxAttempts > 1 && job.retry.backoffMs < 1)
+          )
+            throw new Error(
+              `Plugin "${request.id}" job "${job.id}" has an invalid retry backoff`,
+            );
+          if (job.concurrency !== "singleton" && job.concurrency !== "per-key")
+            throw new Error(
+              `Plugin "${request.id}" job "${job.id}" has invalid concurrency`,
+            );
+        },
         authentication: (provider: PluginAuthenticationProvider) => {
           if (typeof provider?.authenticate !== "function")
             throw new Error("Invalid authentication provider");
@@ -520,7 +584,7 @@ export class PluginRuntime {
       };
       try {
         request.prepared.setup(registry);
-      } catch {
+      } catch (error) {
         try {
           await request.definition.stop?.();
         } catch {
@@ -534,7 +598,7 @@ export class PluginRuntime {
           this.failSecurity(request.id, "setup failed");
         this.readiness.set(request.id, {
           status: "unavailable",
-          detail: "Plugin contribution setup failed",
+          detail: `Plugin contribution setup failed: ${errorMessage(error)}`,
         });
         continue;
       }
@@ -619,7 +683,7 @@ export class PluginRuntime {
           pendingContributions.get(request.id) ?? emptyContributions(),
         );
         this.readiness.set(request.id, { status: "ready" });
-      } catch {
+      } catch (error) {
         try {
           await request.definition.stop?.();
         } catch {
@@ -635,7 +699,7 @@ export class PluginRuntime {
           this.failSecurity(request.id, "failed to start");
         this.readiness.set(request.id, {
           status: "unavailable",
-          detail: "Plugin failed during startup",
+          detail: `Plugin failed during startup: ${errorMessage(error)}`,
         });
       }
     }
@@ -944,6 +1008,15 @@ export class PluginRuntime {
   resources(pluginId: string): RuntimePluginResource[] {
     if (!this.active.has(pluginId)) return [];
     return this.contributions.get(pluginId)?.resources ?? [];
+  }
+
+  /** Active jobs available to the in-process background worker. */
+  jobs(): Array<{ pluginId: string; job: RuntimePluginJob }> {
+    return [...this.contributions].flatMap(([pluginId, contributions]) =>
+      this.active.has(pluginId)
+        ? contributions.jobs.map((job) => ({ pluginId, job }))
+        : [],
+    );
   }
 
   async close(): Promise<void> {
