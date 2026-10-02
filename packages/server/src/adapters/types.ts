@@ -2,6 +2,7 @@ import type {
   AdapterDefinition,
   AdapterInfo,
   PageDocument,
+  SignalType,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
 
@@ -66,11 +67,27 @@ export interface ComponentCatalogEntry {
   id: string;
   path: string;
 }
+export interface JobCatalogEntry {
+  id: string;
+  inputSchema?: JsonSchema;
+  schedule?: string;
+  intervalMs?: number;
+  concurrency: "singleton" | "per-key";
+  timeoutMs: number;
+  retry: { maxAttempts: number; backoffMs: number };
+}
+export interface SignalCatalogEntry {
+  id: string;
+  type: SignalType;
+  schema: JsonSchema;
+}
 export interface AdapterCatalog {
   resources: ResourceCatalogEntry[];
   actions: ActionCatalogEntry[];
   pages: PageCatalogEntry[];
   components: ComponentCatalogEntry[];
+  jobs: JobCatalogEntry[];
+  signals: SignalCatalogEntry[];
 }
 
 export interface AdapterHealth extends HealthStatus {}
@@ -116,6 +133,16 @@ export interface AdapterBackend {
     context?: AdapterExecutionContext,
   ): Promise<
     { status: "success"; data: unknown } | { status: "error"; message: string }
+  >;
+  /** Execute one scheduled job for a configured service instance. */
+  executeJob(
+    jobId: string,
+    connection: unknown,
+    input: unknown,
+    options: { runId: string; signal: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<
+    readonly { signalId: string; payload: unknown; idempotencyKey?: string }[]
   >;
 }
 

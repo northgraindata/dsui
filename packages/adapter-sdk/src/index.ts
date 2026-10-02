@@ -178,6 +178,17 @@ export {
 export type { ComponentClient, ComponentProps } from "./components/runtime";
 export { componentProps } from "./components/runtime";
 export {
+  type AnyJobDefinition,
+  type DefineJobOptions,
+  defineJob,
+  InvalidJobDefinitionError,
+  type JobConcurrency,
+  type JobDefinition,
+  type JobRetry,
+  type JobRunInput,
+  type SignalEmission,
+} from "./job";
+export {
   type AnyPageDefinition,
   definePage,
   type ExtractRouteParams,
@@ -206,6 +217,7 @@ export {
   type ActionExecutionOptions,
   type AdapterInstance,
   createAdapterInstance,
+  type JobExecutionOptions,
   type PageScope,
   type ResourceFailure,
   type ResourceResult,
@@ -219,6 +231,13 @@ export {
   SdkError,
   UnknownPageError,
 } from "./shared/errors";
+export {
+  type AnySignalDefinition,
+  type DefineSignalOptions,
+  defineSignal,
+  type SignalDefinition,
+  type SignalType,
+} from "./signal";
 export {
   type AnyStoreDefinition,
   type CreateStoreInstanceOptions,

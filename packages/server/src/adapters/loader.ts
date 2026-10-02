@@ -19,8 +19,10 @@ import type {
   AdapterBackend,
   AdapterCatalog,
   AdapterExecutionContext,
+  JobCatalogEntry,
   LoadedAdapter,
   LoadedConnectionMethod,
+  SignalCatalogEntry,
 } from "./types.js";
 import { AdapterExecutionError, AdapterLoadError } from "./types.js";
 
@@ -32,11 +34,14 @@ export interface AdapterLoadOptions {
   /** Subprocess host factory; callers can inject a controlled host. */
   spawnHost?: (bundlePath: string) => {
     request(request: {
-      method: "describe" | "health" | "page" | "resource" | "action";
+      method: "describe" | "health" | "page" | "resource" | "action" | "job";
       connection?: unknown;
       target?: string;
       input?: unknown;
       persistenceNamespace?: string;
+      runId?: string;
+      signal?: AbortSignal;
+      timeoutMs?: number;
     }): Promise<unknown>;
   };
   /** Host call budget in ms (actions run long). */
@@ -143,7 +148,27 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
     if (!Array.isArray(catalog[key]))
       throw new AdapterLoadError(`Invalid adapter catalog from ${from}`);
   }
-  return value as AdapterCatalog;
+  const signals = Array.isArray(catalog.signals) ? catalog.signals : [];
+  for (const entry of signals) {
+    if (!entry || typeof entry !== "object")
+      throw new AdapterLoadError(`Invalid adapter signals from ${from}`);
+    const signal = entry as Record<string, unknown>;
+    if (
+      typeof signal.id !== "string" ||
+      (signal.type !== "info" &&
+        signal.type !== "success" &&
+        signal.type !== "warning" &&
+        signal.type !== "error") ||
+      !signal.schema ||
+      typeof signal.schema !== "object"
+    )
+      throw new AdapterLoadError(`Invalid adapter signals from ${from}`);
+  }
+  return {
+    ...catalog,
+    jobs: Array.isArray(catalog.jobs) ? catalog.jobs : [],
+    signals,
+  } as AdapterCatalog;
 }
 
 function assertHealthStatus(value: unknown, from: string): HealthStatus {
@@ -156,11 +181,14 @@ class RemoteBackend implements AdapterBackend {
   constructor(
     private readonly host: {
       request(request: {
-        method: "describe" | "health" | "page" | "resource" | "action";
+        method: "describe" | "health" | "page" | "resource" | "action" | "job";
         connection?: unknown;
         target?: string;
         input?: unknown;
         persistenceNamespace?: string;
+        runId?: string;
+        signal?: AbortSignal;
+        timeoutMs?: number;
       }): Promise<unknown>;
     },
   ) {}
@@ -249,6 +277,54 @@ class RemoteBackend implements AdapterBackend {
     if (!result || typeof result !== "object" || !("status" in result))
       throw new AdapterExecutionError("Adapter host returned no result");
     return result;
+  }
+
+  async executeJob(
+    jobId: string,
+    connection: unknown,
+    input: unknown,
+    options: { runId: string; signal: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<
+    readonly { signalId: string; payload: unknown; idempotencyKey?: string }[]
+  > {
+    const result = await this.host.request({
+      method: "job",
+      connection,
+      target: jobId,
+      input,
+      runId: options.runId,
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      persistenceNamespace: context?.persistenceNamespace,
+    });
+    if (!Array.isArray(result))
+      throw new AdapterExecutionError(
+        "Adapter host returned invalid job signals",
+      );
+    return result.map((entry) => {
+      if (!entry || typeof entry !== "object")
+        throw new AdapterExecutionError(
+          "Adapter host returned an invalid signal",
+        );
+      const emission = entry as Record<string, unknown>;
+      if (
+        typeof emission.signalId !== "string" ||
+        (emission.idempotencyKey !== undefined &&
+          typeof emission.idempotencyKey !== "string") ||
+        !("payload" in emission)
+      )
+        throw new AdapterExecutionError(
+          "Adapter host returned an invalid signal",
+        );
+      return {
+        signalId: emission.signalId,
+        payload: emission.payload,
+        ...(typeof emission.idempotencyKey === "string"
+          ? { idempotencyKey: emission.idempotencyKey }
+          : {}),
+      };
+    });
   }
 }
 
@@ -359,6 +435,8 @@ export async function loadAdapter(
     actions?: AdapterCatalog["actions"];
     pages?: AdapterCatalog["pages"];
     components?: AdapterCatalog["components"];
+    jobs?: JobCatalogEntry[];
+    signals?: SignalCatalogEntry[];
   };
   const catalog = assertCatalog(described, built.bundlePath);
   const metadata = described.metadata;
@@ -375,6 +453,8 @@ export async function loadAdapter(
       actions: catalog.actions,
       pages: catalog.pages,
       components: built.components ?? [],
+      jobs: catalog.jobs,
+      signals: catalog.signals,
     },
     ...(described.connectionSchema
       ? { connectionSchema: described.connectionSchema }

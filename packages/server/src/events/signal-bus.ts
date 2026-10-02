@@ -1,0 +1,158 @@
+import type { Database } from "bun:sqlite";
+import { randomUUID } from "node:crypto";
+import type { SignalType } from "@northgraindata/dsui-adapter-sdk";
+import type { DsuiDatabase } from "../db/database.js";
+
+export interface SignalEvent {
+  readonly id: string;
+  readonly signalId: string;
+  readonly type: SignalType;
+  readonly sourceType: string;
+  readonly sourceId: string;
+  readonly serviceId?: string;
+  readonly payload: unknown;
+  readonly occurredAt: string;
+}
+
+export interface PublishSignalInput {
+  readonly signalId: string;
+  readonly type: SignalType;
+  readonly sourceType: string;
+  readonly sourceId: string;
+  readonly serviceId?: string;
+  readonly payload: unknown;
+  readonly idempotencyKey?: string;
+}
+
+function toEvent(row: Record<string, unknown>): SignalEvent {
+  return {
+    id: String(row.id),
+    signalId: String(row.signal_id),
+    type: String(row.type) as SignalType,
+    sourceType: String(row.source_type),
+    sourceId: String(row.source_id),
+    ...(row.service_id === null ? {} : { serviceId: String(row.service_id) }),
+    payload: JSON.parse(String(row.payload_json)),
+    occurredAt: String(row.occurred_at),
+  };
+}
+
+/** Durable append-only event log with in-process subscribers. */
+export class SignalBus {
+  private readonly listeners = new Set<(event: SignalEvent) => void>();
+
+  constructor(private readonly database: DsuiDatabase) {}
+
+  private get db(): Database {
+    return this.database.sqlite;
+  }
+
+  publish(input: PublishSignalInput): SignalEvent {
+    const occurredAt = new Date().toISOString();
+    const id = randomUUID();
+    const payloadJson = JSON.stringify(input.payload ?? null);
+    this.db
+      .query(
+        `INSERT INTO events
+           (id, signal_id, type, source_type, source_id, service_id, payload_json,
+            idempotency_key, occurred_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT DO NOTHING`,
+      )
+      .run(
+        id,
+        input.signalId,
+        input.type,
+        input.sourceType,
+        input.sourceId,
+        input.serviceId ?? null,
+        payloadJson,
+        input.idempotencyKey ?? null,
+        occurredAt,
+      );
+    const row = input.idempotencyKey
+      ? (this.db
+          .query(
+            `SELECT id, signal_id, type, source_type, source_id, service_id,
+                    payload_json, occurred_at
+               FROM events
+              WHERE source_type = ? AND source_id = ? AND signal_id = ?
+                AND idempotency_key = ?`,
+          )
+          .get(
+            input.sourceType,
+            input.sourceId,
+            input.signalId,
+            input.idempotencyKey,
+          ) as Record<string, unknown> | undefined)
+      : (this.db
+          .query(
+            `SELECT id, signal_id, type, source_type, source_id, service_id,
+                    payload_json, occurred_at
+               FROM events WHERE id = ?`,
+          )
+          .get(id) as Record<string, unknown> | undefined);
+    if (!row) throw new Error("Signal event could not be persisted");
+    const event = toEvent(row);
+    if (event.id !== id) {
+      if (
+        event.type !== input.type ||
+        JSON.stringify(event.payload) !== payloadJson ||
+        event.serviceId !== input.serviceId
+      )
+        throw new Error(
+          "Signal idempotency key was reused with different data",
+        );
+      return event;
+    }
+    for (const listener of this.listeners) {
+      try {
+        listener(event);
+      } catch (error) {
+        console.error("Signal event subscriber failed", error);
+      }
+    }
+    return event;
+  }
+
+  list(
+    options: {
+      readonly after?: string;
+      readonly serviceId?: string;
+      readonly signalId?: string;
+      readonly limit?: number;
+    } = {},
+  ): SignalEvent[] {
+    const clauses: string[] = [];
+    const values: unknown[] = [];
+    if (options.after) {
+      clauses.push("occurred_at > ?");
+      values.push(options.after);
+    }
+    if (options.serviceId) {
+      clauses.push("service_id = ?");
+      values.push(options.serviceId);
+    }
+    if (options.signalId) {
+      clauses.push("signal_id = ?");
+      values.push(options.signalId);
+    }
+    values.push(Math.min(Math.max(options.limit ?? 100, 1), 500));
+    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+    return (
+      this.db
+        .query(
+          `SELECT id, signal_id, type, source_type, source_id, service_id,
+                  payload_json, occurred_at
+             FROM events ${where}
+            ORDER BY occurred_at DESC, id DESC LIMIT ?`,
+        )
+        .all(...(values as never[])) as unknown as Record<string, unknown>[]
+    ).map(toEvent);
+  }
+
+  subscribe(listener: (event: SignalEvent) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+}

@@ -10,13 +10,20 @@ import { assertAdapterDefinition } from "./adapters/definition.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 
-type HostMethod = "describe" | "health" | "page" | "resource" | "action";
+type HostMethod =
+  | "describe"
+  | "health"
+  | "page"
+  | "resource"
+  | "action"
+  | "job";
 
 interface HostParams {
   connection?: unknown;
   target?: string;
   input?: unknown;
   persistenceNamespace?: string;
+  runId?: string;
 }
 
 interface HostRequest {
@@ -156,6 +163,26 @@ export async function runAdapterHost(): Promise<number> {
             inputSchema: inputSchemaOf(action, `action "${action.id}"`),
           })),
           pages: definition.pages.map((page) => ({ path: page.path })),
+          jobs: definition.jobs.map((job) => ({
+            id: job.id,
+            ...(job.inputSchema
+              ? {
+                  inputSchema: jsonSchemaOf(job.inputSchema, `job "${job.id}"`),
+                }
+              : {}),
+            ...(job.schedule ? { schedule: job.schedule } : {}),
+            ...(job.intervalMs !== undefined
+              ? { intervalMs: job.intervalMs }
+              : {}),
+            concurrency: job.concurrency,
+            timeoutMs: job.timeoutMs,
+            retry: { ...job.retry },
+          })),
+          signals: definition.signals.map((signal) => ({
+            id: signal.id,
+            type: signal.type,
+            schema: jsonSchemaOf(signal.schema, `signal "${signal.id}"`),
+          })),
           components: [],
         });
         break;
@@ -308,6 +335,28 @@ export async function runAdapterHost(): Promise<number> {
               message: result.error.message,
             });
           else reply(request.id, { status: "success", data: result.data });
+        } finally {
+          await instance.dispose();
+        }
+        break;
+      }
+      case "job": {
+        if (
+          typeof params.target !== "string" ||
+          typeof params.runId !== "string"
+        )
+          throw new Error("Job execution requires a job id and run id");
+        const instance = await createAdapterInstance(
+          definition,
+          params.connection,
+          runtimeOptions,
+        );
+        try {
+          const emissions = await instance.runJob(params.target, params.input, {
+            runId: params.runId,
+            signal: new AbortController().signal,
+          });
+          reply(request.id, emissions);
         } finally {
           await instance.dispose();
         }

@@ -1,3 +1,19 @@
+export type {
+  AnyJobDefinition,
+  JobConcurrency,
+  JobDefinition,
+  JobRetry,
+  JobRunInput,
+  SignalEmission,
+} from "../job";
+export { defineJob, InvalidJobDefinitionError } from "../job";
+export type {
+  AnySignalDefinition,
+  DefineSignalOptions,
+  SignalDefinition,
+  SignalType,
+} from "../signal";
+export { defineSignal } from "../signal";
 export { defineAdapter } from "./define";
 export {
   healthReport,

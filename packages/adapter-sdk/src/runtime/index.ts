@@ -11,6 +11,7 @@ export type {
   ActionExecutionOptions,
   AdapterInstance,
   AdapterRuntimeOptions,
+  JobExecutionOptions,
   PageScope,
   ResourceFailure,
   ResourceResult,

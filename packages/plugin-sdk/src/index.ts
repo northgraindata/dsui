@@ -393,6 +393,7 @@ export type RuntimePluginJob = {
   readonly input?: z.ZodTypeAny;
   readonly schedule?: string;
   readonly intervalMs?: number;
+  readonly onSignals?: readonly string[];
   readonly concurrency: JobConcurrency;
   readonly timeoutMs: number;
   readonly retry: JobRetry;
@@ -642,6 +643,7 @@ export function definePlugin<TConfig>(
                 ...(job.intervalMs !== undefined
                   ? { intervalMs: job.intervalMs }
                   : {}),
+                ...(job.onSignals ? { onSignals: [...job.onSignals] } : {}),
                 concurrency: job.concurrency,
                 timeoutMs: job.timeoutMs,
                 retry: job.retry,

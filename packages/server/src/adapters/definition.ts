@@ -26,5 +26,11 @@ export function assertAdapterDefinition(
   for (const key of ["stores", "resources", "actions", "pages"] as const) {
     if (!Array.isArray(candidate[key])) throw problem(`missing ${key} list`);
   }
-  return value as AdapterDefinition;
+  // Jobs and signals were added after the initial adapter SDK release. Treat
+  // absent lists as empty so previously built bundles remain loadable.
+  return {
+    ...candidate,
+    jobs: Array.isArray(candidate.jobs) ? candidate.jobs : [],
+    signals: Array.isArray(candidate.signals) ? candidate.signals : [],
+  } as unknown as AdapterDefinition;
 }

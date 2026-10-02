@@ -8,6 +8,8 @@ import { migration_0006_store_state } from "./0006_store_state.js";
 import { migration_0007_remove_legacy_enterprise } from "./0007_remove_legacy_enterprise.js";
 import { migration_0008_plugin_jobs } from "./0008_plugin_jobs.js";
 import { migration_0009_plugin_job_intervals } from "./0009_plugin_job_intervals.js";
+import { migration_0010_events } from "./0010_events.js";
+import { migration_0011_event_type } from "./0011_event_type.js";
 
 /** All migrations in version order. Add new files here, never reorder. */
 export const migrations: Migration[] = [
@@ -20,4 +22,6 @@ export const migrations: Migration[] = [
   migration_0007_remove_legacy_enterprise,
   migration_0008_plugin_jobs,
   migration_0009_plugin_job_intervals,
+  migration_0010_events,
+  migration_0011_event_type,
 ];
