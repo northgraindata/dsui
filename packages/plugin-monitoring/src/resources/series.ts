@@ -9,6 +9,7 @@
 import {
   defineResource,
   type PluginContext,
+  type PluginStores,
   poll,
   z,
 } from "@northgraindata/dsui-plugin-sdk";
@@ -90,7 +91,10 @@ function windowSeconds(label: string): number {
  * accumulates history. That is the point of a series: the seven days are there
  * to be read later.
  */
-export async function sampleAll(context: Ctx): Promise<void> {
+export async function sampleAll(
+  stores: PluginStores,
+  volumes: readonly MonitoringConfig["paths"][number][],
+): Promise<void> {
   const time = Date.now();
   const cpu = sampleCpu();
   const memory = sampleMemory();
@@ -99,12 +103,9 @@ export async function sampleAll(context: Ctx): Promise<void> {
   // container and a 64-core host need different scales to mean the same thing.
   const loadPerCore = cpu.cores === 0 ? 0 : oneMinute / cpu.cores;
 
-  context.stores.get(cpuSeries).actions.append(loadPerCore, time);
-  context.stores
-    .get(memoryPercentSeries)
-    .actions.append(memory.usedPercent, time);
+  stores.get(cpuSeries).actions.append(loadPerCore, time);
+  stores.get(memoryPercentSeries).actions.append(memory.usedPercent, time);
 
-  const volumes = context.config.paths.slice(0, context.config.maxVolumes);
   const samples = await Promise.all(
     volumes.map(async (volume) => sampleDisk(volume.path, volume.mount)),
   );
@@ -112,7 +113,7 @@ export async function sampleAll(context: Ctx): Promise<void> {
     (sample): sample is DiskSample => sample !== null,
   );
   if (usable.length)
-    context.stores
+    stores
       .get(diskPercentSeries)
       .actions.append(
         usable.reduce((sum, sample) => sum + sample.usedPercent, 0) /

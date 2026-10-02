@@ -10,7 +10,16 @@
  * Without them a plugin build fails on `workspace:*`, because a plugin lives
  * outside this repository and bun has no workspace to resolve against.
  */
-import { cp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import {
+  cp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,6 +42,8 @@ const TREE = [
   { directory: "plugin-sdk", name: PLUGIN_SDK },
 ] as const;
 
+const SDK_SOURCE_MARKER = ".source-hash";
+
 async function exists(path: string): Promise<boolean> {
   try {
     await stat(path);
@@ -40,6 +51,32 @@ async function exists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function hashSources(packagesDir: string): Promise<string> {
+  const hash = createHash("sha256");
+  const visit = async (directory: string, prefix: string) => {
+    const entries = await readdir(directory, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const path = join(directory, entry.name);
+      const relative = join(prefix, entry.name);
+      if (entry.isDirectory()) {
+        await visit(path, relative);
+      } else if (entry.isFile()) {
+        hash.update(relative);
+        hash.update(await readFile(path));
+      }
+    }
+  };
+
+  for (const { directory, name } of TREE) {
+    const packageDir = join(packagesDir, directory);
+    hash.update(name);
+    hash.update(await readFile(join(packageDir, "package.json")));
+    await visit(join(packageDir, "src"), name);
+  }
+  return hash.digest("hex");
 }
 
 /** Path of one prepared package inside a tree. */
@@ -97,6 +134,11 @@ export async function prepareSdk(
         `Expected ${name} in ${source}, found ${String(manifest.name)}`,
       );
     await mkdir(destination, { recursive: true });
+    const sourceDestination = join(destination, "src");
+    await rm(sourceDestination, {
+      recursive: true,
+      force: true,
+    });
     await cp(join(source, "src"), join(destination, "src"), {
       recursive: true,
     });
@@ -167,10 +209,17 @@ export async function resolveSdkRoot(options: {
     );
     if (await exists(candidate)) {
       const target = join(options.dataDir, "sdk");
-      if (
-        !(await exists(join(sdkPackageAt(target, PLUGIN_SDK), "package.json")))
-      )
+      const sourceHash = await hashSources(dirname(candidate));
+      let preparedHash = "";
+      try {
+        preparedHash = await readFile(join(target, SDK_SOURCE_MARKER), "utf8");
+      } catch {
+        // A tree made by an older host has no source marker and must refresh.
+      }
+      if (preparedHash !== sourceHash) {
         await prepareSdk(dirname(candidate), target, options.version);
+        await writeFile(join(target, SDK_SOURCE_MARKER), sourceHash, "utf8");
+      }
       return target;
     }
   }

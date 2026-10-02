@@ -202,7 +202,6 @@
       "name": "@northgraindata/dsui-plugin-monitoring",
       "version": "0.1.0",
       "dependencies": {
-        "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "@northgraindata/dsui-plugin-sdk": "workspace:*",
         "zod": "^3.24.2",
       },
