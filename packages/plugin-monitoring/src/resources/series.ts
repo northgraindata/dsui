@@ -99,11 +99,8 @@ export async function sampleAll(
   const cpu = sampleCpu();
   const memory = sampleMemory();
   const [oneMinute] = cpu.loadAverage;
-  // Load is only comparable against available parallelism; a constrained
-  // container and a 64-core host need different scales to mean the same thing.
-  const loadPerCore = cpu.cores === 0 ? 0 : oneMinute / cpu.cores;
 
-  stores.get(cpuSeries).actions.append(loadPerCore, time);
+  stores.get(cpuSeries).actions.append(oneMinute, time);
   stores.get(memoryPercentSeries).actions.append(memory.usedPercent, time);
 
   const samples = await Promise.all(

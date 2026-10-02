@@ -46,14 +46,16 @@ export function registerPluginRoutes(
   });
 
   app.get("/api/v1/plugins/:pluginId/components.mjs", async (context) => {
+    const pluginId = context.req.param("pluginId");
     if (
+      !deps.runtime.browserBundleIsPublic(pluginId) &&
       !(await deps.runtime.authorize(context.get("principal"), "inspect", {
         type: "plugin",
-        id: context.req.param("pluginId"),
+        id: pluginId,
       }))
     )
       return context.json({ message: "Insufficient permission" }, 403);
-    const bundle = deps.runtime.browserBundle(context.req.param("pluginId"));
+    const bundle = deps.runtime.browserBundle(pluginId);
     if (!bundle)
       return context.json({ message: "Plugin bundle not found" }, 404);
     try {
@@ -112,7 +114,10 @@ export function registerPluginRoutes(
         }))
       )
         continue;
-      const service = await deps.runtime.service(id);
+      const service = await deps.runtime.withPrincipal(
+        context.get("principal"),
+        () => deps.runtime.service(id),
+      );
       if (!service) continue;
       for (const contribution of contributions) {
         if (

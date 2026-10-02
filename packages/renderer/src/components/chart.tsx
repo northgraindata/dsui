@@ -240,8 +240,18 @@ export function Chart({ client, node }: ComponentProps) {
           exaggerate={props.exaggerate ?? false}
           lineWidth={props.lineWidth ?? 2}
           paused={paused}
-          formatValue={formatValue}
+          formatValue={(value) =>
+            `${formatValue(value)}${props.yRange?.unit ?? ""}`
+          }
           formatTime={(seconds) => formatTime(seconds * 1000, spanMs)}
+          {...(props.yRange
+            ? {
+                yRange: {
+                  min: props.yRange.min,
+                  max: props.yRange.max,
+                },
+              }
+            : {})}
           {...(props.referenceLine
             ? {
                 referenceLine: {
@@ -250,6 +260,13 @@ export function Chart({ client, node }: ComponentProps) {
                     ? { label: props.referenceLine.label }
                     : {}),
                 },
+              }
+            : {})}
+          {...(props.referenceLines
+            ? {
+                referenceLines: props.referenceLines.map((reference) => ({
+                  ...reference,
+                })),
               }
             : {})}
         />

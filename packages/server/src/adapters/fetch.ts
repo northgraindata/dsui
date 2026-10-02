@@ -24,6 +24,7 @@ export class ExternalAdapterError extends Error {
 
 /** Hosts an adapter source may be fetched from. */
 const ALLOWED_HOSTS = new Set([
+  "api.github.com",
   "codeload.github.com",
   "raw.githubusercontent.com",
   "registry.npmjs.org",

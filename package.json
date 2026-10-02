@@ -11,7 +11,7 @@
     "examples/*"
   ],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "bun --env-file=.env ./node_modules/turbo/bin/turbo dev",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
     "lint": "biome check .",
@@ -29,5 +29,8 @@
     "sharp": "^0.35.4",
     "turbo": "^2.7.3",
     "typescript": "^5.9.2"
+  },
+  "patchedDependencies": {
+    "liveline@0.0.7": "patches/liveline@0.0.7.patch"
   }
 }

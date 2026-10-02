@@ -32,13 +32,38 @@ export function AppChrome({
   }, []);
   useEffect(() => {
     let active = true;
-    getPluginCatalog()
-      .then((catalog) => active && setPluginNavigation(catalog.navigation))
-      .catch(() => active && setPluginNavigation([]));
+    let retryTimer: number | undefined;
+
+    const loadPluginNavigation = async (retry = true) => {
+      try {
+        const catalog = await getPluginCatalog();
+        if (active) setPluginNavigation(catalog.navigation);
+      } catch {
+        if (!active) return;
+        // The API can still be starting while the web app is already open.
+        // Keep the last good navigation and retry once the server is ready.
+        if (retry)
+          retryTimer = window.setTimeout(
+            () => loadPluginNavigation(false),
+            1500,
+          );
+      }
+    };
+
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadPluginNavigation();
+    };
+
+    void loadPluginNavigation();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
     };
-  }, []);
+  }, [pathname]);
   const navigation = destinations.map((item) => (
     <Link
       key={item.to}
