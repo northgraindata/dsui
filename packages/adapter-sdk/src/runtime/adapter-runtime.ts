@@ -177,28 +177,34 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
     if (!job) throw new Error(`Unknown adapter job: ${jobId}`);
     const emissions: SignalEmission[] = [];
     const runInput = job.inputSchema?.parse(input) ?? input ?? null;
-    await job.run({
-      input: runInput,
-      context: this.context,
-      runId: options.runId,
-      signal: options.signal,
-      emit: (signal, payload, emitOptions) => {
-        if (options.signal.aborted)
-          throw options.signal.reason ?? new Error("Job was aborted");
-        const declared = this.definition.signals.find(
-          (candidate) => candidate.id === signal.id,
-        );
-        if (!declared)
-          throw new Error(`Job emitted undeclared signal: ${signal.id}`);
-        emissions.push({
-          signalId: declared.id,
-          payload: declared.schema.parse(payload),
-          ...(emitOptions?.idempotencyKey
-            ? { idempotencyKey: emitOptions.idempotencyKey }
-            : {}),
-        });
-      },
-    });
+    await this.stores.ready();
+    try {
+      await job.run({
+        input: runInput,
+        context: this.context,
+        runId: options.runId,
+        signal: options.signal,
+        store: (definition) => this.store(definition),
+        emit: (signal, payload, emitOptions) => {
+          if (options.signal.aborted)
+            throw options.signal.reason ?? new Error("Job was aborted");
+          const declared = this.definition.signals.find(
+            (candidate) => candidate.id === signal.id,
+          );
+          if (!declared)
+            throw new Error(`Job emitted undeclared signal: ${signal.id}`);
+          emissions.push({
+            signalId: declared.id,
+            payload: declared.schema.parse(payload),
+            ...(emitOptions?.idempotencyKey
+              ? { idempotencyKey: emitOptions.idempotencyKey }
+              : {}),
+          });
+        },
+      });
+    } finally {
+      await this.stores.flush();
+    }
     return emissions;
   }
 

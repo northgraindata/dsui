@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { AnySignalDefinition } from "./signal";
+import type { StoreDefinition, StoreInstance } from "./store";
 
 export type JobConcurrency = "singleton" | "per-key";
 
@@ -24,6 +25,13 @@ export interface JobRunInput<
   readonly context: TContext;
   readonly runId: string;
   readonly signal: AbortSignal;
+  /** Access persistent adapter-scoped state from scheduled work. */
+  readonly store: <
+    TState extends Record<string, unknown>,
+    TActions extends Record<string, (...args: never[]) => unknown>,
+  >(
+    definition: StoreDefinition<TState, TActions>,
+  ) => StoreInstance<TState, TActions>;
   readonly emit: <TSignal extends AnySignalDefinition>(
     definition: TSignal,
     payload: z.output<TSignal["schema"]>,

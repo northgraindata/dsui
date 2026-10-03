@@ -27,7 +27,7 @@ import {
   createContext,
 } from "./context.js";
 import { airflowHealth } from "./health.js";
-import { airflowJobs, airflowSignals } from "./jobs.js";
+import { airflowJobs, airflowSignals, airflowStores } from "./jobs.js";
 import {
   connectionsPage,
   createConnectionPage,
@@ -127,6 +127,7 @@ export function createAirflowAdapter(
     health: airflowHealth,
     jobs: airflowJobs,
     signals: airflowSignals,
+    stores: airflowStores,
     resources: [
       overview,
       overviewDags,

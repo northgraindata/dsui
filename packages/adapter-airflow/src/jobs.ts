@@ -1,4 +1,4 @@
-import { defineJob, defineSignal, z } from "@northgraindata/dsui-adapter-sdk";
+import { defineJob, defineSignal, defineStore, z } from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext, DagRun } from "./context.js";
 
 const dagRunSignalSchema = z.object({
@@ -23,15 +23,24 @@ export const dagSucceeded = defineSignal({
   schema: dagRunSignalSchema,
 });
 
-const LOOKBACK_MS = 3 * 60_000;
+type RunCursor = { completedAt: string; runIds: string[] };
 
-function recentTerminalRun(run: DagRun, since: number): boolean {
+const airflowSignalCursor = defineStore({
+  id: "signal-cursor",
+  scope: "adapter",
+  persistence: { type: "persistent", key: "airflow-signal-cursor", version: 1 },
+  state: { cursor: null as RunCursor | null },
+  actions: ({ set }) => ({
+    advance: (cursor: RunCursor) => set({ cursor }),
+  }),
+});
+
+function terminalRun(run: DagRun): boolean {
   const state = run.state.toLowerCase();
   const endedAt = Date.parse(run.endDate);
   return (
     (state === "failed" || state === "success") &&
-    Number.isFinite(endedAt) &&
-    endedAt >= since
+    Number.isFinite(endedAt)
   );
 }
 
@@ -59,15 +68,29 @@ export const monitorDagRuns = defineJob<AirflowContext>({
   intervalMs: 60_000,
   timeoutMs: 240_000,
   retry: { maxAttempts: 3, backoffMs: 5_000 },
-  run: async ({ context, signal, emit }) => {
-    const since = Date.now() - LOOKBACK_MS;
+  run: async ({ context, signal, emit, store }) => {
+    const cursorStore = store(airflowSignalCursor);
+    const storedCursor = cursorStore.get().cursor;
+    const firstPoll = !storedCursor;
+    const previous: RunCursor = storedCursor ?? {
+      completedAt: new Date().toISOString(),
+      runIds: [],
+    };
     const dags = await context.client.listDags(signal);
     const recentRuns = await mapConcurrent(dags, 8, async (dag) => {
       const runs = await context.client.listDagRuns(dag.dagId, signal);
-      return runs.filter((run) => recentTerminalRun(run, since));
+      return runs.filter(terminalRun);
     });
+    if (firstPoll) cursorStore.actions.advance(previous);
 
-    for (const run of recentRuns.flat()) {
+    const candidates = recentRuns.flat().sort((a, b) =>
+      a.endDate.localeCompare(b.endDate) || a.dagRunId.localeCompare(b.dagRunId),
+    );
+    const unseen = candidates.filter((run) => {
+      const comparison = Date.parse(run.endDate) - Date.parse(previous!.completedAt);
+      return comparison > 0 || (comparison === 0 && !previous!.runIds.includes(`${run.dagId}:${run.dagRunId}`));
+    });
+    for (const run of unseen) {
       const definition =
         run.state.toLowerCase() === "failed" ? dagFailed : dagSucceeded;
       emit(
@@ -84,8 +107,20 @@ export const monitorDagRuns = defineJob<AirflowContext>({
         { idempotencyKey: `${run.dagId}:${run.dagRunId}` },
       );
     }
+    if (unseen.length) {
+      const latest = unseen.reduce(
+        (at, run) =>
+          Date.parse(run.endDate) > Date.parse(at) ? run.endDate : at,
+        previous.completedAt,
+      );
+      const runIds = candidates
+        .filter((run) => Date.parse(run.endDate) === Date.parse(latest))
+        .map((run) => `${run.dagId}:${run.dagRunId}`);
+      cursorStore.actions.advance({ completedAt: latest, runIds });
+    }
   },
 });
 
 export const airflowSignals = [dagFailed, dagSucceeded] as const;
 export const airflowJobs = [monitorDagRuns] as const;
+export const airflowStores = [airflowSignalCursor] as const;
