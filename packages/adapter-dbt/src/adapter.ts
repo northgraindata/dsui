@@ -43,6 +43,7 @@ import { overview } from "./resources/overview.js";
 import { runArtifacts, runDetail, runLogs } from "./resources/run-detail.js";
 import { runs } from "./resources/runs.js";
 import { dbtRunStore } from "./stores/runs.js";
+import { dbtStores } from "./jobs.js";
 
 export function createDbtAdapter() {
   return defineAdapter({
@@ -62,7 +63,7 @@ export function createDbtAdapter() {
     health: dbtHealth,
     jobs: dbtJobs,
     signals: dbtSignals,
-    stores: [dbtRunStore],
+    stores: [dbtRunStore, ...dbtStores],
     resources: [
       overview,
       projects,
