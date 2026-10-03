@@ -1,5 +1,6 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { ComponentType, ReactNode } from "react";
+import { Chart } from "../components/chart";
 import type { RendererClient } from "../types/renderer-types";
 
 export interface ComponentProps {
@@ -62,6 +63,12 @@ for (const [path, module] of Object.entries(localAdapterComponents)) {
     component: module.default,
   });
 }
+
+// The chart is a built-in rather than a glob match: it depends on a charting
+// library, so it is registered by name instead of discovered from the SDK's
+// component directory.
+components.set("./ui/chart", { type: "sync", component: Chart });
+components.set("chart", { type: "sync", component: Chart });
 
 /** Resolves a component by its declared path or stable id. */
 export function resolveComponent(

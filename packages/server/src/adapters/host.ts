@@ -7,7 +7,13 @@ import { randomUUID } from "node:crypto";
  * state can leak between calls.
  */
 
-export type HostMethod = "describe" | "health" | "page" | "resource" | "action";
+export type HostMethod =
+  | "describe"
+  | "health"
+  | "page"
+  | "resource"
+  | "action"
+  | "job";
 
 export interface AdapterHostRequest {
   id?: string | number;
@@ -19,6 +25,11 @@ export interface AdapterHostRequest {
   input?: unknown;
   /** Stable DSUI service id used to isolate persisted adapter state. */
   persistenceNamespace?: string;
+  /** Scheduled job execution identity, passed into the isolated host. */
+  runId?: string;
+  /** Not serialized; aborting it terminates the isolated adapter process. */
+  signal?: AbortSignal;
+  timeoutMs?: number;
 }
 
 interface JsonRpcResponse {
@@ -71,7 +82,7 @@ export class AdapterHostClient {
 
   async request(request: AdapterHostRequest): Promise<unknown> {
     const max = this.options.maxOutputBytes ?? 256 * 1024;
-    const timeoutMs = this.options.timeoutMs ?? 10_000;
+    const timeoutMs = request.timeoutMs ?? this.options.timeoutMs ?? 10_000;
     const input = `${JSON.stringify({
       jsonrpc: "2.0",
       id: request.id ?? randomUUID(),
@@ -81,6 +92,7 @@ export class AdapterHostClient {
         target: request.target,
         input: request.input ?? {},
         persistenceNamespace: request.persistenceNamespace,
+        runId: request.runId,
       },
     })}\n`;
     if (Buffer.byteLength(input) > max)
@@ -89,12 +101,27 @@ export class AdapterHostClient {
       [this.options.command, ...(this.options.args ?? [])],
       { stdin: new Blob([input]).stream(), stdout: "pipe", stderr: "pipe" },
     );
-    const timed = new Promise<never>((_, reject) =>
-      setTimeout(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let abortListener: (() => void) | undefined;
+    const cancelled = new Promise<never>((_, reject) => {
+      if (!request.signal) return;
+      abortListener = () => {
+        child.kill();
+        reject(
+          request.signal?.reason ??
+            new AdapterHostError("Adapter host aborted"),
+        );
+      };
+      if (request.signal.aborted) abortListener();
+      else
+        request.signal.addEventListener("abort", abortListener, { once: true });
+    });
+    const timed = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => {
         child.kill();
         reject(new AdapterHostError("Adapter host timed out"));
-      }, timeoutMs),
-    );
+      }, request.timeoutMs ?? timeoutMs);
+    });
     try {
       const [stdout, stderr, code] = await Promise.race([
         Promise.all([
@@ -103,6 +130,7 @@ export class AdapterHostClient {
           child.exited,
         ]),
         timed,
+        cancelled,
       ]);
       if (code !== 0)
         throw new AdapterHostError(
@@ -129,6 +157,9 @@ export class AdapterHostClient {
         );
       return response.result;
     } finally {
+      if (timeout !== undefined) clearTimeout(timeout);
+      if (abortListener)
+        request.signal?.removeEventListener("abort", abortListener);
       child.kill();
     }
   }

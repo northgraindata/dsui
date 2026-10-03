@@ -1,5 +1,6 @@
 import type { ActionBinding, ActionResult } from "../action/index";
 import type { AdapterDefinition } from "../adapter/index";
+import type { SignalEmission } from "../job";
 import { type AnyPageDefinition, matchRoute } from "../page/index";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
 import { UnknownPageError } from "../shared/errors";
@@ -16,6 +17,7 @@ import type {
   ActionExecutionOptions,
   AdapterInstance,
   AdapterRuntimeOptions,
+  JobExecutionOptions,
   PageScope,
   ResourceResult,
 } from "./types";
@@ -161,6 +163,49 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
     options?: ActionExecutionOptions,
   ): Promise<ActionResult<TOutput>> {
     return this.actions.execute(binding, options);
+  }
+
+  /** Runs a scheduled job and captures only signals declared by this adapter. */
+  async runJob(
+    jobId: string,
+    input: unknown,
+    options: JobExecutionOptions,
+  ): Promise<readonly SignalEmission[]> {
+    const job = this.definition.jobs.find(
+      (candidate) => candidate.id === jobId,
+    );
+    if (!job) throw new Error(`Unknown adapter job: ${jobId}`);
+    const emissions: SignalEmission[] = [];
+    const runInput = job.inputSchema?.parse(input) ?? input ?? null;
+    await this.stores.ready();
+    try {
+      await job.run({
+        input: runInput,
+        context: this.context,
+        runId: options.runId,
+        signal: options.signal,
+        store: (definition) => this.store(definition),
+        emit: (signal, payload, emitOptions) => {
+          if (options.signal.aborted)
+            throw options.signal.reason ?? new Error("Job was aborted");
+          const declared = this.definition.signals.find(
+            (candidate) => candidate.id === signal.id,
+          );
+          if (!declared)
+            throw new Error(`Job emitted undeclared signal: ${signal.id}`);
+          emissions.push({
+            signalId: declared.id,
+            payload: declared.schema.parse(payload),
+            ...(emitOptions?.idempotencyKey
+              ? { idempotencyKey: emitOptions.idempotencyKey }
+              : {}),
+          });
+        },
+      });
+    } finally {
+      await this.stores.flush();
+    }
+    return emissions;
   }
 
   /**

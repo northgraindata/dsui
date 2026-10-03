@@ -8,6 +8,7 @@ import { allowed } from "../auth.js";
 import type { ConfiguredService, DsuiConfig } from "../config.js";
 import type { ConnectionCipher } from "../db/crypto.js";
 import type { DsuiDatabase, UiServiceRow } from "../db/database.js";
+import type { PluginRuntime } from "../plugins/runtime.js";
 import { errorMessage, httpStatus } from "./errors.js";
 
 export const createServiceSchema = z.object({
@@ -77,10 +78,12 @@ export function connectionFor(
 
 export interface ServiceDeps {
   registry: AdapterRegistry;
+  pluginRuntime?: PluginRuntime;
   database: DsuiDatabase;
   cipher: ConnectionCipher | undefined;
   getConfig(): DsuiConfig;
   refreshConfig(): Promise<DsuiConfig>;
+  refreshJobs?(): void;
 }
 
 export async function publicService(
@@ -155,8 +158,19 @@ export function registerServiceRoutes(
           )
           .map((row) => row.id),
       ];
+      const visible = [];
+      for (const id of ids)
+        if (
+          !deps.pluginRuntime ||
+          (await deps.pluginRuntime.authorize(
+            context.get("principal"),
+            "inspect",
+            { type: "service", id },
+          ))
+        )
+          visible.push(id);
       return context.json(
-        await Promise.all(ids.map((id) => publicService(deps, id))),
+        await Promise.all(visible.map((id) => publicService(deps, id))),
       );
     } catch (error) {
       return context.json({ message: errorMessage(error) }, httpStatus(error));
@@ -164,6 +178,11 @@ export function registerServiceRoutes(
   });
 
   app.post("/api/v1/services/test", async (context) => {
+    if (
+      deps.pluginRuntime &&
+      !(await deps.pluginRuntime.authorize(context.get("principal"), "inspect"))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
     try {
       await deps.refreshConfig();
       const input = createServiceSchema.parse(await context.req.json());
@@ -177,7 +196,11 @@ export function registerServiceRoutes(
 
   app.post("/api/v1/services", async (context) => {
     const principal = context.get("principal");
-    if (!allowed(principal, "manage"))
+    if (
+      !allowed(principal, "manage") ||
+      (deps.pluginRuntime &&
+        !(await deps.pluginRuntime.authorize(principal, "manage")))
+    )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
       await deps.refreshConfig();
@@ -193,6 +216,7 @@ export function registerServiceRoutes(
         { id, name: input.name, adapter: input.adapter },
         deps.cipher.encrypt(connection),
       );
+      deps.refreshJobs?.();
       deps.audit(principal.id, "service.create", id, {
         adapter: input.adapter,
       });
@@ -204,7 +228,14 @@ export function registerServiceRoutes(
 
   app.delete("/api/v1/services/:id", async (context) => {
     const principal = context.get("principal");
-    if (!allowed(principal, "manage"))
+    if (
+      !allowed(principal, "manage") ||
+      (deps.pluginRuntime &&
+        !(await deps.pluginRuntime.authorize(principal, "manage", {
+          type: "service",
+          id: context.req.param("id"),
+        })))
+    )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
       const config = await deps.refreshConfig();
@@ -219,6 +250,7 @@ export function registerServiceRoutes(
           "Configuration-managed services cannot be deleted here",
         );
       deps.database.deleteUiService(source.service.id);
+      deps.refreshJobs?.();
       deps.audit(principal.id, "service.delete", source.service.id, {
         adapter: source.service.adapter,
       });
@@ -229,6 +261,15 @@ export function registerServiceRoutes(
   });
 
   app.get("/api/v1/services/:id/pages", async (context) => {
+    if (
+      deps.pluginRuntime &&
+      !(await deps.pluginRuntime.authorize(
+        context.get("principal"),
+        "inspect",
+        { type: "service", id: context.req.param("id") },
+      ))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
     try {
       await deps.refreshConfig();
       const source = serviceSource(
@@ -245,6 +286,15 @@ export function registerServiceRoutes(
   });
 
   app.get("/api/v1/services/:id/page", async (context) => {
+    if (
+      deps.pluginRuntime &&
+      !(await deps.pluginRuntime.authorize(
+        context.get("principal"),
+        "inspect",
+        { type: "service", id: context.req.param("id") },
+      ))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
     try {
       await deps.refreshConfig();
       const path = context.req.query("path");

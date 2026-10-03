@@ -156,8 +156,7 @@ function RowMenu({ children }: { children: ReactNode }) {
               style={{ top: position.top, left: position.left }}
               onClick={() => setOpen(false)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ")
-                  setOpen(false);
+                if (event.key === "Enter" || event.key === " ") setOpen(false);
               }}
             >
               {children}

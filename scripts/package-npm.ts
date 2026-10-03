@@ -1,10 +1,10 @@
 import { chmod, cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { prepareSdk } from "../packages/server/src/adapters/sdk";
 
 const root = resolve(import.meta.dir, "..");
 const output = join(root, "dist", "npm");
 const version = process.env.DSUI_VERSION ?? "0.1.0-dev";
-const duckdbVersion = "1.5.5-r.4";
 const bunVersion = "1.3.12";
 
 async function run(command: string[]): Promise<void> {
@@ -44,29 +44,36 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await run(["bun", "run", "--filter", "@northgraindata/dsui-web", "build"]);
 await bundle("packages/server/src/main.ts", join(output, "dist", "server.mjs"));
+await bundle(
+  "packages/plugin-sdk/src/index.ts",
+  join(output, "dist", "plugin-sdk.mjs"),
+);
 
-for (const adapter of ["airflow", "dbt", "duckdb", "postgresql", "s3"]) {
-  await bundle(
-    `packages/adapter-${adapter}/src/adapter.ts`,
-    join(output, "dist", "runtime", "adapters", `${adapter}.mjs`),
-    adapter === "duckdb"
-      ? [
-          "@duckdb/node-bindings-linux-arm64",
-          "@duckdb/node-bindings-linux-arm64-musl",
-          "@duckdb/node-bindings-linux-x64",
-          "@duckdb/node-bindings-linux-x64-musl",
-          "@duckdb/node-bindings-darwin-arm64",
-          "@duckdb/node-bindings-darwin-x64",
-          "@duckdb/node-bindings-win32-arm64",
-          "@duckdb/node-bindings-win32-x64",
-        ]
-      : [],
-  );
-}
+await bundle(
+  "examples/example-plugin/src/index.ts",
+  join(output, "dist", "runtime", "plugins", "example-plugin.mjs"),
+);
+await cp(
+  join(root, "examples", "example-plugin", "src", "browser.mjs"),
+  join(output, "dist", "runtime", "plugins", "example-plugin.browser.mjs"),
+);
+
+await bundle(
+  "packages/plugin-health/src/plugin.ts",
+  join(output, "dist", "runtime", "plugins", "health.mjs"),
+);
+
+await bundle(
+  "packages/plugin-monitoring/src/plugin.ts",
+  join(output, "dist", "runtime", "plugins", "monitoring.mjs"),
+);
 
 await cp(join(root, "apps", "web", "dist"), join(output, "web"), {
   recursive: true,
 });
+// Adapters are built from source at runtime, so the package ships the SDK they
+// resolve against instead of bundling each adapter up front.
+await prepareSdk(join(root, "packages"), join(output, "sdk"), version);
 await mkdir(join(output, "bin"), { recursive: true });
 await writeFile(
   join(output, "bin", "dsui.mjs"),
@@ -95,7 +102,8 @@ const env = {
   ...process.env,
   DSUI_VERSION: "${version}",
   DSUI_WEB_ROOT: join(packageRoot, "web"),
-  DSUI_RUNTIME_ADAPTERS: join(packageRoot, "dist", "runtime", "adapters"),
+  DSUI_RUNTIME_PLUGINS: join(packageRoot, "dist", "runtime", "plugins"),
+  DSUI_SDK_ROOT: join(packageRoot, "sdk"),
 };
 if (!env.DSUI_CONFIG) {
   const localConfig = join(process.cwd(), "dsui.yaml");
@@ -121,19 +129,10 @@ await writeFile(
       description: "A local operational workspace for your data stack.",
       type: "module",
       bin: { dsui: "bin/dsui.mjs" },
-      files: ["bin", "dist", "web"],
+      exports: { "./plugin-sdk": "./dist/plugin-sdk.mjs" },
+      files: ["bin", "dist", "sdk", "web"],
       engines: { node: ">=18" },
       dependencies: { bun: bunVersion },
-      optionalDependencies: {
-        "@duckdb/node-bindings-darwin-arm64": duckdbVersion,
-        "@duckdb/node-bindings-darwin-x64": duckdbVersion,
-        "@duckdb/node-bindings-linux-arm64": duckdbVersion,
-        "@duckdb/node-bindings-linux-arm64-musl": duckdbVersion,
-        "@duckdb/node-bindings-linux-x64": duckdbVersion,
-        "@duckdb/node-bindings-linux-x64-musl": duckdbVersion,
-        "@duckdb/node-bindings-win32-arm64": duckdbVersion,
-        "@duckdb/node-bindings-win32-x64": duckdbVersion,
-      },
       repository: {
         type: "git",
         url: "https://github.com/northgraindata/dsui.git",

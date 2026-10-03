@@ -1,160 +1,150 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Hono } from "hono";
-import { z } from "zod";
-import { type AuthMode, authentication, type Principal } from "../auth.js";
-import type { DsuiDatabase } from "../db/database.js";
-import { errorMessage, httpStatus } from "./errors.js";
+import {
+  LOCAL_PRINCIPAL_ID,
+  localPrincipalMiddleware,
+  type Principal,
+  type Role,
+} from "../auth.js";
+import type { PluginRuntime } from "../plugins/runtime.js";
 
-export type EnterpriseAuthKit =
-  | {
-      handler(request: Request): Promise<Response> | Response;
-      api: {
-        getSession(options: {
-          headers: Headers;
-        }): Promise<{ user?: { id?: string } | null } | null>;
-      };
-    }
-  | undefined;
-
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(12).max(256),
-});
-
-function sessionHash(token: string): string {
-  return createHash("sha256").update(token).digest("base64url");
-}
-
-export function issueSession(database: DsuiDatabase, userId: string): string {
-  const token = randomBytes(32).toString("base64url");
-  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  database.createSession(sessionHash(token), userId, expires);
-  return token;
-}
-
-export function localPrincipal(
-  database: DsuiDatabase,
-  token: string,
-): Principal | null {
-  const user = database.getSessionPrincipal(sessionHash(token));
-  return user && ["owner", "admin", "operator", "viewer"].includes(user.role)
-    ? { id: user.id, role: user.role as Principal["role"] }
-    : null;
-}
+/**
+ * Identity endpoints.
+ *
+ * OSS DSUI has no login. When no authentication plugin is installed every
+ * request runs as the local owner principal, and `/me` simply reports that.
+ * A plugin that does provide identity owns its own login and callback routes;
+ * this module mounts them, asks it to resolve a principal, and exposes the
+ * result.
+ */
 
 export interface AuthRouteDeps {
-  database: DsuiDatabase;
-  authMode: AuthMode;
-  enterpriseAuth: EnterpriseAuthKit;
-  enterprisePrincipal?: (request: Request) => Promise<{ id: string } | null>;
-  enterpriseRole?: (userId: string) => Principal["role"] | null;
+  pluginRuntime?: PluginRuntime;
 }
 
-export function registerAuthMiddleware(
+/**
+ * Mounts the active authentication plugin's own endpoints.
+ *
+ * These are the routes a logged-out browser has to reach, so they are mounted
+ * before the principal middleware and live outside `/api/v1` to keep the two
+ * concerns apart: `/api/auth/<pluginId>/*` is what the plugin serves,
+ * `/api/v1/*` is what the host protects on the plugin's behalf.
+ */
+function registerAuthenticationPluginRoutes(
   app: Hono,
-  deps: Pick<
-    AuthRouteDeps,
-    | "database"
-    | "authMode"
-    | "enterpriseAuth"
-    | "enterprisePrincipal"
-    | "enterpriseRole"
-  >,
+  deps: AuthRouteDeps,
 ): void {
+  app.all("/api/auth/:pluginId/*", async (context) => {
+    const routes = deps.pluginRuntime?.authenticationRoutes(
+      context.req.param("pluginId"),
+    );
+    if (!routes) return context.json({ message: "Not found" }, 404);
+    try {
+      return await routes(context.req.raw);
+    } catch {
+      // The plugin owns this request's failure reporting; the host only avoids
+      // leaking an internal error to an unauthenticated caller.
+      return context.json({ message: "Authentication request failed" }, 500);
+    }
+  });
+}
+
+/**
+ * Resolves the principal for every API request.
+ *
+ * With an authentication plugin the plugin decides who is calling; without one
+ * the local owner principal is assumed. Either way the principal is set on the
+ * context so downstream route handlers do not care which case applies.
+ */
+export function registerAuthMiddleware(app: Hono, deps: AuthRouteDeps): void {
   app.use("/api/v1/*", async (context, next) => {
-    if (
-      [
-        "/api/v1/auth/mode",
-        "/api/v1/auth/setup",
-        "/api/v1/auth/login",
-      ].includes(context.req.path)
-    )
+    const runtime = deps.pluginRuntime;
+    if (!runtime?.hasAuthentication())
+      return localPrincipalMiddleware()(context, next);
+    const { pathname } = new URL(context.req.url);
+    // A page a security plugin declared public is the one request an anonymous
+    // caller may make. Everything else still needs an identity.
+    if (!runtime.requiresPrincipal(pathname)) {
+      // The plugin catalog is public so a logged-out browser can discover the
+      // sign-in page, but authenticated callers still need their principal so
+      // the route can return the full, permission-filtered catalog.
+      if (pathname === "/api/v1/plugins") {
+        const principal = await runtime
+          .authenticate(context.req.raw)
+          .catch(() => null);
+        if (principal) context.set("principal", principal);
+      }
       return next();
-    return authentication(
-      deps.authMode,
-      (token) => localPrincipal(deps.database, token),
-      deps.enterprisePrincipal,
-      deps.enterpriseRole,
-    )(context, next);
+    }
+    try {
+      const principal: Principal | null = await runtime.authenticate(
+        context.req.raw,
+      );
+      if (!principal)
+        return context.json({ message: "Authentication required" }, 401);
+      context.set("principal", principal);
+      return next();
+    } catch {
+      // A failing authentication provider must deny, never fall back to the
+      // permissive local principal.
+      return context.json({ message: "Authentication required" }, 401);
+    }
   });
 }
 
 export function registerAuthRoutes(app: Hono, deps: AuthRouteDeps): void {
-  registerAuthMiddleware(app, deps);
+  registerAuthenticationPluginRoutes(app, deps);
 
-  app.get("/api/v1/auth/mode", (context) =>
-    context.json({ mode: deps.authMode }),
-  );
-  app.post("/api/v1/auth/setup", async (context) => {
-    if (deps.authMode !== "local")
-      return context.json({ message: "Local authentication is disabled" }, 404);
-    if (deps.database.hasLocalUsers())
-      return context.json({ message: "Owner account already exists" }, 409);
-    try {
-      const input = credentialsSchema.parse(await context.req.json());
-      const id = randomUUID();
-      deps.database.createLocalUser({
-        id,
-        email: input.email,
-        password_hash: await Bun.password.hash(input.password),
-        role: "owner",
+  /**
+   * Where the sign-in screen lives.
+   *
+   * The web app needs to know which page to show before anyone is signed in,
+   * and it must not guess: the answer is whatever the active authentication
+   * plugin published. Registered ahead of the middleware for that reason.
+   */
+  app.get("/api/v1/auth/entry", (context) => {
+    const runtime = deps.pluginRuntime;
+    const pluginId = runtime?.authenticationPluginId;
+    // `hasAuthentication` is true for a failed security plugin too. Saying
+    // "none" there would send the web app into the app and straight into a wall
+    // of 401s, so report the failure instead.
+    if (runtime?.hasAuthentication() && !pluginId)
+      return context.json({ mode: "unavailable" });
+    if (!runtime?.hasAuthentication() || !pluginId)
+      return context.json({ mode: "none" });
+    for (const page of runtime.catalog().pages)
+      if (page.pluginId === pluginId && page.public)
+        return context.json({
+          mode: "plugin",
+          pluginId,
+          pageId: page.id,
+          shell: page.shell ?? "app",
+        });
+    // A plugin that authenticates but publishes no public page has not finished
+    // wiring its own sign-in screen; say so rather than redirecting nowhere.
+    return context.json({ mode: "plugin", pluginId });
+  });
+
+  /**
+   * Who the caller is, if anyone.
+   *
+   * Answers for an anonymous caller rather than rejecting the request: "who am
+   * I" is the one question a logged-out browser legitimately asks, and the web
+   * app needs a null here to decide whether to show the sign-in screen. With no
+   * authentication plugin every request runs as the local owner, so that is
+   * what it reports.
+   */
+  app.get("/api/v1/auth/me", async (context) => {
+    const runtime = deps.pluginRuntime;
+    if (!runtime?.hasAuthentication())
+      return context.json({
+        id: LOCAL_PRINCIPAL_ID,
+        role: "owner" satisfies Role,
       });
-      const token = issueSession(deps.database, id);
-      deps.database.audit(id, "auth.setup", id);
-      context.header(
-        "Set-Cookie",
-        `dsui_session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`,
-      );
-      return context.json({ id, email: input.email, role: "owner" }, 201);
-    } catch (error) {
-      return context.json({ message: errorMessage(error) }, httpStatus(error));
-    }
+    const principal = await runtime
+      .authenticate(context.req.raw)
+      .catch(() => null);
+    return context.json(principal);
   });
-  app.post("/api/v1/auth/login", async (context) => {
-    if (deps.authMode !== "local")
-      return context.json({ message: "Local authentication is disabled" }, 404);
-    try {
-      const input = credentialsSchema.parse(await context.req.json());
-      const user = deps.database.getLocalUser(input.email);
-      if (
-        !user ||
-        !(await Bun.password.verify(input.password, user.password_hash))
-      )
-        return context.json({ message: "Invalid email or password" }, 401);
-      const token = issueSession(deps.database, user.id);
-      deps.database.audit(user.id, "auth.login", user.id);
-      context.header(
-        "Set-Cookie",
-        `dsui_session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`,
-      );
-      return context.json({ id: user.id, email: user.email, role: user.role });
-    } catch (error) {
-      return context.json({ message: errorMessage(error) }, httpStatus(error));
-    }
-  });
-  app.get("/api/v1/auth/me", (context) =>
-    context.json(context.get("principal")),
-  );
-  app.post("/api/v1/auth/logout", (context) => {
-    if (deps.enterpriseAuth) {
-      const url = new URL(context.req.raw.url);
-      url.pathname = "/api/auth/sign-out";
-      return deps.enterpriseAuth.handler(
-        new Request(url, {
-          method: "POST",
-          headers: context.req.raw.headers,
-        }),
-      );
-    }
-    const token = context.req
-      .header("cookie")
-      ?.match(/(?:^|;\s*)dsui_session=([^;]+)/)?.[1];
-    if (token)
-      deps.database.deleteSession(sessionHash(decodeURIComponent(token)));
-    context.header(
-      "Set-Cookie",
-      "dsui_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
-    );
-    return context.body(null, 204);
-  });
+
+  registerAuthMiddleware(app, deps);
 }

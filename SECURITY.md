@@ -16,6 +16,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting for `nort
 - Run the container non-root with a read-only root filesystem and no Docker socket.
 - Mount `dsui.yaml` read-only and inject secrets through the environment or a secret manager.
 - Treat community adapters as trusted third-party server code. Integrity verifies identity, not safety.
-- Pin every external adapter to an exact package version or full Git commit and verify its source, license, provenance, and network access.
+- Adapters are built from their source on every start, which runs a package manager and a bundler over that source with lifecycle scripts disabled. The adapter build is not sandboxed.
+- Verify an adapter's source, license, provenance, and network access before configuring it. Pin `ref` to a commit when you need a reproducible build.
 
 Resolved credentials must never be included in bug reports, diagnostics, or logs.

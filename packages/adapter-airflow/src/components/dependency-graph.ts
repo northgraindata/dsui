@@ -15,5 +15,5 @@ export interface DependencyGraphProps {
 /** Airflow's graph is a browser component, not an SDK primitive. */
 export const DependencyGraph = defineComponent<DependencyGraphProps>({
   id: "airflow/dependency-graph",
-  path: "./dependency-graph.tsx",
+  path: "./dependency-graph-view.tsx",
 });

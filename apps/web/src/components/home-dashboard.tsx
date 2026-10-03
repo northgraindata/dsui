@@ -2,6 +2,10 @@ import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { deleteService, type Service } from "../api";
+import {
+  PluginSlot,
+  usePluginSlotBatch,
+} from "../features/plugins/plugin-slots";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
 
@@ -22,6 +26,10 @@ export function HomeDashboard({
   const [removeService, setRemoveService] = useState<Service>();
   const [settingsService, setSettingsService] = useState<Service>();
   const [removing, setRemoving] = useState(false);
+  const pluginSlots = usePluginSlotBatch(
+    "dashboard.service-card.trailing",
+    services.map((service) => service.id).join("\0"),
+  );
   const connected = services.filter(
     (service) => service.health === "healthy",
   ).length;
@@ -127,7 +135,9 @@ export function HomeDashboard({
                   params={{ serviceId: service.id }}
                   className="stack-card-main"
                 >
-                  <div className="stack-card-heading">
+                  <div
+                    className={`stack-card-heading ${pluginSlots.results.some((item) => item.serviceId === service.id) ? "pr-24" : ""}`}
+                  >
                     <ServiceMark
                       adapter={service.adapter}
                       logo={service.logo}
@@ -160,6 +170,13 @@ export function HomeDashboard({
                     <Icon name="database" size={21} />
                   </div>
                 </Link>
+                <div className="absolute right-12 top-3 z-10 max-w-[96px]">
+                  <PluginSlot
+                    serviceId={service.id}
+                    results={pluginSlots.results}
+                    error={pluginSlots.error}
+                  />
+                </div>
                 <div className="stack-card-menu">
                   <button
                     type="button"

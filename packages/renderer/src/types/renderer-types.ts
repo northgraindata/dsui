@@ -18,6 +18,11 @@ export interface RendererClient {
     | { status: "success"; data?: unknown }
     | { status: "error"; message?: string }
   >;
+  /** Plugin pages dispatch namespaced host procedures rather than adapter actions. */
+  executePluginProcedure?(
+    procedureId: string,
+    input: unknown,
+  ): Promise<unknown>;
   /** Navigate to an adapter page path, e.g. "/databases/memory". */
   navigate(path: string): void;
 }

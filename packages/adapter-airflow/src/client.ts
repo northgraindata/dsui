@@ -673,20 +673,35 @@ export function createAirflowClient(
     getVersion: async (signal): Promise<AirflowVersion> =>
       request("version", versionResponseSchema, signal),
     listDags: async (signal): Promise<DagSummary[]> => {
-      if (isAirflow2) {
-        const result = await request(
-          "dags?limit=100&offset=0&order_by=dag_id",
-          airflow2DagCollectionSchema,
-          signal,
-        );
-        return result.dags.map(mapAirflow2Dag);
+      const dags: DagSummary[] = [];
+      let totalEntries = Number.POSITIVE_INFINITY;
+      for (let page = 0; dags.length < totalEntries; page += 1) {
+        if (page >= 50)
+          throw new Error("Airflow DAG listing exceeded 5,000 entries");
+        const offset = page * 100;
+        let pageCount: number;
+        if (isAirflow2) {
+          const result = await request(
+            `dags?limit=100&offset=${offset}&order_by=dag_id`,
+            airflow2DagCollectionSchema,
+            signal,
+          );
+          dags.push(...result.dags.map(mapAirflow2Dag));
+          totalEntries = result.total_entries;
+          pageCount = result.dags.length;
+        } else {
+          const result = await request(
+            `dags?limit=100&offset=${offset}&order_by=dag_id`,
+            dagCollectionSchema,
+            signal,
+          );
+          dags.push(...result.dags.map(mapDag));
+          totalEntries = result.total_entries;
+          pageCount = result.dags.length;
+        }
+        if (pageCount === 0) break;
       }
-      const result = await request(
-        "dags?limit=100&offset=0&order_by=dag_id",
-        dagCollectionSchema,
-        signal,
-      );
-      return result.dags.map(mapDag);
+      return dags;
     },
     getDag: async (dagId, signal): Promise<DagDetails> => {
       if (isAirflow2) {

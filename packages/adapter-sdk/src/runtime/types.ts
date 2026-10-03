@@ -1,6 +1,7 @@
 import type { ActionBinding, ActionResult } from "../action/index";
 import type { AdapterDefinition } from "../adapter/index";
 import type { PageNode } from "../components/index";
+import type { SignalEmission } from "../job";
 import type { AnyPageDefinition, StoreAccessor } from "../page/index";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
 import type {
@@ -58,6 +59,11 @@ export type ResourceResult<TOutput> =
 export interface ActionExecutionOptions {
   /** Aborts a long-running action; delivered on the action context. */
   signal?: AbortSignal;
+}
+
+export interface JobExecutionOptions {
+  readonly runId: string;
+  readonly signal: AbortSignal;
 }
 
 /**
@@ -146,6 +152,12 @@ export interface AdapterInstance<TContext = unknown> {
     binding: ActionBinding<TInput, TOutput, never>,
     options?: ActionExecutionOptions,
   ): Promise<ActionResult<TOutput>>;
+  /** Runs one declared background job and returns its validated signals. */
+  runJob(
+    jobId: string,
+    input: unknown,
+    options: JobExecutionOptions,
+  ): Promise<readonly SignalEmission[]>;
   /**
    * Re-executes watched bindings: none (all), a resource (its
    * bindings), or a resource plus input (one binding).

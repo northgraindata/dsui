@@ -3,18 +3,13 @@
 Focused issues, reproductions, documentation fixes, and code contributions are
 welcome. You do not need an AI tool or agent skills to contribute.
 
-## Read the shared guidance
+## Read the relevant guidance
 
-- [Engineering standards](docs/engineering/standards.md): coding, testing,
-  compatibility, review, and human/agent accountability.
-- [Architecture](docs/engineering/architecture.md): where code belongs and the
-  boundaries new changes must preserve.
-- [DESIGN.md](DESIGN.md): UI direction and tokens.
 - [Adapter SDK docs](packages/adapter-sdk/docs/README.md): authoring and runtime
   semantics; start new adapters from [the template](templates/adapter/README.md).
 
-These documents are canonical for humans and agents. [AGENTS.md](AGENTS.md)
-adds agent navigation and workflow; contributors do not need to read skills.
+The [`agents/`](agents/README.md) directory provides optional, general engineering
+guidance for AI-assisted work.
 
 ## Setup and checks
 
@@ -56,8 +51,6 @@ bun run --filter @northgraindata/dsui-adapter-duckdb typecheck
 SDK or adapter changes must run SDK tests and affected adapter tests and typechecks.
 Host or protocol changes also need server integration checks. Root `test` runs
 workspace test scripts; CI additionally runs adapter test files in a separate job.
-There is not yet a shared mandatory conformance harness; see
-[current enforcement and follow-up](docs/engineering/enforcement.md).
 
 Run the root checks for code changes before handoff. For documentation-only edits,
 check formatting, local links, and any changed commands; build the relevant docs
@@ -75,9 +68,7 @@ scope with maintainers before investing in a broad implementation.
 Keep each PR focused on one coherent purpose. Separate substantial refactoring
 from behavior changes. Explain new dependencies and provide measurements for
 performance claims. Public API, package-boundary, lifecycle, and security changes
-need a short [decision record](docs/engineering/decisions/README.md), plus affected
-consumer tests and documentation. Experimental APIs still need migration guidance
-when they break.
+need affected consumer tests and clear compatibility or migration guidance.
 
 AI assistance is welcome under the same standards. Contributors remain accountable
 for understanding their changes and accurately describing verification. Agents may

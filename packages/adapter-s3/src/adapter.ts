@@ -16,6 +16,7 @@ import {
   type S3Config,
   s3ConnectionSchema,
 } from "./context.js";
+import { s3Health } from "./health.js";
 import { browserPage } from "./pages/browser.js";
 import { fileBrowserPage } from "./pages/buckets.js";
 import {
@@ -58,6 +59,9 @@ export function createS3Adapter(
       }
     },
     disposeContext: (ctx) => ctx.client.dispose(),
+    // Object storage can be remote; a second is unremarkable for a listing.
+    latencyBudgetMs: 2_000,
+    health: s3Health,
     stores: [activityStore],
     resources: [buckets, objects, objectDetails, bucketInfo, preview, versions],
     actions: [

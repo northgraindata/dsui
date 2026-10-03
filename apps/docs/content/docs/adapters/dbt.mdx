@@ -42,6 +42,12 @@ an executable or runtime, provide it in the image used to run DSUI.
 - Semantic models, metrics, and saved queries
 - Local dbt commands through `execute` and `build`
 
+The adapter polls recent Cloud runs and the local `target/run_results.json`
+artifact every minute. It emits typed `dbt.run-failed`, `dbt.run-warning`, and
+`dbt.run-succeeded` signals for results completed within the last five minutes.
+Cloud run IDs and local invocation IDs deduplicate repeated polls. Plugins can
+react with a job such as `onSignals: ["dbt.run-failed"]`.
+
 ## Not yet available
 
 - Full parity with the dbt Cloud UI

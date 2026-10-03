@@ -31,11 +31,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # TODO(baseline): remove continue-on-error once pre-existing
-      # violations outside changed files are fixed.
+      # TODO(baseline): 59 pre-existing violations fail this job today:
+      # conditional hooks, import cycles, floating promises, undeclared
+      # dependencies, index keys and evolving types. They are reported, not
+      # suppressed, so the debt stays visible while it is paid down.
       - name: Check lint
         run: bun run lint
-        continue-on-error: true
 
   format:
     name: Format check
@@ -53,11 +54,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # TODO(baseline): remove continue-on-error once pre-existing
-      # formatting violations are fixed.
+      # TODO(baseline): 2 pre-existing formatting violations fail this job
+      # today: packages/ui/src/components/data-table.tsx and
+      # scripts/prepare-sdk.ts. `bun run format` clears both.
       - name: Check formatting
         run: bun run format:check
-        continue-on-error: true
 
   test:
     name: Test
@@ -75,11 +76,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # TODO(tests): remove continue-on-error once the first real
-      # test files land; currently no package ships tests.
       - name: Run workspace tests
         run: bun run test
-        continue-on-error: true
 
   typecheck:
     name: Typecheck

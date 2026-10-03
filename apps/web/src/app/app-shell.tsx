@@ -1,7 +1,7 @@
 import { cn } from "@northgraindata/dsui-ui";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getServices, type Service } from "../api";
+import { getPluginCatalog, getServices, type Service } from "../api";
 import { AppChrome } from "../components/app-chrome";
 import { Icon } from "../components/icon";
 import { ServiceMark } from "../components/service-mark";
@@ -21,16 +21,49 @@ function useShortcut(key: string, fn: () => void) {
 
 export function AppShell() {
   const [commandOpen, setCommandOpen] = useState(false);
+  const [barePluginPage, setBarePluginPage] = useState<{
+    pathname: string;
+    bare: boolean;
+  }>();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const isAuthPage = pathname === "/login" || pathname === "/setup";
+  const pluginPage = /^\/plugins\/([^/]+)\/(.+)$/.exec(pathname);
+  const hideAppChrome =
+    isAuthPage ||
+    (barePluginPage?.pathname === pathname && barePluginPage.bare);
+
+  useEffect(() => {
+    if (!pluginPage) {
+      setBarePluginPage(undefined);
+      return;
+    }
+    let active = true;
+    const pluginId = decodeURIComponent(pluginPage[1]!);
+    const pageId = decodeURIComponent(pluginPage[2]!);
+    getPluginCatalog()
+      .then((catalog) => {
+        if (!active) return;
+        const page = catalog.pages.find(
+          (candidate) =>
+            candidate.pluginId === pluginId && candidate.id === pageId,
+        );
+        setBarePluginPage({ pathname, bare: page?.shell === "bare" });
+      })
+      .catch(() => {
+        if (active) setBarePluginPage({ pathname, bare: false });
+      });
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
 
   useShortcut("k", () => {
-    if (!isAuthPage) setCommandOpen(true);
+    if (!hideAppChrome) setCommandOpen(true);
   });
 
-  if (isAuthPage) return <Outlet />;
+  if (hideAppChrome) return <Outlet />;
 
   return (
     <>

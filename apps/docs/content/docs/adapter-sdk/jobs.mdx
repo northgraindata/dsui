@@ -1,0 +1,42 @@
+---
+title: Jobs
+description: Run scheduled background work for each configured adapter service.
+---
+
+Adapter jobs run in the DSUI server for every configured service instance.
+They do not depend on a user opening a page. Use them to poll an external API
+and report changes that DSUI would otherwise only see on the next page visit.
+
+Declare a job with `defineJob` and add it to the adapter's `jobs` list:
+
+```ts
+import { defineAdapter, defineJob } from "@northgraindata/dsui-adapter-sdk";
+
+export default defineAdapter({
+  metadata: { id: "airflow", name: "Airflow", version: "1.0.0" },
+  context: (config) => ({ client: createAirflowClient(config) }),
+  health: async () => ({ status: "healthy", score: 100, checks: [] }),
+  jobs: [
+    defineJob({
+      id: "poll-dag-runs",
+      intervalMs: 30_000,
+      retry: { maxAttempts: 3, backoffMs: 2_000 },
+      run: async ({ context, runId, signal }) => {
+        const failures = await context.client.listRecentFailures({ signal });
+        console.info(`Airflow poll ${runId} found ${failures.length} failures`);
+      },
+    }),
+  ],
+});
+```
+
+Intervals have a minimum of 250 ms. Use a five-field UTC cron `schedule`
+instead of `intervalMs` for calendar-based schedules. A job receives the
+adapter instance's `context`, an abort `signal`, and a stable `runId`. Respect
+the abort signal when calling external services so DSUI can stop work on
+shutdown or timeout.
+
+Jobs use the same durable queue and retry policy as plugin jobs. Their
+definitions are installed and removed as adapter services enter or leave the
+active configuration. To publish an event from a job, declare a
+[signal](/docs/adapter-sdk/signals) and call `emit` from the job handler.

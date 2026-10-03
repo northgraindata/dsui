@@ -1,5 +1,7 @@
+import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { getPluginCatalog } from "../api";
 import { Icon } from "./icon";
 import { Wordmark } from "./wordmark";
 
@@ -19,12 +21,49 @@ export function AppChrome({
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
   const [topbarHidden, setTopbarHidden] = useState(false);
+  const [pluginNavigation, setPluginNavigation] = useState<
+    PluginCatalog["navigation"]
+  >([]);
   useEffect(() => {
     const onScroll = () => setTopbarHidden(window.scrollY > 10);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  useEffect(() => {
+    let active = true;
+    let retryTimer: number | undefined;
+
+    const loadPluginNavigation = async (retry = true) => {
+      try {
+        const catalog = await getPluginCatalog();
+        if (active) setPluginNavigation(catalog.navigation);
+      } catch {
+        if (!active) return;
+        // The API can still be starting while the web app is already open.
+        // Keep the last good navigation and retry once the server is ready.
+        if (retry)
+          retryTimer = window.setTimeout(
+            () => loadPluginNavigation(false),
+            1500,
+          );
+      }
+    };
+
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadPluginNavigation();
+    };
+
+    void loadPluginNavigation();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [pathname]);
   const navigation = destinations.map((item) => (
     <Link
       key={item.to}
@@ -60,6 +99,26 @@ export function AppChrome({
         {!inAdapter && (
           <aside className="app-sidebar">
             <nav aria-label="Main navigation">{navigation}</nav>
+            {pluginNavigation.length > 0 && (
+              <nav aria-label="Extensions">
+                {pluginNavigation.map((item) => (
+                  <Link
+                    key={`${item.pluginId}/${item.id}`}
+                    to="/plugins/$pluginId/$"
+                    params={{ pluginId: item.pluginId, _splat: item.pageId }}
+                    className="app-nav-link"
+                    aria-current={
+                      pathname === `/plugins/${item.pluginId}/${item.pageId}`
+                        ? "page"
+                        : undefined
+                    }
+                  >
+                    <Icon name="plug" />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
+            )}
             <div className="app-sidebar-bottom">
               <a
                 className="sidebar-star-banner"

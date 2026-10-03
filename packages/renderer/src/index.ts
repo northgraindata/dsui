@@ -14,6 +14,7 @@ export {
   Stack,
   Tabs,
 } from "@northgraindata/dsui-adapter-sdk/components/ui";
+export { Chart } from "./components/chart";
 export { Custom } from "./components/custom";
 export { DeclarativePageRenderer } from "./page/declarative-page-renderer";
 export type { ComponentProps } from "./registry/component-registry";

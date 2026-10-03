@@ -16,6 +16,15 @@ export type {
   CardVariant,
 } from "./primitives/card";
 export { Card } from "./primitives/card";
+export {
+  Chart,
+  type ChartKind,
+  type ChartNode,
+  type ChartPoint,
+  type ChartProps,
+  type ChartScale,
+  type ChartWindow,
+} from "./primitives/chart";
 export type { CodeBlockNode, CodeBlockProps } from "./primitives/code-block";
 export { CodeBlock } from "./primitives/code-block";
 export type { CodeEditorNode, CodeEditorProps } from "./primitives/code-editor";
@@ -42,6 +51,13 @@ export type {
 export { Flex } from "./primitives/flex";
 export type { FormNode, FormProps } from "./primitives/form";
 export { Form } from "./primitives/form";
+export {
+  Gauge,
+  type GaugeProps,
+  type GaugeScale,
+  type GaugeTone,
+  toneForValue,
+} from "./primitives/gauge";
 export type { GridNode, GridProps } from "./primitives/grid";
 export { Grid } from "./primitives/grid";
 export type { IconNode, IconProps } from "./primitives/icon";

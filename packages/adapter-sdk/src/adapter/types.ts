@@ -1,7 +1,9 @@
 import type { z } from "zod";
 import type { AnyActionDefinition } from "../action/index";
+import type { AnyJobDefinition } from "../job";
 import type { AnyPageDefinition } from "../page/index";
 import type { AnyResourceDefinition } from "../resource/index";
+import type { AnySignalDefinition } from "../signal";
 import type { AnyStoreDefinition } from "../store/index";
 
 /**
@@ -77,6 +79,43 @@ export interface ConnectionMethodDefinition {
  * and `snowflake-dev`); adapter code must never rely on global singletons.
  * Created by {@link defineAdapter}; never constructed by hand.
  */
+/**
+ * One measurable health signal.
+ *
+ * `id` is an open string, not an enum: the host never interprets a signal, it
+ * only carries it. An adapter reporting `disk` and a future one reporting
+ * `cost_burn` use the same type, so adding a signal never requires a change
+ * to the SDK or the server.
+ */
+export interface AdapterHealthCheck {
+  /** Kebab-case signal id, unique within one adapter. */
+  readonly id: string;
+  /** Short human-readable label shown in health UI. */
+  readonly label: string;
+  /** Whether the signal is currently within expectations. */
+  readonly ok: boolean;
+  /** Optional measured value or explanation. */
+  readonly detail?: string;
+}
+
+/**
+ * An adapter's health report.
+ *
+ * The score is computed by the adapter from its own signals rather than being
+ * a static constant, because only the adapter knows what a healthy value is
+ * for the system it talks to. A host that assigned one threshold for every
+ * service would misread both a local DuckDB file and a remote HTTP API.
+ */
+export interface AdapterHealthReport {
+  readonly status: "healthy" | "warning" | "unavailable" | "unknown";
+  /** Overall health, 0-100. */
+  readonly score: number;
+  /** Round-trip time of the probe itself, when measured. */
+  readonly latencyMs?: number;
+  /** Individual signals behind the score. May be empty when none apply. */
+  readonly checks: readonly AdapterHealthCheck[];
+}
+
 export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
   /** Discriminant: always `"adapter"`. */
   readonly kind: "adapter";
@@ -104,6 +143,21 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
    * instance disposal.
    */
   readonly disposeContext?: (ctx: TContext) => Promise<void> | void;
+  /**
+   * Reports this service's health from its own signals.
+   *
+   * Required so that every adapter states what "healthy" means for the
+   * system it integrates with. The host still probes the connection itself,
+   * so an adapter that throws or omits this function degrades to a
+   * reachability-only report rather than failing the service.
+   *
+   * Receives the built context, so an adapter with several connection
+   * methods can vary its checks per method (a local dbt project is a
+   * different health question than a dbt Cloud account).
+   */
+  readonly health: (ctx: TContext) => Promise<AdapterHealthReport>;
+  /** Round-trip time above which this service is degraded, when declared. */
+  readonly latencyBudgetMs?: number;
   /** Adapter- and page-scoped store definitions. */
   readonly stores: readonly AnyStoreDefinition[];
   /** External-data definitions. */
@@ -112,6 +166,10 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
   readonly actions: readonly AnyActionDefinition[];
   /** Route definitions. */
   readonly pages: readonly AnyPageDefinition[];
+  /** Scheduled background work, instantiated once per configured service. */
+  readonly jobs: readonly AnyJobDefinition<TContext>[];
+  /** Signals this adapter is allowed to emit into DSUI's event stream. */
+  readonly signals: readonly AnySignalDefinition[];
 }
 
 /**
@@ -148,6 +206,21 @@ export interface DefineAdapterOptions<TContext, TConfig> {
   context?: (config: TConfig) => Promise<TContext> | TContext;
   /** Releases context resources on instance disposal. */
   disposeContext?: (ctx: TContext) => Promise<void> | void;
+  /**
+   * Reports this service's health from its own signals. Required.
+   *
+   * @see {@link AdapterDefinition.health}
+   */
+  health: (ctx: TContext) => Promise<AdapterHealthReport>;
+  /**
+   * Round-trip time above which this service is considered degraded.
+   *
+   * A local DuckDB file legitimately answers in single-digit milliseconds,
+   * so a single host-wide threshold would report it as broken. Adapters
+   * declare what "slow" means for the system they integrate with; the host
+   * uses this only to explain a warning the adapter raised.
+   */
+  latencyBudgetMs?: number;
   /** Store definitions used by this adapter. */
   stores?: readonly AnyStoreDefinition[];
   /** Resource definitions used by this adapter. */
@@ -156,4 +229,8 @@ export interface DefineAdapterOptions<TContext, TConfig> {
   actions?: readonly AnyActionDefinition[];
   /** Page definitions used by this adapter. */
   pages?: readonly AnyPageDefinition[];
+  /** Scheduled background jobs run once for every configured service. */
+  jobs?: readonly AnyJobDefinition<TContext>[];
+  /** Signal definitions referenced by the adapter's jobs. */
+  signals?: readonly AnySignalDefinition[];
 }

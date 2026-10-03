@@ -5,13 +5,16 @@
  *   warehouse); survives page navigation, destroyed with the instance.
  * - `"page"`: one instance per rendered page (e.g. filters, editor
  *   content); destroyed when the page scope is disposed.
+ * - `"plugin"`: one instance per plugin. Used by the plugin runtime, which
+ *   namespaces the shared `store_state` table by plugin id, so a plugin store
+ *   and an adapter store can never collide.
  *
  * @example
  * ```ts
  * defineStore({ id: "session", scope: "adapter", state: {...}, actions });
  * ```
  */
-export type StoreScope = "adapter" | "page";
+export type StoreScope = "adapter" | "page" | "plugin";
 
 /** Persistence configuration declared by a store. */
 export type StorePersistence =
