@@ -9,6 +9,7 @@ import {
   postgresqlConnectionSchema,
 } from "./context.js";
 import { postgresqlHealth } from "./health.js";
+import { postgresqlSignals } from "./signals.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -78,6 +79,7 @@ export function createPostgreSQLAdapter() {
     // A network round trip to a managed instance; sub-second is normal.
     latencyBudgetMs: 1_000,
     health: postgresqlHealth,
+    signals: postgresqlSignals,
     stores: [queryEditorStore, activityFiltersStore],
     resources: [
       serverInfo,

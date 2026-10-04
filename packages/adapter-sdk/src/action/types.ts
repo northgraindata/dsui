@@ -1,4 +1,6 @@
 import type { z } from "zod";
+import type { AnySignalDefinition } from "../signal";
+import type { SignalEmission } from "../job";
 import type { AnyResourceDefinition } from "../resource/types";
 import type { StoreDefinition, StoreInstance } from "../store/types";
 
@@ -126,11 +128,23 @@ export interface ActionRuntimeContext {
   readonly signal?: AbortSignal;
   /** Access to adapter-scoped stores for durable action-backed mutations. */
   readonly stores: StoreActionAccessor;
+  /** Emits a declared adapter signal from this action execution. */
+  readonly emit: <TSignal extends AnySignalDefinition>(
+    definition: TSignal,
+    payload: z.output<TSignal["schema"]>,
+    options?: { readonly idempotencyKey?: string },
+  ) => void;
   /**
    * Re-executes watched bindings: none (all), a resource (its bindings),
    * or a resource plus input (one binding).
    */
   invalidate(resource?: AnyResourceDefinition, input?: unknown): void;
+}
+
+/** A completed action and any signals it emitted. */
+export interface ActionExecutionWithSignals<TOutput> {
+  readonly result: ActionResult<TOutput>;
+  readonly emissions: readonly SignalEmission[];
 }
 
 /**

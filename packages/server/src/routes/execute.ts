@@ -95,10 +95,30 @@ export function registerExecuteRoutes(
         actionSignal(context.req.raw.signal),
         { persistenceNamespace: source.service.id },
       );
+      for (const emission of result.emissions) {
+        const declared = adapter.catalog.signals.find(
+          (signal) => signal.id === emission.signalId,
+        );
+        if (!declared)
+          throw new Error(
+            `Adapter action emitted undeclared signal "${emission.signalId}"`,
+          );
+        deps.signalBus.publish({
+          signalId: `${adapter.id}.${emission.signalId}`,
+          type: declared.type,
+          sourceType: "adapter",
+          sourceId: source.service.id,
+          serviceId: source.service.id,
+          payload: emission.payload,
+          ...(emission.idempotencyKey
+            ? { idempotencyKey: emission.idempotencyKey }
+            : {}),
+        });
+      }
       deps.audit(principal.id, "action.execute", source.service.id, {
         action: context.req.param("actionId"),
       });
-      return context.json(result);
+      return context.json(result.result);
     } catch (error) {
       if (error instanceof AdapterExecutionError)
         return context.json({ message: error.message }, 502);

@@ -132,7 +132,16 @@ export interface AdapterBackend {
     signal?: AbortSignal,
     context?: AdapterExecutionContext,
   ): Promise<
-    { status: "success"; data: unknown } | { status: "error"; message: string }
+    {
+      result:
+        | { status: "success"; data: unknown }
+        | { status: "error"; message: string };
+      emissions: readonly {
+        signalId: string;
+        payload: unknown;
+        idempotencyKey?: string;
+      }[];
+    }
   >;
   /** Execute one scheduled job for a configured service instance. */
   executeJob(

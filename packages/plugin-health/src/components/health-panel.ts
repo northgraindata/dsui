@@ -1,32 +1,39 @@
-import { Card, Grid } from "@northgraindata/dsui-plugin-sdk";
-import { type ProbeResult, toneFor } from "../context.js";
+import { Badge, Card, Table } from "@northgraindata/dsui-plugin-sdk";
+import { badgeTone, type ProbeResult } from "../context.js";
 
-/**
- * Service health panel used by the plugin page.
- *
- * Composed from shared primitives rather than plugin-specific components:
- * the presentation is expressible with existing nodes, so adding a custom
- * browser component here would add a bundle and a trust boundary without
- * buying anything.
- */
-export function healthPanel(results: readonly ProbeResult[]) {
+export function healthTable(results: readonly ProbeResult[]) {
   if (results.length === 0)
     return Card({
       title: "No services configured",
       description: "Add a service to see its health here.",
+      variant: "subtle",
     });
-  return Grid({
-    columns: 2,
-    content: results.map((result) =>
-      Card({
-        title: result.name,
-        description: result.detail ?? result.adapter,
-        ...(result.latencyMs !== undefined
-          ? { badge: `${result.latencyMs} ms` }
-          : {}),
-        badgeTone: toneFor(result.health),
-        variant: "panel",
-      }),
-    ),
+
+  const rows = results.map((result) => ({
+    name: result.name,
+    adapter: result.adapter,
+    status: result.health,
+    tone: badgeTone(result),
+    ping: result.latencyMs === undefined ? "—" : `${result.latencyMs} ms`,
+    detail: result.detail ?? "—",
+  }));
+
+  return Table({
+    data: rows,
+    columns: [
+      { id: "name", label: "Service" },
+      { id: "adapter", label: "Adapter" },
+      {
+        id: "status",
+        label: "Status",
+        renderCell: Badge({
+          label: { field: "status" },
+          tone: { field: "tone" },
+          dot: true,
+        }),
+      },
+      { id: "ping", label: "Ping" },
+      { id: "detail", label: "Details" },
+    ],
   });
 }

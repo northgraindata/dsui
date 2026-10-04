@@ -40,6 +40,7 @@ import {
 } from "./context.js";
 import { createDuckDbClient } from "./duckdb-client.js";
 import { duckdbHealth } from "./health.js";
+import { duckdbSignals } from "./signals.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -135,6 +136,7 @@ export function createDuckDbAdapter(
     // hundreds would flag a healthy database as degraded.
     latencyBudgetMs: 250,
     health: duckdbHealth,
+    signals: duckdbSignals,
     stores: [
       sessionStore,
       queryEditorStore,

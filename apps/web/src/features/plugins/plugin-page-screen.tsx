@@ -13,6 +13,7 @@ import {
 } from "../../components/page";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
+import { HealthPage } from "./health-page";
 
 export function PluginPageScreen() {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export function PluginPageScreen() {
           return;
         }
         setPage(found);
+        if (pluginId === "health" && found.id === "overview") return;
         const pageDocument = await getPluginPage(pluginId, found.id);
         if (!active) return;
         setDocument(pageDocument);
@@ -87,6 +89,13 @@ export function PluginPageScreen() {
         role="status"
       >
         Loading page…
+      </div>
+    );
+
+  if (page && pluginId === "health" && pageId === "overview")
+    return (
+      <div className={`${pageClass} health-page-shell`}>
+        <HealthPage />
       </div>
     );
 

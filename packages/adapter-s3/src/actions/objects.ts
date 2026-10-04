@@ -6,6 +6,7 @@ import {
 import { activityStore } from "../activity.js";
 import type { S3Context } from "../context.js";
 import { objectDetails, objects } from "../resources/s3.js";
+import { objectUploaded, objectsDeleted } from "../signals.js";
 
 type Ctx = S3Context & ActionRuntimeContext;
 const objectInput = z.object({
@@ -22,6 +23,7 @@ export const deleteObjects = defineAction({
   }),
   run: async ({ bucket, keys, prefix }, ctx: Ctx) => {
     await ctx.client.deleteObjects({ bucket, keys }, ctx.signal);
+    ctx.emit(objectsDeleted, { bucket, keys, deletedCount: keys.length });
     record(ctx, "Deleted", bucket, keys.join(", "));
     ctx.invalidate(objects, { bucket, prefix: prefix ?? "" });
     ctx.invalidate(objectDetails);
@@ -56,11 +58,23 @@ export const uploadObject = defineAction({
   }),
   run: async (input, ctx: Ctx) => {
     await ctx.client.upload(input);
+    ctx.emit(objectUploaded, {
+      bucket: input.bucket,
+      key: input.key,
+      contentType: input.contentType,
+      sizeBytes: base64Size(input.base64),
+    });
     record(ctx, "Uploaded", input.bucket, input.key);
     ctx.invalidate(objects);
     return { key: input.key };
   },
 });
+
+function base64Size(value: string): number {
+  if (!value) return 0;
+  const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((value.length * 3) / 4) - padding);
+}
 export const createFolder = defineAction({
   id: "s3-create-folder",
   input: objectInput,

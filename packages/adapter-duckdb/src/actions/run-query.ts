@@ -15,6 +15,7 @@ import {
 } from "../resources/catalog.js";
 import { queryHistory } from "../resources/history.js";
 import { queryHistoryStore } from "../stores/index.js";
+import { queryFailed, querySucceeded } from "../signals.js";
 
 type Ctx = DuckDbContext & ActionRuntimeContext;
 
@@ -27,6 +28,7 @@ export const runQuery = defineAction({
     const started = Date.now();
     try {
       const result = await ctx.client.execute(sql, { signal: ctx.signal });
+      const durationMs = Date.now() - started;
       ctx.stores.get(queryHistoryStore).actions.append({
         id: crypto.randomUUID(),
         sql,
@@ -36,6 +38,11 @@ export const runQuery = defineAction({
         startedAt: new Date(started).toISOString(),
       });
       ctx.invalidate(queryHistory);
+      ctx.emit(querySucceeded, {
+        operation: sqlOperation(sql),
+        durationMs,
+        rowCount: result.rows.length,
+      });
       // The worksheet accepts arbitrary SQL, so a successful statement may have
       // changed any part of the catalog. Invalidating is intentionally broad here;
       // resources still reload lazily as their explorer branches become visible.
@@ -46,7 +53,7 @@ export const runQuery = defineAction({
       ctx.invalidate(views);
       ctx.invalidate(databaseSize);
       ctx.invalidate(overview);
-      return { ...result, elapsedMs: Date.now() - started };
+      return { ...result, elapsedMs: durationMs };
     } catch (error) {
       ctx.stores.get(queryHistoryStore).actions.append({
         id: crypto.randomUUID(),
@@ -58,10 +65,29 @@ export const runQuery = defineAction({
         message: error instanceof Error ? error.message : "Query failed",
       });
       await ctx.stores.get(queryHistoryStore).flush();
+      ctx.emit(queryFailed, {
+        operation: sqlOperation(sql),
+        durationMs: Date.now() - started,
+        ...(errorCode(error) ? { errorCode: errorCode(error) } : {}),
+      });
       throw error;
     }
   },
 });
+
+function sqlOperation(sql: string): string {
+  return (
+    /^(?:select|insert|update|delete|merge|create|alter|drop|truncate|with|begin|commit|rollback|explain|call|attach|detach|copy|install|load)\b/i
+      .exec(sql.trim())?.[0]
+      .toUpperCase() ?? "OTHER"
+  );
+}
+
+function errorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("code" in error))
+    return undefined;
+  return typeof error.code === "string" ? error.code : undefined;
+}
 
 export const cancelQuery = defineAction({
   id: "cancel-query",

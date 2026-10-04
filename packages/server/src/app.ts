@@ -477,6 +477,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   const serviceDeps = {
     registry,
     pluginRuntime,
+    signalBus,
     pluginJobs,
     refreshJobs: () => pluginJobs.refreshDefinitions(),
     database,

@@ -33,6 +33,12 @@ connection:
 - Presigned download URLs and folder zip downloads
 - Recent activity
 
+## Signals
+
+Successful uploads emit `s3.object-uploaded`; successful delete operations emit
+`s3.objects-deleted` with the bucket, affected keys, and object count. Failed
+operations do not emit success signals.
+
 ## Not yet available
 
 - Bucket lifecycle and policy editing

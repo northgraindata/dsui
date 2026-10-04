@@ -31,6 +31,14 @@ Use the Compose service name as `host` when DSUI and PostgreSQL run in the same 
 - Run and cancel SQL queries, including database-aware queries
 - Activity and connection usage
 
+## Signals
+
+Running a query from DSUI emits `postgresql.query-succeeded` or
+`postgresql.query-failed`. Payloads include the SQL operation, target database,
+duration, and row count or database error code. Query text is not included.
+These signals cover queries launched through DSUI; the Activity page can also
+observe some queries from other clients while they are running.
+
 ## Not yet available
 
 - Schema and data editing

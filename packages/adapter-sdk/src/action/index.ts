@@ -3,6 +3,7 @@ export type {
   ActionBinding,
   ActionDefinition,
   ActionExecutionStatus,
+  ActionExecutionWithSignals,
   ActionFailure,
   ActionReference,
   ActionResult,

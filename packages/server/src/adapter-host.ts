@@ -328,13 +328,18 @@ export async function runAdapterHost(): Promise<number> {
               input: unknown,
             ) => ActionBinding<unknown, unknown, unknown>
           )(params.input);
-          const result = await instance.executeAction(binding);
+          const { result, emissions } =
+            await instance.executeActionWithSignals(binding);
           if (result.status === "error")
             reply(request.id, {
-              status: "error",
-              message: result.error.message,
+              result: { status: "error", message: result.error.message },
+              emissions,
             });
-          else reply(request.id, { status: "success", data: result.data });
+          else
+            reply(request.id, {
+              result: { status: "success", data: result.data },
+              emissions,
+            });
         } finally {
           await instance.dispose();
         }
