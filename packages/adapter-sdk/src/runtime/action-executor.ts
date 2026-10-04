@@ -39,6 +39,7 @@ export class ActionExecutor<TContext> {
   async execute<TInput, TOutput>(
     binding: ActionBinding<TInput, TOutput, never>,
     options?: ActionExecutionOptions,
+    emit?: ActionRuntimeContext["emit"],
   ): Promise<ActionResult<TOutput>> {
     await this.readyStores();
     const actionContext = withRuntimeHelpers(
@@ -46,6 +47,7 @@ export class ActionExecutor<TContext> {
       this.invalidate,
       options?.signal,
       this.stores,
+      emit,
     );
     const run = binding.definition.run as (
       input: unknown,
@@ -75,6 +77,7 @@ function withRuntimeHelpers<TContext>(
   invalidate: (resource?: AnyResourceDefinition, input?: unknown) => void,
   signal?: AbortSignal,
   stores?: ActionRuntimeContext["stores"],
+  emit?: ActionRuntimeContext["emit"],
 ): TContext & ActionRuntimeContext {
   const augmented = Object.create(
     context != null &&
@@ -91,6 +94,7 @@ function withRuntimeHelpers<TContext>(
     invalidate: { enumerable: false, value: invalidate },
     signal: { enumerable: false, value: signal },
     stores: { enumerable: false, value: stores },
+    emit: { enumerable: false, value: emit ?? (() => undefined) },
   });
   return augmented as TContext & ActionRuntimeContext;
 }

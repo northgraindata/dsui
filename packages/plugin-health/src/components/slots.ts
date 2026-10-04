@@ -11,7 +11,7 @@ import {
   type PluginContext,
   type PluginServiceSummary,
 } from "@northgraindata/dsui-plugin-sdk";
-import { serviceCardStatus, workspaceStatus } from "./status.js";
+import { serviceCardStatus } from "./status.js";
 
 /** The plugin's own config, as the slots read it. */
 type HealthConfig = {
@@ -36,21 +36,5 @@ export const serviceCardSlot = defineSlot<HealthContext, PluginServiceSummary>({
       timeoutMs: context.config.timeoutMs,
     });
     return probe ? serviceCardStatus({ ...service, ...probe }) : [];
-  },
-});
-
-/** Footer of a service workspace header. */
-export const workspaceSummarySlot = defineSlot<
-  HealthContext,
-  PluginServiceSummary
->({
-  id: "workspace-summary",
-  slot: "service.workspace.after-header",
-  order: 50,
-  render: async ({ context, service }) => {
-    const probe = await context.services.probe(service.id, {
-      timeoutMs: context.config.timeoutMs,
-    });
-    return probe ? workspaceStatus({ ...service, ...probe }) : [];
   },
 });

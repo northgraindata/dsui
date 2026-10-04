@@ -3,7 +3,7 @@ import {
   type PluginContext,
 } from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
-import { serviceCardSlot, workspaceSummarySlot } from "./components/slots.js";
+import { serviceCardSlot } from "./components/slots.js";
 import {
   countHealth,
   healthSchema,
@@ -111,7 +111,6 @@ export function createHealthPlugin() {
       });
 
       registry.slot(serviceCardSlot);
-      registry.slot(workspaceSummarySlot);
     },
   });
 }

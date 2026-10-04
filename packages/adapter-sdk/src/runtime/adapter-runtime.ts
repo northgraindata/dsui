@@ -162,7 +162,36 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
     binding: ActionBinding<TInput, TOutput, never>,
     options?: ActionExecutionOptions,
   ): Promise<ActionResult<TOutput>> {
-    return this.actions.execute(binding, options);
+    return this.executeActionWithSignals(binding, options).then(
+      ({ result }) => result,
+    );
+  }
+
+  /** Executes an action and captures only signals declared by this adapter. */
+  async executeActionWithSignals<TInput, TOutput>(
+    binding: ActionBinding<TInput, TOutput, never>,
+    options?: ActionExecutionOptions,
+  ) {
+    const emissions: SignalEmission[] = [];
+    const result = await this.actions.execute(
+      binding,
+      options,
+      (signal, payload, emitOptions) => {
+        const declared = this.definition.signals.find(
+          (candidate) => candidate.id === signal.id,
+        );
+        if (!declared)
+          throw new Error(`Action emitted undeclared signal: ${signal.id}`);
+        emissions.push({
+          signalId: declared.id,
+          payload: declared.schema.parse(payload),
+          ...(emitOptions?.idempotencyKey
+            ? { idempotencyKey: emitOptions.idempotencyKey }
+            : {}),
+        });
+      },
+    );
+    return { result, emissions };
   }
 
   /** Runs a scheduled job and captures only signals declared by this adapter. */

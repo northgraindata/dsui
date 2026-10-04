@@ -1,4 +1,5 @@
 import type { ActionBinding, ActionResult } from "../action/index";
+import type { ActionExecutionWithSignals } from "../action/index";
 import type { AdapterDefinition } from "../adapter/index";
 import type { PageNode } from "../components/index";
 import type { SignalEmission } from "../job";
@@ -152,6 +153,11 @@ export interface AdapterInstance<TContext = unknown> {
     binding: ActionBinding<TInput, TOutput, never>,
     options?: ActionExecutionOptions,
   ): Promise<ActionResult<TOutput>>;
+  /** Executes an action and returns its validated signal emissions. */
+  executeActionWithSignals<TInput, TOutput>(
+    binding: ActionBinding<TInput, TOutput, never>,
+    options?: ActionExecutionOptions,
+  ): Promise<ActionExecutionWithSignals<TOutput>>;
   /** Runs one declared background job and returns its validated signals. */
   runJob(
     jobId: string,

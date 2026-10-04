@@ -1,4 +1,4 @@
-import { Card, Flex, Gauge } from "@northgraindata/dsui-plugin-sdk";
+import { Card, Gauge } from "@northgraindata/dsui-plugin-sdk";
 import type { ProbeResult } from "../context.js";
 import { badgeTone, gaugeTone } from "../context.js";
 
@@ -24,42 +24,5 @@ export function serviceCardStatus(probe: ProbeResult) {
     value: probe.score,
     tone: gaugeTone(probe),
     label: `Health score ${Math.round(probe.score)} of 100`,
-  });
-}
-
-/**
- * Workspace header contribution for `service.workspace.after-header`.
- *
- * The workspace has room for context, so the gauge is paired with the
- * adapter's own words about what is wrong and the measured latency.
- */
-export function workspaceStatus(probe: ProbeResult) {
-  const gauge =
-    probe.score === undefined
-      ? Card({
-          title: "Health not scored",
-          description: probe.adapter,
-          variant: "subtle",
-        })
-      : Gauge({
-          value: probe.score,
-          tone: gaugeTone(probe),
-          label: `Health score ${Math.round(probe.score)} of 100`,
-        });
-  return Flex({
-    align: "center",
-    gap: "md",
-    content: [
-      gauge,
-      Card({
-        title: probe.health,
-        description:
-          probe.latencyMs !== undefined
-            ? `${probe.latencyMs} ms response time`
-            : (probe.detail ?? probe.adapter),
-        badgeTone: badgeTone(probe),
-        variant: "subtle",
-      }),
-    ],
   });
 }

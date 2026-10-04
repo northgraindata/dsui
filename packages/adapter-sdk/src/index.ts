@@ -9,6 +9,7 @@ export {
   type ActionBinding,
   type ActionDefinition,
   type ActionExecutionStatus,
+  type ActionExecutionWithSignals,
   type ActionFailure,
   type ActionReference,
   type ActionResult,

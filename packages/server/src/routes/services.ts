@@ -9,6 +9,7 @@ import type { ConfiguredService, DsuiConfig } from "../config.js";
 import type { ConnectionCipher } from "../db/crypto.js";
 import type { DsuiDatabase, UiServiceRow } from "../db/database.js";
 import type { PluginRuntime } from "../plugins/runtime.js";
+import type { SignalBus } from "../events/signal-bus.js";
 import { errorMessage, httpStatus } from "./errors.js";
 
 export const createServiceSchema = z.object({
@@ -79,6 +80,7 @@ export function connectionFor(
 export interface ServiceDeps {
   registry: AdapterRegistry;
   pluginRuntime?: PluginRuntime;
+  signalBus: SignalBus;
   database: DsuiDatabase;
   cipher: ConnectionCipher | undefined;
   getConfig(): DsuiConfig;

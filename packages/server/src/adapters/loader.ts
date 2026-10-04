@@ -262,21 +262,71 @@ class RemoteBackend implements AdapterBackend {
     input: unknown,
     _signal?: AbortSignal,
     context?: AdapterExecutionContext,
-  ): Promise<
-    { status: "success"; data: unknown } | { status: "error"; message: string }
-  > {
+  ): Promise<{
+    result:
+      | { status: "success"; data: unknown }
+      | { status: "error"; message: string };
+    emissions: readonly {
+      signalId: string;
+      payload: unknown;
+      idempotencyKey?: string;
+    }[];
+  }> {
     const result = (await this.host.request({
       method: "action",
       connection,
       target: actionId,
       input,
       persistenceNamespace: context?.persistenceNamespace,
-    })) as
-      | { status: "success"; data: unknown }
-      | { status: "error"; message: string };
-    if (!result || typeof result !== "object" || !("status" in result))
+    })) as {
+      result?: unknown;
+      emissions?: unknown;
+    };
+    if (
+      !result ||
+      typeof result !== "object" ||
+      !result.result ||
+      !Array.isArray(result.emissions)
+    )
       throw new AdapterExecutionError("Adapter host returned no result");
-    return result;
+    const actionResult = result.result as Record<string, unknown>;
+    if (
+      (actionResult.status !== "success" && actionResult.status !== "error") ||
+      (actionResult.status === "success" && !("data" in actionResult)) ||
+      (actionResult.status === "error" && typeof actionResult.message !== "string")
+    )
+      throw new AdapterExecutionError(
+        "Adapter host returned an invalid action result",
+      );
+    const emissions = result.emissions.map((entry) => {
+      if (!entry || typeof entry !== "object")
+        throw new AdapterExecutionError(
+          "Adapter host returned an invalid action signal",
+        );
+      const emission = entry as Record<string, unknown>;
+      if (
+        typeof emission.signalId !== "string" ||
+        !("payload" in emission) ||
+        (emission.idempotencyKey !== undefined &&
+          typeof emission.idempotencyKey !== "string")
+      )
+        throw new AdapterExecutionError(
+          "Adapter host returned an invalid action signal",
+        );
+      return {
+        signalId: emission.signalId,
+        payload: emission.payload,
+        ...(typeof emission.idempotencyKey === "string"
+          ? { idempotencyKey: emission.idempotencyKey }
+          : {}),
+      };
+    });
+    return {
+      result: actionResult as
+        | { status: "success"; data: unknown }
+        | { status: "error"; message: string },
+      emissions,
+    };
   }
 
   async executeJob(

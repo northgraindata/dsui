@@ -17,6 +17,7 @@ import {
   s3ConnectionSchema,
 } from "./context.js";
 import { s3Health } from "./health.js";
+import { s3Signals } from "./signals.js";
 import { browserPage } from "./pages/browser.js";
 import { fileBrowserPage } from "./pages/buckets.js";
 import {
@@ -62,6 +63,7 @@ export function createS3Adapter(
     // Object storage can be remote; a second is unremarkable for a listing.
     latencyBudgetMs: 2_000,
     health: s3Health,
+    signals: s3Signals,
     stores: [activityStore],
     resources: [buckets, objects, objectDetails, bucketInfo, preview, versions],
     actions: [

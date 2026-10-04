@@ -35,6 +35,13 @@ connection:
 - Install, load, and manage extensions
 - Create secrets and work with notebooks
 
+## Signals
+
+Running a query from DSUI emits `duckdb.query-succeeded` or
+`duckdb.query-failed`, with the operation, duration, and row count or error
+code. Query text is not included. DuckDB's query history is maintained by
+DSUI, so queries launched outside DSUI do not emit these signals.
+
 ## Not yet available
 
 - Multi-user database access control

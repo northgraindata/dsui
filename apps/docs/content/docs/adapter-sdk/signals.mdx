@@ -5,8 +5,10 @@ description: Declare typed events and publish them to DSUI's durable event strea
 
 A signal defines the shape of an event an adapter may publish. Declare it
 with `defineSignal`, then list it in the adapter's `signals` array. A
-[background job](/docs/adapter-sdk/jobs) can emit it using the typed `emit`
-function it receives when it runs.
+[background job](/docs/adapter-sdk/jobs) or action can emit it using the typed
+`emit` function in its run context. Actions are useful for reporting outcomes
+of work initiated in DSUI; jobs are useful for reporting changes discovered by
+polling an external system.
 
 ```ts
 import { z } from "zod";
@@ -38,6 +40,10 @@ export default defineAdapter({
   ],
 });
 ```
+
+An action may emit a success signal after its side effect completes. It can
+also emit a failure signal inside a `catch` block before rethrowing the error;
+the event is persisted even though the action response is an error.
 
 The adapter host validates every payload against its declared schema. Events
 are stored in the DSUI database, scoped to the adapter service, and available
