@@ -41,6 +41,7 @@ export const savedConnection = connectionSchema.extend({
   version: z.string().nullable(),
 });
 export const overviewSchema = z.object({
+  refreshMinutes: z.number(),
   services: z.array(
     z.object({
       id: z.string(),

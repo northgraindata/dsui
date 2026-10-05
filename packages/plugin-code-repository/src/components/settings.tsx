@@ -9,11 +9,13 @@ export function Settings({
   client,
   providers,
   refresh,
+  refreshMinutes,
 }: {
   service: z.infer<typeof overviewSchema>["services"][number];
   client: Client;
   providers: z.infer<typeof overviewSchema>["providers"];
   refresh: () => void;
+  refreshMinutes: number;
 }) {
   const [editing, setEditing] = React.useState<Connection | "new">();
   const [error, setError] = React.useState<string>();
@@ -128,9 +130,7 @@ export function Settings({
               <div>
                 <dt>Auto refresh</dt>
                 <dd>
-                  {item.refreshMinutes
-                    ? `Every ${item.refreshMinutes} min`
-                    : "Manual"}
+                  {refreshMinutes ? `Every ${refreshMinutes} min` : "Manual"}
                 </dd>
               </div>
               <div>

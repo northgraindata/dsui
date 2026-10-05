@@ -2,6 +2,8 @@ import type { PluginContext } from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
 
 export const configSchema = z.object({
+  refreshMinutes: z.number().int().min(0).max(10080).default(15),
+
   githubToken: z.string().min(1).optional(),
   gitlab: z
     .array(
@@ -33,7 +35,6 @@ export const connectionSchema = z.object({
   branch: z.string().trim().max(256).default(""),
   folder: z.string().max(2048).default(""),
   instructions: z.string().max(50000).default(""),
-  refreshMinutes: z.number().int().min(0).max(10080).default(15),
 });
 export type ConnectionInput = z.infer<typeof connectionSchema>;
 export type Connection = ConnectionInput & {

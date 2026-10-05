@@ -96,7 +96,6 @@ test("configure, queue, browse, refresh, authorize and restore repository snapsh
       provider: "local",
       repository: codeDir,
       instructions: "Retail application",
-      refreshMinutes: 15,
     });
     expect(saved.status).toBe(200);
     const result = z
@@ -231,7 +230,6 @@ test("configure, queue, browse, refresh, authorize and restore repository snapsh
       name: "Another attachment",
       provider: "local",
       repository: codeDir,
-      refreshMinutes: 0,
     });
     const secondId = z
       .object({ data: z.object({ id: z.string() }) })

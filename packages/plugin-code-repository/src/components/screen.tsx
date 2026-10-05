@@ -41,6 +41,7 @@ export function RepositoryScreen({ node, client, renderNode }: Props) {
           <Settings
             service={service}
             providers={data.providers}
+            refreshMinutes={data.refreshMinutes}
             client={client}
             refresh={() => setRefresh((value) => value + 1)}
           />
