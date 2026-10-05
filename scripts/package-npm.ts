@@ -68,6 +68,23 @@ await bundle(
   join(output, "dist", "runtime", "plugins", "monitoring.mjs"),
 );
 
+await bundle(
+  "packages/plugin-code-repository/src/plugin.ts",
+  join(output, "dist", "runtime", "plugins", "code-repository.mjs"),
+);
+await run([
+  "bun",
+  "build",
+  "packages/plugin-code-repository/src/browser.tsx",
+  "--bundle",
+  "--target",
+  "browser",
+  "--format",
+  "esm",
+  "--outfile",
+  join(output, "dist", "runtime", "plugins", "code-repository.browser.mjs"),
+]);
+
 await cp(join(root, "apps", "web", "dist"), join(output, "web"), {
   recursive: true,
 });

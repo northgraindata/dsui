@@ -123,6 +123,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         id: service.id,
         name,
         adapter: service.adapter,
+        iconUrl: registry
+          .list()
+          .find((adapter) => adapter.id === service.adapter)?.metadata.iconUrl,
         managedBy: "configuration" as const,
       };
     });
@@ -143,6 +146,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           name,
           adapter: service.adapter,
           managedBy: "ui" as const,
+          iconUrl: registry
+            .list()
+            .find((adapter) => adapter.id === service.adapter)?.metadata
+            .iconUrl,
         };
       });
     return [...configured, ...uiManaged].sort((left, right) =>
@@ -211,7 +218,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         const candidates = listPluginServiceSummaries().filter(
           (service) => !input?.cursor || service.id > input.cursor,
         );
-        const remaining = [];
+        const remaining: ReturnType<typeof listPluginServiceSummaries> = [];
         for (const candidate of candidates)
           if (await pluginRuntime.canAccessService(candidate.id))
             remaining.push(candidate);
@@ -237,6 +244,26 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     {
       storage: (pluginId) => createPluginStorage(dataDir, pluginId),
       stores: (pluginId) => createPluginStores(database, pluginId),
+      capabilities: (pluginId) => ({
+        jobs: {
+          enqueue: async (jobId, input) => ({
+            runId: pluginJobs.enqueue(pluginId, jobId, input, undefined, true)
+              .run.runId,
+          }),
+        },
+        events: {
+          emit: async (signalId, payload, serviceId, type = "info") => {
+            signalBus.publish({
+              signalId: `${pluginId}.${signalId}`,
+              type,
+              sourceType: "plugin",
+              sourceId: pluginId,
+              serviceId,
+              payload,
+            });
+          },
+        },
+      }),
     },
   );
   const registeredJobs = () => {
@@ -363,7 +390,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
    * changes.
    */
   const syncAdapters = async (loaded: DsuiConfig) => {
-    if (adapterSync) return adapterSync;
+    if (adapterSync !== undefined) return adapterSync;
     const signature = JSON.stringify(Object.keys(loaded.adapters ?? {}).sort());
     if (adaptersLoaded && signature === adapterSignature) return;
     adapterSync = (async () => {
@@ -433,7 +460,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   const syncPlugins = async (loaded: DsuiConfig) => {
     const sources = loaded.plugins ?? {};
     if (pluginsLoaded) return;
-    if (pluginSync) return pluginSync;
+    if (pluginSync !== undefined) return pluginSync;
     pluginSync = pluginRuntime.load(sources);
     try {
       await pluginSync;

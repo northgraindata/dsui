@@ -1,9 +1,32 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
+import type { PluginSlotResult } from "@northgraindata/dsui-plugin-sdk";
 import type { Hono } from "hono";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import type { PluginRuntime } from "./runtime.js";
+
+function publicPluginFailure(
+  error: unknown,
+  fallback: string,
+): { message: string; status: 400 | 403 | 404 | 409 | 422 | 500 } {
+  if (
+    error instanceof Error &&
+    error.name === "PluginRequestError" &&
+    "status" in error
+  ) {
+    const status = error.status;
+    if (
+      status === 400 ||
+      status === 403 ||
+      status === 404 ||
+      status === 409 ||
+      status === 422
+    )
+      return { message: error.message, status };
+  }
+  return { message: fallback, status: 500 };
+}
 
 export function registerPluginRoutes(
   app: Hono,
@@ -105,7 +128,7 @@ export function registerPluginRoutes(
     const contributions = deps.runtime
       .catalog()
       .slots.filter((item) => item.slot === slot);
-    const result = [];
+    const result: PluginSlotResult[] = [];
     for (const id of new Set(parsed.data.serviceIds)) {
       if (
         !(await deps.runtime.authorize(context.get("principal"), "inspect", {
@@ -230,14 +253,17 @@ export function registerPluginRoutes(
         );
         return context.json({ data });
       } catch (error) {
+        const failure = publicPluginFailure(error, "Plugin procedure failed");
         return context.json(
           {
             message:
               error instanceof Error && error.name === "ZodError"
                 ? "Plugin procedure input or output is invalid"
-                : "Plugin procedure failed",
+                : failure.message,
           },
-          error instanceof Error && error.name === "ZodError" ? 422 : 500,
+          error instanceof Error && error.name === "ZodError"
+            ? 422
+            : failure.status,
         );
       }
     },
@@ -296,14 +322,17 @@ export function registerPluginRoutes(
         );
         return context.json({ data });
       } catch (error) {
+        const failure = publicPluginFailure(error, "Plugin resource failed");
         return context.json(
           {
             message:
               error instanceof Error && error.name === "ZodError"
                 ? "Plugin resource input is invalid"
-                : "Plugin resource failed",
+                : failure.message,
           },
-          error instanceof Error && error.name === "ZodError" ? 422 : 500,
+          error instanceof Error && error.name === "ZodError"
+            ? 422
+            : failure.status,
         );
       }
     },

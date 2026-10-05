@@ -38,6 +38,10 @@ export function createPluginStorage(
   const opened = new Map<string, Database>();
   let ensured = false;
   return {
+    directory() {
+      mkdirSync(pluginDir, { recursive: true, mode: 0o700 });
+      return pluginDir;
+    },
     openDatabase(name) {
       assertDatabaseName(name);
       const existing = opened.get(name);

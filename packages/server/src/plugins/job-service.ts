@@ -57,6 +57,7 @@ export class PluginJobService {
     jobId: string,
     input: unknown,
     idempotencyKey?: string,
+    coalesce = false,
   ) {
     const registration = this.registeredJobs().find(
       ({ pluginId: owner, job }) => owner === pluginId && job.id === jobId,
@@ -72,6 +73,7 @@ export class PluginJobService {
       jobId,
       input: parsed,
       maxAttempts: definition.maxAttempts,
+      coalesce,
       ...(idempotencyKey ? { idempotencyKey } : {}),
     });
   }
@@ -247,7 +249,9 @@ export class PluginJobService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const retryAt =
-        !sideEffect && run.attemptCount < run.maxAttempts
+        !sideEffect &&
+        !(error instanceof Error && error.name === "PluginRequestError") &&
+        run.attemptCount < run.maxAttempts
           ? new Date(
               Date.now() +
                 retryDelay(registration.job.retry.backoffMs, run.attemptCount),

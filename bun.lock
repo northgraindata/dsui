@@ -177,6 +177,20 @@
       "name": "@northgraindata/dsui-core",
       "version": "0.0.0",
     },
+    "packages/plugin-code-repository": {
+      "name": "@northgraindata/dsui-plugin-code-repository",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-plugin-sdk": "workspace:*",
+        "fflate": "^0.8.2",
+        "highlight.js": "^11.11.1",
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
+        "@types/react": "^19.1.0",
+        "react": "^19.1.1",
+      },
+    },
     "packages/plugin-health": {
       "name": "@northgraindata/dsui-plugin-health",
       "version": "0.1.0",
@@ -242,6 +256,7 @@
         "zod-to-json-schema": "3.25.2",
       },
       "devDependencies": {
+        "@northgraindata/dsui-plugin-code-repository": "workspace:*",
         "@northgraindata/dsui-plugin-example": "workspace:*",
         "@northgraindata/dsui-plugin-health": "workspace:*",
         "@northgraindata/dsui-plugin-monitoring": "workspace:*",
@@ -633,6 +648,8 @@
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],
 
     "@northgraindata/dsui-docs": ["@northgraindata/dsui-docs@workspace:apps/docs"],
+
+    "@northgraindata/dsui-plugin-code-repository": ["@northgraindata/dsui-plugin-code-repository@workspace:packages/plugin-code-repository"],
 
     "@northgraindata/dsui-plugin-example": ["@northgraindata/dsui-plugin-example@workspace:examples/example-plugin"],
 
@@ -1151,6 +1168,8 @@
     "hast-util-whitespace": ["hast-util-whitespace@3.0.0", "", { "dependencies": { "@types/hast": "^3.0.0" } }, "sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw=="],
 
     "hastscript": ["hastscript@9.0.1", "", { "dependencies": { "@types/hast": "^3.0.0", "comma-separated-tokens": "^2.0.0", "hast-util-parse-selector": "^4.0.0", "property-information": "^7.0.0", "space-separated-tokens": "^2.0.0" } }, "sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w=="],
+
+    "highlight.js": ["highlight.js@11.12.0", "", {}, "sha512-nbfWpyRMcMrPMmDwJB+dhX/eiaPKtc2RB+0QZskqJ3WjRA/FDS0e9hZrx8EC/lbEv8gXy98FcDbNa/dspAaJMg=="],
 
     "hono": ["hono@4.13.3", "", {}, "sha512-r8AO2mYHoLxSHkgafNeC/BXyb2vWRxD3jem4Ts+ptav8oTG5FIRifAjuJEmZI4bSvvc2ns0GxmIYiZnHqN3mMw=="],
 
