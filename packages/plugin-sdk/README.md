@@ -55,3 +55,20 @@ directory when supported by the host. The plugin owns its schema and migrations.
 The new host capabilities are additive. An older plugin can continue using its
 existing pages and storage. A plugin using a capability absent from its host
 receives an explicit unavailable-capability error.
+
+## Persisted event reading and installation administration
+
+`context.events.read({ cursor, limit })` reads persisted signals in their stable
+append order, returning `{ items, cursor, hasMore }`. Use `cursor: "latest"` to
+start at the current tail; an omitted cursor replays the available history.
+Page sizes are 1–500. Store the returned cursor atomically with processing results
+in plugin storage and deduplicate effects by event ID. Empty pages can still
+advance the cursor because the host filters events by service visibility. Signals
+without a service are visible only to installation administrators or background
+jobs. A cursor is specific to one DSUI database; it is not a timestamp.
+
+`await context.access.requireAdmin()` requires an owner/admin request identity
+and plugin manage permission. Use it for installation-wide settings or secrets
+that service-level manage permission cannot authorize. Both additions are optional
+host capabilities for compatibility; plugins using them must require a host that
+implements them. Background jobs run as trusted installation operations.

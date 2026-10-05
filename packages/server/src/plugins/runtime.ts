@@ -436,6 +436,22 @@ export class PluginRuntime {
           logger: pluginLogger(id),
           ...this.host.capabilities?.(id),
           access: {
+            requireAdmin: async () => {
+              if (this.backgroundContext.getStore()) return;
+              const principal = this.principalContext.getStore();
+              if (
+                !principal ||
+                !["owner", "admin"].includes(principal.role) ||
+                !(await this.authorize(principal, "manage", {
+                  type: "plugin",
+                  id,
+                }))
+              )
+                throw new PluginRequestError(
+                  "Installation administrator permission required",
+                  403,
+                );
+            },
             require: async (serviceId, permission) => {
               if (this.backgroundContext.getStore()) return;
               const principal = this.principalContext.getStore();
@@ -1044,6 +1060,16 @@ export class PluginRuntime {
     operation: () => Promise<T>,
   ): Promise<T> {
     return this.principalContext.run(principal, operation);
+  }
+
+  async canAccessGlobalEvents(): Promise<boolean> {
+    if (this.backgroundContext.getStore()) return true;
+    const principal = this.principalContext.getStore();
+    return Boolean(
+      principal &&
+        ["owner", "admin"].includes(principal.role) &&
+        (await this.authorize(principal, "inspect")),
+    );
   }
 
   async canAccessService(id: string): Promise<boolean> {

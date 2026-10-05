@@ -252,6 +252,19 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           }),
         },
         events: {
+          read: async (options) => {
+            const page = signalBus.read(options);
+            const items: typeof page.items = [];
+            for (const event of page.items) {
+              if (
+                event.serviceId
+                  ? await pluginRuntime.canAccessService(event.serviceId)
+                  : await pluginRuntime.canAccessGlobalEvents()
+              )
+                items.push(event);
+            }
+            return { ...page, items };
+          },
           emit: async (signalId, payload, serviceId, type = "info") => {
             signalBus.publish({
               signalId: `${pluginId}.${signalId}`,
