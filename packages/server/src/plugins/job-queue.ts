@@ -433,7 +433,7 @@ export class JobQueue {
     return claim();
   }
 
-  /** Whether a `singleton` job already has an unfinished run. */
+  /** Only running jobs hold concurrency slots; queued siblings must remain claimable. */
   private allowedByConcurrency(run: JobRunRow): boolean {
     const definition = this.definition(run.jobId, run.pluginId);
     if (!definition) return false;
@@ -441,7 +441,7 @@ export class JobQueue {
       const active = this.db
         .query(
           `SELECT count(*) AS n FROM plugin_job_runs
-            WHERE job_id = ? AND plugin_id = ? AND status IN ('queued', 'running')
+            WHERE job_id = ? AND plugin_id = ? AND status = 'running'
               AND run_id <> ?`,
         )
         .get(run.jobId, run.pluginId, run.runId) as { n: number };
@@ -451,7 +451,7 @@ export class JobQueue {
     const sameInput = this.db
       .query(
         `SELECT count(*) AS n FROM plugin_job_runs
-          WHERE job_id = ? AND plugin_id = ? AND status IN ('queued', 'running')
+          WHERE job_id = ? AND plugin_id = ? AND status = 'running'
             AND input_json = ? AND run_id <> ?`,
       )
       .get(run.jobId, run.pluginId, run.inputJson, run.runId) as { n: number };
