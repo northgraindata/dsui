@@ -145,6 +145,7 @@ export async function runAdapterHost(): Promise<number> {
                   ...(method.description
                     ? { description: method.description }
                     : {}),
+                  requestConcurrency: method.requestConcurrency,
                   schema: jsonSchemaOf(
                     method.schema,
                     `connection method "${method.id}"`,

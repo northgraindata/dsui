@@ -151,11 +151,20 @@ function normalizeConnectionMethods(
       for (const [childId, child] of children) {
         assertMethodId(childId);
         assertLeaf(childId, child);
-        methods.push({ ...child, id: childId, group });
+        methods.push({
+          ...child,
+          requestConcurrency: child.requestConcurrency ?? "parallel",
+          id: childId,
+          group,
+        });
       }
     } else if ("schema" in entry && entry.schema !== undefined) {
       assertLeaf(id, entry);
-      methods.push({ ...entry, id });
+      methods.push({
+        ...entry,
+        requestConcurrency: entry.requestConcurrency ?? "parallel",
+        id,
+      });
     } else {
       throw new InvalidDefinitionError(
         `Connection method "${id}" needs a schema or methods`,

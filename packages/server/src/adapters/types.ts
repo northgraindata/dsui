@@ -43,6 +43,7 @@ export interface LoadedConnectionMethod {
   id: string;
   label: string;
   description?: string;
+  requestConcurrency: "parallel" | "serial";
   schema: JsonSchema;
   group?: {
     id: string;
@@ -131,18 +132,16 @@ export interface AdapterBackend {
     input: unknown,
     signal?: AbortSignal,
     context?: AdapterExecutionContext,
-  ): Promise<
-    {
-      result:
-        | { status: "success"; data: unknown }
-        | { status: "error"; message: string };
-      emissions: readonly {
-        signalId: string;
-        payload: unknown;
-        idempotencyKey?: string;
-      }[];
-    }
-  >;
+  ): Promise<{
+    result:
+      | { status: "success"; data: unknown }
+      | { status: "error"; message: string };
+    emissions: readonly {
+      signalId: string;
+      payload: unknown;
+      idempotencyKey?: string;
+    }[];
+  }>;
   /** Execute one scheduled job for a configured service instance. */
   executeJob(
     jobId: string,
