@@ -1,6 +1,7 @@
 import type * as ReactTypes from "react";
 import { z } from "zod";
 import type { Connection, ConnectionInput } from "../model";
+import { SourceIcon } from "./presentation";
 import { React } from "./react";
 import { action, type Client, type overviewSchema } from "./shared";
 export function RepositoryForm({
@@ -30,6 +31,7 @@ export function RepositoryForm({
         refreshMinutes: 15,
       },
   );
+  const fieldId = React.useId();
   const [branchNames, setBranchNames] = React.useState<string[]>([]);
   const [folderNames, setFolderNames] = React.useState<string[]>([]);
   const [busy, setBusy] = React.useState(false);
@@ -85,147 +87,200 @@ export function RepositoryForm({
   };
   return (
     <form className="cr-form" onSubmit={(event) => void save(event)}>
-      <h3>{item ? "Edit connection" : "Connect code"}</h3>
-      <label>
-        Name
-        <input
-          required
-          value={value.name}
-          onChange={(event) => change("name", event.target.value)}
-        />
-      </label>
-      <label>
-        Source
-        <select
-          value={value.provider}
-          onChange={(event) => {
-            change(
-              "provider",
-              z.enum(["github", "gitlab", "local"]).parse(event.target.value),
-            );
-            setBranchNames([]);
-          }}
-        >
-          <option value="github">GitHub</option>
-          {providers.gitlab.length > 0 && (
-            <option value="gitlab">GitLab</option>
-          )}
-          {providers.local && <option value="local">Local folder</option>}
-        </select>
-      </label>
-      {value.provider === "gitlab" && (
-        <label>
-          GitLab instance
-          <select
-            value={value.instance}
-            onChange={(event) => {
-              change("instance", event.target.value);
-              setBranchNames([]);
-            }}
-          >
-            {providers.gitlab.map((instance) => (
-              <option key={instance.id} value={instance.id}>
-                {instance.url}
-              </option>
+      <header className="cr-form-heading">
+        <h3>{item ? "Connection settings" : "Connect source code"}</h3>
+        <p>
+          Link a repository or folder to this service. Its code will be
+          available in the explorer.
+        </p>
+      </header>
+      <fieldset disabled={busy}>
+        <legend>
+          <span>01</span> Source
+        </legend>
+        <div className="cr-provider-options">
+          {(["github", "gitlab", "local"] as const)
+            .filter((provider) =>
+              provider !== "local"
+                ? provider !== "gitlab" || providers.gitlab.length > 0
+                : providers.local,
+            )
+            .map((provider) => (
+              <button
+                type="button"
+                key={provider}
+                aria-pressed={value.provider === provider}
+                onClick={() => {
+                  change("provider", provider);
+                  setBranchNames([]);
+                  setFolderNames([]);
+                }}
+              >
+                <SourceIcon provider={provider} />
+                <strong>
+                  {provider === "github"
+                    ? "GitHub"
+                    : provider === "gitlab"
+                      ? "GitLab"
+                      : "Local folder"}
+                </strong>
+                <small>
+                  {provider === "local"
+                    ? "On the DSUI host"
+                    : "Public or private repos"}
+                </small>
+              </button>
             ))}
-          </select>
-        </label>
-      )}
-      <label>
-        {value.provider === "local"
-          ? "Folder on the DSUI host"
-          : "Repository (owner/name or URL)"}
-        <input
-          required
-          value={value.repository}
-          onChange={(event) => {
-            change("repository", event.target.value);
-            setBranchNames([]);
-          }}
-        />
-      </label>
-      {value.provider !== "local" && (
-        <label>
-          Branch
-          <div className="cr-row">
+        </div>
+        <div className="cr-fields">
+          <label>
+            Name
             <input
               required
-              list="cr-branches"
-              value={value.branch}
-              onChange={(event) => change("branch", event.target.value)}
+              placeholder="e.g. Backend API"
+              value={value.name}
+              onChange={(event) => change("name", event.target.value)}
             />
+          </label>
+          {value.provider === "gitlab" && (
+            <label>
+              GitLab instance
+              <select
+                value={value.instance}
+                onChange={(event) => {
+                  change("instance", event.target.value);
+                  setBranchNames([]);
+                }}
+              >
+                {providers.gitlab.map((instance) => (
+                  <option key={instance.id} value={instance.id}>
+                    {instance.url}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            {value.provider === "local"
+              ? "Folder on the DSUI host"
+              : "Repository (owner/name or URL)"}
+            <input
+              required
+              placeholder={
+                value.provider === "local"
+                  ? "/path/to/project"
+                  : "organization/repository"
+              }
+              value={value.repository}
+              onChange={(event) => {
+                change("repository", event.target.value);
+                setBranchNames([]);
+              }}
+            />
+          </label>
+        </div>
+      </fieldset>
+      <fieldset disabled={busy}>
+        <legend>
+          <span>02</span> Code scope
+        </legend>
+        <p className="cr-field-help">
+          Choose which code to include. Leave the folder empty to include the
+          full repository.
+        </p>
+        <div className="cr-fields">
+          {value.provider !== "local" && (
+            <label>
+              Branch
+              <div className="cr-row">
+                <input
+                  required
+                  list={`${fieldId}-branches`}
+                  value={value.branch}
+                  onChange={(event) => change("branch", event.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={busy || !value.repository}
+                  onClick={() => void loadBranches()}
+                >
+                  Load branches
+                </button>
+              </div>
+              <datalist id={`${fieldId}-branches`}>
+                {branchNames.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </label>
+          )}
+          <label>
+            Subfolder (optional)
+            <input
+              value={value.folder}
+              list={`${fieldId}-folders`}
+              placeholder="packages/backend"
+              onChange={(event) => change("folder", event.target.value)}
+            />
+            <datalist id={`${fieldId}-folders`}>
+              {folderNames.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
             <button
               type="button"
-              disabled={busy || !value.repository}
-              onClick={() => void loadBranches()}
+              disabled={
+                busy ||
+                !value.repository ||
+                (value.provider !== "local" && !value.branch)
+              }
+              onClick={() => void loadFolders()}
             >
-              Load branches
+              Browse folders
             </button>
-          </div>
-          <datalist id="cr-branches">
-            {branchNames.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
+          </label>
+        </div>
+      </fieldset>
+      <fieldset disabled={busy}>
+        <legend>
+          <span>03</span> Context & synchronization
+        </legend>
+        <label>
+          Instructions <span className="cr-optional">Optional</span>
+          <textarea
+            rows={5}
+            value={value.instructions}
+            placeholder="Context about this code and its relationship to the service."
+            onChange={(event) => change("instructions", event.target.value)}
+          />
         </label>
-      )}
-      <label>
-        Subfolder (optional)
-        <input
-          value={value.folder}
-          list="cr-folders"
-          placeholder="packages/backend"
-          onChange={(event) => change("folder", event.target.value)}
-        />
-        <datalist id="cr-folders">
-          {folderNames.map((name) => (
-            <option key={name} value={name} />
-          ))}
-        </datalist>
-        <button
-          type="button"
-          disabled={
-            busy ||
-            !value.repository ||
-            (value.provider !== "local" && !value.branch)
-          }
-          onClick={() => void loadFolders()}
-        >
-          Browse folders
-        </button>
-      </label>
-      <label>
-        Instructions
-        <textarea
-          rows={5}
-          value={value.instructions}
-          placeholder="Context about this code and its relationship to the service."
-          onChange={(event) => change("instructions", event.target.value)}
-        />
-      </label>
-      <label>
-        Refresh interval in minutes (0 disables automatic refresh)
-        <input
-          type="number"
-          min={0}
-          max={10080}
-          required
-          value={value.refreshMinutes}
-          onChange={(event) =>
-            change("refreshMinutes", Number(event.target.value))
-          }
-        />
-      </label>
+        <label>
+          Refresh interval <span className="cr-optional">Minutes</span>
+          <input
+            type="number"
+            min={0}
+            max={10080}
+            required
+            value={value.refreshMinutes}
+            onChange={(event) =>
+              change("refreshMinutes", Number(event.target.value))
+            }
+          />
+        </label>
+        <p className="cr-field-help">
+          Set to 0 for manual refresh. Failed fetches keep the last saved code.
+        </p>
+      </fieldset>
       {error && (
         <p role="alert" className="cr-error">
           {error}
         </p>
       )}
-      <div className="cr-row">
-        <button type="submit" disabled={busy}>
+      <div className="cr-form-actions">
+        <button className="cr-primary" type="submit" disabled={busy}>
           {busy ? "Working…" : "Save and fetch"}
         </button>
-        <button type="button" onClick={done}>
+        <button type="button" disabled={busy} onClick={done}>
           Cancel
         </button>
       </div>
