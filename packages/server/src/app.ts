@@ -234,6 +234,16 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
               (service) => service.id === id,
             ) ?? null)
           : null,
+      signals: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        const adapter = registry.get(source.service.adapter);
+        return adapter.catalog.signals.map((signal) => ({
+          id: `${adapter.id}.${signal.id}`,
+          type: signal.type,
+        }));
+      },
       probe: async (id, probeOptions) =>
         (await pluginRuntime.canAccessService(id))
           ? probePluginService(id, probeOptions)

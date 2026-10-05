@@ -23,6 +23,12 @@ in addition to declaring its procedure permission. `context.services.get(id)`
 checks service visibility and returns `null` for a missing or inaccessible
 service. The service catalog includes an optional `iconUrl` for presentation.
 
+`context.services.signals(id)` returns the visible service adapter’s declared
+signals as qualified IDs and severity types, without opening a connection.
+A missing or inaccessible service returns `null`. This optional capability
+requires a host that supports the signal catalog; plugins should check for it
+when they depend on enumerating signals before the first event occurs.
+
 `await context.jobs.enqueue(jobId, input)` enqueues a job owned by the calling
 plugin and returns its `runId`. The input is checked against the job definition.
 Identical queued/running inputs are coalesced atomically; a completed run does

@@ -251,6 +251,10 @@ export interface PluginServiceCatalog {
     readonly nextCursor?: string;
   }>;
   get(id: string): Promise<PluginServiceSummary | null>;
+  /** Declared signals available for a visible service, without opening its connection. */
+  signals?(
+    id: string,
+  ): Promise<readonly { id: string; type: SignalType }[] | null>;
   /**
    * Asks the host to probe a service connection and report its health.
    *
