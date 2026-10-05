@@ -17,29 +17,70 @@ export function RepositoryForm({
   providers: z.infer<typeof overviewSchema>["providers"];
   done: () => void;
 }) {
-  const [value, setValue] = React.useState<ConnectionInput>(
-    () =>
-      item ?? {
-        serviceId,
-        name: "",
-        provider: "github",
-        repository: "",
-        instance: providers.gitlab[0]?.id ?? "gitlab",
-        branch: "",
-        folder: "",
-        instructions: "",
-        refreshMinutes: 15,
-      },
+  const [value, setValue] = React.useState<ConnectionInput>(() =>
+    item
+      ? { ...item, name: "" }
+      : {
+          serviceId,
+          name: "",
+          provider: "github",
+          repository: "",
+          instance: providers.gitlab[0]?.id ?? "gitlab",
+          branch: "",
+          folder: "",
+          instructions: "",
+          refreshMinutes: 15,
+        },
   );
   const fieldId = React.useId();
   const [branchNames, setBranchNames] = React.useState<string[]>([]);
   const [folderNames, setFolderNames] = React.useState<string[]>([]);
+  const [checked, setChecked] = React.useState<{
+    key: string;
+    files: number;
+    bytes: number;
+  }>();
+  const [checking, setChecking] = React.useState(false);
+  const sourceKey = JSON.stringify([
+    value.provider,
+    value.instance,
+    value.repository,
+    value.branch,
+    value.folder,
+  ]);
+  const verified = checked?.key === sourceKey;
+  const check = async () => {
+    setBusy(true);
+    setChecking(true);
+    setError(undefined);
+    setChecked(undefined);
+    try {
+      const result = z
+        .object({ files: z.number(), bytes: z.number() })
+        .parse(await action(client, "check", value));
+      setChecked({ key: sourceKey, ...result });
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Could not check connection",
+      );
+    } finally {
+      setBusy(false);
+      setChecking(false);
+    }
+  };
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string>();
   const change = <K extends keyof ConnectionInput>(
     key: K,
     next: ConnectionInput[K],
-  ) => setValue((previous) => ({ ...previous, [key]: next }));
+  ) => {
+    setValue((previous) => ({ ...previous, [key]: next }));
+    setError(undefined);
+    if (
+      ["provider", "instance", "repository", "branch", "folder"].includes(key)
+    )
+      setChecked(undefined);
+  };
   const loadBranches = async () => {
     setBusy(true);
     setError(undefined);
@@ -72,6 +113,10 @@ export function RepositoryForm({
   };
   const save = async (event: ReactTypes.FormEvent) => {
     event.preventDefault();
+    if (!verified) {
+      await check();
+      return;
+    }
     setBusy(true);
     setError(undefined);
     try {
@@ -133,15 +178,6 @@ export function RepositoryForm({
             ))}
         </div>
         <div className="cr-fields">
-          <label>
-            Name
-            <input
-              required
-              placeholder="e.g. Backend API"
-              value={value.name}
-              onChange={(event) => change("name", event.target.value)}
-            />
-          </label>
           {value.provider === "gitlab" && (
             <label>
               GitLab instance
@@ -271,6 +307,19 @@ export function RepositoryForm({
           Set to 0 for manual refresh. Failed fetches keep the last saved code.
         </p>
       </fieldset>
+      {verified && checked && (
+        <div className="cr-check-result" role="status">
+          <strong>✓ Connection verified</strong>
+          <p>
+            Source and selected folder are readable ·{" "}
+            {checked.files.toLocaleString()} files ·{" "}
+            {(checked.bytes / 1024).toLocaleString(undefined, {
+              maximumFractionDigits: 1,
+            })}{" "}
+            KB
+          </p>
+        </div>
+      )}
       {error && (
         <p role="alert" className="cr-error">
           {error}
@@ -278,8 +327,19 @@ export function RepositoryForm({
       )}
       <div className="cr-form-actions">
         <button className="cr-primary" type="submit" disabled={busy}>
-          {busy ? "Working…" : "Save and fetch"}
+          {checking
+            ? "Checking connection…"
+            : busy
+              ? "Saving…"
+              : verified
+                ? "Save and fetch"
+                : "Check connection"}
         </button>
+        {verified && (
+          <button type="button" disabled={busy} onClick={() => void check()}>
+            Check again
+          </button>
+        )}
         <button type="button" disabled={busy} onClick={done}>
           Cancel
         </button>
