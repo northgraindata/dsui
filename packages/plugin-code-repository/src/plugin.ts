@@ -5,8 +5,6 @@ import {
   definePage,
   definePlugin,
   defineResource,
-  defineSlot,
-  Link,
   PluginRequestError,
   type PluginServiceSummary,
   poll,
@@ -254,14 +252,6 @@ export function createCodeRepositoryPlugin() {
         pageId: "overview",
         order: 70,
       });
-      registry.slot(
-        defineSlot<Context, PluginServiceSummary>({
-          id: "service-code",
-          slot: "service.workspace.after-header",
-          render: ({ service }) =>
-            Link({ label: "Code repositories", href: route(service.id) }),
-        }),
-      );
       registry.procedure({
         id: "branches",
         permission: "manage",
