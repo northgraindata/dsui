@@ -10,7 +10,7 @@ import {
   useResource,
 } from "./shared";
 import { styles } from "./styles";
-export function RepositoryScreen({ node, client }: Props) {
+export function RepositoryScreen({ node, client, renderNode }: Props) {
   const params = screenProps.parse(node.props).props;
   const [refresh, setRefresh] = React.useState(0);
   const overview = useResource(
@@ -29,6 +29,7 @@ export function RepositoryScreen({ node, client }: Props) {
         <Explorer
           key={`${params.connectionId}/${params.path}`}
           client={client}
+          renderNode={renderNode}
           serviceId={params.serviceId}
           connectionId={params.connectionId}
           path={params.path ?? ""}

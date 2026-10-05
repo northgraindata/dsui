@@ -256,3 +256,10 @@ export {
   type StoreStatus,
 } from "./store/index";
 export { z };
+
+export { CodeExplorer } from "./components/primitives/code-explorer";
+export type {
+  CodeExplorerProps,
+  CodeExplorerFile,
+  CodeExplorerContent,
+} from "./components/primitives/code-explorer";

@@ -25,3 +25,5 @@ export { Table } from "./table";
 export { default as Tabs } from "./tabs";
 export { TextInput } from "./text-input";
 export { Value } from "./value";
+
+export { default as CodeExplorer } from "./code-explorer";

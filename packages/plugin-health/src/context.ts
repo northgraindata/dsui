@@ -42,6 +42,7 @@ export const serviceSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   adapter: z.string(),
+  iconUrl: z.string().optional(),
   managedBy: z.enum(["configuration", "ui"]),
 });
 export type ServiceSummary = z.infer<typeof serviceSummarySchema>;
