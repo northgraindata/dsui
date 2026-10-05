@@ -1,7 +1,8 @@
-import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
+import type { PageNode, SignalType } from "@northgraindata/dsui-adapter-sdk";
 import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
 import { z } from "zod";
 
+export { PluginRequestError } from "./shared/errors";
 // Re-exported so a plugin writes `import { z } from "@northgraindata/dsui-plugin-sdk"`
 // exactly as an adapter does, rather than taking a second dependency on zod.
 export { z };
@@ -16,6 +17,7 @@ import {
   type PluginPageDefinition,
   type PluginResourceReader,
   queryResource,
+  resolvePluginPage,
 } from "./page";
 import type { RefreshStrategy } from "./refresh";
 import type {
@@ -129,6 +131,7 @@ export type PluginPage = {
   readonly id: string;
   readonly title: string;
   readonly description?: string;
+  readonly path?: string;
   /**
    * Serves this page without a principal.
    *
@@ -195,6 +198,7 @@ export type PluginServiceSummary = {
   readonly name: string;
   readonly adapter: string;
   readonly managedBy: "configuration" | "ui";
+  readonly iconUrl?: string;
 };
 
 export type PluginServiceHealth =
@@ -434,6 +438,7 @@ export interface PluginRegisteredPage {
 }
 
 export interface PluginRegistry<TConfig = unknown> {
+  signal(definition: PluginSignalDefinition): void;
   /** Binds a `definePage` declaration to a host route. */
   page(
     page: AnyPluginPage,
@@ -467,7 +472,34 @@ export interface PluginRegistry<TConfig = unknown> {
   authorization(provider: PluginAuthorizationProvider): void;
 }
 
-export interface PluginContext<TConfig = unknown> {
+export interface PluginCapabilities {
+  readonly access: {
+    require(serviceId: string, permission: PluginPermission): Promise<void>;
+  };
+  readonly jobs: {
+    enqueue(jobId: string, input: unknown): Promise<{ runId: string }>;
+  };
+  readonly events: {
+    emit(
+      signalId: string,
+      payload: unknown,
+      serviceId?: string,
+      type?: SignalType,
+    ): Promise<void>;
+  };
+}
+
+export type PluginSignalDefinition = {
+  id: string;
+  payload: z.ZodTypeAny;
+  type?: SignalType;
+};
+
+function unavailableCapability(): never {
+  throw new Error("Plugin host capability is unavailable");
+}
+
+export interface PluginContext<TConfig = unknown> extends PluginCapabilities {
   readonly pluginId: string;
   readonly config: Readonly<TConfig>;
   readonly services: PluginServiceCatalog;
@@ -557,7 +589,8 @@ export interface RuntimePluginDefinition {
     host: Pick<
       PluginContext<unknown>,
       "services" | "storage" | "stores" | "logger"
-    >,
+    > &
+      Partial<PluginCapabilities>,
   ) => PreparedPlugin;
   readonly stop?: () => Promise<void> | void;
 }
@@ -570,6 +603,7 @@ export function definePlugin<TConfig>(
     ...definition,
     prepare(rawConfig, host) {
       const config = definition.configSchema.parse(rawConfig);
+      const signals = new Map<string, PluginSignalDefinition>();
       const context: PluginContext<TConfig> = {
         pluginId: definition.metadata.id,
         config,
@@ -583,10 +617,35 @@ export function definePlugin<TConfig>(
           create: (definition) => host.stores.create(definition),
         },
         logger: host.logger,
+        access: host.access ?? { require: async () => unavailableCapability() },
+        jobs: host.jobs ?? { enqueue: async () => unavailableCapability() },
+        events: {
+          emit: async (id, payload, serviceId) => {
+            const signal = signals.get(id);
+            if (!signal) throw new Error(`Undeclared plugin signal "${id}"`);
+            if (!host.events) unavailableCapability();
+            await host.events.emit(
+              id,
+              signal.payload.parse(payload),
+              serviceId,
+              signal.type ?? "info",
+            );
+          },
+        },
       };
       return {
         setup(runtimeRegistry) {
           const registry: PluginRegistry<TConfig> = {
+            signal: (signal) => {
+              if (
+                !/^[a-z][a-z0-9-]*$/.test(signal.id) ||
+                signals.has(signal.id)
+              )
+                throw new InvalidDefinitionError(
+                  "Invalid or duplicate plugin signal",
+                );
+              signals.set(signal.id, signal);
+            },
             page: (page, presentation) => {
               if (presentation.public && !definition.metadata.security)
                 throw new InvalidDefinitionError(
@@ -594,6 +653,7 @@ export function definePlugin<TConfig>(
                 );
               runtimeRegistry.page({
                 id: presentation.id,
+                path: page.path,
                 title: presentation.title,
                 ...(presentation.description
                   ? { description: presentation.description }
@@ -661,6 +721,9 @@ export function definePlugin<TConfig>(
                       services: context.services,
                       storage: context.storage,
                       stores: context.stores,
+                      access: context.access,
+                      jobs: context.jobs,
+                      events: context.events,
                       signal: runContext.signal,
                       logger: {
                         info: runContext.logger.info,
@@ -752,4 +815,5 @@ export {
   type PluginPageContext,
   type PluginResourceReader,
   queryResource,
+  resolvePluginPage,
 };

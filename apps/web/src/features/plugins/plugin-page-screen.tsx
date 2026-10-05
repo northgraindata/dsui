@@ -1,9 +1,10 @@
-import type {
-  PageDocument,
-  PluginCatalog,
+import {
+  type PageDocument,
+  type PluginCatalog,
+  resolvePluginPage,
 } from "@northgraindata/dsui-plugin-sdk";
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { currentPrincipal, getPluginCatalog, getPluginPage } from "../../api";
 import {
@@ -11,16 +12,15 @@ import {
   pageClass,
   UnavailableState,
 } from "../../components/page";
+import { HealthPage } from "./health-page";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
-import { HealthPage } from "./health-page";
 
 export function PluginPageScreen() {
   const navigate = useNavigate();
   const { pluginId } = useParams({ from: "/plugins/$pluginId/$" });
-  const pageId = useParams({
-    from: "/plugins/$pluginId/$",
-    select: (params) => params._splat,
+  const pageId = useLocation({
+    select: (location) => location.pathname.split("/").slice(3).join("/"),
   });
   const [page, setPage] = useState<PluginCatalog["pages"][number]>();
   const [document, setDocument] = useState<PageDocument>();
@@ -34,9 +34,9 @@ export function PluginPageScreen() {
     getPluginCatalog()
       .then(async (catalog) => {
         if (!active) return;
-        const found = catalog.pages.find(
-          (candidate) =>
-            candidate.pluginId === pluginId && candidate.id === pageId,
+        const found = resolvePluginPage(
+          catalog.pages.filter((candidate) => candidate.pluginId === pluginId),
+          pageId,
         );
         if (!found) {
           const principal = await currentPrincipal().catch(() => undefined);
@@ -44,7 +44,7 @@ export function PluginPageScreen() {
             (candidate) => candidate.public && candidate.shell === "bare",
           );
           if (!principal && signInPage) {
-            navigate({
+            await navigate({
               to: "/plugins/$pluginId/$",
               params: {
                 pluginId: signInPage.pluginId,
@@ -58,7 +58,7 @@ export function PluginPageScreen() {
         }
         setPage(found);
         if (pluginId === "health" && found.id === "overview") return;
-        const pageDocument = await getPluginPage(pluginId, found.id);
+        const pageDocument = await getPluginPage(pluginId, pageId ?? found.id);
         if (!active) return;
         setDocument(pageDocument);
       })
@@ -73,7 +73,7 @@ export function PluginPageScreen() {
     return () => {
       active = false;
     };
-  }, [pageId, pluginId]);
+  }, [pageId, pluginId, navigate]);
 
   if (error)
     return (
@@ -115,11 +115,7 @@ export function PluginPageScreen() {
           nodes={document.nodes}
           client={pluginRendererClient(pluginId, (path) =>
             navigate({
-              to: "/plugins/$pluginId/$",
-              params: {
-                pluginId,
-                _splat: path.replace(/^\/+/, ""),
-              },
+              href: `/plugins/${encodeURIComponent(pluginId)}/${path.replace(/^\/+/, "")}`,
             }),
           )}
         />
@@ -134,11 +130,7 @@ export function PluginPageScreen() {
           nodes={document.nodes}
           client={pluginRendererClient(pluginId, (path) =>
             navigate({
-              to: "/plugins/$pluginId/$",
-              params: {
-                pluginId,
-                _splat: path.replace(/^\/+/, ""),
-              },
+              href: `/plugins/${encodeURIComponent(pluginId)}/${path.replace(/^\/+/, "")}`,
             }),
           )}
         />

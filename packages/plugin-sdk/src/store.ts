@@ -135,6 +135,8 @@ export function defineStore<
  * anything about them.
  */
 export interface PluginStorage {
+  /** Returns the private directory owned by this plugin. */
+  directory?(): string;
   /**
    * Opens `<pluginDir>/<name>.sqlite`, creating it and its directory if
    * needed, and returns a handle the caller owns.

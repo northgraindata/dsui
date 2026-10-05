@@ -47,3 +47,14 @@ export class InvalidDefinitionError extends SdkError {
     this.name = "InvalidDefinitionError";
   }
 }
+
+/** A safe message and HTTP status for plugin callers. Jobs treat this as a permanent failure. */
+export class PluginRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: 400 | 403 | 404 | 409 | 422 = 400,
+  ) {
+    super(message);
+    this.name = "PluginRequestError";
+  }
+}

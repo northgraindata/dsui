@@ -285,51 +285,72 @@ export class JobQueue {
     maxAttempts: number;
     idempotencyKey?: string;
     scheduledFor?: Date;
+    coalesce?: boolean;
   }): { run: JobRunRow; created: boolean } {
-    const stamp = this.stamp();
-    const requestHash = hashRequest(request.input);
-    if (request.idempotencyKey) {
-      const existing = this.db
-        .query(
-          `SELECT ${RUN_COLUMNS} FROM plugin_job_runs
-            WHERE plugin_id = ? AND job_id = ? AND idempotency_key = ?`,
-        )
-        .get(request.pluginId, request.jobId, request.idempotencyKey) as
-        | Record<string, unknown>
-        | undefined;
-      if (existing) {
-        const run = toRun(existing);
-        if (run.requestHash !== requestHash) {
-          throw new Error(
-            `Idempotency key "${request.idempotencyKey}" was already used for a different payload`,
-          );
+    return this.db
+      .transaction(() => {
+        const stamp = this.stamp();
+        const requestHash = hashRequest(request.input);
+        if (request.coalesce) {
+          const existing = this.db
+            .query(
+              `SELECT ${RUN_COLUMNS} FROM plugin_job_runs WHERE plugin_id = ? AND job_id = ? AND input_json = ? AND status IN ('queued', 'running') LIMIT 1`,
+            )
+            .get(
+              request.pluginId,
+              request.jobId,
+              JSON.stringify(request.input ?? null),
+            );
+          if (existing)
+            return {
+              run: toRun(existing as Record<string, unknown>),
+              created: false,
+            };
         }
-        return { run, created: false };
-      }
-    }
-    const runId = randomUUID();
-    this.db
-      .query(
-        `INSERT INTO plugin_job_runs
+        if (request.idempotencyKey) {
+          const existing = this.db
+            .query(
+              `SELECT ${RUN_COLUMNS} FROM plugin_job_runs
+            WHERE plugin_id = ? AND job_id = ? AND idempotency_key = ?`,
+            )
+            .get(request.pluginId, request.jobId, request.idempotencyKey) as
+            | Record<string, unknown>
+            | undefined;
+          if (existing) {
+            const run = toRun(existing);
+            if (run.requestHash !== requestHash) {
+              throw new Error(
+                `Idempotency key "${request.idempotencyKey}" was already used for a different payload`,
+              );
+            }
+            return { run, created: false };
+          }
+        }
+        const runId = randomUUID();
+        this.db
+          .query(
+            `INSERT INTO plugin_job_runs
            (run_id, job_id, plugin_id, status, input_json, attempt_count,
             max_attempts, idempotency_key, request_hash, scheduled_for,
             enqueued_at, updated_at)
          VALUES (?, ?, ?, 'queued', ?, 0, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        runId,
-        request.jobId,
-        request.pluginId,
-        JSON.stringify(request.input ?? null),
-        request.maxAttempts,
-        request.idempotencyKey ?? null,
-        requestHash,
-        request.scheduledFor?.toISOString() ?? null,
-        stamp,
-        stamp,
-      );
-    const created = this.getRun(runId)!;
-    return { run: created, created: true };
+          )
+          .run(
+            runId,
+            request.jobId,
+            request.pluginId,
+            JSON.stringify(request.input ?? null),
+            request.maxAttempts,
+            request.idempotencyKey ?? null,
+            requestHash,
+            request.scheduledFor?.toISOString() ?? null,
+            stamp,
+            stamp,
+          );
+        const created = this.getRun(runId)!;
+        return { run: created, created: true };
+      })
+      .immediate();
   }
 
   getRun(runId: string): JobRunRow | null {

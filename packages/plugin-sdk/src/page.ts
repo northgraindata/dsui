@@ -14,14 +14,16 @@ type ExtractParams<Path extends string> = string extends Path
     // path below is checked precisely, so a page read with a param its path
     // never declares is still a compile error.
     Record<string, string>
-  : Path extends `${string}:${infer Rest}`
-    ? Rest extends `${infer Name}/${infer Tail}`
-      ? (Name extends "" ? Record<string, never> : { [K in Name]: string }) &
-          ExtractParams<`/${Tail}`>
-      : Rest extends ""
-        ? Record<string, never>
-        : { [K in Rest]: string }
-    : Record<string, never>;
+  : Path extends `${infer Prefix}/*${infer Name}`
+    ? ExtractParams<Prefix> & { [K in Name]: string }
+    : Path extends `${string}:${infer Rest}`
+      ? Rest extends `${infer Name}/${infer Tail}`
+        ? (Name extends "" ? Record<string, never> : { [K in Name]: string }) &
+            ExtractParams<`/${Tail}`>
+        : Rest extends ""
+          ? Record<string, never>
+          : { [K in Rest]: string }
+      : Record<string, never>;
 
 /**
  * Route params inferred from a page path.
@@ -200,11 +202,25 @@ export function matchRoute(
   const pathSegments = path.split("/").filter((s) => s.length > 0);
   const urlWithoutQuery = url.split(/[?#]/, 1)[0] ?? url;
   const urlSegments = urlWithoutQuery.split("/").filter((s) => s.length > 0);
-  if (pathSegments.length !== urlSegments.length) return null;
+  const wildcard = pathSegments.at(-1)?.startsWith("*");
+  if (
+    wildcard
+      ? urlSegments.length < pathSegments.length - 1
+      : pathSegments.length !== urlSegments.length
+  )
+    return null;
   const params: Record<string, string> = {};
   for (let i = 0; i < pathSegments.length; i++) {
     const pattern = pathSegments[i];
     const actual = urlSegments[i];
+    if (pattern.startsWith("*")) {
+      if (i !== pathSegments.length - 1 || pattern.length < 2) return null;
+      params[pattern.slice(1)] = urlSegments
+        .slice(i)
+        .map(decodeURIComponent)
+        .join("/");
+      return params;
+    }
     if (pattern.startsWith(":")) {
       const name = pattern.slice(1);
       if (!name || actual.length === 0) return null;
@@ -212,4 +228,30 @@ export function matchRoute(
     } else if (pattern !== actual) return null;
   }
   return params;
+}
+
+/** Resolves legacy IDs and declared routes using the same precedence in host and browser. */
+export function resolvePluginPage<T extends { id: string; path?: string }>(
+  pages: readonly T[],
+  requested: string,
+): T | undefined {
+  const exact = pages.find(
+    (page) => page.id === requested || page.path === `/${requested}`,
+  );
+  if (exact) return exact;
+  const score = (path: string) =>
+    path
+      .split("/")
+      .filter(Boolean)
+      .reduce(
+        (total, segment) =>
+          total +
+          (segment.startsWith("*") ? 0 : segment.startsWith(":") ? 1 : 2),
+        0,
+      );
+  return [...pages]
+    .sort((a, b) => score(b.path ?? "") - score(a.path ?? ""))
+    .find(
+      (page) => page.path && matchRoute(page.path, `/${requested}`) !== null,
+    );
 }

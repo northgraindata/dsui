@@ -16,6 +16,8 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
   cp examples/example-plugin/src/browser.mjs /out/runtime/plugins/example-plugin.browser.mjs && \
   bun build packages/plugin-health/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/health.mjs && \
   bun build packages/plugin-monitoring/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/monitoring.mjs && \
+  bun build packages/plugin-code-repository/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/code-repository.mjs && \
+  bun build packages/plugin-code-repository/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/code-repository.browser.mjs && \
   bun run packages/server/src/adapters/sdk.ts packages /out/sdk "${DSUI_VERSION}"
 
 FROM gcr.io/distroless/cc-debian12:nonroot

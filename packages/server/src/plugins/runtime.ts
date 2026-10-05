@@ -4,14 +4,17 @@ import { createRequire } from "node:module";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  matchRoute,
   type PageDocument,
   PLUGIN_API_VERSION,
   type PluginAuthenticationProvider,
   type PluginAuthorizationProvider,
+  type PluginCapabilities,
   type PluginCatalog,
   type PluginNavigationItem,
   type PluginPermission,
   type PluginPrincipal,
+  PluginRequestError,
   type PluginResource,
   type PluginServiceCatalog,
   type PluginServiceSummary,
@@ -24,6 +27,7 @@ import {
   type RuntimePluginProcedure,
   type RuntimePluginResource,
   type RuntimePluginSlot,
+  resolvePluginPage,
 } from "@northgraindata/dsui-plugin-sdk";
 import { resolveSdkRoot } from "../adapters/sdk.js";
 import { allowed } from "../auth.js";
@@ -99,6 +103,7 @@ export type PluginHostCapabilities = {
   storage(pluginId: string): PluginStorageHandle;
   /** Typed JSON state, namespaced to the plugin. */
   stores(pluginId: string): PluginStores;
+  capabilities?(pluginId: string): Pick<PluginCapabilities, "jobs" | "events">;
 };
 
 function resolveInstalledBundle(specifier: string): string {
@@ -128,7 +133,9 @@ function bundledPluginPath(specifier: string): string | undefined {
     root,
     `${match[1]}-plugin${match[2] ? ".browser" : ""}.mjs`,
   );
-  return existsSync(path) ? path : undefined;
+  if (existsSync(path)) return path;
+  const legacyPath = join(root, `${match[1]}${match[2] ? ".browser" : ""}.mjs`);
+  return existsSync(legacyPath) ? legacyPath : undefined;
 }
 
 const requireFromWorkingDirectory = createRequire(
@@ -305,6 +312,7 @@ export class PluginRuntime {
   private readonly pluginStorage = new Map<string, PluginStorageHandle>();
   private stopped = false;
   private securityFailure = false;
+  private readonly backgroundContext = new AsyncLocalStorage<boolean>();
   private readonly principalContext = new AsyncLocalStorage<PluginPrincipal>();
   private authenticationProvider?: PluginAuthenticationProvider;
   private authorizationProvider?: PluginAuthorizationProvider;
@@ -426,6 +434,24 @@ export class PluginRuntime {
           storage,
           stores: this.host.stores(id),
           logger: pluginLogger(id),
+          ...this.host.capabilities?.(id),
+          access: {
+            require: async (serviceId, permission) => {
+              if (this.backgroundContext.getStore()) return;
+              const principal = this.principalContext.getStore();
+              if (
+                !principal ||
+                !(await this.authorize(principal, permission, {
+                  type: "service",
+                  id: serviceId,
+                }))
+              )
+                throw new PluginRequestError(
+                  "Insufficient service permission",
+                  403,
+                );
+            },
+          },
         });
         const browserPath =
           built?.browserBundlePath ??
@@ -520,7 +546,18 @@ export class PluginRuntime {
           contributions.resources.push(resource);
         },
         job: (job: RuntimePluginJob) => {
-          uniqueId(contributions.jobs, job, "job", request.id);
+          uniqueId(
+            contributions.jobs,
+            {
+              ...job,
+              invoke: (input, context) =>
+                this.backgroundContext.run(true, () =>
+                  job.invoke(input, context),
+                ),
+            },
+            "job",
+            request.id,
+          );
           // An unparseable schedule is rejected here rather than silently never
           // firing: a job that looks scheduled and never runs is worse than a
           // startup error naming the expression.
@@ -737,8 +774,9 @@ export class PluginRuntime {
     for (const [pluginId, items] of this.contributions) {
       pages.push(
         ...items.pages.map(
-          ({ id, title, description, public: isPublic, shell }) => ({
+          ({ id, path, title, description, public: isPublic, shell }) => ({
             id,
+            ...(path ? { path } : {}),
             title,
             ...(description ? { description } : {}),
             ...(isPublic ? { public: true } : {}),
@@ -779,13 +817,18 @@ export class PluginRuntime {
     pageId: string,
     params: Record<string, string> = {},
   ): Promise<PageDocument | null> {
-    const page = this.contributions
-      .get(pluginId)
-      ?.pages.find((candidate) => candidate.id === pageId);
+    const candidates = this.contributions.get(pluginId)?.pages ?? [];
+    const page = resolvePluginPage(candidates, pageId);
     if (!page || !this.active.has(pluginId)) return null;
     return {
       path: `/${pageId}`,
-      nodes: this.attachBrowserUrl(pluginId, await page.render(params)),
+      nodes: this.attachBrowserUrl(
+        pluginId,
+        await page.render({
+          ...params,
+          ...(page.path ? (matchRoute(page.path, `/${pageId}`) ?? {}) : {}),
+        }),
+      ),
     };
   }
 
@@ -937,15 +980,10 @@ export class PluginRuntime {
   }
 
   private isPublicPagePath(pathname: string): boolean {
-    for (const [pluginId, contributions] of this.contributions)
-      for (const page of contributions.pages)
-        if (
-          page.public &&
-          pathname ===
-            `/api/v1/plugins/${encodeURIComponent(pluginId)}/pages/${page.id}`
-        )
-          return true;
-    return false;
+    const match =
+      /^\/api\/v1\/plugins\/([a-z][a-z0-9-]*)\/pages\/([^/]+)$/.exec(pathname);
+    if (!match) return false;
+    return this.pageIsPublic(match[1], decodeURIComponent(match[2]));
   }
 
   /**
@@ -957,7 +995,7 @@ export class PluginRuntime {
   pageIsPublic(pluginId: string, pageId: string): boolean {
     if (this.securityFailure) return false;
     return Boolean(
-      this.contributions.get(pluginId)?.pages.find((page) => page.id === pageId)
+      resolvePluginPage(this.contributions.get(pluginId)?.pages ?? [], pageId)
         ?.public,
     );
   }
@@ -1011,6 +1049,7 @@ export class PluginRuntime {
   async canAccessService(id: string): Promise<boolean> {
     const principal = this.principalContext.getStore();
     if (!principal) {
+      if (this.backgroundContext.getStore()) return true;
       if (this.authorizationProvider)
         throw new Error("Plugin service access requires a principal");
       return true;

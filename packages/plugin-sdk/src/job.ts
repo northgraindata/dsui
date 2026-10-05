@@ -13,6 +13,7 @@
  */
 import type { z } from "zod";
 import type {
+  PluginCapabilities,
   PluginServiceCatalog,
   PluginStorage,
   PluginStores,
@@ -35,7 +36,7 @@ export interface JobRetry {
 }
 
 /** What a job is given when it runs. */
-export interface JobContext {
+export interface JobContext extends PluginCapabilities {
   /** The plugin's id, for logs and for namespacing anything it writes. */
   readonly pluginId: string;
   readonly config: Readonly<unknown>;
