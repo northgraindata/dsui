@@ -177,21 +177,41 @@ function assertHealthStatus(value: unknown, from: string): HealthStatus {
   return assertHealthReport(value, 0);
 }
 
-class RemoteBackend implements AdapterBackend {
+type RemoteHostRequest = {
+  method: "describe" | "health" | "page" | "resource" | "action" | "job";
+  connection?: unknown;
+  target?: string;
+  input?: unknown;
+  persistenceNamespace?: string;
+  runId?: string;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+};
+
+type RemoteHost = {
+  request(request: RemoteHostRequest): Promise<unknown>;
+};
+
+export class RemoteBackend implements AdapterBackend {
+  #queue: Promise<void> = Promise.resolve();
+
   constructor(
-    private readonly host: {
-      request(request: {
-        method: "describe" | "health" | "page" | "resource" | "action" | "job";
-        connection?: unknown;
-        target?: string;
-        input?: unknown;
-        persistenceNamespace?: string;
-        runId?: string;
-        signal?: AbortSignal;
-        timeoutMs?: number;
-      }): Promise<unknown>;
-    },
+    private readonly host: RemoteHost,
+    private readonly serializeRequests = false,
   ) {}
+
+  private request(request: RemoteHostRequest): Promise<unknown> {
+    if (!this.serializeRequests) return this.host.request(request);
+
+    const result = this.#queue.then(() => this.host.request(request));
+    // Keep the queue usable after a failed host request, while returning the
+    // original result to the caller that issued it.
+    this.#queue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
 
   validateConnection(connection: unknown): unknown {
     // Remote schemas live in the bundle; the host validates per call.
@@ -205,7 +225,7 @@ class RemoteBackend implements AdapterBackend {
     const started = Date.now();
     try {
       const status = assertHealthStatus(
-        await this.host.request({
+        await this.request({
           method: "health",
           connection,
           persistenceNamespace: context?.persistenceNamespace,
@@ -223,7 +243,7 @@ class RemoteBackend implements AdapterBackend {
     path: string,
     context?: AdapterExecutionContext,
   ): Promise<PageDocument> {
-    const result = await this.host.request({
+    const result = await this.request({
       method: "page",
       connection,
       input: { path },
@@ -241,7 +261,7 @@ class RemoteBackend implements AdapterBackend {
     context?: AdapterExecutionContext,
   ): Promise<{ data: unknown }> {
     try {
-      const result = (await this.host.request({
+      const result = (await this.request({
         method: "resource",
         connection,
         target: resourceId,
@@ -272,7 +292,7 @@ class RemoteBackend implements AdapterBackend {
       idempotencyKey?: string;
     }[];
   }> {
-    const result = (await this.host.request({
+    const result = (await this.request({
       method: "action",
       connection,
       target: actionId,
@@ -293,7 +313,8 @@ class RemoteBackend implements AdapterBackend {
     if (
       (actionResult.status !== "success" && actionResult.status !== "error") ||
       (actionResult.status === "success" && !("data" in actionResult)) ||
-      (actionResult.status === "error" && typeof actionResult.message !== "string")
+      (actionResult.status === "error" &&
+        typeof actionResult.message !== "string")
     )
       throw new AdapterExecutionError(
         "Adapter host returned an invalid action result",
@@ -338,7 +359,7 @@ class RemoteBackend implements AdapterBackend {
   ): Promise<
     readonly { signalId: string; payload: unknown; idempotencyKey?: string }[]
   > {
-    const result = await this.host.request({
+    const result = await this.request({
       method: "job",
       connection,
       target: jobId,
@@ -510,7 +531,7 @@ export async function loadAdapter(
       ? { connectionSchema: described.connectionSchema }
       : {}),
     ...(connectionMethods ? { connectionMethods } : {}),
-    backend: new RemoteBackend(host),
+    backend: new RemoteBackend(host, id === "duckdb"),
     ...(built.browserBundlePath
       ? { browserBundlePath: built.browserBundlePath }
       : {}),
