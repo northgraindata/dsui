@@ -12,6 +12,7 @@ import {
   poll,
   z,
 } from "@northgraindata/dsui-plugin-sdk";
+import { reconcileConfiguredConnections } from "./configured-connections";
 import {
   connection,
   connections,
@@ -205,6 +206,7 @@ export function createCodeRepositoryPlugin() {
       apiVersion: 1,
     },
     configSchema,
+    start: reconcileConfiguredConnections,
     setup(registry) {
       registry.signal({
         id: "updated",
@@ -387,6 +389,10 @@ export function createCodeRepositoryPlugin() {
                 "manage",
               )
             : null;
+          if (previous?.configKey)
+            throw new PluginRequestError(
+              "Edit this connection in the plugin configuration",
+            );
           const folder = safePath(input.folder);
           if (input.provider === "local")
             await localDirectory(context.config, { ...input, folder });
@@ -457,6 +463,10 @@ export function createCodeRepositoryPlugin() {
         input: locatorSchema,
         handler: async (context, input) => {
           const item = await requireConnection(context, input, "manage");
+          if (item.configKey)
+            throw new PluginRequestError(
+              "Remove this connection from the plugin configuration",
+            );
           deleteConnection(database(context), item.id);
           return { removed: true };
         },
@@ -517,8 +527,8 @@ export function createCodeRepositoryPlugin() {
             };
             for (const item of connections(database(ctx))) {
               if (
-                !ctx.config.refreshMinutes ||
-                (item.lastAttemptAt &&
+                item.lastAttemptAt &&
+                (!ctx.config.refreshMinutes ||
                   Date.now() - Date.parse(item.lastAttemptAt) <
                     ctx.config.refreshMinutes * 60000)
               )
