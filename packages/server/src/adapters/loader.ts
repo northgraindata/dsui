@@ -192,9 +192,9 @@ type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
 };
 
-export class RemoteBackend implements AdapterBackend {
-  #queue: Promise<void> = Promise.resolve();
+let duckdbHostQueue: Promise<void> = Promise.resolve();
 
+export class RemoteBackend implements AdapterBackend {
   constructor(
     private readonly host: RemoteHost,
     private readonly serializeRequests = false,
@@ -203,10 +203,10 @@ export class RemoteBackend implements AdapterBackend {
   private request(request: RemoteHostRequest): Promise<unknown> {
     if (!this.serializeRequests) return this.host.request(request);
 
-    const result = this.#queue.then(() => this.host.request(request));
+    const result = duckdbHostQueue.then(() => this.host.request(request));
     // Keep the queue usable after a failed host request, while returning the
     // original result to the caller that issued it.
-    this.#queue = result.then(
+    duckdbHostQueue = result.then(
       () => undefined,
       () => undefined,
     );
