@@ -45,6 +45,30 @@ export async function localDirectory(
     throw new PluginRequestError("Source is not a directory");
   return directory;
 }
+export async function localFolders(
+  config: Config,
+  repository: string,
+  signal: AbortSignal,
+) {
+  const root = await localDirectory(config, { repository, folder: "" });
+  const folders: string[] = [];
+  const walk = async (directory: string, prefix: string): Promise<void> => {
+    signal.throwIfAborted();
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory() || ignored.has(entry.name)) continue;
+      const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+      folders.push(path);
+      if (folders.length > config.maxFiles)
+        throw new PluginRequestError(
+          "Too many folders to list; enter a subfolder manually",
+        );
+      await walk(resolve(directory, entry.name), path);
+    }
+  };
+  await walk(root, "");
+  return folders.sort();
+}
+
 function remote(
   config: Config,
   item: Pick<Connection, "provider" | "instance" | "repository">,

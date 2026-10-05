@@ -34,7 +34,12 @@ import {
   route,
 } from "./model";
 import { safePath } from "./paths";
-import { branches, fetchSnapshot, localDirectory } from "./providers";
+import {
+  branches,
+  fetchSnapshot,
+  localDirectory,
+  localFolders,
+} from "./providers";
 
 async function requireService(
   context: Context,
@@ -292,6 +297,12 @@ export function createCodeRepositoryPlugin() {
           await requireService(context, input.serviceId, "manage");
           if (input.provider !== "local" && !input.branch)
             throw new PluginRequestError("Select a branch");
+          if (input.provider === "local")
+            return localFolders(
+              context.config,
+              input.repository,
+              AbortSignal.timeout(60000),
+            );
           const snapshot = await fetchSnapshot(
             context.config,
             {

@@ -86,4 +86,7 @@ export const styles = `
 .cr-form>.cr-error{margin:12px 24px!important}
 @media(max-width:640px){.cr-details{grid-template-columns:repeat(2,minmax(0,1fr))}.cr-fields{grid-template-columns:1fr}.cr-provider-options{grid-template-columns:1fr}.cr-settings-heading{align-items:flex-start}.cr-card-heading{flex-wrap:wrap}.cr-card-heading>.cr-status{margin-left:30px}.cr-form fieldset,.cr-form-heading{padding:18px}.cr-connection-footer{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.cr-screen button{transition:none}}
+
+.cr-folder-picker { display:flex; flex-direction:column; gap:4px; max-height:240px; overflow:auto; padding:8px; border:1px solid var(--color-border); border-radius:6px; background:var(--color-surface); }
+.cr-screen .cr-folder-picker button { text-align:left; font-family:monospace; flex-shrink:0; }
 `;

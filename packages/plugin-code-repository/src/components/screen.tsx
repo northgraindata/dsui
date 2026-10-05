@@ -29,7 +29,7 @@ export function RepositoryScreen({ node, client, renderNode }: Props) {
       <style>{styles}</style>
       {params.connectionId && params.serviceId ? (
         <Explorer
-          key={`${params.connectionId}/${params.path}`}
+          key={params.connectionId}
           client={client}
           renderNode={renderNode}
           serviceId={params.serviceId}

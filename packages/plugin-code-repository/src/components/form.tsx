@@ -34,6 +34,7 @@ export function RepositoryForm({
   const fieldId = React.useId();
   const [branchNames, setBranchNames] = React.useState<string[]>([]);
   const [folderNames, setFolderNames] = React.useState<string[]>([]);
+  const [foldersOpen, setFoldersOpen] = React.useState(false);
   const [checked, setChecked] = React.useState<{
     key: string;
     files: number;
@@ -75,6 +76,10 @@ export function RepositoryForm({
   ) => {
     setValue((previous) => ({ ...previous, [key]: next }));
     setError(undefined);
+    if (["provider", "instance", "repository", "branch"].includes(key)) {
+      setFolderNames([]);
+      setFoldersOpen(false);
+    }
     if (
       ["provider", "instance", "repository", "branch", "folder"].includes(key)
     )
@@ -102,6 +107,7 @@ export function RepositoryForm({
       setFolderNames(
         z.array(z.string()).parse(await action(client, "folders", value)),
       );
+      setFoldersOpen(true);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Could not list folders",
@@ -253,15 +259,9 @@ export function RepositoryForm({
             Subfolder (optional)
             <input
               value={value.folder}
-              list={`${fieldId}-folders`}
               placeholder="packages/backend"
               onChange={(event) => change("folder", event.target.value)}
             />
-            <datalist id={`${fieldId}-folders`}>
-              {folderNames.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
             <button
               type="button"
               disabled={
@@ -269,10 +269,39 @@ export function RepositoryForm({
                 !value.repository ||
                 (value.provider !== "local" && !value.branch)
               }
-              onClick={() => void loadFolders()}
+              aria-expanded={foldersOpen}
+              onClick={() =>
+                foldersOpen ? setFoldersOpen(false) : void loadFolders()
+              }
             >
-              Browse folders
+              Choose folder
             </button>
+            {foldersOpen && (
+              <div className="cr-folder-picker">
+                <button
+                  type="button"
+                  onClick={() => {
+                    change("folder", "");
+                    setFoldersOpen(false);
+                  }}
+                >
+                  Entire source
+                </button>
+                {folderNames.map((folder) => (
+                  <button
+                    type="button"
+                    key={folder}
+                    onClick={() => {
+                      change("folder", folder);
+                      setFoldersOpen(false);
+                    }}
+                  >
+                    {folder}/
+                  </button>
+                ))}
+                {folderNames.length === 0 && <p>No subfolders found.</p>}
+              </div>
+            )}
           </label>
         </div>
       </fieldset>
