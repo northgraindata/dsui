@@ -10,6 +10,7 @@ import {
 
 const storedSchema = connectionSchema.extend({
   id: z.string().uuid(),
+  configKey: z.string().optional(),
   revision: z.number(),
   status: z.enum(["idle", "queued", "syncing", "ready", "error"]),
   lastAttemptAt: z.string().nullable(),

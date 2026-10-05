@@ -12,6 +12,14 @@ plugins:
     package: "@northgraindata/dsui-plugin-code-repository"
     browserBundle: "@northgraindata/dsui-plugin-code-repository/browser"
     config:
+      connections:
+        - key: lakehouse-dbt
+          serviceId: dbt-core
+          provider: github
+          repository: northgraindata/lakehouse
+          branch: main
+          folder: dbt
+          instructions: "dbt models for this service."
       refreshMinutes: 15
       githubToken: "${GITHUB_TOKEN}"
       gitlab:
@@ -32,6 +40,20 @@ Tokens are optional for public repositories. GitHub tokens need read access to
 repository contents. For GitLab API browsing, use a token with `read_api` scoped
 to the required projects. Credentials stay in server configuration and are never
 included in connection records or browser responses.
+
+Declare connections in `config.connections` to configure code without using the UI.
+Each entry has a unique, stable `key`, a `serviceId`, `provider`, `repository`,
+and optional `folder` and `instructions`. Remote entries require `branch`;
+GitLab entries can select `instance`. For local sources, `repository` is the
+absolute host path and must be within `localRoots`.
+
+On startup, configured connections are reconciled and new or changed entries
+are fetched automatically on the next scheduler tick (within a minute), including
+when periodic refresh is disabled. Existing
+snapshots survive restarts; changing the source clears the old snapshot. Removing
+an entry removes its connection and snapshot. Keep the key stable when editing.
+These connections can be explored and refreshed in the UI; edit or remove them
+in YAML. UI-created connections remain independent.
 
 Open **Code repositories**, select a service, and connect code. Connection labels
 are derived from the repository and subfolder. **Check connection** reads a

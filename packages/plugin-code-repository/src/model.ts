@@ -1,7 +1,47 @@
 import type { PluginContext } from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
 
+export const connectionSchema = z.object({
+  id: z.string().uuid().optional(),
+  serviceId: z.string().min(1),
+  name: z.string().trim().max(120).default(""),
+  provider: z.enum(["github", "gitlab", "local"]),
+  instance: z.string().default("gitlab"),
+  repository: z.string().trim().min(1).max(2048),
+  branch: z.string().trim().max(256).default(""),
+  folder: z.string().max(2048).default(""),
+  instructions: z.string().max(50000).default(""),
+});
 export const configSchema = z.object({
+  connections: z
+    .array(
+      connectionSchema
+        .omit({ id: true })
+        .extend({
+          key: z.string().min(1).max(120),
+        })
+        .superRefine((item, context) => {
+          if (item.provider !== "local" && !item.branch)
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["branch"],
+              message: "Remote connections require a branch",
+            });
+        }),
+    )
+    .default([])
+    .superRefine((items, context) => {
+      const keys = new Set<string>();
+      items.forEach((item, index) => {
+        if (keys.has(item.key))
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "key"],
+            message: "Connection keys must be unique",
+          });
+        keys.add(item.key);
+      });
+    }),
   refreshMinutes: z.number().int().min(0).max(10080).default(15),
 
   githubToken: z.string().min(1).optional(),
@@ -25,20 +65,10 @@ export const configSchema = z.object({
 });
 export type Config = z.infer<typeof configSchema>;
 export type Context = PluginContext<Config>;
-export const connectionSchema = z.object({
-  id: z.string().uuid().optional(),
-  serviceId: z.string().min(1),
-  name: z.string().trim().max(120).default(""),
-  provider: z.enum(["github", "gitlab", "local"]),
-  instance: z.string().default("gitlab"),
-  repository: z.string().trim().min(1).max(2048),
-  branch: z.string().trim().max(256).default(""),
-  folder: z.string().max(2048).default(""),
-  instructions: z.string().max(50000).default(""),
-});
 export type ConnectionInput = z.infer<typeof connectionSchema>;
 export type Connection = ConnectionInput & {
   id: string;
+  configKey?: string;
   revision: number;
   status: "idle" | "queued" | "syncing" | "ready" | "error";
   lastAttemptAt: string | null;

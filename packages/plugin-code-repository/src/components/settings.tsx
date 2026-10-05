@@ -155,9 +155,15 @@ export function Settings({
               >
                 Explore files
               </button>
-              <button type="button" onClick={() => setEditing(item)}>
-                Settings
-              </button>
+              {item.configKey ? (
+                <span className="cr-field-help">
+                  Managed in plugin configuration
+                </span>
+              ) : (
+                <button type="button" onClick={() => setEditing(item)}>
+                  Settings
+                </button>
+              )}
               <button
                 type="button"
                 disabled={
@@ -169,14 +175,16 @@ export function Settings({
               >
                 Fetch now
               </button>
-              <button
-                className="cr-danger cr-remove"
-                type="button"
-                disabled={pending === item.id}
-                onClick={() => setDeleting(item.id)}
-              >
-                Remove
-              </button>
+              {!item.configKey && (
+                <button
+                  className="cr-danger cr-remove"
+                  type="button"
+                  disabled={pending === item.id}
+                  onClick={() => setDeleting(item.id)}
+                >
+                  Remove
+                </button>
+              )}
             </div>
             {deleting === item.id && (
               <div className="cr-confirm">
