@@ -1,3 +1,12 @@
+import type { PluginEventPage, PluginEventReadOptions } from "./events";
+
+export {
+  type PluginEventPage,
+  type PluginEventReadOptions,
+  type PluginSignalEvent,
+  signalEventSchema,
+} from "./events";
+
 import type { PageNode, SignalType } from "@northgraindata/dsui-adapter-sdk";
 import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
 import { z } from "zod";
@@ -61,8 +70,8 @@ export {
   Card,
   Chart,
   CodeBlock,
-  CodeExplorer,
   CodeEditor,
+  CodeExplorer,
   Collection,
   Columns,
   defineComponent,
@@ -475,12 +484,15 @@ export interface PluginRegistry<TConfig = unknown> {
 
 export interface PluginCapabilities {
   readonly access: {
+    requireAdmin?(): Promise<void>;
     require(serviceId: string, permission: PluginPermission): Promise<void>;
   };
   readonly jobs: {
     enqueue(jobId: string, input: unknown): Promise<{ runId: string }>;
   };
   readonly events: {
+    /** Read persisted signals in append order; cursor "latest" starts at the current tail. */
+    read?(options?: PluginEventReadOptions): Promise<PluginEventPage>;
     emit(
       signalId: string,
       payload: unknown,
@@ -621,6 +633,10 @@ export function definePlugin<TConfig>(
         access: host.access ?? { require: async () => unavailableCapability() },
         jobs: host.jobs ?? { enqueue: async () => unavailableCapability() },
         events: {
+          read: async (options) => {
+            if (!host.events?.read) unavailableCapability();
+            return host.events.read(options);
+          },
           emit: async (id, payload, serviceId) => {
             const signal = signals.get(id);
             if (!signal) throw new Error(`Undeclared plugin signal "${id}"`);

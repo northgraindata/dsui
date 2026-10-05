@@ -1,18 +1,10 @@
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import type { SignalType } from "@northgraindata/dsui-adapter-sdk";
+import type { PluginSignalEvent } from "@northgraindata/dsui-plugin-sdk";
 import type { DsuiDatabase } from "../db/database.js";
 
-export interface SignalEvent {
-  readonly id: string;
-  readonly signalId: string;
-  readonly type: SignalType;
-  readonly sourceType: string;
-  readonly sourceId: string;
-  readonly serviceId?: string;
-  readonly payload: unknown;
-  readonly occurredAt: string;
-}
+export type SignalEvent = PluginSignalEvent;
 
 export interface PublishSignalInput {
   readonly signalId: string;
@@ -149,6 +141,35 @@ export class SignalBus {
         )
         .all(...(values as never[])) as unknown as Record<string, unknown>[]
     ).map(toEvent);
+  }
+
+  /** A persisted sequence remains stable across compaction and timestamp ties. */
+  read(options: { cursor?: string; limit?: number } = {}) {
+    const limit = options.limit ?? 100;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500)
+      throw new Error("Event page size must be between 1 and 500");
+    if (options.cursor === "latest") {
+      const tail = this.db
+        .query<{ cursor: number }, []>(
+          "SELECT COALESCE(MAX(sequence), 0) AS cursor FROM event_sequence",
+        )
+        .get();
+      return { items: [], cursor: String(tail?.cursor ?? 0), hasMore: false };
+    }
+    const cursor = options.cursor ?? "0";
+    if (!/^\d+$/.test(cursor) || !Number.isSafeInteger(Number(cursor)))
+      throw new Error("Invalid event cursor");
+    const rows = this.db
+      .query<Record<string, unknown>, [number, number]>(
+        "SELECT s.sequence, e.* FROM event_sequence s JOIN events e ON e.id=s.event_id WHERE s.sequence > ? ORDER BY s.sequence LIMIT ?",
+      )
+      .all(Number(cursor), limit + 1);
+    const page = rows.slice(0, limit);
+    return {
+      items: page.map(toEvent),
+      cursor: page.length ? String(page.at(-1)?.sequence) : cursor,
+      hasMore: rows.length > limit,
+    };
   }
 
   subscribe(listener: (event: SignalEvent) => void): () => void {
