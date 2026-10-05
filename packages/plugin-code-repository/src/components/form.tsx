@@ -29,7 +29,6 @@ export function RepositoryForm({
           branch: "",
           folder: "",
           instructions: "",
-          refreshMinutes: 15,
         },
   );
   const fieldId = React.useId();
@@ -279,7 +278,7 @@ export function RepositoryForm({
       </fieldset>
       <fieldset disabled={busy}>
         <legend>
-          <span>03</span> Context & synchronization
+          <span>03</span> Code context
         </legend>
         <label>
           Instructions <span className="cr-optional">Optional</span>
@@ -290,22 +289,6 @@ export function RepositoryForm({
             onChange={(event) => change("instructions", event.target.value)}
           />
         </label>
-        <label>
-          Refresh interval <span className="cr-optional">Minutes</span>
-          <input
-            type="number"
-            min={0}
-            max={10080}
-            required
-            value={value.refreshMinutes}
-            onChange={(event) =>
-              change("refreshMinutes", Number(event.target.value))
-            }
-          />
-        </label>
-        <p className="cr-field-help">
-          Set to 0 for manual refresh. Failed fetches keep the last saved code.
-        </p>
       </fieldset>
       {verified && checked && (
         <div className="cr-check-result" role="status">

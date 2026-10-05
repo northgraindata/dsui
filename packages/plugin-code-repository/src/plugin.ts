@@ -138,6 +138,7 @@ export const overview = defineResource({
         ...service,
         connections: items.filter((item) => item.serviceId === service.id),
       })),
+      refreshMinutes: context.config.refreshMinutes,
       providers: {
         github: true,
         gitlab: context.config.gitlab.map(({ id, url }) => ({ id, url })),
@@ -287,7 +288,6 @@ export function createCodeRepositoryPlugin() {
           const input = connectionSchema.parse({
             ...rawInput,
             name: "Folder preview",
-            refreshMinutes: 0,
           });
           await requireService(context, input.serviceId, "manage");
           if (input.provider !== "local" && !input.branch)
@@ -506,10 +506,10 @@ export function createCodeRepositoryPlugin() {
             };
             for (const item of connections(database(ctx))) {
               if (
-                !item.refreshMinutes ||
+                !ctx.config.refreshMinutes ||
                 (item.lastAttemptAt &&
                   Date.now() - Date.parse(item.lastAttemptAt) <
-                    item.refreshMinutes * 60000)
+                    ctx.config.refreshMinutes * 60000)
               )
                 continue;
               await context.jobs.enqueue("sync", {

@@ -1,8 +1,7 @@
 # Code repositories
 
 Connect GitHub, GitLab, or a folder on the DSUI host to a service. Each service can
-have several connections, each with its own branch, subfolder, instructions, and
-refresh interval. Code is read only; projects are never installed or executed.
+have several connections, each with its own branch, subfolder and instructions. Code is read only; projects are never installed or executed.
 
 From this workspace, build the browser bundle with
 `bun run --filter @northgraindata/dsui-plugin-code-repository build`, then configure:
@@ -13,6 +12,7 @@ plugins:
     package: "@northgraindata/dsui-plugin-code-repository"
     browserBundle: "@northgraindata/dsui-plugin-code-repository/browser"
     config:
+      refreshMinutes: 15
       githubToken: "${GITHUB_TOKEN}"
       gitlab:
         - id: gitlab
@@ -43,8 +43,9 @@ not committed to Git. A local folder must be accessible to the DSUI process and
 inside a configured `localRoots` directory. Local roots are disabled by default.
 
 Snapshots are stored atomically in the plugin's private SQLite database. Fetches
-run through durable jobs. The default interval is 15 minutes; 0 disables automatic
-refresh. Failed fetches preserve the previous snapshot. Removed connections drop
+run through durable jobs. The plugin-wide interval is 15 minutes by default. Set `config.refreshMinutes`
+to change it for all connections; 0 disables automatic refresh. Per-connection
+intervals are not configurable. Failed fetches preserve the previous snapshot. Removed connections drop
 their saved files. Missing services retain connection records with an error and
 remain hidden from the overview until the service is restored.
 

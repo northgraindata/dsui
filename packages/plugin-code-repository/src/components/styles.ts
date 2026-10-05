@@ -68,10 +68,8 @@ export const styles = `
 .cr-form legend span{color:var(--color-muted);font:10px ui-monospace,monospace;margin-right:10px}
 .cr-fields{clear:both;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .cr-form label{display:block;font-size:11px;font-weight:500;color:var(--color-secondary);min-width:0}
-.cr-form input,.cr-form select,.cr-form input[type=number]{max-width:180px}
-.cr-form textarea{box-sizing:border-box;display:block;width:100%;margin-top:7px;background:var(--color-background);color:var(--color-primary);border:1px solid var(--color-border-strong);border-radius:5px;padding:9px 10px;font:inherit;font-size:12px;min-height:36px}
+.cr-form input,.cr-form select,.cr-form textarea{box-sizing:border-box;display:block;width:100%;margin-top:7px;background:var(--color-background);color:var(--color-primary);border:1px solid var(--color-border-strong);border-radius:5px;padding:9px 10px;font:inherit;font-size:12px;min-height:36px}
 .cr-form input::placeholder,.cr-form textarea::placeholder{color:var(--color-muted);opacity:.65}
-.cr-form input[type=number]{max-width:180px}
 .cr-form textarea{resize:vertical;line-height:1.6}
 .cr-form label+label{margin-top:16px}.cr-fields label+label{margin-top:0}
 .cr-form .cr-row{display:flex;gap:8px;align-items:center;margin-top:7px}
