@@ -28,6 +28,7 @@ export const duckdbConnectionMethods = {
   file: {
     label: "Local file",
     description: "A .duckdb file on the server's filesystem.",
+    requestConcurrency: "serial" as const,
     schema: z.object({
       path: z.string().min(1),
       readOnly: booleanish.default(false),

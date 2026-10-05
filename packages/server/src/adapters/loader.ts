@@ -192,25 +192,52 @@ type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
 };
 
-let duckdbHostQueue: Promise<void> = Promise.resolve();
+const serialRequestQueues = new Map<string, Promise<void>>();
+
+function queueSerialRequest(
+  key: string,
+  request: () => Promise<unknown>,
+): Promise<unknown> {
+  const result = (serialRequestQueues.get(key) ?? Promise.resolve()).then(
+    request,
+  );
+  const tail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  serialRequestQueues.set(key, tail);
+  void tail.then(() => {
+    if (serialRequestQueues.get(key) === tail) serialRequestQueues.delete(key);
+  });
+  return result;
+}
 
 export class RemoteBackend implements AdapterBackend {
   constructor(
     private readonly host: RemoteHost,
-    private readonly serializeRequests = false,
+    private readonly adapterId: string,
+    private readonly connectionMethods: readonly Pick<
+      LoadedConnectionMethod,
+      "id" | "requestConcurrency"
+    >[],
   ) {}
 
   private request(request: RemoteHostRequest): Promise<unknown> {
-    if (!this.serializeRequests) return this.host.request(request);
+    const connection = request.connection;
+    const methodId =
+      connection && typeof connection === "object" && "method" in connection
+        ? (connection as { method?: unknown }).method
+        : this.connectionMethods.length === 1
+          ? this.connectionMethods[0].id
+          : undefined;
+    if (typeof methodId !== "string") return this.host.request(request);
+    const method = this.connectionMethods.find(({ id }) => id === methodId);
+    if (!method || method.requestConcurrency !== "serial")
+      return this.host.request(request);
 
-    const result = duckdbHostQueue.then(() => this.host.request(request));
-    // Keep the queue usable after a failed host request, while returning the
-    // original result to the caller that issued it.
-    duckdbHostQueue = result.then(
-      () => undefined,
-      () => undefined,
+    return queueSerialRequest(`${this.adapterId}:${method.id}`, () =>
+      this.host.request(request),
     );
-    return result;
   }
 
   validateConnection(connection: unknown): unknown {
@@ -441,6 +468,8 @@ function toConnectionMethods(
       id: entry.id,
       label: entry.label,
       ...(entry.description ? { description: entry.description } : {}),
+      requestConcurrency:
+        entry.requestConcurrency === "serial" ? "serial" : "parallel",
       schema: entry.schema ?? {},
       ...(entry.group ? { group: { ...entry.group } } : {}),
     };
@@ -531,7 +560,7 @@ export async function loadAdapter(
       ? { connectionSchema: described.connectionSchema }
       : {}),
     ...(connectionMethods ? { connectionMethods } : {}),
-    backend: new RemoteBackend(host, id === "duckdb"),
+    backend: new RemoteBackend(host, id, connectionMethods ?? []),
     ...(built.browserBundlePath
       ? { browserBundlePath: built.browserBundlePath }
       : {}),

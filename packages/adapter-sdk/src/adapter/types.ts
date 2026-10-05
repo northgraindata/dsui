@@ -25,9 +25,9 @@ export const ADAPTER_SDK_VERSION = "0.2.0";
  * adapter definition.
  */
 export interface AdapterInfo {
-  /** Kebab-case id, e.g. `"snowflake"`. Doubles as the icon convention. */
+  /** Kebab-case id, e.g. `"warehouse"`. Doubles as the icon convention. */
   id: string;
-  /** Display name, e.g. `"Snowflake"`. */
+  /** Display name shown in the adapter catalog. */
   name: string;
   /** SemVer version of the adapter itself, e.g. `"1.0.0"`. */
   version: string;
@@ -43,9 +43,12 @@ export interface AdapterInfo {
   description?: string;
 }
 
+/** Scheduling policy for host calls made with one connection method. */
+export type ConnectionRequestConcurrency = "parallel" | "serial";
+
 /**
  * One named connection method. When an adapter declares several ways to
- * connect (e.g. DuckDB in-memory vs file vs remote), each method gets a
+ * connect (e.g. in-memory vs file vs remote), each method gets a
  * label and its own Zod schema for the fields the connection form shows
  * on that tab. The runtime validates against the selected method and tags
  * the parsed config with the `method` discriminator.
@@ -57,12 +60,14 @@ export interface ConnectionMethodDefinition {
   readonly label: string;
   /** One-line description shown under the tab. */
   readonly description?: string;
+  /** Defaults to `parallel`; `serial` queues requests for this method. */
+  readonly requestConcurrency: ConnectionRequestConcurrency;
   /** Zod object schema for this method's fields (excludes `method`). */
   readonly schema: z.ZodTypeAny;
   /**
-   * Presentational group, e.g. the `"remote"` tab holding `s3`, `gcs`,
-   * and `quack` as sub-tabs. Validation still discriminates on the leaf
-   * `id`; the group never appears in the parsed config.
+   * Presentational grouping for related methods. Validation still
+   * discriminates on the leaf `id`; the group never appears in the parsed
+   * config.
    */
   readonly group?: {
     readonly id: string;
@@ -75,8 +80,8 @@ export interface ConnectionMethodDefinition {
  * An adapter definition: the composition root binding identity, context,
  * stores, resources, actions, and pages for one supported system.
  *
- * One definition supports many isolated instances (e.g. `snowflake-prod`
- * and `snowflake-dev`); adapter code must never rely on global singletons.
+ * One definition supports many isolated instances (e.g. production and
+ * development); adapter code must never rely on global singletons.
  * Created by {@link defineAdapter}; never constructed by hand.
  */
 /**
@@ -103,8 +108,8 @@ export interface AdapterHealthCheck {
  *
  * The score is computed by the adapter from its own signals rather than being
  * a static constant, because only the adapter knows what a healthy value is
- * for the system it talks to. A host that assigned one threshold for every
- * service would misread both a local DuckDB file and a remote HTTP API.
+ * for the system it talks to. A host-wide threshold would misread both a
+ * local file and a remote HTTP API.
  */
 export interface AdapterHealthReport {
   readonly status: "healthy" | "warning" | "unavailable" | "unknown";
@@ -152,8 +157,8 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
    * reachability-only report rather than failing the service.
    *
    * Receives the built context, so an adapter with several connection
-   * methods can vary its checks per method (a local dbt project is a
-   * different health question than a dbt Cloud account).
+   * methods can vary its checks per method (a local project differs from a
+   * hosted account).
    */
   readonly health: (ctx: TContext) => Promise<AdapterHealthReport>;
   /** Round-trip time above which this service is degraded, when declared. */
@@ -189,13 +194,25 @@ export interface DefineAdapterOptions<TContext, TConfig> {
    */
   connectionMethods?: Record<
     string,
-    | { label: string; description?: string; schema: z.ZodTypeAny }
+    | {
+        label: string;
+        description?: string;
+        /** Defaults to `parallel`; `serial` queues requests for this method. */
+        requestConcurrency?: ConnectionRequestConcurrency;
+        schema: z.ZodTypeAny;
+      }
     | {
         label: string;
         description?: string;
         methods: Record<
           string,
-          { label: string; description?: string; schema: z.ZodTypeAny }
+          {
+            label: string;
+            description?: string;
+            /** Defaults to `parallel`; `serial` queues requests for this method. */
+            requestConcurrency?: ConnectionRequestConcurrency;
+            schema: z.ZodTypeAny;
+          }
         >;
       }
   >;
@@ -215,10 +232,10 @@ export interface DefineAdapterOptions<TContext, TConfig> {
   /**
    * Round-trip time above which this service is considered degraded.
    *
-   * A local DuckDB file legitimately answers in single-digit milliseconds,
-   * so a single host-wide threshold would report it as broken. Adapters
-   * declare what "slow" means for the system they integrate with; the host
-   * uses this only to explain a warning the adapter raised.
+   * A local file may answer in single-digit milliseconds, so a host-wide
+   * threshold could report it as degraded. Adapters declare what "slow"
+   * means for the system they integrate with; the host uses this to explain
+   * a warning the adapter raised.
    */
   latencyBudgetMs?: number;
   /** Store definitions used by this adapter. */

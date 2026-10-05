@@ -28,6 +28,7 @@ export type {
   AdapterHealthReport,
   AdapterInfo,
   ConnectionMethodDefinition,
+  ConnectionRequestConcurrency,
   DefineAdapterOptions,
 } from "./types";
 export { ADAPTER_SDK_VERSION } from "./types";

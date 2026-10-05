@@ -3,7 +3,7 @@ import { RemoteBackend } from "./loader.js";
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-test("DuckDB backend runs concurrent requests one at a time", async () => {
+test("serial connection methods queue calls across backend instances", async () => {
   let active = 0;
   let maxActive = 0;
   const started: (string | undefined)[] = [];
@@ -19,14 +19,15 @@ test("DuckDB backend runs concurrent requests one at a time", async () => {
           return { data: target };
         },
       },
-      true,
+      "test-adapter",
+      [{ id: "file", requestConcurrency: "serial" }],
     );
   const firstBackend = createBackend();
   const secondBackend = createBackend();
 
   const [first, second] = await Promise.all([
-    firstBackend.executeResource("first", {}, {}),
-    secondBackend.executeResource("second", {}, {}),
+    firstBackend.executeResource("first", { method: "file" }, {}),
+    secondBackend.executeResource("second", { method: "file" }, {}),
   ]);
 
   expect(first.data).toBe("first");
@@ -35,7 +36,7 @@ test("DuckDB backend runs concurrent requests one at a time", async () => {
   expect(started).toEqual(["first", "second"]);
 });
 
-test("DuckDB request failure does not block later requests", async () => {
+test("a failed serial request does not block later requests", async () => {
   let calls = 0;
   const backend = new RemoteBackend(
     {
@@ -45,11 +46,12 @@ test("DuckDB request failure does not block later requests", async () => {
         return { data: target };
       },
     },
-    true,
+    "test-adapter",
+    [{ id: "file", requestConcurrency: "serial" }],
   );
 
-  const failed = backend.executeResource("first", {}, {});
-  const succeeding = backend.executeResource("second", {}, {});
+  const failed = backend.executeResource("first", { method: "file" }, {});
+  const succeeding = backend.executeResource("second", { method: "file" }, {});
   const [failure, result] = await Promise.allSettled([failed, succeeding]);
 
   expect(failure.status).toBe("rejected");
@@ -57,22 +59,26 @@ test("DuckDB request failure does not block later requests", async () => {
   expect(calls).toBe(2);
 });
 
-test("other adapter backends retain concurrent requests", async () => {
+test("parallel connection methods retain concurrent requests", async () => {
   let active = 0;
   let maxActive = 0;
-  const backend = new RemoteBackend({
-    async request({ target }) {
-      active += 1;
-      maxActive = Math.max(maxActive, active);
-      await pause(10);
-      active -= 1;
-      return { data: target };
+  const backend = new RemoteBackend(
+    {
+      async request({ target }) {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await pause(10);
+        active -= 1;
+        return { data: target };
+      },
     },
-  });
+    "test-adapter",
+    [{ id: "remote", requestConcurrency: "parallel" }],
+  );
 
   await Promise.all([
-    backend.executeResource("first", {}, {}),
-    backend.executeResource("second", {}, {}),
+    backend.executeResource("first", { method: "remote" }, {}),
+    backend.executeResource("second", { method: "remote" }, {}),
   ]);
 
   expect(maxActive).toBe(2);
