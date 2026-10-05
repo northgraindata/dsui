@@ -26,7 +26,7 @@ export type Context = PluginContext<Config>;
 export const connectionSchema = z.object({
   id: z.string().uuid().optional(),
   serviceId: z.string().min(1),
-  name: z.string().trim().min(1).max(120),
+  name: z.string().trim().max(120).default(""),
   provider: z.enum(["github", "gitlab", "local"]),
   instance: z.string().default("gitlab"),
   repository: z.string().trim().min(1).max(2048),
@@ -58,4 +58,19 @@ export function route(serviceId: string, connectionId?: string, path?: string) {
   const base = `/services/${encodeURIComponent(serviceId)}`;
   if (!connectionId) return base;
   return `${base}/connections/${connectionId}/files/${(path ?? "").split("/").map(encodeURIComponent).join("/")}`;
+}
+
+export function connectionName(
+  input: Pick<ConnectionInput, "repository" | "folder">,
+): string {
+  const repository =
+    input.repository
+      .replace(/\/+$/, "")
+      .replace(/\.git$/, "")
+      .split("/")
+      .at(-1) ?? "Source code";
+  return (input.folder ? `${repository} / ${input.folder}` : repository).slice(
+    0,
+    120,
+  );
 }

@@ -26,6 +26,7 @@ import {
   type Connection,
   type Context,
   configSchema,
+  connectionName,
   connectionSchema,
   fileRequestSchema,
   locatorSchema,
@@ -316,6 +317,51 @@ export function createCodeRepositoryPlugin() {
         },
       });
       registry.procedure({
+        id: "check",
+        permission: "manage",
+        input: connectionSchema,
+        output: z.object({
+          files: z.number(),
+          bytes: z.number(),
+          version: z.string(),
+        }),
+        handler: async (context, rawInput) => {
+          const input = connectionSchema.parse(rawInput);
+          await requireService(context, input.serviceId, "manage");
+          if (input.provider !== "local" && !input.branch)
+            throw new PluginRequestError("Select a branch");
+          try {
+            const snapshot = await fetchSnapshot(
+              context.config,
+              {
+                ...input,
+                id: randomUUID(),
+                revision: 0,
+                version: null,
+                status: "idle",
+                lastAttemptAt: null,
+                lastFetchedAt: null,
+                error: null,
+              },
+              AbortSignal.timeout(60000),
+            );
+            return {
+              files: snapshot.files.length,
+              bytes: snapshot.files.reduce(
+                (total, file) => total + file.size,
+                0,
+              ),
+              version: snapshot.version,
+            };
+          } catch (cause) {
+            if (cause instanceof PluginRequestError) throw cause;
+            throw new PluginRequestError(
+              "Could not read the selected code. Check access and try again.",
+            );
+          }
+        },
+      });
+      registry.procedure({
         id: "save",
         permission: "manage",
         input: connectionSchema,
@@ -360,6 +406,7 @@ export function createCodeRepositoryPlugin() {
               previous.branch !== input.branch);
           const item: Connection = {
             ...input,
+            name: input.name || connectionName(input),
             folder,
             branch: input.provider === "local" ? "" : input.branch,
             id: previous?.id ?? randomUUID(),

@@ -33,7 +33,11 @@ repository contents. For GitLab API browsing, use a token with `read_api` scoped
 to the required projects. Credentials stay in server configuration and are never
 included in connection records or browser responses.
 
-Open **Code repositories**, select a service, and connect code. Remote repositories
+Open **Code repositories**, select a service, and connect code. Connection labels
+are derived from the repository and subfolder. **Check connection** reads a
+temporary snapshot to verify access, branch, selected folder and snapshot limits
+before saving. The check reports file count and size without persisting code;
+changing the source requires another check. Remote repositories
 use a selected branch; local folders use their current contents, including files
 not committed to Git. A local folder must be accessible to the DSUI process and
 inside a configured `localRoots` directory. Local roots are disabled by default.

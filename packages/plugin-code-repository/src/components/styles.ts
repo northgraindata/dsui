@@ -84,6 +84,7 @@ export const styles = `
 .cr-optional{font-size:10px;color:var(--color-muted);font-weight:400;margin-left:5px}
 .cr-field-help{font-size:11px;margin-bottom:14px!important;clear:both}.cr-form label+.cr-field-help{margin-top:8px;margin-bottom:0!important}
 .cr-form-actions{padding:16px 24px;display:flex;gap:8px;background:var(--color-background)}
+.cr-check-result{margin:16px 24px;padding:12px;border:1px solid color-mix(in srgb,var(--color-healthy) 30%,transparent);border-radius:6px;background:color-mix(in srgb,var(--color-healthy) 5%,transparent);font-size:11px}.cr-check-result strong{color:var(--color-healthy);font-weight:500}.cr-check-result p{margin-top:4px}
 .cr-form>.cr-error{margin:12px 24px!important}
 @media(max-width:640px){.cr-details{grid-template-columns:repeat(2,minmax(0,1fr))}.cr-fields{grid-template-columns:1fr}.cr-provider-options{grid-template-columns:1fr}.cr-settings-heading{align-items:flex-start}.cr-card-heading{flex-wrap:wrap}.cr-card-heading>.cr-status{margin-left:30px}.cr-form fieldset,.cr-form-heading{padding:18px}.cr-connection-footer{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.cr-screen button{transition:none}}
