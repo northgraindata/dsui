@@ -150,3 +150,10 @@ export {
   serializeNodes,
   UnserializablePageError,
 } from "./serialize";
+
+export { CodeExplorer } from "./primitives/code-explorer";
+export type {
+  CodeExplorerProps,
+  CodeExplorerFile,
+  CodeExplorerContent,
+} from "./primitives/code-explorer";

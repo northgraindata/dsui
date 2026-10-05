@@ -1,13 +1,6 @@
-import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  executePluginResource,
-  getAdapters,
-  getPluginResources,
-} from "../../api";
-import { Icon } from "../../components/icon";
-import { ServiceMark } from "../../components/service-mark";
-import "./health-page.css";
+import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
+import { React } from "./react";
+import { styles } from "./styles";
 
 type HealthStatus = "healthy" | "warning" | "unavailable" | "unknown";
 
@@ -15,6 +8,7 @@ type HealthRow = {
   id: string;
   name: string;
   adapter: string;
+  iconUrl?: string;
   health: HealthStatus;
   detail?: string;
   latencyMs?: number;
@@ -67,6 +61,7 @@ function readHealthRows(value: unknown): HealthRow[] {
       id: item.id,
       name: item.name,
       adapter: item.adapter,
+      ...(typeof item.iconUrl === "string" ? { iconUrl: item.iconUrl } : {}),
       health: item.health,
       ...(item.detail !== undefined ? { detail: item.detail } : {}),
       ...(item.latencyMs !== undefined ? { latencyMs: item.latencyMs } : {}),
@@ -74,11 +69,10 @@ function readHealthRows(value: unknown): HealthRow[] {
   });
 }
 
-function useHealthData() {
+function useHealthData(client: ComponentProps["client"]) {
+  const { useState, useRef, useEffect } = React;
   const [rows, setRows] = useState<HealthRow[]>();
-  const [logos, setLogos] = useState<Record<string, string | undefined>>({});
   const [updatedAt, setUpdatedAt] = useState<Date>();
-  const [intervalMs, setIntervalMs] = useState<number>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const refresh = useRef<() => void>(() => undefined);
@@ -86,14 +80,14 @@ function useHealthData() {
   useEffect(() => {
     let active = true;
     let running = false;
-    let timer: number | undefined;
 
     const load = () => {
       if (running) return;
       running = true;
       setLoading(true);
 
-      void executePluginResource("health", "service-health", {})
+      void client
+        .executeResource({ resourceId: "service-health", input: {} })
         .then(readHealthRows)
         .then((result) => {
           if (!active) return;
@@ -114,49 +108,36 @@ function useHealthData() {
     };
 
     refresh.current = load;
-    void getPluginResources("health")
-      .then((resources) => {
+    load();
+    const unsubscribe = client.watchResource?.(
+      { resourceId: "service-health", input: {} },
+      (value) => {
         if (!active) return;
-        const policy = resources.find(
-          (resource) => resource.id === "service-health",
-        )?.refresh;
-        if (policy?.kind !== "poll")
-          throw new Error("Health refresh policy is unavailable.");
-        setIntervalMs(policy.intervalMs);
-        load();
-        timer = window.setInterval(load, policy.intervalMs);
-      })
-      .catch((cause: unknown) => {
-        if (active) {
-          setLoading(false);
+        try {
+          setRows(readHealthRows(value));
+          setUpdatedAt(new Date());
+          setError(undefined);
+        } catch (cause) {
           setError(
             cause instanceof Error ? cause.message : "Could not load health.",
           );
         }
-      });
-
-    void getAdapters()
-      .then((adapters) => {
-        if (active)
-          setLogos(
-            Object.fromEntries(adapters.map(({ id, logo }) => [id, logo])),
-          );
-      })
-      .catch(() => undefined);
+      },
+    );
 
     return () => {
       active = false;
-      if (timer !== undefined) window.clearInterval(timer);
+      unsubscribe?.();
       refresh.current = () => undefined;
     };
-  }, []);
+  }, [client]);
 
-  return { rows, logos, updatedAt, intervalMs, error, loading, refresh };
+  return { rows, updatedAt, error, loading, refresh };
 }
 
-export function HealthPage() {
-  const { rows, logos, updatedAt, intervalMs, error, loading, refresh } =
-    useHealthData();
+export function HealthPage({ client }: ComponentProps) {
+  const { useState, useMemo } = React;
+  const { rows, updatedAt, error, loading, refresh } = useHealthData(client);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<HealthStatus | "all">("all");
 
@@ -191,6 +172,7 @@ export function HealthPage() {
 
   return (
     <div className="health-page">
+      <style>{styles}</style>
       <header className="health-page-heading">
         <div>
           <h1>Service health</h1>
@@ -201,16 +183,15 @@ export function HealthPage() {
             {updatedAt
               ? `Updated ${updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
               : "Waiting for first check"}
-            {intervalMs ? ` · Refreshes every ${intervalMs / 1000}s` : ""}
           </span>
           <button
             type="button"
             onClick={() => refresh.current()}
-            disabled={loading || intervalMs === undefined}
+            disabled={loading}
             aria-label="Refresh service health"
             title="Refresh service health"
           >
-            <Icon name="refresh" size={16} />
+            <span aria-hidden="true">↻</span>
           </button>
         </div>
       </header>
@@ -234,7 +215,7 @@ export function HealthPage() {
           </div>
           <div className="health-page-controls">
             <label className="health-page-search">
-              <Icon name="search" size={16} />
+              <span aria-hidden="true">⌕</span>
               <span className="sr-only">Search services</span>
               <input
                 value={search}
@@ -292,21 +273,13 @@ export function HealthPage() {
                 {visible.map((row) => (
                   <tr key={row.id}>
                     <td>
-                      <Link
-                        to="/services/$serviceId"
-                        params={{ serviceId: row.id }}
+                      <a
+                        href={`/services/${encodeURIComponent(row.id)}`}
                         className="health-page-service"
                       >
                         <strong>{row.name}</strong>
-                        <span>
-                          <ServiceMark
-                            adapter={row.adapter}
-                            logo={logos[row.adapter]}
-                            size={22}
-                          />
-                          {row.adapter}
-                        </span>
-                      </Link>
+                        <span>{row.adapter}</span>
+                      </a>
                     </td>
                     <td>
                       <span

@@ -63,6 +63,19 @@ await bundle(
   join(output, "dist", "runtime", "plugins", "health.mjs"),
 );
 
+await run([
+  "bun",
+  "build",
+  "packages/plugin-health/src/browser.tsx",
+  "--bundle",
+  "--target",
+  "browser",
+  "--format",
+  "esm",
+  "--outfile",
+  join(output, "dist", "runtime", "plugins", "health.browser.mjs"),
+]);
+
 await bundle(
   "packages/plugin-monitoring/src/plugin.ts",
   join(output, "dist", "runtime", "plugins", "monitoring.mjs"),

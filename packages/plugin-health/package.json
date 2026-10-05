@@ -4,14 +4,25 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/plugin.ts"
+    ".": "./src/plugin.ts",
+    "./browser": "./dist/browser.mjs"
   },
   "scripts": {
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/browser.tsx --bundle --target browser --format esm --outfile dist/browser.mjs"
   },
   "dependencies": {
     "@northgraindata/dsui-plugin-sdk": "workspace:*",
     "zod": "^3.24.2"
+  },
+  "dsui": {
+    "entry": "src/plugin.ts",
+    "browser": "src/browser.tsx"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "react": "^19.1.1",
+    "@northgraindata/dsui-adapter-sdk": "workspace:*"
   }
 }

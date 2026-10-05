@@ -19,6 +19,10 @@ export interface Client {
 export interface Props {
   node: { props: unknown };
   client: Client;
+  renderNode: (
+    client: Client,
+    node: import("@northgraindata/dsui-plugin-sdk").PageNode,
+  ) => import("react").ReactNode;
 }
 export const screenProps = z.object({
   props: z.object({

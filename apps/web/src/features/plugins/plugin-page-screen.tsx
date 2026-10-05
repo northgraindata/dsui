@@ -12,7 +12,6 @@ import {
   pageClass,
   UnavailableState,
 } from "../../components/page";
-import { HealthPage } from "./health-page";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
@@ -57,7 +56,6 @@ export function PluginPageScreen() {
           return;
         }
         setPage(found);
-        if (pluginId === "health" && found.id === "overview") return;
         const pageDocument = await getPluginPage(pluginId, pageId ?? found.id);
         if (!active) return;
         setDocument(pageDocument);
@@ -89,13 +87,6 @@ export function PluginPageScreen() {
         role="status"
       >
         Loading page…
-      </div>
-    );
-
-  if (page && pluginId === "health" && pageId === "overview")
-    return (
-      <div className={`${pageClass} health-page-shell`}>
-        <HealthPage />
       </div>
     );
 

@@ -61,6 +61,7 @@ export {
   Card,
   Chart,
   CodeBlock,
+  CodeExplorer,
   CodeEditor,
   Collection,
   Columns,
