@@ -6,10 +6,10 @@ export interface CodeExplorerFile {
   size?: number;
 }
 export interface CodeExplorerContent {
-  content?: string;
+  content?: string | null;
   size?: number;
-  reason?: string;
-  language?: string;
+  reason?: string | null;
+  language?: string | null;
 }
 export interface CodeExplorerProps {
   files: readonly CodeExplorerFile[];

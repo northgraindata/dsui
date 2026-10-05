@@ -5,12 +5,13 @@ import type {
   CodeExplorerProps,
 } from "../primitives/code-explorer";
 import { type ComponentProps, componentProps } from "../runtime";
+import { styles } from "./code-explorer-styles";
 
 const contentSchema = z.object({
-  content: z.string().optional(),
+  content: z.string().nullish(),
   size: z.number().optional(),
-  reason: z.string().optional(),
-  language: z.string().optional(),
+  reason: z.string().nullish(),
+  language: z.string().nullish(),
 });
 const languages: Record<string, string> = {
   ts: "typescript",
@@ -55,6 +56,30 @@ function CodePreview({
           language ?? languages[path.split(".").at(-1) ?? ""] ?? "plaintext";
         const monaco = await init({
           langs: selectedLanguage === "plaintext" ? [] : [selectedLanguage],
+          defaultTheme: "dsui-code",
+          themes: [
+            {
+              name: "dsui-code",
+              type: "dark",
+              colors: {
+                "editor.background": "#080e1b",
+                "editor.foreground": "#dce5f8",
+                "editorLineNumber.foreground": "#657ca1",
+                "editorLineNumber.activeForeground": "#b0c1df",
+                "editor.selectionBackground": "#18366a",
+                "editor.lineHighlightBackground": "#0b1220",
+              },
+              tokenColors: [
+                { scope: "keyword", settings: { foreground: "#3294ff" } },
+                { scope: "string", settings: { foreground: "#dbca69" } },
+                { scope: "comment", settings: { foreground: "#6e85a8" } },
+                {
+                  scope: "constant.numeric",
+                  settings: { foreground: "#a3b989" },
+                },
+              ],
+            },
+          ],
         });
         if (disposed || !container.current) return;
         const model = monaco.editor.createModel(content, selectedLanguage);
@@ -68,7 +93,13 @@ function CodePreview({
           fontSize: 13,
           lineHeight: 20,
           ariaLabel: `Contents of ${path}`,
-          theme: "vs-dark",
+          theme: "dsui-code",
+          fontFamily: "JetBrains Mono, ui-monospace, monospace",
+          padding: { top: 16, bottom: 16 },
+          lineNumbersMinChars: 4,
+          renderLineHighlight: "none",
+          overviewRulerLanes: 0,
+          hideCursorInOverviewRuler: true,
         });
         const reveal = () => {
           const match = /^#L(\d+)$/.exec(window.location.hash);
@@ -117,9 +148,16 @@ function CodePreview({
     </div>
   ) : (
     <>
-      <button type="button" aria-pressed={wrap} onClick={() => setWrap(!wrap)}>
-        Wrap lines
-      </button>
+      <div className="sdk-code-preview-actions">
+        <button
+          type="button"
+          aria-pressed={wrap}
+          onClick={() => setWrap(!wrap)}
+        >
+          Wrap lines
+        </button>
+        <span>Read only · Click a line number to link</span>
+      </div>
       <div ref={container} style={{ height: "65vh", minHeight: 320 }} />
     </>
   );
@@ -143,7 +181,7 @@ function FileTree({
     entries.set(tail.split("/")[0], tail.includes("/"));
   }
   return (
-    <ul style={{ listStyle: "none", paddingLeft: prefix ? 12 : 0, margin: 0 }}>
+    <ul className="sdk-code-tree" style={{ paddingLeft: prefix ? 12 : 0 }}>
       {[...entries]
         .sort(
           ([a, ad], [b, bd]) => Number(bd) - Number(ad) || a.localeCompare(b),
@@ -165,7 +203,10 @@ function FileTree({
                   aria-current={path === target ? "page" : undefined}
                   onClick={() => navigate(target)}
                 >
-                  {name}
+                  <span className="sdk-code-file-icon" aria-hidden="true">
+                    ◇
+                  </span>
+                  <span>{name}</span>
                 </button>
               )}
             </li>
@@ -192,18 +233,21 @@ function Directory({
   }, [active]);
   return (
     <>
-      <div style={{ display: "flex" }}>
+      <div className="sdk-code-directory">
         <button
           type="button"
           aria-label={`${open ? "Collapse" : "Expand"} ${target}`}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          style={{ width: 28 }}
+          className="sdk-code-toggle"
         >
           {open ? "▾" : "▸"}
         </button>
         <button type="button" onClick={() => navigate(target)}>
-          {target.split("/").at(-1)}/
+          <span className="sdk-code-folder-icon" aria-hidden="true">
+            ▱
+          </span>
+          <span>{target.split("/").at(-1)}</span>
         </button>
       </div>
       {open && (
@@ -276,11 +320,13 @@ export default function CodeExplorer({ node, client }: ComponentProps) {
   );
   return (
     <section className="sdk-code-explorer">
-      <style>{`.sdk-code-explorer{border:1px solid var(--color-border,#263244);border-radius:8px;overflow:hidden}.sdk-code-explorer header,.sdk-code-explorer nav{display:flex;gap:8px;padding:12px;align-items:center;flex-wrap:wrap}.sdk-code-explorer button{cursor:pointer;text-align:left;padding:6px 8px}.sdk-code-explorer button[aria-current]{background:var(--color-surface,#263244)}.sdk-code-explorer-layout{display:grid;grid-template-columns:minmax(180px,240px) minmax(0,1fr)}.sdk-code-explorer aside{padding:10px;border-right:1px solid var(--color-border,#263244);overflow:auto;max-height:70vh}.sdk-code-explorer aside button{display:block;width:100%;overflow-wrap:anywhere}.sdk-code-explorer main{min-width:0;padding:12px}.sdk-code-explorer input{width:100%;padding:8px;margin-bottom:8px}.sdk-code-explorer pre{overflow:auto}@media(max-width:700px){.sdk-code-explorer-layout{grid-template-columns:1fr}.sdk-code-explorer aside{max-height:220px}}`}</style>
-      <header>
+      <style>{styles}</style>
+      <header className="sdk-code-heading">
         <strong>{props.title ?? "Code explorer"}</strong>
         {props.version && (
-          <small title={props.version}>{props.version.slice(0, 12)}</small>
+          <small title={props.version}>
+            Snapshot <code>{props.version.slice(0, 12)}</code>
+          </small>
         )}
       </header>
       <nav aria-label="File breadcrumbs">
@@ -321,23 +367,34 @@ export default function CodeExplorer({ node, client }: ComponentProps) {
           ) : (
             <FileTree files={props.files} path={path} navigate={navigate} />
           )}
+          {search && !matching.length && (
+            <p className="sdk-code-empty">No matching files.</p>
+          )}
           {!props.files.length && (
             <p>{props.emptyMessage ?? "No files available."}</p>
           )}
         </aside>
         <main>
           {error ? (
-            <p role="alert">{error}</p>
+            <p role="alert" className="sdk-code-error">
+              {error}
+            </p>
           ) : file ? (
             <>
-              <div>
-                {path} · {file.size?.toLocaleString()} bytes{" "}
+              <div className="sdk-code-file-heading">
+                <div>
+                  <strong>{path.split("/").at(-1)}</strong>
+                  <span>
+                    {file.content?.split("\n").length ?? "—"} lines ·{" "}
+                    {file.size?.toLocaleString()} bytes
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={() =>
                     void navigator.clipboard.writeText(file.content ?? "")
                   }
-                  disabled={file.content === undefined}
+                  disabled={file.content == null}
                 >
                   Copy
                 </button>
@@ -348,7 +405,7 @@ export default function CodeExplorer({ node, client }: ComponentProps) {
                 <CodePreview
                   content={file.content ?? ""}
                   path={path}
-                  language={file.language}
+                  language={file.language ?? undefined}
                 />
               )}
             </>
