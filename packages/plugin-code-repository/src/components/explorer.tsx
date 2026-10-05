@@ -18,8 +18,12 @@ export function Explorer({
   const data = tree.data ? treeSchema.parse(tree.data) : undefined;
   return (
     <section>
-      <button type="button" onClick={() => client.navigate?.(route(serviceId))}>
-        Settings
+      <button
+        className="cr-back"
+        type="button"
+        onClick={() => client.navigate?.(route(serviceId))}
+      >
+        ← Connection settings
       </button>
       {(tree.error || data?.connection.error) && (
         <p role="alert" className="cr-error">
