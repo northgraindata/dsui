@@ -56,7 +56,6 @@ function CodePreview({
           language ?? languages[path.split(".").at(-1) ?? ""] ?? "plaintext";
         const monaco = await init({
           langs: selectedLanguage === "plaintext" ? [] : [selectedLanguage],
-          defaultTheme: "dsui-code",
           themes: [
             {
               name: "dsui-code",
