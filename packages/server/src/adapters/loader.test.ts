@@ -7,23 +7,26 @@ test("DuckDB backend runs concurrent requests one at a time", async () => {
   let active = 0;
   let maxActive = 0;
   const started: (string | undefined)[] = [];
-  const backend = new RemoteBackend(
-    {
-      async request({ target }) {
-        started.push(target);
-        active += 1;
-        maxActive = Math.max(maxActive, active);
-        await pause(10);
-        active -= 1;
-        return { data: target };
+  const createBackend = () =>
+    new RemoteBackend(
+      {
+        async request({ target }) {
+          started.push(target);
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          await pause(10);
+          active -= 1;
+          return { data: target };
+        },
       },
-    },
-    true,
-  );
+      true,
+    );
+  const firstBackend = createBackend();
+  const secondBackend = createBackend();
 
   const [first, second] = await Promise.all([
-    backend.executeResource("first", {}, {}),
-    backend.executeResource("second", {}, {}),
+    firstBackend.executeResource("first", {}, {}),
+    secondBackend.executeResource("second", {}, {}),
   ]);
 
   expect(first.data).toBe("first");
