@@ -26,7 +26,6 @@ export function SqlEditor({
     void import("modern-monaco/core")
       .then(async ({ init }) => {
         const monaco = await init({
-          defaultTheme: "dsui",
           langs: ["sql"],
           themes: [
             {
