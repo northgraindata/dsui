@@ -278,7 +278,18 @@ export function HealthPage({ client }: ComponentProps) {
                         className="health-page-service"
                       >
                         <strong>{row.name}</strong>
-                        <span>{row.adapter}</span>
+                        <span>
+                          {row.iconUrl && (
+                            <img
+                              src={row.iconUrl}
+                              alt=""
+                              width={22}
+                              height={22}
+                              style={{ objectFit: "contain", flexShrink: 0 }}
+                            />
+                          )}
+                          {row.adapter}
+                        </span>
                       </a>
                     </td>
                     <td>
