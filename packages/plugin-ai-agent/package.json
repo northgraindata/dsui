@@ -1,0 +1,33 @@
+{
+  "name": "@northgraindata/dsui-plugin-ai-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/plugin.ts",
+    "./browser": "./dist/browser.mjs"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/browser.tsx --bundle --target browser --format esm --outfile dist/browser.mjs",
+    "prepare:dev": "bun run build"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.49",
+    "@ai-sdk/gateway": "4.0.104",
+    "@ai-sdk/openai": "^4.0.60",
+    "@northgraindata/dsui-plugin-sdk": "workspace:*",
+    "ai": "7.0.128",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "dsui": {
+    "entry": "src/plugin.ts",
+    "browser": "src/browser.tsx"
+  }
+}
