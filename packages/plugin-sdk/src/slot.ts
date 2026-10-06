@@ -16,6 +16,7 @@ import { assertNonEmptyId } from "./shared/validators";
  * the host simply renders no contribution rather than failing the plugin.
  */
 export type PluginSlotName =
+  | "app.shell.actions"
   | "dashboard.service-card.trailing"
   | "service.workspace.after-header"
   | (string & {});
