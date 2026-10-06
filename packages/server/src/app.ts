@@ -244,6 +244,41 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           type: signal.type,
         }));
       },
+      resources: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.resources.map(({ id, inputSchema }) => ({
+            id,
+            ...(inputSchema ? { inputSchema } : {}),
+          }));
+      },
+      readResource: async (id, resourceId, input) => {
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error("Insufficient service permission");
+        const source = serviceSource(config, database, id);
+        if (!source) throw new Error("Service not found");
+        const adapter = registry.get(source.service.adapter);
+        if (
+          !adapter.catalog.resources.some(
+            (resource) => resource.id === resourceId,
+          )
+        )
+          throw new Error("Unknown adapter resource");
+        const result = await adapter.backend.executeResource(
+          resourceId,
+          connectionFor(cipher, source),
+          input,
+          { persistenceNamespace: id },
+        );
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error(
+            "Service permission was revoked during the resource read",
+          );
+        return result.data;
+      },
       probe: async (id, probeOptions) =>
         (await pluginRuntime.canAccessService(id))
           ? probePluginService(id, probeOptions)
