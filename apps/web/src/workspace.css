@@ -61,6 +61,28 @@
   justify-content: center;
   padding: 0 24px;
 }
+.app-shell-actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+}
+.app-chrome {
+  transition: padding-right 0.28s cubic-bezier(0.22, 0.8, 0.25, 1);
+}
+@media (min-width: 1101px) {
+  body:has([data-workspace-panel="open"]) .app-chrome {
+    padding-right: var(--dsui-workspace-panel-width, min(510px, 38vw));
+  }
+}
+body:has([data-workspace-panel="open"][data-resizing="true"]) .app-chrome {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-chrome {
+    transition: none;
+  }
+}
 .app-search {
   width: 480px;
   max-width: 100%;
