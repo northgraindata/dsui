@@ -11,6 +11,7 @@ export function QueryToolbar({
   onClose,
   onNew,
   onRun,
+  onCancel,
 }: {
   tabs: readonly QueryTabSummary[];
   activeId: number;
@@ -20,6 +21,7 @@ export function QueryToolbar({
   onClose: (id: number) => void;
   onNew: () => void;
   onRun: () => void;
+  onCancel?: () => void;
 }) {
   return (
     <div className="query-editor-toolbar">
@@ -31,6 +33,11 @@ export function QueryToolbar({
         onNew={onNew}
       />
       <div className="query-editor-actions">
+        {running && onCancel && (
+          <Button variant="secondary" onClick={onCancel}>
+            Stop
+          </Button>
+        )}
         <Button
           variant="secondary"
           className="format-query"

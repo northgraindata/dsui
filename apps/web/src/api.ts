@@ -405,10 +405,12 @@ export async function executeAction(
   serviceId: string,
   actionId: string,
   input: unknown,
+  options?: { signal?: AbortSignal },
 ) {
   return request<
     { status: "success"; data: unknown } | { status: "error"; message: string }
   >(`/services/${serviceId}/actions/${actionId}`, {
+    signal: options?.signal,
     method: "POST",
     body: JSON.stringify({ input }),
   });

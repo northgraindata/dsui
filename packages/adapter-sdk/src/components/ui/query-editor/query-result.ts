@@ -2,7 +2,10 @@ export interface QueryResultView {
   columns: { name: string; type?: string }[];
   rows: Record<string, unknown>[];
   elapsedMs?: number;
-  rowsChanged?: number;
+  rowsChanged?: number | string;
+  queryId?: string;
+  truncated?: boolean;
+  warnings?: readonly string[];
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -37,12 +40,26 @@ export function parseQueryResult(value: unknown): QueryResultView {
       ...(Array.isArray(types) ? { type: types[index] } : {}),
     })),
     rows: value.rows,
+    ...(typeof value.queryId === "string" ? { queryId: value.queryId } : {}),
+    ...(typeof value.truncated === "boolean"
+      ? { truncated: value.truncated }
+      : {}),
+    ...(Array.isArray(value.warnings)
+      ? {
+          warnings: value.warnings.map((warning) =>
+            record(warning) && typeof warning.message === "string"
+              ? warning.message
+              : JSON.stringify(warning),
+          ),
+        }
+      : {}),
     ...(typeof value.elapsedMs === "number" &&
     Number.isFinite(value.elapsedMs) &&
     value.elapsedMs >= 0
       ? { elapsedMs: value.elapsedMs }
       : {}),
-    ...(typeof value.rowsChanged === "number"
+    ...(typeof value.rowsChanged === "number" ||
+    typeof value.rowsChanged === "string"
       ? { rowsChanged: value.rowsChanged }
       : {}),
   };

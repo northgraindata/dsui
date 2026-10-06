@@ -14,6 +14,7 @@ export interface RendererClient {
   ): () => void;
   executeAction(
     reference: ActionReference,
+    options?: { signal?: AbortSignal },
   ): Promise<
     | { status: "success"; data?: unknown }
     | { status: "error"; message?: string }

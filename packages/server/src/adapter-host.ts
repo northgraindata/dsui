@@ -110,6 +110,10 @@ export async function runAdapterHost(): Promise<number> {
     reply(null, undefined, "invalid JSON-RPC request");
     return 0;
   }
+  const controller = new AbortController();
+  const terminate = () =>
+    controller.abort(new Error("Adapter execution cancelled"));
+  process.on("SIGTERM", terminate);
   const method = request.method as HostMethod;
   const params = (request.params ?? {}) as HostParams;
   const databasePath = argument("--database");
@@ -329,8 +333,10 @@ export async function runAdapterHost(): Promise<number> {
               input: unknown,
             ) => ActionBinding<unknown, unknown, unknown>
           )(params.input);
-          const { result, emissions } =
-            await instance.executeActionWithSignals(binding);
+          const { result, emissions } = await instance.executeActionWithSignals(
+            binding,
+            { signal: controller.signal },
+          );
           if (result.status === "error")
             reply(request.id, {
               result: { status: "error", message: result.error.message },
@@ -378,6 +384,7 @@ export async function runAdapterHost(): Promise<number> {
       error instanceof Error ? error.message : "Adapter host failed",
     );
   } finally {
+    process.removeListener("SIGTERM", terminate);
     database?.close();
   }
   return 0;

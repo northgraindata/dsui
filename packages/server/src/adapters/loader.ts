@@ -307,7 +307,7 @@ export class RemoteBackend implements AdapterBackend {
     actionId: string,
     connection: unknown,
     input: unknown,
-    _signal?: AbortSignal,
+    signal?: AbortSignal,
     context?: AdapterExecutionContext,
   ): Promise<{
     result:
@@ -321,6 +321,7 @@ export class RemoteBackend implements AdapterBackend {
   }> {
     const result = (await this.request({
       method: "action",
+      signal,
       connection,
       target: actionId,
       input,

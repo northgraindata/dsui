@@ -1,0 +1,11 @@
+{
+  "name": "@northgraindata/dsui-adapter-trino",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/adapter.ts" },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": { "@northgraindata/dsui-adapter-sdk": "workspace:*", "json-bigint": "1.0.0" },
+  "devDependencies": { "@types/json-bigint": "1.0.4", "@types/react": "^19.0.0", "react": "^19.0.0" },
+  "dsui": { "browser": "./src/browser.tsx" }
+}

@@ -12,11 +12,20 @@ export interface QueryEditorProps {
     label?: string;
   };
   explorer?: QueryEditorExplorerProps;
+  /** Named action-input selectors; source inputs may reference earlier selections with $name. */
+  contextSelectors?: readonly {
+    name: string;
+    label: string;
+    source: ResourceReference;
+    initialValue?: string;
+    dependsOn?: readonly string[];
+  }[];
 }
 
 export interface QueryEditorExplorerProps {
   source: DataSource;
   nameField?: string;
+  contextKey?: string;
   children?: QueryEditorExplorerProps;
 }
 
