@@ -36,6 +36,33 @@ export function registerPluginRoutes(
     audit(actor: string, action: string, target: string): void;
   },
 ): void {
+  app.get("/api/v1/plugins/shell/actions", async (context) => {
+    const principal = context.get("principal");
+    const items: Array<
+      Pick<PluginSlotResult, "pluginId" | "slotId" | "nodes">
+    > = [];
+    for (const slot of deps.runtime
+      .catalog()
+      .slots.filter((slot) => slot.slot === "app.shell.actions")) {
+      if (
+        !(await deps.runtime.authorize(principal, "inspect", {
+          type: "plugin",
+          id: slot.pluginId,
+        }))
+      )
+        continue;
+      try {
+        const nodes = await deps.runtime.withPrincipal(principal, () =>
+          deps.runtime.renderSlot(slot.pluginId, slot.id, {}),
+        );
+        if (nodes)
+          items.push({ pluginId: slot.pluginId, slotId: slot.id, nodes });
+      } catch (error) {
+        deps.logError?.(slot.pluginId, error);
+      }
+    }
+    return context.json({ items });
+  });
   app.get("/api/v1/plugins", async (context) => {
     const catalog = deps.runtime.catalog();
     const principal = context.get("principal");
