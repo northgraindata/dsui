@@ -5,6 +5,18 @@ adapters:
   duckdb:
     package: "@northgraindata/dsui-adapter-duckdb"
 
+plugins:
+  ai-agent:
+    package: "@northgraindata/dsui-plugin-ai-agent"
+    browserBundle: "@northgraindata/dsui-plugin-ai-agent/browser"
+    enabled: true
+    config:
+      model:
+        provider: openai
+        id: gpt-4.1-mini
+        # Set your own key here, or use ${DSUI_AGENT_API_KEY}.
+        apiKey: ""
+
 services:
   - id: analytics
     adapter: duckdb
