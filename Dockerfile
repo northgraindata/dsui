@@ -19,6 +19,8 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
   bun build packages/plugin-monitoring/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/monitoring.mjs && \
   bun build packages/plugin-code-repository/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/code-repository.mjs && \
   bun build packages/plugin-code-repository/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/code-repository.browser.mjs && \
+  bun build packages/plugin-ai-agent/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/ai-agent.mjs && \
+  bun build packages/plugin-ai-agent/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/ai-agent.browser.mjs && \
   bun run packages/server/src/adapters/sdk.ts packages /out/sdk "${DSUI_VERSION}"
 
 FROM gcr.io/distroless/cc-debian12:nonroot
