@@ -8,6 +8,9 @@ export {
 } from "./events";
 
 import type { PageNode, SignalType } from "@northgraindata/dsui-adapter-sdk";
+
+export type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
+
 import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
 import { z } from "zod";
 
@@ -199,7 +202,7 @@ export type { PluginSlotDefinition, PluginSlotName };
 
 export type RuntimePluginSlot = PluginUiSlot & {
   readonly render: (input: {
-    service: PluginServiceSummary;
+    service?: PluginServiceSummary;
   }) => Promise<readonly PageNode[]>;
 };
 
@@ -246,6 +249,18 @@ export type PluginServiceProbe = {
 };
 
 export interface PluginServiceCatalog {
+  /** Read-only adapter resource descriptors, scoped to service visibility. */
+  resources?(
+    id: string,
+  ): Promise<
+    readonly { id: string; inputSchema?: Record<string, unknown> }[] | null
+  >;
+  /** Execute a declared adapter resource without exposing connection credentials. */
+  readResource?(
+    id: string,
+    resourceId: string,
+    input: unknown,
+  ): Promise<unknown>;
   list(input?: { readonly cursor?: string; readonly limit?: number }): Promise<{
     readonly items: PluginServiceSummary[];
     readonly nextCursor?: string;
@@ -488,6 +503,8 @@ export interface PluginRegistry<TConfig = unknown> {
 
 export interface PluginCapabilities {
   readonly access: {
+    /** Identity of the authenticated request; absent in background work. */
+    principal?(): PluginPrincipal | null;
     requireAdmin?(): Promise<void>;
     require(serviceId: string, permission: PluginPermission): Promise<void>;
   };
