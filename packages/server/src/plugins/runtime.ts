@@ -110,7 +110,12 @@ function resolveInstalledBundle(specifier: string): string {
   const bundled = bundledPluginPath(specifier);
   if (bundled) return bundled;
   if (isAbsolute(specifier)) return specifier;
-  return requireFromWorkingDirectory.resolve(specifier);
+  try {
+    return requireFromWorkingDirectory.resolve(specifier);
+  } catch {
+    // First-party workspace packages are linked to the host, not necessarily its caller's cwd.
+    return createRequire(import.meta.url).resolve(specifier);
+  }
 }
 
 /**
@@ -436,6 +441,7 @@ export class PluginRuntime {
           logger: pluginLogger(id),
           ...this.host.capabilities?.(id),
           access: {
+            principal: () => this.principalContext.getStore() ?? null,
             requireAdmin: async () => {
               if (this.backgroundContext.getStore()) return;
               const principal = this.principalContext.getStore();
@@ -851,7 +857,7 @@ export class PluginRuntime {
   async renderSlot(
     pluginId: string,
     slotId: string,
-    context: { service: PluginServiceSummary },
+    context: { service?: PluginServiceSummary },
   ): Promise<
     readonly import("@northgraindata/dsui-plugin-sdk").PageNode[] | null
   > {
