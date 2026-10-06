@@ -2,6 +2,7 @@ import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getPluginCatalog } from "../api";
+import { PluginShellActions } from "../features/plugins/plugin-slots";
 import { Icon } from "./icon";
 import { Wordmark } from "./wordmark";
 
@@ -30,6 +31,7 @@ export function AppChrome({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Route changes refresh permission-dependent plugin navigation.
   useEffect(() => {
     let active = true;
     let retryTimer: number | undefined;
@@ -94,6 +96,7 @@ export function AppChrome({
             <kbd>⌘ K</kbd>
           </button>
         </div>
+        <PluginShellActions />
       </header>
       <div className="app-body">
         {!inAdapter && (
