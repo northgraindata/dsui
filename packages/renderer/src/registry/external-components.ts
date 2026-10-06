@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import * as React from "react";
+import * as ReactDOM from "react-dom";
 import type { ComponentProps } from "./component-registry";
 
 type ComponentBundle = {
@@ -7,6 +8,7 @@ type ComponentBundle = {
   components?: Record<string, ComponentType<ComponentProps>>;
   createComponents?: (
     react: typeof React,
+    reactDOM: typeof ReactDOM,
   ) => Record<string, ComponentType<ComponentProps>>;
 };
 
@@ -34,7 +36,7 @@ export function loadExternalComponent(
   return bundle
     .then((module) => {
       const components = module.createComponents
-        ? module.createComponents(React)
+        ? module.createComponents(React, ReactDOM)
         : (module.default ?? module.components);
       if (components) return components[componentId] ?? null;
       const legacy = Object.getOwnPropertyDescriptor(
