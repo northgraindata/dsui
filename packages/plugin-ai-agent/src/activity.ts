@@ -25,6 +25,8 @@ function toolActivity(tool: ToolRun, services: readonly Service[]) {
     services.find((item) => item.id === serviceId)?.name ?? serviceId;
   const scope = service ? ` for ${service}` : "";
   switch (tool.name) {
+    case "list_actions":
+      return `Discovering available actions${scope}`;
     case "list_services":
       return "Finding connected services";
     case "get_service_health":
