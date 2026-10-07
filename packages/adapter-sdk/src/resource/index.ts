@@ -6,6 +6,7 @@ export type {
   InputResource,
   ResourceBinding,
   ResourceDefinition,
+  ResourceMetadata,
   ResourceReference,
   ResourceRuntimeContext,
 } from "./types";
