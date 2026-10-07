@@ -78,3 +78,16 @@ and plugin manage permission. Use it for installation-wide settings or secrets
 that service-level manage permission cannot authorize. Both additions are optional
 host capabilities for compatibility; plugins using them must require a host that
 implements them. Background jobs run as trusted installation operations.
+
+## Sidebar profile slot
+
+`sidebar.profile` replaces the sidebar's workspace profile when a plugin returns
+content. With no contribution, an empty result or a request error, the host keeps
+its default workspace/settings link. Request it with an empty `serviceIds` array;
+the result has `serviceId: ""` because this slot belongs to the workspace.
+
+Its render input includes the authenticated `principal` and an undefined
+`service`. The host supplies the principal, never the request payload, and still
+checks plugin inspect permission. Service slots keep receiving their service and
+now also receive the authenticated principal. Keep personal account presentation
+and data lookup in the contributing plugin.

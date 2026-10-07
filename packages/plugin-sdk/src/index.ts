@@ -199,7 +199,8 @@ export type { PluginSlotDefinition, PluginSlotName };
 
 export type RuntimePluginSlot = PluginUiSlot & {
   readonly render: (input: {
-    service: PluginServiceSummary;
+    service?: PluginServiceSummary;
+    principal?: PluginPrincipal;
   }) => Promise<readonly PageNode[]>;
 };
 
@@ -698,8 +699,10 @@ export function definePlugin<TConfig>(
                 id: slot.id,
                 slot: slot.slot,
                 order: slot.order,
-                render: async ({ service }) =>
-                  serializeNodes(await slot.render({ context, service })),
+                render: async ({ service, principal }) =>
+                  serializeNodes(
+                    await slot.render({ context, service, principal }),
+                  ),
               }),
             // A declared action is a procedure: same invoke path, same
             // validation, one name for the concept across both tiers.
