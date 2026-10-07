@@ -14,8 +14,8 @@ import {
   views,
 } from "../resources/catalog.js";
 import { queryHistory } from "../resources/history.js";
-import { queryHistoryStore } from "../stores/index.js";
 import { queryFailed, querySucceeded } from "../signals.js";
+import { queryHistoryStore } from "../stores/index.js";
 
 type Ctx = DuckDbContext & ActionRuntimeContext;
 
@@ -23,6 +23,8 @@ export const runQueryInput = z.object({ sql: z.string().min(1) });
 
 export const runQuery = defineAction({
   id: "run-query",
+  description:
+    "Run arbitrary SQL, including mutations and external access, in the query editor. This is not a read-only resource.",
   input: runQueryInput,
   run: async ({ sql }, ctx: Ctx) => {
     const started = Date.now();
