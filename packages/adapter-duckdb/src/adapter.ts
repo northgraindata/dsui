@@ -40,7 +40,6 @@ import {
 } from "./context.js";
 import { createDuckDbClient } from "./duckdb-client.js";
 import { duckdbHealth } from "./health.js";
-import { duckdbSignals } from "./signals.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -51,6 +50,7 @@ import { overviewPage } from "./pages/overview.js";
 import { queryPage } from "./pages/query.js";
 import { schemaPage } from "./pages/schema.js";
 import { relationPage } from "./pages/table.js";
+import { catalogTables, tableConstraints } from "./resources/agent.js";
 import {
   columnProfile,
   databaseCards,
@@ -80,6 +80,7 @@ import {
   views,
 } from "./resources/catalog.js";
 import { settings } from "./resources/config.js";
+import { explorationResources } from "./resources/exploration.js";
 import {
   extensionCatalog,
   extensionDetails,
@@ -88,6 +89,7 @@ import {
 } from "./resources/extensions.js";
 import { queryHistory } from "./resources/history.js";
 import { secrets } from "./resources/secrets.js";
+import { duckdbSignals } from "./signals.js";
 import {
   activityFiltersStore,
   dataExplorerStore,
@@ -148,6 +150,9 @@ export function createDuckDbAdapter(
       queryHistoryStore,
     ],
     resources: [
+      ...explorationResources,
+      catalogTables,
+      tableConstraints,
       version,
       overview,
       databases,
