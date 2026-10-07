@@ -171,6 +171,65 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
   }
 
   return {
+    async searchCatalog(input) {
+      const result = await read(
+        `
+        with relations as (
+          select database_name, schema_name, table_name as name, 'table' as kind,
+            comment as description, estimated_size::double as estimated_rows
+            from duckdb_tables() where not internal
+          union all
+          select database_name, schema_name, view_name as name, 'view' as kind,
+            comment as description, null::double as estimated_rows
+            from duckdb_views() where not internal
+        ), catalog as (
+          select r.database_name as database, r.schema_name as schema, r.name, r.kind,
+            r.description, r.estimated_rows as "estimatedRows",
+            count(c.column_name)::integer as "columnCount",
+            coalesce(list(c.column_name order by c.column_index)
+              filter (where ? <> '' and contains(lower(c.column_name), lower(?))), []::varchar[]) as "matchedColumns"
+          from relations r left join duckdb_columns() c
+            on c.database_name = r.database_name and c.schema_name = r.schema_name
+            and c.table_name = r.name
+          where r.database_name = ? and (? is null or r.schema_name = ?)
+            and (? is null or r.name = ?)
+          group by r.database_name, r.schema_name, r.name, r.kind, r.description, r.estimated_rows
+        ) select * from catalog
+          where "columnCount" >= ? and (? is null or "columnCount" <= ?)
+            and (contains(lower(name), lower(?)) or contains(lower(coalesce(description, '')), lower(?)) or len("matchedColumns") > 0)
+          order by schema, name limit ? offset ?
+      `,
+        [
+          input.query,
+          input.query,
+          input.database,
+          input.schema ?? null,
+          input.schema ?? null,
+          input.name ?? null,
+          input.name ?? null,
+          input.minColumns,
+          input.maxColumns ?? null,
+          input.maxColumns ?? null,
+          input.query,
+          input.query,
+          input.limit + 1,
+          input.offset,
+        ],
+      );
+      return result.rows.map((row) => ({
+        database: String(row.database),
+        schema: String(row.schema),
+        name: String(row.name),
+        kind: row.kind === "view" ? ("view" as const) : ("table" as const),
+        columnCount: Number(row.columnCount),
+        description: row.description == null ? null : String(row.description),
+        estimatedRows:
+          row.estimatedRows == null ? null : Number(row.estimatedRows),
+        matchedColumns: Array.isArray(row.matchedColumns)
+          ? row.matchedColumns.map(String)
+          : [],
+      }));
+    },
     dispose() {
       connection?.closeSync();
       connection = undefined;
@@ -394,6 +453,17 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
         type: String(row.data_type),
         nullable: row.is_nullable !== false,
       }));
+    },
+    async getConstraints(database, schema, table) {
+      const result = await read(
+        `select constraint_name as name, constraint_type as type,
+          constraint_text as definition, constraint_column_names as columns
+        from duckdb_constraints()
+        where database_name = ? and schema_name = ? and table_name = ?
+        order by constraint_index`,
+        [database, schema, table],
+      );
+      return result.rows;
     },
     async previewTable(database, schema, table, limit = 100) {
       return read(
