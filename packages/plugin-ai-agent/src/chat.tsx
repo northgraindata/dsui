@@ -1,5 +1,12 @@
 import { type ComponentProps, z } from "@northgraindata/dsui-plugin-sdk";
 import { activityMessage } from "./activity";
+import {
+  AttachmentPicker,
+  clipboardFiles,
+  DraftAttachments,
+  MessageAttachment,
+  useAttachmentDraft,
+} from "./attachment-ui";
 import { HighlightedMentions, MentionInput } from "./mention-input";
 import { mentionServices, serviceMentions } from "./mentions";
 import { conversationSchema } from "./model";
@@ -173,6 +180,8 @@ function AgentPanel({
   const [state, setState] = useState<State>();
   const { width, resizing, resizeHandle } = usePanelResize(open);
   const [error, setError] = useState<string>();
+  const [loadError, setLoadError] = useState<string>();
+  const attachmentDraft = useAttachmentDraft(setError);
   const [conversationId, setConversationId] = useState<string>();
   const [selected, setSelected] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
@@ -194,6 +203,14 @@ function AgentPanel({
     },
     [client],
   );
+  const loadAttachment = useCallback(
+    async (conversationId: string, attachmentId: string) => {
+      return z
+        .object({ data: z.string() })
+        .parse(await call("attachment", { conversationId, attachmentId })).data;
+    },
+    [call],
+  );
   const load = useCallback(async () => {
     try {
       const requestedId = conversationRef.current;
@@ -202,7 +219,7 @@ function AgentPanel({
       );
       if (!active.current || requestedId !== conversationRef.current) return;
       setState(result);
-      setError(undefined);
+      setLoadError(undefined);
       if (
         result.conversation &&
         contextConversation.current !== result.conversation.id
@@ -212,7 +229,7 @@ function AgentPanel({
       }
     } catch (cause) {
       if (active.current)
-        setError(
+        setLoadError(
           cause instanceof Error ? cause.message : "Could not load agent",
         );
     }
@@ -258,7 +275,13 @@ function AgentPanel({
     bottom.current?.scrollIntoView({ block: "nearest" });
   }, [lastText]);
   const send = async (text: string) => {
-    if (!text.trim() || running || !state?.configured) return;
+    if (
+      (!text.trim() && !attachmentDraft.attachments.length) ||
+      running ||
+      attachmentDraft.reading ||
+      !state?.configured
+    )
+      return;
     setSending(true);
     setError(undefined);
     try {
@@ -267,12 +290,21 @@ function AgentPanel({
           conversationId,
           message: text,
           serviceIds: selected,
+          attachments: attachmentDraft.attachments.map(
+            ({ name, mediaType, size, data }) => ({
+              name,
+              mediaType,
+              size,
+              data,
+            }),
+          ),
         }),
       );
       if (!active.current) return;
       conversationRef.current = result.conversationId;
       setConversationId(result.conversationId);
       setDraft("");
+      attachmentDraft.clear();
       await load();
     } catch (cause) {
       if (active.current)
@@ -292,6 +324,8 @@ function AgentPanel({
       current ? { ...current, conversation: undefined } : current,
     );
     setSelected([]);
+    attachmentDraft.clear();
+    setError(undefined);
     setHistoryOpen(false);
     input.current?.focus();
   };
@@ -300,6 +334,7 @@ function AgentPanel({
     contextConversation.current = undefined;
     conversationRef.current = id;
     setConversationId(id);
+    attachmentDraft.clear();
     setHistoryOpen(false);
     void load();
   };
@@ -429,7 +464,7 @@ function AgentPanel({
         </div>
       )}
       <div className="da-scroll">
-        {!state && !error && (
+        {!state && !error && !loadError && (
           <p className="da-muted" role="status">
             Connecting to your workspace…
           </p>
@@ -484,6 +519,18 @@ function AgentPanel({
             message.role === "user" ? (
               <div className="da-user-row" key={message.id}>
                 <div className="da-user-message">
+                  {message.attachments.length > 0 && (
+                    <div className="da-attachments">
+                      {message.attachments.map((attachment) => (
+                        <MessageAttachment
+                          key={attachment.id}
+                          attachment={attachment}
+                          conversationId={conversation.id}
+                          load={loadAttachment}
+                        />
+                      ))}
+                    </div>
+                  )}
                   <p>
                     <HighlightedMentions
                       text={message.text}
@@ -557,10 +604,10 @@ function AgentPanel({
             ))}
           </details>
         ) : null}
-        {(error || conversation?.error) && (
+        {(error || loadError || conversation?.error) && (
           <div className="da-error" role="alert">
             <Glyph name="alert" />
-            <p>{error ?? conversation?.error}</p>
+            <p>{error ?? loadError ?? conversation?.error}</p>
           </div>
         )}
         <div ref={bottom} />
@@ -568,20 +615,49 @@ function AgentPanel({
       <footer className="da-footer">
         <form
           className="da-composer"
+          onPaste={(event) => {
+            const files = clipboardFiles(event.clipboardData);
+            if (!files.length) return;
+            event.preventDefault();
+            if (sending || !state?.configured) return;
+            setError(undefined);
+            void attachmentDraft.addFiles(files);
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             void send(draft);
           }}
         >
+          {attachmentDraft.attachments.length > 0 && (
+            <DraftAttachments
+              attachments={attachmentDraft.attachments}
+              disabled={sending}
+              remove={attachmentDraft.remove}
+            />
+          )}
+          {attachmentDraft.reading && (
+            <span className="da-thinking" role="status">
+              Reading attachments…
+            </span>
+          )}
           <MentionInput
             inputRef={input}
             services={services}
             value={draft}
-            disabled={!state?.configured}
+            disabled={!state?.configured || sending}
             onChange={setDraft}
             onSend={() => void send(draft)}
           />
           <div className="da-composer-bar">
+            <AttachmentPicker
+              disabled={
+                sending || attachmentDraft.reading || !state?.configured
+              }
+              onFiles={(files) => {
+                setError(undefined);
+                void attachmentDraft.addFiles(files);
+              }}
+            />
             <button
               type="button"
               className="da-composer-context"
@@ -620,7 +696,11 @@ function AgentPanel({
                 type="submit"
                 className="da-send"
                 aria-label="Send message"
-                disabled={!draft.trim() || !state?.configured}
+                disabled={
+                  (!draft.trim() && !attachmentDraft.attachments.length) ||
+                  attachmentDraft.reading ||
+                  !state?.configured
+                }
               >
                 <Glyph name="send" size={18} />
               </button>
