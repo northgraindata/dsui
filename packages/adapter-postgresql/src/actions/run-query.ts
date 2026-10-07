@@ -15,6 +15,8 @@ export const runQueryInput = z.object({
 
 export const runQuery = defineAction({
   id: "run-query",
+  description:
+    "Run arbitrary SQL, including mutations, in the query editor. This is not a read-only resource.",
   input: runQueryInput,
   run: async (
     { sql, database, maxRows },
@@ -33,10 +35,10 @@ export const runQuery = defineAction({
     const started = Date.now();
     let result: PostgreSQLQueryResult;
     try {
-      result = await (database
-        ? ctx.getClient(database)
-        : ctx.client
-      ).execute(normalizedSql, maxRows);
+      result = await (database ? ctx.getClient(database) : ctx.client).execute(
+        normalizedSql,
+        maxRows,
+      );
     } catch (error) {
       ctx.emit(queryFailed, {
         operation: sqlOperation(normalizedSql),
