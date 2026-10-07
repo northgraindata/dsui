@@ -851,7 +851,7 @@ export class PluginRuntime {
   async renderSlot(
     pluginId: string,
     slotId: string,
-    context: { service: PluginServiceSummary },
+    context: { service?: PluginServiceSummary; principal?: PluginPrincipal },
   ): Promise<
     readonly import("@northgraindata/dsui-plugin-sdk").PageNode[] | null
   > {

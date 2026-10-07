@@ -1,20 +1,21 @@
 import type { PluginSlotResult } from "@northgraindata/dsui-plugin-sdk";
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { getPluginSlots } from "../../api";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
-export function usePluginSlotBatch(slot: string, serviceIdsKey: string) {
+export function usePluginSlotBatch(slot: string, serviceIdsKey?: string) {
   const [results, setResults] = useState<PluginSlotResult[]>([]);
   const [error, setError] = useState<string>();
   useEffect(() => {
     let active = true;
     setResults([]);
     setError(undefined);
-    if (!serviceIdsKey) return;
-    const serviceIds = serviceIdsKey.split("\0");
-    const batches = [];
+    if (serviceIdsKey === "") return;
+    const serviceIds = serviceIdsKey?.split("\0") ?? [];
+    const batches =
+      serviceIdsKey === undefined ? [getPluginSlots(slot, [])] : [];
     for (let offset = 0; offset < serviceIds.length; offset += 100)
       batches.push(
         getPluginSlots(slot, serviceIds.slice(offset, offset + 100)),
@@ -36,12 +37,16 @@ export function PluginSlot({
   serviceId,
   results,
   error,
+  fallback,
 }: {
   serviceId: string;
   results: PluginSlotResult[];
   error?: string;
+  fallback?: ReactNode;
 }) {
   const selected = results.filter((result) => result.serviceId === serviceId);
+  if (!selected.some((item) => !item.error && item.nodes.length) && fallback)
+    return <>{fallback}</>;
   if (!selected.length && !error) return null;
   return (
     <div className="plugin-slot">
