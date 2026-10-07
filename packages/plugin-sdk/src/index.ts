@@ -248,13 +248,23 @@ export type PluginServiceProbe = {
   readonly checks?: readonly PluginServiceHealthCheck[];
 };
 
+export type PluginServiceResource = {
+  readonly id: string;
+  readonly description?: string;
+  readonly policy?: "metadata" | "preview" | "sql";
+  readonly inputSchema?: Record<string, unknown>;
+};
+export type PluginServiceAction = {
+  readonly id: string;
+  readonly description?: string;
+  readonly inputSchema?: Record<string, unknown>;
+};
+
 export interface PluginServiceCatalog {
+  /** Discover action schemas only; this grants no execution capability. */
+  actions?(id: string): Promise<readonly PluginServiceAction[] | null>;
   /** Read-only adapter resource descriptors, scoped to service visibility. */
-  resources?(
-    id: string,
-  ): Promise<
-    readonly { id: string; inputSchema?: Record<string, unknown> }[] | null
-  >;
+  resources?(id: string): Promise<readonly PluginServiceResource[] | null>;
   /** Execute a declared adapter resource without exposing connection credentials. */
   readResource?(
     id: string,
