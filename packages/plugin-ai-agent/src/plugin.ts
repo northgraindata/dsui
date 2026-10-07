@@ -8,7 +8,13 @@ import {
   z,
 } from "@northgraindata/dsui-plugin-sdk";
 import { type AgentRuntime, AiSdkRuntime } from "./agent";
-import { history, owner, read, save } from "./database";
+import { validateAttachments } from "./attachment-validation";
+import {
+  attachmentUploadSchema,
+  MAX_ATTACHMENTS,
+  MAX_CONVERSATION_ATTACHMENT_BYTES,
+} from "./attachments";
+import { history, owner, read, readAttachmentData, save } from "./database";
 import { mentionServices, serviceMentions } from "./mentions";
 import {
   type Config,
@@ -94,25 +100,70 @@ export function createAiAgentPlugin(
         },
       });
       registry.procedure({
-        id: "send",
+        id: "attachment",
         permission: "inspect",
         input: z.object({
-          conversationId: z.string().optional(),
-          message: z.string().trim().min(1).max(16_000),
-          serviceIds: z.array(z.string().min(1)).max(100).default([]),
+          conversationId: z.string(),
+          attachmentId: z.string().uuid(),
         }),
+        handler: async (context, input) => {
+          const conversation = load(context, input.conversationId);
+          for (const id of new Set([
+            ...conversation.serviceIds,
+            ...conversation.accessedServiceIds,
+          ]))
+            await context.access.require(id, "inspect");
+          if (
+            !conversation.messages.some((message) =>
+              message.attachments.some(
+                (attachment) => attachment.id === input.attachmentId,
+              ),
+            )
+          )
+            throw new PluginRequestError("Attachment not found", 404);
+          return {
+            data: readAttachmentData(
+              context,
+              conversation.id,
+              input.attachmentId,
+            ),
+          };
+        },
+      });
+      registry.procedure({
+        id: "send",
+        permission: "inspect",
+        input: z
+          .object({
+            conversationId: z.string().optional(),
+            message: z.string().trim().max(16_000),
+            attachments: z
+              .array(attachmentUploadSchema)
+              .max(MAX_ATTACHMENTS)
+              .default([]),
+            serviceIds: z.array(z.string().min(1)).max(100).default([]),
+          })
+          .refine(
+            (input) => Boolean(input.message || input.attachments.length),
+            "Add a message or attachment",
+          ),
         handler: async (context, input) => {
           if (!context.config.model.apiKey)
             throw new PluginRequestError(
               "Configure plugins.ai-agent.config.model.apiKey in dsui.yaml",
               409,
             );
+          const attachments = input.attachments ?? [];
           const conversation: Conversation = input.conversationId
             ? load(context, input.conversationId)
             : {
                 id: crypto.randomUUID(),
                 ownerId: owner(context),
-                title: input.message.slice(0, 70),
+                title: (
+                  input.message ||
+                  attachments[0]?.name ||
+                  "Attachments"
+                ).slice(0, 70),
                 serviceIds: input.serviceIds ?? [],
                 accessedServiceIds: [],
                 status: "idle",
@@ -121,6 +172,28 @@ export function createAiAgentPlugin(
               };
           if (active.has(conversation.id))
             throw new PluginRequestError("A response is already running", 409);
+          validateAttachments(attachments);
+          const previousBytes = conversation.messages.reduce(
+            (sum, message) =>
+              sum +
+              message.attachments.reduce(
+                (size, attachment) => size + attachment.size,
+                0,
+              ),
+            0,
+          );
+          if (
+            previousBytes +
+              attachments.reduce(
+                (sum, attachment) => sum + attachment.size,
+                0,
+              ) >
+            MAX_CONVERSATION_ATTACHMENT_BYTES
+          )
+            throw new PluginRequestError(
+              "This chat has reached its 50 MB attachment limit. Start a new chat to attach more files.",
+              422,
+            );
           const services: PluginServiceSummary[] = [];
           if (input.message.includes("@")) {
             let cursor: string | undefined;
@@ -168,23 +241,34 @@ export function createAiAgentPlugin(
             ]),
           ];
           conversation.serviceIds = selectedServiceIds;
+          const uploads = attachments.map((attachment) => ({
+            ...attachment,
+            id: crypto.randomUUID(),
+          }));
           const now = new Date().toISOString();
           conversation.messages.push({
             id: crypto.randomUUID(),
             role: "user",
             text: input.message,
+            attachments: uploads.map(({ id, name, mediaType, size }) => ({
+              id,
+              name,
+              mediaType,
+              size,
+            })),
             createdAt: now,
           });
           const assistant = {
             id: crypto.randomUUID(),
             role: "assistant" as const,
             text: "",
+            attachments: [],
             createdAt: now,
           };
           conversation.messages.push(assistant);
           conversation.status = "running";
           conversation.error = undefined;
-          save(context, conversation);
+          save(context, conversation, uploads);
           const controller = new AbortController();
           const timeout = setTimeout(
             () => controller.abort(new Error("Agent response timed out")),
@@ -248,18 +332,25 @@ export function createAiAgentPlugin(
                     conversation.accessedServiceIds = [
                       ...new Set(conversation.accessedServiceIds),
                     ];
-                    tool.output = boundOutput(output, 24_000, [
-                      context.config.model.apiKey,
-                    ]);
+                    tool.output = boundOutput(
+                      output,
+                      24_000,
+                      [context.config.model.apiKey],
+                      context.config.sensitiveColumns,
+                    );
                     controller.signal.throwIfAborted();
                     tool.status = "completed";
                     return tool.output;
-                  } catch {
+                  } catch (cause) {
+                    const error =
+                      cause instanceof PluginRequestError
+                        ? cause.message
+                        : "Resource unavailable or access denied";
                     tool.status = "error";
                     tool.output = {
-                      error: "Resource unavailable or access denied",
+                      error,
                     };
-                    throw new Error("Resource unavailable or access denied");
+                    throw new Error(error);
                   } finally {
                     save(context, conversation);
                   }
