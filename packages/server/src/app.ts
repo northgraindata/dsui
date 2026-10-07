@@ -250,8 +250,24 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         if (!source) return null;
         return registry
           .get(source.service.adapter)
-          .catalog.resources.map(({ id, inputSchema }) => ({
+          .catalog.resources.map(
+            ({ id, inputSchema, description, policy }) => ({
+              id,
+              ...(description !== undefined ? { description } : {}),
+              ...(policy !== undefined ? { policy } : {}),
+              ...(inputSchema ? { inputSchema } : {}),
+            }),
+          );
+      },
+      actions: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.actions.map(({ id, inputSchema, description }) => ({
             id,
+            ...(description !== undefined ? { description } : {}),
             ...(inputSchema ? { inputSchema } : {}),
           }));
       },
