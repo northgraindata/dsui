@@ -78,3 +78,23 @@ and plugin manage permission. Use it for installation-wide settings or secrets
 that service-level manage permission cannot authorize. Both additions are optional
 host capabilities for compatibility; plugins using them must require a host that
 implements them. Background jobs run as trusted installation operations.
+
+## Adapter and plugin invocation
+
+Trusted integrations can use the optional host capabilities below. Check availability
+before calling them; older hosts can omit them.
+
+- `services.describe(serviceId)` returns declared resource/action IDs and JSON input schemas.
+- `services.query(serviceId, resourceId, input)` executes a validated adapter resource.
+- `services.execute(serviceId, actionId, input, { signal, origin })` executes a validated
+  adapter action, publishes its declared signals and audits it. The host checks execute
+  permission for requests; background jobs are trusted plugin work. The SDK stamps the
+  originating plugin ID; supply `origin.runId` to correlate emissions with a job.
+- `plugins.available(pluginId)` checks an active integration.
+- `plugins.query(pluginId, resourceId, input)` and `plugins.call(pluginId, procedureId, input)`
+  invoke another plugin's registered contracts. Inputs are validated, caller permissions
+  are checked and the target handler retains its service access checks.
+
+Signal events can include `origin: { pluginId, runId? }`. Consumers can use this metadata
+to avoid recursively reacting to their own actions. These capabilities belong to the
+generic host; provider-specific clients and credentials stay inside their plugins.
