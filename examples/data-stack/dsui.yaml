@@ -11,6 +11,8 @@ plugins:
     browserBundle: "@northgraindata/dsui-plugin-ai-agent/browser"
     enabled: true
     config:
+      allowReadOnlySql: false # Opt-in PostgreSQL only; also requires connection.allowAgentSql.
+      allowTablePreview: true # Set false to disable sample-row reads.
       model:
         provider: openai
         id: gpt-4.1-mini
