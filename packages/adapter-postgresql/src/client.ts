@@ -1,5 +1,8 @@
 import postgres from "postgres";
+import { sslOption } from "./connection-options.js";
 import type { PostgreSQLConfig } from "./context.js";
+import { executeReadOnlyQuery } from "./readonly-query.js";
+import type { CatalogInput, CatalogTable } from "./resources/agent.js";
 
 const MAX_RESULT_BYTES = 16 * 1024 * 1024;
 
@@ -125,6 +128,12 @@ export interface PostgreSQLClient {
   }): Promise<PostgreSQLActivityEntry[]>;
   cancelQuery(pid: number): Promise<boolean>;
   execute(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
+  searchCatalog(input: CatalogInput): Promise<CatalogTable[]>;
+  executeReadOnly(
+    sql: string,
+    maxRows: number,
+    timeoutMs: number,
+  ): Promise<PostgreSQLQueryResult & { truncated: boolean }>;
   dispose(): Promise<void>;
 }
 
@@ -147,6 +156,44 @@ export function createPostgreSQLClient(
   });
 
   return {
+    async searchCatalog(input) {
+      const search = `%${input.query.replace(/[\\%_]/g, "\\$&")}%`;
+      return sql<CatalogTable[]>`
+        with catalog as (
+          select current_database() as database, n.nspname as schema,
+            c.relname as name,
+            case c.relkind when 'v' then 'view' when 'm' then 'materialized-view'
+              when 'f' then 'foreign-table' else 'table' end as kind,
+            obj_description(c.oid, 'pg_class') as description,
+            case when c.reltuples < 0 or c.relkind = 'v' then null
+              else c.reltuples::float8 end as "estimatedRows",
+            count(a.attnum)::int as "columnCount",
+            coalesce(array_agg(a.attname order by a.attnum)
+              filter (where ${input.query} <> '' and a.attname ilike ${search}), '{}') as "matchedColumns"
+          from pg_class c join pg_namespace n on n.oid = c.relnamespace
+          left join pg_attribute a on a.attrelid = c.oid
+            and a.attnum > 0 and not a.attisdropped
+          where c.relkind in ('r','p','v','m','f')
+            and n.nspname not in ('pg_catalog', 'information_schema')
+            and n.nspname not like 'pg_toast%' and n.nspname not like 'pg_temp%'
+            and has_schema_privilege(n.oid, 'USAGE')
+            and has_table_privilege(c.oid, 'SELECT')
+            and (${input.schema ?? null}::text is null or n.nspname = ${input.schema ?? null})
+            and (${input.name ?? null}::text is null or c.relname = ${input.name ?? null})
+          group by c.oid, n.nspname, c.relname, c.relkind, c.reltuples
+        ) select * from catalog
+        where "columnCount" >= ${input.minColumns}
+          and (${input.maxColumns ?? null}::int is null or "columnCount" <= ${input.maxColumns ?? null})
+          and (name ilike ${search} or coalesce(description, '') ilike ${search}
+            or cardinality("matchedColumns") > 0)
+        order by schema, name limit ${input.limit + 1} offset ${input.offset}
+      `;
+    },
+
+    executeReadOnly(query, maxRows, timeoutMs) {
+      return executeReadOnlyQuery(config, query, maxRows, timeoutMs);
+    },
+
     async serverInfo() {
       const [row] = await sql<PostgreSQLServerInfo[]>`
         select
@@ -527,22 +574,3 @@ const postgresTypeNames: Record<number, string> = {
   2950: "uuid",
   3802: "jsonb",
 };
-
-function sslOption(config: PostgreSQLConfig) {
-  if (config.sslMode === "disable") return false;
-  if (
-    !config.sslRootCert &&
-    !config.sslCert &&
-    !config.sslKey &&
-    config.sslMode !== "verify-ca"
-  )
-    return config.sslMode;
-
-  return {
-    rejectUnauthorized:
-      config.sslMode === "verify-ca" || config.sslMode === "verify-full",
-    ...(config.sslRootCert ? { ca: config.sslRootCert } : {}),
-    ...(config.sslCert ? { cert: config.sslCert } : {}),
-    ...(config.sslKey ? { key: config.sslKey } : {}),
-  };
-}
