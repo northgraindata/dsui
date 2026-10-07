@@ -156,11 +156,20 @@ export async function runAdapterHost(): Promise<number> {
             : {}),
           resources: definition.resources.map((resource) => ({
             id: resource.id,
+            ...(resource.description !== undefined
+              ? { description: resource.description }
+              : {}),
+            ...(resource.policy !== undefined
+              ? { policy: resource.policy }
+              : {}),
             inputSchema: inputSchemaOf(resource, `resource "${resource.id}"`),
             refresh: { ...resource.refresh },
           })),
           actions: definition.actions.map((action) => ({
             id: action.id,
+            ...(action.description !== undefined
+              ? { description: action.description }
+              : {}),
             inputSchema: inputSchemaOf(action, `action "${action.id}"`),
           })),
           pages: definition.pages.map((page) => ({ path: page.path })),
