@@ -39,6 +39,7 @@ export function defineAction<
   TContext,
 >(options: {
   id: string;
+  description?: string;
   input: TSchema;
   run: (input: z.output<TSchema>, ctx: TContext) => Promise<TOutput> | TOutput;
 }): InputAction<z.input<TSchema>, TOutput, TContext>;
@@ -60,10 +61,12 @@ export function defineAction<
  */
 export function defineAction<TOutput, TContext>(options: {
   id: string;
+  description?: string;
   run: (input: undefined, ctx: TContext) => Promise<TOutput> | TOutput;
 }): InputlessAction<TOutput, TContext>;
 export function defineAction(options: {
   id: string;
+  description?: string;
   input?: z.ZodTypeAny;
   run: (input: never, ctx: never) => Promise<unknown> | unknown;
 }): unknown {
@@ -71,6 +74,9 @@ export function defineAction(options: {
   const definition: ActionDefinition<unknown, unknown, unknown> = {
     kind: "action",
     id: options.id,
+    ...(options.description !== undefined
+      ? { description: options.description }
+      : {}),
     inputSchema: options.input,
     run: options.run as (
       input: unknown,
@@ -91,6 +97,9 @@ export function defineAction(options: {
   return Object.assign(callable, {
     kind: "action" as const,
     id: definition.id,
+    ...(definition.description !== undefined
+      ? { description: definition.description }
+      : {}),
     definition,
   });
 }
