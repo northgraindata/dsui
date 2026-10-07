@@ -54,11 +54,14 @@ export interface LoadedConnectionMethod {
 
 export interface ResourceCatalogEntry {
   id: string;
+  description?: string;
+  policy?: "metadata" | "preview" | "sql";
   inputSchema?: JsonSchema;
   refresh?: { kind: string; intervalMs?: number };
 }
 export interface ActionCatalogEntry {
   id: string;
+  description?: string;
   inputSchema?: JsonSchema;
 }
 export interface PageCatalogEntry {
