@@ -149,26 +149,32 @@ export function registerPluginRoutes(
     const slot = context.req.param("slot");
     if (
       slot !== "dashboard.service-card.trailing" &&
-      slot !== "service.workspace.after-header"
+      slot !== "service.workspace.after-header" &&
+      slot !== "sidebar.profile"
     )
       return context.json({ message: "Unknown plugin slot" }, 404);
     const contributions = deps.runtime
       .catalog()
       .slots.filter((item) => item.slot === slot);
     const result: PluginSlotResult[] = [];
-    for (const id of new Set(parsed.data.serviceIds)) {
+    // Global slots carry request identity without requiring visibility of a service.
+    const serviceIds =
+      slot === "sidebar.profile" ? [""] : parsed.data.serviceIds;
+    for (const id of new Set(serviceIds)) {
       if (
+        id &&
         !(await deps.runtime.authorize(context.get("principal"), "inspect", {
           type: "service",
           id,
         }))
       )
         continue;
-      const service = await deps.runtime.withPrincipal(
-        context.get("principal"),
-        () => deps.runtime.service(id),
-      );
-      if (!service) continue;
+      const service = id
+        ? await deps.runtime.withPrincipal(context.get("principal"), () =>
+            deps.runtime.service(id),
+          )
+        : undefined;
+      if (id && !service) continue;
       for (const contribution of contributions) {
         if (
           !(await deps.runtime.authorize(context.get("principal"), "inspect", {
@@ -182,7 +188,8 @@ export function registerPluginRoutes(
             context.get("principal"),
             () =>
               deps.runtime.renderSlot(contribution.pluginId, contribution.id, {
-                service,
+                service: service ?? undefined,
+                principal: context.get("principal"),
               }),
           );
           if (nodes)

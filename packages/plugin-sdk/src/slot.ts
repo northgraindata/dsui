@@ -5,7 +5,9 @@
  * a dashboard card's trailing region, a service header's footer. Declaring one
  * is how a plugin extends a screen it does not own.
  */
+
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
+import type { PluginPrincipal } from "./index";
 import { InvalidDefinitionError } from "./shared/errors";
 import { assertNonEmptyId } from "./shared/validators";
 
@@ -19,6 +21,7 @@ export type PluginSlotName =
   | "app.shell.actions"
   | "dashboard.service-card.trailing"
   | "service.workspace.after-header"
+  | "sidebar.profile"
   | (string & {});
 
 /**
@@ -36,6 +39,7 @@ export type AnyPluginSlot = {
   readonly order?: number;
   readonly render: (input: {
     readonly context: any;
+    readonly principal?: PluginPrincipal;
     readonly service: any;
   }) =>
     | PageNode
@@ -46,6 +50,8 @@ export type AnyPluginSlot = {
 /** Input handed to a slot's render function. */
 export type PluginSlotRenderInput<TContext, TService = unknown> = {
   readonly context: TContext;
+  /** Authenticated caller; absent for anonymous requests. */
+  readonly principal?: PluginPrincipal;
   readonly service: TService;
 };
 
