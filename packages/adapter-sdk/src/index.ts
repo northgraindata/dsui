@@ -177,6 +177,12 @@ export {
   type ValueNode,
   type ValueProps,
 } from "./components/index";
+export type {
+  CodeExplorerContent,
+  CodeExplorerFile,
+  CodeExplorerProps,
+} from "./components/primitives/code-explorer";
+export { CodeExplorer } from "./components/primitives/code-explorer";
 export type { ComponentClient, ComponentProps } from "./components/runtime";
 export { componentProps } from "./components/runtime";
 export {
@@ -212,6 +218,7 @@ export {
   type InputResource,
   type ResourceBinding,
   type ResourceDefinition,
+  type ResourceMetadata,
   type ResourceReference,
   type ResourceRuntimeContext,
 } from "./resource/index";
@@ -256,10 +263,3 @@ export {
   type StoreStatus,
 } from "./store/index";
 export { z };
-
-export { CodeExplorer } from "./components/primitives/code-explorer";
-export type {
-  CodeExplorerProps,
-  CodeExplorerFile,
-  CodeExplorerContent,
-} from "./components/primitives/code-explorer";
