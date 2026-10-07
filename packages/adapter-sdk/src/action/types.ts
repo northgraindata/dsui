@@ -1,7 +1,7 @@
 import type { z } from "zod";
-import type { AnySignalDefinition } from "../signal";
 import type { SignalEmission } from "../job";
 import type { AnyResourceDefinition } from "../resource/types";
+import type { AnySignalDefinition } from "../signal";
 import type { StoreDefinition, StoreInstance } from "../store/types";
 
 export interface StoreActionAccessor {
@@ -94,6 +94,7 @@ export type ActionResult<TOutput> = ActionSuccess<TOutput> | ActionFailure;
  * Created by {@link defineAction}; never constructed by hand.
  */
 export interface ActionDefinition<TInput, TOutput, TContext = unknown> {
+  readonly description?: string;
   /** Discriminant: always `"action"`. */
   readonly kind: "action";
   /** Unique within the adapter, e.g. `"suspend-warehouse"`. */
@@ -152,6 +153,7 @@ export interface ActionExecutionWithSignals<TOutput> {
  * (adapter definitions, form targets).
  */
 export interface AnyActionDefinition {
+  readonly description?: string;
   /** Discriminant: always `"action"`. */
   readonly kind: "action";
   /** Unique within the adapter. */
@@ -168,6 +170,7 @@ export interface AnyActionDefinition {
  * ```
  */
 export type InputlessAction<TOutput, TContext = unknown> = {
+  readonly description?: string;
   /** Creates a binding without executing. */
   (): ActionBinding<undefined, TOutput, TContext>;
   /** Discriminant: always `"action"`. */
@@ -193,6 +196,7 @@ export type InputlessAction<TOutput, TContext = unknown> = {
  * ```
  */
 export type InputAction<TInput, TOutput, TContext = unknown> = {
+  readonly description?: string;
   /**
    * Validates input and creates a binding without executing.
    *
