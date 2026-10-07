@@ -8,6 +8,9 @@ export const signalEventSchema = z.object({
   sourceId: z.string(),
   serviceId: z.string().optional(),
   payload: z.unknown(),
+  origin: z
+    .object({ pluginId: z.string(), runId: z.string().optional() })
+    .optional(),
   occurredAt: z.string(),
 });
 export type PluginSignalEvent = z.infer<typeof signalEventSchema>;
