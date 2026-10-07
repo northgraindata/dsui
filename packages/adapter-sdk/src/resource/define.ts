@@ -6,6 +6,7 @@ import type {
   InputResource,
   ResourceBinding,
   ResourceDefinition,
+  ResourceMetadata,
 } from "./types";
 
 // NOTE: the input overload must come first. TypeScript contextually types
@@ -33,19 +34,17 @@ import type {
  * });
  * ```
  */
-export function defineResource<
-  TSchema extends z.ZodTypeAny,
-  TOutput,
-  TContext,
->(options: {
-  id: string;
-  input: TSchema;
-  query: (
-    input: z.output<TSchema>,
-    ctx: TContext,
-  ) => Promise<TOutput> | TOutput;
-  refresh?: RefreshStrategy;
-}): InputResource<z.input<TSchema>, TOutput, TContext>;
+export function defineResource<TSchema extends z.ZodTypeAny, TOutput, TContext>(
+  options: {
+    id: string;
+    input: TSchema;
+    query: (
+      input: z.output<TSchema>,
+      ctx: TContext,
+    ) => Promise<TOutput> | TOutput;
+    refresh?: RefreshStrategy;
+  } & ResourceMetadata,
+): InputResource<z.input<TSchema>, TOutput, TContext>;
 /**
  * Defines a resource with no input.
  *
@@ -64,21 +63,29 @@ export function defineResource<
  * });
  * ```
  */
-export function defineResource<TOutput, TContext>(options: {
-  id: string;
-  query: (input: undefined, ctx: TContext) => Promise<TOutput> | TOutput;
-  refresh?: RefreshStrategy;
-}): InputlessResource<TOutput, TContext>;
-export function defineResource(options: {
-  id: string;
-  input?: z.ZodTypeAny;
-  query: (input: never, ctx: never) => Promise<unknown> | unknown;
-  refresh?: RefreshStrategy;
-}): unknown {
+export function defineResource<TOutput, TContext>(
+  options: {
+    id: string;
+    query: (input: undefined, ctx: TContext) => Promise<TOutput> | TOutput;
+    refresh?: RefreshStrategy;
+  } & ResourceMetadata,
+): InputlessResource<TOutput, TContext>;
+export function defineResource(
+  options: {
+    id: string;
+    input?: z.ZodTypeAny;
+    query: (input: never, ctx: never) => Promise<unknown> | unknown;
+    refresh?: RefreshStrategy;
+  } & ResourceMetadata,
+): unknown {
   assertNonEmptyId("Resource", options.id);
   const definition: ResourceDefinition<unknown, unknown, unknown> = {
     kind: "resource",
     id: options.id,
+    ...(options.description !== undefined
+      ? { description: options.description }
+      : {}),
+    ...(options.policy !== undefined ? { policy: options.policy } : {}),
     inputSchema: options.input,
     query: options.query as (
       input: unknown,
@@ -101,6 +108,10 @@ export function defineResource(options: {
   return Object.assign(callable, {
     kind: "resource" as const,
     id: definition.id,
+    ...(definition.description !== undefined
+      ? { description: definition.description }
+      : {}),
+    ...(definition.policy !== undefined ? { policy: definition.policy } : {}),
     refresh: definition.refresh,
     definition,
   });
