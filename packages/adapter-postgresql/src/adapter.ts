@@ -9,7 +9,6 @@ import {
   postgresqlConnectionSchema,
 } from "./context.js";
 import { postgresqlHealth } from "./health.js";
-import { postgresqlSignals } from "./signals.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -18,6 +17,11 @@ import { databaseQueryPage, queryPage } from "./pages/query.js";
 import { relationPage } from "./pages/relation.js";
 import { schemaPage } from "./pages/schema.js";
 import { activity } from "./resources/activity.js";
+import {
+  agentReadonlyQuery,
+  agentSqlCapabilities,
+  catalogTables,
+} from "./resources/agent.js";
 import { capabilities } from "./resources/capabilities.js";
 import {
   columns,
@@ -32,6 +36,7 @@ import {
   relations,
   schemas,
 } from "./resources/catalog.js";
+import { explorationResources } from "./resources/exploration.js";
 import {
   connectionUsage,
   overview,
@@ -44,6 +49,7 @@ import {
   relationPreview,
 } from "./resources/preview.js";
 import { serverInfo } from "./resources/server.js";
+import { postgresqlSignals } from "./signals.js";
 import { activityFiltersStore } from "./stores/activity-filters.js";
 import { queryEditorStore } from "./stores/query-editor.js";
 
@@ -82,6 +88,10 @@ export function createPostgreSQLAdapter() {
     signals: postgresqlSignals,
     stores: [queryEditorStore, activityFiltersStore],
     resources: [
+      ...explorationResources,
+      catalogTables,
+      agentReadonlyQuery,
+      agentSqlCapabilities,
       serverInfo,
       databases,
       schemas,
