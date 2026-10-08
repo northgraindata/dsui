@@ -6,6 +6,7 @@ import {
 } from "@northgraindata/dsui-plugin-sdk";
 import type { Config } from "./model";
 import { resourceNavigation } from "./resource-navigation";
+import { listSkills, readSkill } from "./skills";
 
 const serviceInput = z.object({ serviceId: z.string().min(1) });
 const discoveryInput = serviceInput.extend({
@@ -13,6 +14,8 @@ const discoveryInput = serviceInput.extend({
   limit: z.number().int().min(1).max(50).default(20),
 });
 export const toolInputSchemas = {
+  list_skills: z.object({}),
+  read_skill: z.object({ id: z.string().min(1) }),
   list_services: z.object({
     cursor: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(50),
@@ -71,6 +74,15 @@ export async function executeTool(
     return service;
   };
   switch (name) {
+    case "list_skills":
+      toolInputSchemas.list_skills.parse(raw);
+      return { skills: listSkills() };
+    case "read_skill": {
+      const { id } = toolInputSchemas.read_skill.parse(raw);
+      const skill = readSkill(id);
+      if (!skill) throw new PluginRequestError("Unknown agent skill", 404);
+      return skill;
+    }
     case "list_services": {
       const input = toolInputSchemas.list_services.parse(raw);
       const page = await context.services.list(input);
