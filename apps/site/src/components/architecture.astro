@@ -1,0 +1,35 @@
+---
+import SectionBackdrop from "./section-backdrop.astro";
+
+const docs = import.meta.env.DEV ? "http://localhost:4322/docs" : "/docs";
+const services = [
+  {
+    name: "Airflow",
+    category: "Orchestration",
+    logo: "/assets/logos/airflow.svg",
+  },
+  { name: "dbt", category: "Transformation", logo: "/assets/logos/dbt.png" },
+  { name: "Snowflake", category: "Warehouse", logo: null },
+  { name: "S3", category: "Storage", logo: "/assets/logos/s3.svg" },
+];
+---
+
+<section id="architecture" class="landing-section section-atmosphere">
+  <SectionBackdrop motif="perspective" />
+  <div class="landing-container">
+    <div class="section-heading section-heading--center">
+      <p class="eyebrow">ARCHITECTURE</p>
+      <h2>Your stack stays.<br />DSUI brings it together.</h2>
+      <p>Keep running the tools you chose. Add one operational layer above them, with adapters for your services and plugins for your workflows.</p>
+    </div>
+    <figure class="architecture-diagram" aria-labelledby="architecture-caption">
+      <div class="architecture-workspace"><div class="architecture-brand"><img src="/branding/logo-icon.svg" width="36" height="36" alt="" /><strong>DSUI</strong><span>One operational workspace</span></div><div class="architecture-capabilities"><span>Explore & operate</span><span>Cross-stack context</span><span>AI Agent</span></div></div>
+      <div class="architecture-plugins"><span class="eyebrow">PLUGINS</span><span>Official</span><span>Community</span><span>Private / internal</span></div>
+      <div class="architecture-bridge"><span>Adapters · service-specific connections & workflows</span></div>
+      <div class="architecture-services">{services.map((service) => <div>{service.logo ? <img src={service.logo} width="32" height="32" alt="" /> : <span class="warehouse-icon" aria-hidden="true">❄</span>}<strong>{service.name}</strong><small>{service.category}</small></div>)}</div>
+      <figcaption id="architecture-caption">Your existing services and data stay in your infrastructure.</figcaption>
+    </figure>
+    <div class="architecture-principles"><span>✓ No data migration</span><span>✓ Keep your existing tools</span><span>✓ Extend through SDKs</span></div>
+    <div class="section-link"><a class="text-link" href={`${docs}/how-dsui-works`}>Explore the architecture <span aria-hidden="true">→</span></a></div>
+  </div>
+</section>

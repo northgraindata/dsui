@@ -1,0 +1,8 @@
+---
+interface Props {
+  motif: "flows" | "context" | "modules" | "perspective" | "branches";
+}
+const { motif } = Astro.props;
+---
+
+<div class:list={["section-backdrop", `section-backdrop--${motif}`]} aria-hidden="true"></div>

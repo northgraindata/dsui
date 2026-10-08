@@ -1,0 +1,71 @@
+---
+import { Code } from "astro:components";
+import { adapterExample } from "../content/adapter-example";
+import SectionBackdrop from "./section-backdrop.astro";
+
+const docs = import.meta.env.DEV ? "http://localhost:4322/docs" : "/docs";
+const extensions = [
+  {
+    number: "01",
+    name: "Official plugins",
+    image: "plugins-official-grain",
+    description:
+      "Add capabilities maintained with DSUI. Start with service health, host monitoring, and code repositories.",
+    tags: ["Health", "Monitoring", "Code repositories"],
+  },
+  {
+    number: "02",
+    name: "Community plugins",
+    image: "plugins-community-grain",
+    description:
+      "Share a useful workflow. Install what others build. Grow the workspace together through the Plugin SDK.",
+    tags: ["Open ecosystem", "Plugin SDK"],
+  },
+  {
+    number: "03",
+    name: "Private / internal plugins",
+    image: "plugins-internal-grain",
+    description:
+      "Bring your team's workflows into DSUI. Build for your own systems and keep the implementation in your own repository.",
+    tags: ["Internal tools", "Your repository"],
+  },
+];
+---
+
+<section id="extensibility" class="landing-section section-atmosphere">
+  <SectionBackdrop motif="modules" />
+  <div class="landing-container">
+    <div class="section-heading section-heading--center">
+      <p class="eyebrow">EXTENSIBILITY</p>
+      <h2>A starting point.<br />With room for your ideas.</h2>
+      <p>Connect a new service. Build a cross-stack workflow. Give your team a tool that fits how they work.</p>
+    </div>
+    <div class="extension-grid">
+      {extensions.map((extension) => (
+        <article class="extension-card">
+          <div class="extension-card-art" aria-hidden="true">
+            <img src={`/assets/generated/${extension.image}.webp`} alt="" width="1024" height="683" loading="lazy" decoding="async" />
+          </div>
+          <span class="eyebrow">{extension.number} / PLUGINS</span>
+          <h3>{extension.name}</h3>
+          <p>{extension.description}</p>
+          <div class="tag-list">{extension.tags.map((tag) => <span>{tag}</span>)}</div>
+        </article>
+      ))}
+    </div>
+    <div class="sdk-layout">
+      <div class="section-heading">
+        <p class="eyebrow">04 / ADAPTER SDK</p>
+        <h3 class="sdk-heading">Your service.<br />A first-class workspace.</h3>
+        <p>Define the connection, expose resources and actions, and compose the pages. DSUI provides the workspace around them.</p>
+        <dl class="sdk-definitions"><div><dt>Adapters connect tools.</dt><dd>Service-specific clients, data, and workflows.</dd></div><div><dt>Plugins connect capabilities.</dt><dd>Pages, jobs, and shared workflows across services.</dd></div></dl>
+        <a class="text-link" href={`${docs}/adapter-sdk`}>Explore the Adapter SDK <span aria-hidden="true">→</span></a>
+      </div>
+      <figure class="code-panel">
+        <div class="frame-toolbar"><span>adapter.ts</span><span class="context-pill">TypeScript</span></div>
+        <Code code={adapterExample} lang="ts" theme="github-dark" />
+        <figcaption class="code-caption">Composition example; imported modules implement the service behavior. <a href="https://github.com/northgraindata/dsui/tree/main/examples/example-adapter">Explore the complete example ↗</a></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
