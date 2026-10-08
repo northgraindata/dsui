@@ -2,7 +2,11 @@ import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getPluginCatalog } from "../api";
-import { PluginShellActions } from "../features/plugins/plugin-slots";
+import {
+  PluginShellActions,
+  PluginSlot,
+  usePluginSlotBatch,
+} from "../features/plugins/plugin-slots";
 import { Icon } from "./icon";
 import { Wordmark } from "./wordmark";
 
@@ -19,6 +23,7 @@ export function AppChrome({
   pathname: string;
   openSearch(): void;
 }) {
+  const profile = usePluginSlotBatch("sidebar.profile");
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
   const [topbarHidden, setTopbarHidden] = useState(false);
@@ -97,6 +102,7 @@ export function AppChrome({
           </button>
         </div>
         <PluginShellActions />
+        <PluginShellActions />
       </header>
       <div className="app-body">
         {!inAdapter && (
@@ -135,12 +141,19 @@ export function AppChrome({
                 </span>
                 <Icon name="chevron" size={14} />
               </a>
-              <Link to="/settings" className="workspace-profile">
-                <span>
-                  My workspace<small>Manage settings</small>
-                </span>
-                <Icon name="chevron" />
-              </Link>
+              <PluginSlot
+                serviceId=""
+                results={profile.results}
+                error={profile.error}
+                fallback={
+                  <Link to="/settings" className="workspace-profile">
+                    <span>
+                      My workspace<small>Manage settings</small>
+                    </span>
+                    <Icon name="chevron" />
+                  </Link>
+                }
+              />
             </div>
           </aside>
         )}

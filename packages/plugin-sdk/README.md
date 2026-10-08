@@ -98,3 +98,16 @@ before calling them; older hosts can omit them.
 Signal events can include `origin: { pluginId, runId? }`. Consumers can use this metadata
 to avoid recursively reacting to their own actions. These capabilities belong to the
 generic host; provider-specific clients and credentials stay inside their plugins.
+
+## Sidebar profile slot
+
+`sidebar.profile` replaces the sidebar's workspace profile when a plugin returns
+content. With no contribution, an empty result or a request error, the host keeps
+its default workspace/settings link. Request it with an empty `serviceIds` array;
+the result has `serviceId: ""` because this slot belongs to the workspace.
+
+Its render input includes the authenticated `principal` and an undefined
+`service`. The host supplies the principal, never the request payload, and still
+checks plugin inspect permission. Service slots keep receiving their service and
+now also receive the authenticated principal. Keep personal account presentation
+and data lookup in the contributing plugin.
