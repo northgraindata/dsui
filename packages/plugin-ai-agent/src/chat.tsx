@@ -7,18 +7,49 @@ import {
   MessageAttachment,
   useAttachmentDraft,
 } from "./attachment-ui";
+import { ChatHistory } from "./chat-history";
+import {
+  type ChatTab,
+  ChatTabs,
+  type ChatTabUpdate,
+  chatTabsReducer,
+  newChatTab,
+} from "./chat-tabs";
 import { HighlightedMentions, MentionInput } from "./mention-input";
-import { mentionServices, serviceMentions } from "./mentions";
+import { mentionServices } from "./mentions";
 import { conversationSchema } from "./model";
 import { usePanelResize } from "./panel-resize";
+import { PromptNavigator } from "./prompt-navigator";
 import { React, ReactDOM } from "./react";
+import { type MessageReply, resolveReply } from "./replies";
+import {
+  ReplyQuote,
+  ReplySelectionAction,
+  useReplySelection,
+} from "./reply-ui";
 import { styles } from "./styles";
 
 const stateSchema = z.object({
   configured: z.boolean(),
   model: z.object({ provider: z.string(), id: z.string() }),
+  models: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        provider: z.string(),
+        id: z.string(),
+      }),
+    )
+    .default([]),
   services: z.array(
-    z.object({ id: z.string(), name: z.string(), adapter: z.string() }),
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      adapter: z.string(),
+      adapterName: z.string().optional(),
+      iconUrl: z.string().optional(),
+    }),
   ),
   conversations: z.array(
     z.object({ id: z.string(), title: z.string(), status: z.string() }),
@@ -42,6 +73,7 @@ const icons: Record<string, string> = {
   stop: "M5 5h14v14H5Z",
   chevron: "m8 10 4 4 4-4",
   tools: "m4 4 16 16M14 4a5 5 0 0 0 6 6M4 14a5 5 0 0 0 6 6",
+  reply: "m9 5-6 6 6 6M3 11h10a7 7 0 0 1 7 7",
 };
 function Glyph({ name, size = 18 }: { name: string; size?: number }) {
   return (
@@ -98,10 +130,10 @@ const suggestions = [
   },
   {
     icon: "code",
-    title: "Explain this adapter",
+    title: "Explain an adapter",
     detail: "Discover what it can read",
     message:
-      "Explain the selected service's adapter and the resources available to inspect.",
+      "Explain an adapter available in my workspace and the resources it can inspect.",
   },
   {
     icon: "database",
@@ -176,22 +208,134 @@ function AgentPanel({
   open: boolean;
   close(): void;
 }) {
+  const { width, resizing, resizeHandle } = usePanelResize(open);
+  const [workspace, dispatch] = React.useReducer(
+    chatTabsReducer,
+    undefined,
+    () => {
+      const tab = newChatTab();
+      return { tabs: [tab], activeId: tab.id };
+    },
+  );
+  const [historyOpen, setHistoryOpen] = React.useState(false);
+  const openConversation = React.useCallback((id?: string) => {
+    setHistoryOpen(false);
+    dispatch({ type: "open", tab: newChatTab(id) });
+  }, []);
+  const updateTab = React.useCallback((id: string, update: ChatTabUpdate) => {
+    dispatch({ type: "update", id, update });
+  }, []);
+  return (
+    <aside
+      id="dsui-agent-panel"
+      className="da-panel"
+      data-open={open}
+      data-workspace-panel={open ? "open" : "closed"}
+      data-resizing={resizing}
+      style={{ width }}
+      inert={!open}
+      role="dialog"
+      aria-modal="false"
+      aria-label="DSUI Agent"
+    >
+      {resizeHandle}
+      <header className="da-header">
+        <span className="da-outline-mark">
+          <Glyph name="sparkle" size={20} />
+        </span>
+        <h2>DSUI Agent</h2>
+        <button
+          type="button"
+          className="da-icon-button"
+          title="Conversation history"
+          aria-label="Conversation history"
+          onClick={() => setHistoryOpen(!historyOpen)}
+        >
+          <Glyph name="history" />
+        </button>
+        <button
+          type="button"
+          className="da-icon-button"
+          title="New chat"
+          aria-label="New chat"
+          onClick={() => openConversation()}
+        >
+          <Glyph name="plus" />
+        </button>
+        <button
+          type="button"
+          className="da-icon-button"
+          aria-label="Close agent"
+          onClick={close}
+        >
+          <Glyph name="close" />
+        </button>
+      </header>
+      <ChatTabs
+        workspace={workspace}
+        select={(id) => {
+          setHistoryOpen(false);
+          dispatch({ type: "select", id });
+        }}
+        close={(id) => dispatch({ type: "close", id, fallback: newChatTab() })}
+      />
+      {workspace.tabs.map((tab) => (
+        <ChatSession
+          key={tab.id}
+          tab={tab}
+          client={client}
+          open={open}
+          visible={open && tab.id === workspace.activeId}
+          selectedTab={tab.id === workspace.activeId}
+          historyOpen={historyOpen}
+          setHistoryOpen={setHistoryOpen}
+          openConversation={openConversation}
+          updateTab={updateTab}
+        />
+      ))}
+    </aside>
+  );
+}
+
+function ChatSession({
+  client,
+  tab,
+  open,
+  visible,
+  selectedTab,
+  historyOpen,
+  setHistoryOpen,
+  openConversation,
+  updateTab,
+}: {
+  client: ComponentProps["client"];
+  tab: ChatTab;
+  open: boolean;
+  visible: boolean;
+  selectedTab: boolean;
+  historyOpen: boolean;
+  setHistoryOpen(open: boolean): void;
+  openConversation(id: string): void;
+  updateTab(id: string, update: ChatTabUpdate): void;
+}) {
   const { useState, useEffect, useRef, useCallback } = React;
   const [state, setState] = useState<State>();
-  const { width, resizing, resizeHandle } = usePanelResize(open);
   const [error, setError] = useState<string>();
   const [loadError, setLoadError] = useState<string>();
   const attachmentDraft = useAttachmentDraft(setError);
-  const [conversationId, setConversationId] = useState<string>();
-  const [selected, setSelected] = useState<string[]>([]);
+  const [conversationId, setConversationId] = useState(tab.conversationId);
+  const [modelKey, setModelKey] = useState<string>();
   const [draft, setDraft] = useState("");
+  const [reply, setReply] = useState<MessageReply>();
   const [sending, setSending] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [contextOpen, setContextOpen] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const messages = useRef<HTMLDivElement>(null);
+  const scroll = useRef<HTMLDivElement>(null);
+  const followLatest = useRef(true);
+  const scrollPosition = useRef(0);
   const active = useRef(true);
-  const contextConversation = useRef<string | undefined>(undefined);
+  const modelConversation = useRef<string | undefined>(undefined);
   const conversationRef = useRef(conversationId);
   conversationRef.current = conversationId;
   const call = useCallback(
@@ -219,13 +363,19 @@ function AgentPanel({
       );
       if (!active.current || requestedId !== conversationRef.current) return;
       setState(result);
+      if (result.conversation)
+        updateTab(tab.id, {
+          conversationId: result.conversation.id,
+          title: result.conversation.title,
+          status: result.conversation.status,
+        });
       setLoadError(undefined);
       if (
         result.conversation &&
-        contextConversation.current !== result.conversation.id
+        modelConversation.current !== result.conversation.id
       ) {
-        contextConversation.current = result.conversation.id;
-        setSelected(result.conversation.serviceIds);
+        modelConversation.current = result.conversation.id;
+        setModelKey(result.conversation.modelKey);
       }
     } catch (cause) {
       if (active.current)
@@ -233,9 +383,14 @@ function AgentPanel({
           cause instanceof Error ? cause.message : "Could not load agent",
         );
     }
-  }, [call]);
+  }, [call, tab.id, updateTab]);
   useEffect(() => {
     active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  useEffect(() => {
     if (!open) return;
     let busy = false;
     const refresh = async () => {
@@ -248,23 +403,54 @@ function AgentPanel({
       }
     };
     void refresh();
-    const interval = setInterval(() => void refresh(), 700);
+    const interval = setInterval(() => void refresh(), visible ? 700 : 2500);
     return () => {
-      active.current = false;
       clearInterval(interval);
     };
-  }, [load, open]);
+  }, [load, open, visible]);
   useEffect(() => {
-    if (open) input.current?.focus();
-  }, [open]);
+    if (!visible) return;
+    if (!document.activeElement?.closest('[role="tablist"]'))
+      input.current?.focus({ preventScroll: true });
+  }, [visible]);
+  React.useLayoutEffect(() => {
+    if (visible && scroll.current && !followLatest.current)
+      scroll.current.scrollTop = scrollPosition.current;
+  }, [visible]);
   const conversation = state?.conversation;
   const services = mentionServices(state?.services ?? []);
-  const mentionedCount = new Set(
-    serviceMentions(draft, services).flatMap((mention) =>
-      mention.service ? [mention.service.id] : [],
-    ),
-  ).size;
   const running = sending || conversation?.status === "running";
+  const selectedModelKey = state?.models.some((model) => model.key === modelKey)
+    ? modelKey
+    : state?.models[0]?.key;
+  const replySelection = useReplySelection(
+    messages,
+    visible && !running,
+    conversation?.id,
+  );
+  const startReply = (messageId: string, selection?: string) => {
+    if (running) return;
+    setReply(
+      resolveReply(conversation?.messages ?? [], { messageId, selection }),
+    );
+    window.getSelection()?.removeAllRanges();
+    input.current?.focus();
+  };
+  const jumpToMessage = (id: string) => {
+    const target = messages.current?.querySelector(
+      `[data-message-id="${CSS.escape(id)}"]`,
+    );
+    if (target && scroll.current) {
+      followLatest.current = false;
+      const top =
+        scroll.current.scrollTop +
+        target.getBoundingClientRect().top -
+        scroll.current.getBoundingClientRect().top -
+        12;
+      scroll.current.scrollTo({ top, behavior: "instant" });
+    }
+    if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+  };
   const lastText = conversation?.messages.at(-1)?.text;
   const activeMessageId =
     conversation?.status === "running"
@@ -272,8 +458,10 @@ function AgentPanel({
       : undefined;
   useEffect(() => {
     void lastText;
-    bottom.current?.scrollIntoView({ block: "nearest" });
-  }, [lastText]);
+    void conversation?.id;
+    if (visible && followLatest.current)
+      bottom.current?.scrollIntoView({ block: "nearest" });
+  }, [lastText, conversation?.id, visible]);
   const send = async (text: string) => {
     if (
       (!text.trim() && !attachmentDraft.attachments.length) ||
@@ -283,13 +471,23 @@ function AgentPanel({
     )
       return;
     setSending(true);
+    followLatest.current = true;
     setError(undefined);
     try {
       const result = z.object({ conversationId: z.string() }).parse(
         await call("send", {
           conversationId,
+          modelKey: selectedModelKey,
           message: text,
-          serviceIds: selected,
+          replyTo: reply
+            ? {
+                messageId: reply.messageId,
+                ...(reply.kind === "selection"
+                  ? { selection: reply.text }
+                  : {}),
+              }
+            : undefined,
+          serviceIds: [],
           attachments: attachmentDraft.attachments.map(
             ({ name, mediaType, size, data }) => ({
               name,
@@ -303,7 +501,13 @@ function AgentPanel({
       if (!active.current) return;
       conversationRef.current = result.conversationId;
       setConversationId(result.conversationId);
+      updateTab(tab.id, {
+        conversationId: result.conversationId,
+        title: conversation?.title ?? "New chat",
+        status: "running",
+      });
       setDraft("");
+      setReply(undefined);
       attachmentDraft.clear();
       await load();
     } catch (cause) {
@@ -315,155 +519,55 @@ function AgentPanel({
       if (active.current) setSending(false);
     }
   };
-  const fresh = () => {
-    if (sending) return;
-    contextConversation.current = undefined;
-    conversationRef.current = undefined;
-    setConversationId(undefined);
-    setState((current) =>
-      current ? { ...current, conversation: undefined } : current,
-    );
-    setSelected([]);
-    attachmentDraft.clear();
-    setError(undefined);
-    setHistoryOpen(false);
-    input.current?.focus();
-  };
   const selectConversation = (id: string) => {
-    if (sending) return;
-    contextConversation.current = undefined;
-    conversationRef.current = id;
-    setConversationId(id);
-    attachmentDraft.clear();
     setHistoryOpen(false);
-    void load();
-  };
-  const toggleService = (id: string) => {
-    if (running) return;
-    setSelected((ids) =>
-      ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id],
-    );
+    openConversation(id);
   };
   return (
-    <aside
-      id="dsui-agent-panel"
-      className="da-panel"
-      data-open={open}
-      data-workspace-panel={open ? "open" : "closed"}
-      data-resizing={resizing}
-      style={{ width }}
-      inert={!open}
-      role="dialog"
-      aria-modal="false"
-      aria-label="DSUI Agent"
+    <section
+      id={`da-session-${tab.id}`}
+      role="tabpanel"
+      aria-labelledby={`da-tab-${tab.id}`}
+      className="da-chat-session"
+      hidden={!selectedTab}
     >
-      {resizeHandle}
-      <header className="da-header">
-        <span className="da-outline-mark">
-          <Glyph name="sparkle" size={20} />
-        </span>
-        <h2>DSUI Agent</h2>
-        <button
-          type="button"
-          className="da-icon-button"
-          title="Conversation history"
-          aria-label="Conversation history"
+      {historyOpen && visible && (
+        <ChatHistory
+          items={state?.conversations ?? []}
           disabled={sending}
-          onClick={() => setHistoryOpen(!historyOpen)}
-        >
-          <Glyph name="history" />
-        </button>
-        <button
-          type="button"
-          className="da-icon-button"
-          title="New chat"
-          aria-label="New chat"
-          disabled={sending}
-          onClick={fresh}
-        >
-          <Glyph name="plus" />
-        </button>
-        <button
-          type="button"
-          className="da-icon-button"
-          aria-label="Close agent"
-          onClick={close}
-        >
-          <Glyph name="close" />
-        </button>
-      </header>
-      {historyOpen && (
-        <section className="da-history">
-          <strong>Conversations</strong>
-          {state?.conversations.length ? (
-            state.conversations.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                disabled={sending}
-                onClick={() => selectConversation(item.id)}
-              >
-                {item.title}
-                <Glyph name="chevron" size={14} />
-              </button>
-            ))
-          ) : (
-            <p>No conversations yet.</p>
-          )}
-        </section>
+          select={selectConversation}
+          rename={async (id, title) => {
+            await call("rename", { conversationId: id, title });
+            await load();
+          }}
+        />
       )}
-      <div className="da-context">
-        <span>Context:</span>
-        <button
-          type="button"
-          className={!selected.length ? "selected" : ""}
-          disabled={running}
-          onClick={() => setSelected([])}
-        >
-          <Glyph name="stack" size={13} />
-          Workspace
-        </button>
-        {state?.services
-          .filter((service) => selected.includes(service.id))
-          .map((service) => (
-            <button
-              type="button"
-              className="selected"
-              key={service.id}
-              disabled={running}
-              onClick={() => toggleService(service.id)}
-            >
-              {service.name}
-            </button>
-          ))}
-        <button
-          type="button"
-          disabled={running}
-          aria-label="Select services"
-          aria-expanded={contextOpen}
-          onClick={() => setContextOpen(!contextOpen)}
-        >
-          <Glyph name="plus" size={15} />
-        </button>
-      </div>
-      {contextOpen && (
-        <div className="da-service-picker">
-          {state?.services.map((service) => (
-            <label key={service.id}>
-              <input
-                type="checkbox"
-                checked={selected.includes(service.id)}
-                disabled={running}
-                onChange={() => toggleService(service.id)}
-              />
-              {service.name}
-              <small>{service.adapter}</small>
-            </label>
-          ))}
-          {!state?.services.length && <p>No accessible services.</p>}
+      {conversation && (
+        <div className="da-chat-title">
+          <span title={conversation.title}>{conversation.title}</span>
+          {visible && (
+            <PromptNavigator
+              key={conversation.id}
+              messages={conversation.messages}
+              jump={jumpToMessage}
+            />
+          )}
         </div>
       )}
-      <div className="da-scroll">
+      <div
+        className="da-scroll"
+        ref={scroll}
+        onScroll={() => {
+          if (!visible) return;
+          const element = scroll.current;
+          if (element) {
+            scrollPosition.current = element.scrollTop;
+            followLatest.current =
+              element.scrollHeight - element.clientHeight - element.scrollTop <
+              80;
+          }
+        }}
+      >
         {!state && !error && !loadError && (
           <p className="da-muted" role="status">
             Connecting to your workspace…
@@ -474,8 +578,8 @@ function AgentPanel({
             <strong>Connect your model</strong>
             <p>
               Add your model and API key under{" "}
-              <code>plugins.ai-agent.config.model</code> in{" "}
-              <code>dsui.yaml</code>, then restart DSUI.
+              <code>plugins.ai-agent.config.model</code> (or <code>models</code>
+              ) in <code>dsui.yaml</code>, then restart DSUI.
             </p>
             <p>Your key stays on the server.</p>
           </div>
@@ -511,14 +615,28 @@ function AgentPanel({
           </section>
         )}
         <div
+          ref={messages}
           className="da-messages"
           role="log"
           aria-label="Conversation messages"
         >
           {conversation?.messages.map((message) =>
             message.role === "user" ? (
-              <div className="da-user-row" key={message.id}>
+              <div
+                className="da-user-row"
+                key={message.id}
+                data-message-id={message.id}
+                tabIndex={-1}
+              >
                 <div className="da-user-message">
+                  {message.replyTo && (
+                    <ReplyQuote
+                      reply={message.replyTo}
+                      onJump={() =>
+                        jumpToMessage(message.replyTo?.messageId ?? "")
+                      }
+                    />
+                  )}
                   {message.attachments.length > 0 && (
                     <div className="da-attachments">
                       {message.attachments.map((attachment) => (
@@ -543,11 +661,26 @@ function AgentPanel({
                       minute: "2-digit",
                     })}
                   </time>
+                  <button
+                    type="button"
+                    className="da-message-reply"
+                    disabled={running}
+                    aria-label="Reply to your message"
+                    onClick={() => startReply(message.id)}
+                  >
+                    <Glyph name="reply" size={14} /> Reply
+                  </button>
                 </div>
                 <span className="da-avatar">You</span>
               </div>
             ) : (
-              <div className="da-assistant-row" key={message.id}>
+              <div
+                className="da-assistant-row"
+                key={message.id}
+                data-message-id={message.id}
+                data-reply-message-id={message.id}
+                tabIndex={-1}
+              >
                 <AgentMark />
                 <div className="da-assistant-message">
                   {message.text && (
@@ -588,6 +721,25 @@ function AgentPanel({
                         send={send}
                       />
                     ))}
+                  {message.text && message.id !== activeMessageId && (
+                    <button
+                      type="button"
+                      className="da-message-reply"
+                      disabled={running}
+                      aria-label="Reply to agent message"
+                      onClick={() => startReply(message.id)}
+                    >
+                      <Glyph name="reply" size={14} /> Reply
+                    </button>
+                  )}
+                  {message.model && (
+                    <small
+                      className="da-response-model"
+                      title={message.model.provider}
+                    >
+                      {message.model.id}
+                    </small>
+                  )}
                 </div>
               </div>
             ),
@@ -628,6 +780,15 @@ function AgentPanel({
             void send(draft);
           }}
         >
+          {reply && (
+            <ReplyQuote
+              reply={reply}
+              onRemove={() => {
+                setReply(undefined);
+                input.current?.focus();
+              }}
+            />
+          )}
           {attachmentDraft.attachments.length > 0 && (
             <DraftAttachments
               attachments={attachmentDraft.attachments}
@@ -658,20 +819,25 @@ function AgentPanel({
                 void attachmentDraft.addFiles(files);
               }}
             />
-            <button
-              type="button"
-              className="da-composer-context"
-              onClick={() => setContextOpen(!contextOpen)}
-              disabled={running}
-              aria-expanded={contextOpen}
-            >
-              <Glyph name="stack" size={14} />
-              {mentionedCount ? "Mentions" : "Context"}:{" "}
-              {mentionedCount || selected.length
-                ? `${mentionedCount || selected.length} service${(mentionedCount || selected.length) > 1 ? "s" : ""}`
-                : "Workspace"}
-              <Glyph name="chevron" size={13} />
-            </button>
+            <label className="da-model-picker da-model-picker-compact">
+              <select
+                aria-label="Agent model"
+                title={
+                  state?.models.find((model) => model.key === selectedModelKey)
+                    ?.label ?? "Agent model"
+                }
+                value={selectedModelKey ?? ""}
+                disabled={running || !state?.models.length}
+                onChange={(event) => setModelKey(event.target.value)}
+              >
+                {!state?.models.length && <option value="">Model</option>}
+                {state?.models.map((model) => (
+                  <option key={model.key} value={model.key}>
+                    {model.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             {running ? (
               <button
                 type="button"
@@ -709,7 +875,10 @@ function AgentPanel({
         </form>
         <small>Agent can make mistakes. Always verify important results.</small>
       </footer>
-    </aside>
+      {visible && (
+        <ReplySelectionAction selection={replySelection} onReply={startReply} />
+      )}
+    </section>
   );
 }
 
@@ -1001,6 +1170,13 @@ function renderMarkdown(
       )
     ) {
       const headers = splitMarkdownTableRow(line);
+      const schemaTable =
+        headers.length >= 2 &&
+        headers.length <= 3 &&
+        /^(?:column(?: name)?|name)$/i.test(
+          (headers[0] ?? "").replace(/`/g, ""),
+        ) &&
+        /^(?:data )?type$/i.test((headers[1] ?? "").replace(/`/g, ""));
       index += 2;
       const rows: string[][] = [];
       while (index < lines.length && (lines[index] ?? "").includes("|")) {
@@ -1009,7 +1185,17 @@ function renderMarkdown(
       }
       blocks.push(
         <div className="da-markdown-table-wrap" key={`table:${index}`}>
-          <table className="da-markdown-table">
+          <table
+            className="da-markdown-table"
+            data-schema={schemaTable || undefined}
+          >
+            {schemaTable && (
+              <colgroup>
+                <col style={{ width: headers.length === 3 ? "42%" : "55%" }} />
+                <col style={{ width: headers.length === 3 ? "33%" : "45%" }} />
+                {headers.length === 3 && <col style={{ width: "25%" }} />}
+              </colgroup>
+            )}
             <thead>
               <tr>
                 {headers.map((cell, cellIndex) => (
