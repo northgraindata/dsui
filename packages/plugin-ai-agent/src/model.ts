@@ -1,14 +1,19 @@
 import { z } from "@northgraindata/dsui-plugin-sdk";
 import { attachmentSchema, MAX_ATTACHMENTS } from "./attachments";
+import { modelConnectionSchema, namedModelSchema } from "./model-config";
+import { messageReplySchema } from "./replies";
 
 export const configSchema = z.object({
-  model: z
-    .object({
-      provider: z.enum(["openai", "anthropic", "gateway"]).default("openai"),
-      id: z.string().min(1).default("gpt-4.1-mini"),
-      apiKey: z.string().default(""),
-    })
-    .default({}),
+  model: modelConnectionSchema.default({}),
+  models: z
+    .array(namedModelSchema)
+    .max(20)
+    .default([])
+    .refine(
+      (models) =>
+        new Set(models.map((model) => model.key)).size === models.length,
+      "Model keys must be unique",
+    ),
   maxToolCalls: z.number().int().min(1).max(100).default(20),
   timeoutSeconds: z.number().int().min(10).max(600).default(120),
   allowReadOnlySql: z.boolean().default(false),
@@ -30,6 +35,8 @@ export const configSchema = z.object({
 });
 export type Config = z.infer<typeof configSchema>;
 export const toolNames = [
+  "list_skills",
+  "read_skill",
   "list_services",
   "get_service_health",
   "list_events",
@@ -38,7 +45,10 @@ export const toolNames = [
   "list_actions",
 ] as const;
 export const toolDescriptions = {
-  list_services: "List services available in the selected workspace context.",
+  list_skills: "List plugin-provided task guides and when to use them.",
+  read_skill: "Read one plugin-provided Markdown task guide by its exact ID.",
+  list_services:
+    "List services available to the current user in this workspace.",
   get_service_health: "Check a service's reachability and health checks.",
   list_events: "Read recorded DSUI events. This does not start monitoring.",
   discover_resources:
@@ -51,6 +61,8 @@ export const messageSchema = z.object({
   id: z.string(),
   role: z.enum(["user", "assistant"]),
   text: z.string(),
+  replyTo: messageReplySchema.optional(),
+  model: z.object({ provider: z.string(), id: z.string() }).optional(),
   attachments: z.array(attachmentSchema).max(MAX_ATTACHMENTS).default([]),
   createdAt: z.string(),
 });
@@ -66,6 +78,7 @@ export const conversationSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
   title: z.string(),
+  modelKey: z.string().optional(),
   serviceIds: z.array(z.string()),
   accessedServiceIds: z.array(z.string()).default([]),
   status: z.enum(["idle", "running", "error"]),
