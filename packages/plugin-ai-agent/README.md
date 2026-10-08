@@ -6,6 +6,58 @@ only a generic `app.shell.actions` slot and permission-checked Plugin SDK capabi
 No jobs, subscriptions, signal monitoring or autonomous background investigations
 are registered.
 
+## Replies and quotes
+
+Use **Reply** below any completed message, or highlight text in an agent answer
+and choose **Reply to selection**. The composer previews the quoted context;
+use its × button to cancel without deleting your draft. Replies are stored with
+the message, passed to the model as separate quoted context, and link back to
+the original message. Switching tabs preserves each tab's pending reply; closing
+its tab discards the unsent draft and reply. A failed send preserves it for retry.
+
+Selections are limited to 4,000 characters and must stay within one answer.
+Whole-message quotes are capped at 16,000 characters with an explicit truncation
+marker. The server resolves source IDs only within the authorized conversation.
+Rendered excerpts are user-provided text, not independently verified evidence or
+instructions. Old conversations without reply metadata remain compatible.
+
+## Chat names and workspace access
+
+Open conversation history and use the pencil button to rename a chat (1–70
+characters). Names are persisted per user; finish or stop a running response
+before renaming it. The current chat name appears below the panel header. For
+a new chat, the configured model generates a short title from the first prompt
+and attachment names while the first answer runs. If that extra model call
+fails or times out, the chat remains **New chat** and can be renamed manually.
+
+The tab bar above the conversation keeps multiple chats open. **New chat** opens
+another tab; selecting a chat from history opens it or activates its existing
+tab. Each tab keeps its draft, attachments, quoted reply, model and scroll
+position. Every chat can inspect all services the current user can access.
+Responses can run in different tabs at the same time. Close a tab with
+its × button; saved chats remain available in history and running responses
+continue. Closing the last tab opens a blank one. Tabs and unsent drafts last for
+the current page session. Arrow keys, Home/End and Delete work on focused tabs.
+
+Schema-summary tables use fixed column proportions to align adjacent summaries;
+data-preview tables retain their content-based layout.
+
+The **Prompts** menu beside the current chat name lists numbered previews of all
+user messages, including attachment-only prompts. Search or select a preview to
+jump to that prompt and its following response. Reading older messages pauses
+automatic scrolling; scroll back to the bottom or send another message to follow
+the latest response again.
+
+## Agent skills
+
+The agent's always-on Markdown response format lives in
+`src/skills/response-format.md`. Task guides live beside it:
+`diagnose-health.md`, `inspect-catalog.md`, and `compare-services.md`.
+`list_skills` returns their IDs and descriptions; `read_skill` loads one guide
+for a relevant task. Both tools read packaged plugin content only. A skill
+describes a workflow, while live claims still require adapter and DSUI tool
+evidence. Skill reads count toward `maxToolCalls`.
+
 ## Development
 
 From the repository root, using the pinned Bun version:
@@ -48,6 +100,44 @@ Optional configuration: `maxToolCalls` defaults to `20`; `timeoutSeconds` defaul
 to `120`. The tool-call count is enforced separately from the model-step limit.
 After the budget is spent, the next generation is text-only.
 
+### Multiple models
+
+Add named entries under `plugins.ai-agent.config.models` to enable the composer
+model picker. Each entry has a unique `key`, optional display `label`, `provider`,
+provider model `id`, and server-side `apiKey`:
+
+```yaml
+plugins:
+  ai-agent:
+    package: "@northgraindata/dsui-plugin-ai-agent"
+    browserBundle: "@northgraindata/dsui-plugin-ai-agent/browser"
+    enabled: true
+    config:
+      models:
+        - key: fast
+          label: Fast
+          provider: openai
+          id: gpt-4.1-mini
+          apiKey: "${DSUI_AGENT_API_KEY}"
+        - key: detailed
+          label: Detailed
+          provider: openai
+          id: gpt-4.1
+          apiKey: "${DSUI_AGENT_API_KEY}"
+```
+
+Use model IDs available to your provider/account. Models can use different keys
+or providers. Entries without an API key are not offered. The first configured
+entry is the default. The legacy `model` config remains supported and, if it has
+a key, appears first with the reserved picker key `default`.
+
+Selection applies to the next message in the same chat and is remembered when
+that message is sent. It cannot change a response already running. Each new
+answer records its model/provider; previous answers are unchanged. Only model
+keys, labels, provider names and IDs reach the browser, never API keys. Clients
+cannot request unconfigured model IDs or override credentials. Restart DSUI
+after changing the model list.
+
 ## Service mentions
 
 The drawer is chat-only, without Chat, Tools or Insights tabs. Type `@` in the
@@ -58,9 +148,9 @@ Mentions are highlighted while typing and in conversation messages.
 Friendly handles use service names, e.g. `Airflow Prod` becomes `@airflow-prod`.
 Duplicate names fall back to service IDs; `@<service-id>` is always accepted.
 The backend resolves mentions independently against the caller's visible services.
-Unknown or inaccessible mentions are rejected. Mentions scope tool access for
-that message only; without mentions, the selected conversation context applies.
-Mentioned service IDs are retained for later conversation permission checks.
+Unknown or inaccessible mentions are rejected. A mention tells the agent where
+to start looking; it does not restrict the rest of the workspace. Tool access
+continues to be checked against the current user's permissions.
 
 ## Table links
 
@@ -144,6 +234,10 @@ adapter in one metadata query, not one agent tool call per table. Counts may
 include views; `kind` identifies the relation type. Row counts are estimates,
 and views may not have an estimate. Table names remain the only clickable link.
 
+Schema summaries use one heading per table followed by a Markdown table with
+`Column name` and `Type`, plus `Constraints` when available. Verified table links
+are placed on the heading's table name. JSON or SQL DDL is used only when requested.
+
 Previews use Markdown tables by default, with column headers and one row per
 record. JSON is used only when explicitly requested; other explicit format
 requests are honored too. Previews default to 10 rows, with a maximum of 50.
@@ -211,7 +305,7 @@ and occurrences of the configured model key are redacted from tool evidence.
 This does not guarantee arbitrary logs or business data contain no sensitive data.
 
 Conversations are owned by the authenticated principal and persisted in
-plugin-scoped SQLite. Every selected or previously accessed service is checked
+plugin-scoped SQLite. Every mentioned or previously accessed service is checked
 before returning or continuing a conversation. The model receives previous
 messages and paired tool calls/results reconstructed from saved evidence.
 Old conversations remain readable; external session IDs/cursors are no longer used.
