@@ -102,7 +102,6 @@ export function AppChrome({
           </button>
         </div>
         <PluginShellActions />
-        <PluginShellActions />
       </header>
       <div className="app-body">
         {!inAdapter && (
