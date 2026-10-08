@@ -23,12 +23,27 @@ import {
   toolDescriptions,
   toolNames,
 } from "./model";
+import { configuredModels, modelSecrets, selectModel } from "./model-config";
+import { replyInputSchema, resolveReply } from "./replies";
 import { boundOutput, executeTool, withAbortSignal } from "./tools";
 
 const launcher = defineComponent({
   id: "ai-agent/launcher",
   path: "./browser",
 });
+
+function generatedTitle(raw: string): string {
+  const firstLine = raw.split(/\r?\n/, 1)[0] ?? "";
+  return firstLine
+    .replace(/^\s*(?:title|tytuł)\s*:\s*/i, "")
+    .replace(/^\s*[#"'`]+|["'`]+\s*$/g, "")
+    .replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 70)
+    .trim();
+}
+
 export function createAiAgentPlugin(
   runtime: AgentRuntime = new AiSdkRuntime(),
 ) {
@@ -71,10 +86,7 @@ export function createAiAgentPlugin(
             ? load(context, input.conversationId)
             : undefined;
           if (conversation)
-            for (const id of new Set([
-              ...conversation.serviceIds,
-              ...conversation.accessedServiceIds,
-            ]))
+            for (const id of new Set(conversation.accessedServiceIds))
               await context.access.require(id, "inspect");
           const services: PluginServiceSummary[] = [];
           let cursor: string | undefined;
@@ -83,12 +95,23 @@ export function createAiAgentPlugin(
             services.push(...page.items);
             cursor = page.nextCursor;
           } while (cursor);
+          const models = configuredModels(context.config);
+          const currentModel =
+            models.find((model) => model.key === conversation?.modelKey) ??
+            models[0] ??
+            context.config.model;
           return {
-            configured: Boolean(context.config.model.apiKey),
+            configured: models.length > 0,
             model: {
-              provider: context.config.model.provider,
-              id: context.config.model.id,
+              provider: currentModel.provider,
+              id: currentModel.id,
             },
+            models: models.map(({ key, label, provider, id }) => ({
+              key,
+              label,
+              provider,
+              id,
+            })),
             services,
             conversations: await history(context),
             conversation,
@@ -100,6 +123,33 @@ export function createAiAgentPlugin(
         },
       });
       registry.procedure({
+        id: "rename",
+        permission: "inspect",
+        input: z.object({
+          conversationId: z.string().min(1),
+          title: z
+            .string()
+            .trim()
+            .min(1)
+            .max(70)
+            .regex(/^[^\r\n]+$/),
+        }),
+        handler: async (context, input) => {
+          const conversation = load(context, input.conversationId);
+          for (const id of new Set(conversation.accessedServiceIds))
+            await context.access.require(id, "inspect");
+          // A running turn holds its own snapshot and would overwrite the rename.
+          if (active.has(conversation.id))
+            throw new PluginRequestError(
+              "Wait for the response to finish before renaming this chat",
+              409,
+            );
+          conversation.title = input.title;
+          save(context, conversation);
+          return { conversationId: conversation.id, title: conversation.title };
+        },
+      });
+      registry.procedure({
         id: "attachment",
         permission: "inspect",
         input: z.object({
@@ -108,10 +158,7 @@ export function createAiAgentPlugin(
         }),
         handler: async (context, input) => {
           const conversation = load(context, input.conversationId);
-          for (const id of new Set([
-            ...conversation.serviceIds,
-            ...conversation.accessedServiceIds,
-          ]))
+          for (const id of new Set(conversation.accessedServiceIds))
             await context.access.require(id, "inspect");
           if (
             !conversation.messages.some((message) =>
@@ -136,7 +183,9 @@ export function createAiAgentPlugin(
         input: z
           .object({
             conversationId: z.string().optional(),
+            modelKey: z.string().min(1).max(64).optional(),
             message: z.string().trim().max(16_000),
+            replyTo: replyInputSchema.optional(),
             attachments: z
               .array(attachmentUploadSchema)
               .max(MAX_ATTACHMENTS)
@@ -148,30 +197,27 @@ export function createAiAgentPlugin(
             "Add a message or attachment",
           ),
         handler: async (context, input) => {
-          if (!context.config.model.apiKey)
-            throw new PluginRequestError(
-              "Configure plugins.ai-agent.config.model.apiKey in dsui.yaml",
-              409,
-            );
           const attachments = input.attachments ?? [];
           const conversation: Conversation = input.conversationId
             ? load(context, input.conversationId)
             : {
                 id: crypto.randomUUID(),
                 ownerId: owner(context),
-                title: (
-                  input.message ||
-                  attachments[0]?.name ||
-                  "Attachments"
-                ).slice(0, 70),
+                title: "New chat",
                 serviceIds: input.serviceIds ?? [],
                 accessedServiceIds: [],
                 status: "idle",
                 messages: [],
                 tools: [],
               };
+          const model = selectModel(
+            context.config,
+            input.modelKey ?? conversation.modelKey,
+          );
+          const secrets = modelSecrets(context.config);
           if (active.has(conversation.id))
             throw new PluginRequestError("A response is already running", 409);
+          const replyTo = resolveReply(conversation.messages, input.replyTo);
           validateAttachments(attachments);
           const previousBytes = conversation.messages.reduce(
             (sum, message) =>
@@ -220,27 +266,20 @@ export function createAiAgentPlugin(
               ),
             ),
           ];
-          const selectedServiceIds = [...new Set(input.serviceIds)];
-          const turnServiceIds = mentionedIds.length
-            ? mentionedIds
-            : selectedServiceIds;
+          // Chat turns always have workspace scope. Mentions guide the agent's
+          // first look, but never prevent it from inspecting other services.
           for (const id of new Set([
-            ...conversation.serviceIds,
             ...conversation.accessedServiceIds,
-            ...selectedServiceIds,
-            ...turnServiceIds,
+            ...mentionedIds,
           ]))
             await context.access.require(id, "inspect");
           if (active.has(conversation.id))
             throw new PluginRequestError("A response is already running", 409);
           conversation.accessedServiceIds = [
-            ...new Set([
-              ...conversation.accessedServiceIds,
-              ...conversation.serviceIds,
-              ...mentionedIds,
-            ]),
+            ...new Set([...conversation.accessedServiceIds, ...mentionedIds]),
           ];
-          conversation.serviceIds = selectedServiceIds;
+          conversation.serviceIds = [];
+          conversation.modelKey = model.key;
           const uploads = attachments.map((attachment) => ({
             ...attachment,
             id: crypto.randomUUID(),
@@ -250,6 +289,7 @@ export function createAiAgentPlugin(
             id: crypto.randomUUID(),
             role: "user",
             text: input.message,
+            ...(replyTo ? { replyTo } : {}),
             attachments: uploads.map(({ id, name, mediaType, size }) => ({
               id,
               name,
@@ -261,6 +301,7 @@ export function createAiAgentPlugin(
           const assistant = {
             id: crypto.randomUUID(),
             role: "assistant" as const,
+            model: { provider: model.provider, id: model.id },
             text: "",
             attachments: [],
             createdAt: now,
@@ -274,13 +315,41 @@ export function createAiAgentPlugin(
             () => controller.abort(new Error("Agent response timed out")),
             context.config.timeoutSeconds * 1000,
           );
+          const titleSignal = AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(8_000),
+          ]);
+          const generateTitle = runtime.title?.bind(runtime);
+          const titleTask =
+            !input.conversationId && generateTitle
+              ? withAbortSignal(
+                  titleSignal,
+                  Promise.resolve().then(() =>
+                    generateTitle({
+                      model,
+                      message: input.message,
+                      attachmentNames: uploads.map(({ name }) => name),
+                      signal: titleSignal,
+                    }),
+                  ),
+                )
+                  .then((candidate) => {
+                    const title = generatedTitle(candidate);
+                    if (!title || titleSignal.aborted) return;
+                    conversation.title = title;
+                    save(context, conversation);
+                  })
+                  .catch(() => {
+                    // A title failure does not affect the user's answer.
+                  })
+              : Promise.resolve();
           let calls = 0;
           const pendingTools = new Set<Promise<unknown>>();
           const done = runtime
             .turn({
-              context,
+              context: { ...context, config: { ...context.config, model } },
               conversation,
-              serviceIds: turnServiceIds,
+              focusServiceIds: mentionedIds,
               signal: controller.signal,
               execute: (name, raw) => {
                 const pending = (async () => {
@@ -295,9 +364,7 @@ export function createAiAgentPlugin(
                     id: crypto.randomUUID(),
                     messageId: assistant.id,
                     name,
-                    input: boundOutput(raw, 24_000, [
-                      context.config.model.apiKey,
-                    ]),
+                    input: boundOutput(raw, 24_000, secrets),
                     status: "running",
                   };
                   conversation.tools.push(tool);
@@ -305,7 +372,7 @@ export function createAiAgentPlugin(
                   try {
                     const output = await withAbortSignal(
                       controller.signal,
-                      executeTool(context, turnServiceIds, name, raw),
+                      executeTool(context, [], name, raw),
                     );
                     if (
                       raw &&
@@ -335,7 +402,7 @@ export function createAiAgentPlugin(
                     tool.output = boundOutput(
                       output,
                       24_000,
-                      [context.config.model.apiKey],
+                      secrets,
                       context.config.sensitiveColumns,
                     );
                     controller.signal.throwIfAborted();
@@ -384,7 +451,7 @@ export function createAiAgentPlugin(
             })
             .then(async () => {
               // Drain already-authorized callbacks before another turn can mutate this conversation.
-              await Promise.allSettled([...pendingTools]);
+              await Promise.allSettled([...pendingTools, titleTask]);
               clearTimeout(timeout);
               active.delete(conversation.id);
               save(context, conversation);
