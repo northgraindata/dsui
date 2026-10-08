@@ -210,6 +210,7 @@ export type PluginServiceSummary = {
   readonly id: string;
   readonly name: string;
   readonly adapter: string;
+  readonly adapterName?: string;
   readonly managedBy: "configuration" | "ui";
   readonly iconUrl?: string;
 };
