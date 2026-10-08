@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00.000 --> 00:02.200
+Open your DSUI workspace and choose a connected service.
+
+00:02.200 --> 00:05.700
+Inspect the Analytics warehouse overview.
+
+00:05.700 --> 00:10.500
+Open Query and write SQL to summarize order revenue by region.
+
+00:10.500 --> 00:14.500
+Run the query against DuckDB and inspect the four result rows.
+
+00:14.500 --> 00:18.200
+Switch to Explorer to browse the connected database.
