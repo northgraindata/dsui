@@ -21,9 +21,7 @@ export const duckdbConnectionMethods = {
   memory: {
     label: "In-memory",
     description: "An ephemeral :memory: database created per connection.",
-    schema: z.object({
-      readOnly: booleanish.default(false),
-    }),
+    schema: z.object({}),
   },
   file: {
     label: "Local file",
@@ -115,6 +113,7 @@ export type DuckDbConfig = {
   token?: string;
   disableSsl?: boolean;
 };
+
 
 export interface QueryResult {
   columns: string[];

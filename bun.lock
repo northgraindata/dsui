@@ -132,6 +132,9 @@
         "@duckdb/node-api": "^1.5.5-r.4",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
       },
+      "devDependencies": {
+        "@northgraindata/dsui-adapter-test": "workspace:*",
+      },
     },
     "packages/adapter-postgresql": {
       "name": "@northgraindata/dsui-adapter-postgresql",
@@ -171,6 +174,13 @@
       },
       "peerDependencies": {
         "react": "^19.0.0",
+      },
+    },
+    "packages/adapter-test": {
+      "name": "@northgraindata/dsui-adapter-test",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
       },
     },
     "packages/core": {
@@ -648,6 +658,8 @@
     "@northgraindata/dsui-adapter-s3": ["@northgraindata/dsui-adapter-s3@workspace:packages/adapter-s3"],
 
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
+
+    "@northgraindata/dsui-adapter-test": ["@northgraindata/dsui-adapter-test@workspace:packages/adapter-test"],
 
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],
 

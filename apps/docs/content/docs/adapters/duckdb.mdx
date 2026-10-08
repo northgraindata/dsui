@@ -22,8 +22,12 @@ For a disposable database, use `method: memory`.
 ```yaml
 connection:
   method: memory
-  readOnly: false
 ```
+
+In-memory connections are always treated as non-writable in the DSUI
+interface: the query runner and mutation controls are disabled because the
+database is ephemeral. The same controls are disabled when a persistent
+connection uses `readOnly: true`. Catalog browsing remains available.
 
 ## Available
 

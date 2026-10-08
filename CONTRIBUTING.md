@@ -42,11 +42,16 @@ checks; `format:check` runs formatting alone. Build remains separate. Use
 During iteration, use the affected package's scripts. For example:
 
 ```sh
+bun run --filter @northgraindata/dsui-adapter-test test
 bun run --filter @northgraindata/dsui-adapter-sdk test
 bun run --filter @northgraindata/dsui-adapter-sdk typecheck
 bun run --filter @northgraindata/dsui-adapter-duckdb test
 bun run --filter @northgraindata/dsui-adapter-duckdb typecheck
 ```
+
+Adapters can use `@northgraindata/dsui-adapter-test` to exercise their public
+SDK definition without starting the DSUI server or web application. See the
+[adapter test harness README](packages/adapter-test/README.md).
 
 SDK or adapter changes must run SDK tests and affected adapter tests and typechecks.
 Host or protocol changes also need server integration checks. Root `test` runs
