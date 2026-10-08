@@ -126,6 +126,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         id: service.id,
         name,
         adapter: service.adapter,
+        adapterName: registry
+          .list()
+          .find((adapter) => adapter.id === service.adapter)?.metadata.name,
         iconUrl: registry
           .list()
           .find((adapter) => adapter.id === service.adapter)?.metadata.iconUrl,
@@ -148,6 +151,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           id: service.id,
           name,
           adapter: service.adapter,
+          adapterName: registry
+            .list()
+            .find((adapter) => adapter.id === service.adapter)?.metadata.name,
           managedBy: "ui" as const,
           iconUrl: registry
             .list()
