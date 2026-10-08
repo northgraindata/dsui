@@ -78,10 +78,7 @@ export async function history(context: PluginContext<Config>) {
   for (const row of rows) {
     const conversation = conversationSchema.parse(JSON.parse(row.data));
     try {
-      for (const id of new Set([
-        ...conversation.serviceIds,
-        ...conversation.accessedServiceIds,
-      ]))
+      for (const id of new Set(conversation.accessedServiceIds))
         await context.access.require(id, "inspect");
       visible.push({
         id: conversation.id,
