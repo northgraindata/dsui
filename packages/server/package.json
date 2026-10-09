@@ -12,6 +12,14 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
+  "dsui": {
+    "image": {
+      "apt": [
+        "ca-certificates",
+        "git"
+      ]
+    }
+  },
   "dependencies": {
     "@northgraindata/dsui-adapter-airflow": "workspace:*",
     "@northgraindata/dsui-adapter-dbt": "workspace:*",
