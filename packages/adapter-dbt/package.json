@@ -7,6 +7,7 @@
     ".": "./src/adapter.ts"
   },
   "scripts": {
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,7 +24,7 @@
         "pipx"
       ],
       "pipx": [
-        "dbt-core==${DSUI_DBT_VERSION}"
+        "dbt-core==1.10.15"
       ]
     }
   },

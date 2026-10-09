@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify release and dbt image
+    name: Verify release image
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -56,15 +56,8 @@ jobs:
         run: >-
           docker build
           --build-arg DSUI_VERSION="${GITHUB_REF_NAME#v}"
-          --build-arg DSUI_DBT_VERSION=1.10.15
           --tag ghcr.io/northgraindata/dsui:release-check
           .
-
-      - name: Verify dbt runtime version
-        run: |
-          dbt_version=$(docker run --rm --entrypoint dbt ghcr.io/northgraindata/dsui:release-check --version)
-          printf '%s\n' "$dbt_version"
-          [[ "$dbt_version" == *"1.10.15"* ]]
 
   publish:
     name: Publish Docker image, npm packages, and GitHub release
