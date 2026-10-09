@@ -19,15 +19,20 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
   bun build packages/plugin-monitoring/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/monitoring.mjs && \
   bun build packages/plugin-code-repository/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/code-repository.mjs && \
   bun build packages/plugin-code-repository/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/code-repository.browser.mjs && \
-  bun run packages/server/src/adapters/sdk.ts packages /out/sdk "${DSUI_VERSION}"
+  bun run packages/server/src/adapters/sdk.ts packages /out/sdk "${DSUI_VERSION}" && \
+  bun packages/server/src/image-dependencies.ts collect /src /out/image-dependencies.json
 
-FROM gcr.io/distroless/cc-debian12:nonroot
+FROM oven/bun:1.3.12
 WORKDIR /app
+ARG DSUI_DBT_VERSION=1.10.15
+ENV DSUI_DBT_VERSION=$DSUI_DBT_VERSION \
+    PIPX_BIN_DIR=/usr/local/bin \
+    PIPX_HOME=/opt/pipx
+COPY --from=build /out/image-dependencies.json /tmp/image-dependencies.json
+COPY --from=build /src/packages/server/src/image-dependencies.ts /tmp/image-dependencies.ts
+RUN bun /tmp/image-dependencies.ts install /tmp/image-dependencies.json && \
+  rm -rf /var/lib/apt/lists/* /tmp/image-dependencies.json /tmp/image-dependencies.ts
 COPY --from=build --chown=65532:65532 /out/dsui /usr/local/bin/dsui
-# Adapters are built from source on first start, so the runtime image needs the
-# bun CLI that performs the install and the bundle. The compiled server binary
-# alone cannot.
-COPY --from=build --chown=65532:65532 /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=build --chown=65532:65532 /src/apps/web/dist /app/web
 COPY --from=build --chown=65532:65532 /out/data /data
 COPY --from=build --chown=65532:65532 /out/runtime/plugins /app/plugins
@@ -44,6 +49,7 @@ ENV     DSUI_HOST=0.0.0.0 \
     DSUI_RUNTIME_PLUGINS=/app/plugins \
     DSUI_SDK_ROOT=/app/sdk \
     BUN_INSTALL_CACHE_DIR=/data/.bun-cache \
+    PATH=/usr/local/bin:$PATH \
     DSUI_VERSION=$DSUI_VERSION
 EXPOSE 4192
 VOLUME ["/data"]

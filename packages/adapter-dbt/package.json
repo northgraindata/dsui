@@ -15,7 +15,17 @@
     "react": "^19.0.0"
   },
   "dsui": {
-    "browser": "./src/browser.ts"
+    "browser": "./src/browser.ts",
+    "image": {
+      "apt": [
+        "python3",
+        "python3-venv",
+        "pipx"
+      ],
+      "pipx": [
+        "dbt-core==${DSUI_DBT_VERSION}"
+      ]
+    }
   },
   "devDependencies": {
     "@types/react": "^19.2.0"

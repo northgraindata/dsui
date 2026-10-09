@@ -55,6 +55,30 @@ pages/           routes composed from DSUI components
 
 Every action should invalidate the resources it changes. Every client with a persistent connection should be released through `disposeContext`.
 
+## Declare image dependencies
+
+An adapter or plugin that needs host executables or system libraries can declare
+them in its `package.json`. The Docker build collects `dsui.image` declarations
+from workspace adapters and plugins and installs them into the runtime image.
+Use `apt` for Debian packages and `pipx` for Python command-line tools:
+
+```json
+{
+  "dsui": {
+    "image": {
+      "apt": ["python3", "python3-venv", "pipx"],
+      "pipx": ["dbt-core==${DSUI_DBT_VERSION}"]
+    }
+  }
+}
+```
+
+Build arguments can be referenced as `${NAME}`. The dbt adapter uses
+`DSUI_DBT_VERSION`, which defaults to `1.10.15` and can be overridden with
+`docker build --build-arg DSUI_DBT_VERSION="$DBT_VERSION" .`. Declarations are
+kept with the adapter/plugin package so its image requirements evolve alongside
+its code.
+
 ## Build and test locally
 
 The complete example adapter includes the package setup, a test, and instructions
