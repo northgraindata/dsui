@@ -8,6 +8,7 @@ COPY apps ./apps
 COPY packages ./packages
 COPY examples ./examples
 COPY scripts ./scripts
+COPY patches ./patches
 RUN bun install --frozen-lockfile --ignore-scripts
 RUN bun run --filter @northgraindata/dsui-web build
 RUN mkdir -p /out/data /out/runtime/plugins && \
@@ -19,7 +20,7 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
   bun build packages/plugin-monitoring/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/monitoring.mjs && \
   bun build packages/plugin-code-repository/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/code-repository.mjs && \
   bun build packages/plugin-code-repository/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/code-repository.browser.mjs && \
-  bun run packages/server/src/adapters/sdk.ts packages /out/sdk "${DSUI_VERSION}" && \
+  bun -e "import { prepareSdk } from './packages/server/src/adapters/sdk.ts'; await prepareSdk('packages', '/out/sdk', '${DSUI_VERSION}');" && \
   bun packages/server/src/image-dependencies.ts collect /src /out/image-dependencies.json
 
 FROM oven/bun:1.3.12
