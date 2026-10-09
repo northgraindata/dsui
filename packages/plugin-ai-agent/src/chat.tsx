@@ -18,6 +18,7 @@ import {
 import { HighlightedMentions, MentionInput } from "./mention-input";
 import { mentionServices } from "./mentions";
 import { conversationSchema } from "./model";
+import { ModelPicker } from "./model-picker";
 import { usePanelResize } from "./panel-resize";
 import { PromptNavigator } from "./prompt-navigator";
 import { React, ReactDOM } from "./react";
@@ -721,6 +722,10 @@ function ChatSession({
                         send={send}
                       />
                     ))}
+                  <MessageTools
+                    tools={conversation.tools}
+                    messageId={message.id}
+                  />
                   {message.text && message.id !== activeMessageId && (
                     <button
                       type="button"
@@ -745,17 +750,6 @@ function ChatSession({
             ),
           )}
         </div>
-        {conversation?.tools.length ? (
-          <details className="da-evidence">
-            <summary>
-              <Glyph name="tools" size={14} />
-              {conversation.tools.length} tool calls · inspect evidence
-            </summary>
-            {conversation.tools.map((tool) => (
-              <ToolCard key={tool.id} tool={tool} />
-            ))}
-          </details>
-        ) : null}
         {(error || loadError || conversation?.error) && (
           <div className="da-error" role="alert">
             <Glyph name="alert" />
@@ -819,25 +813,12 @@ function ChatSession({
                 void attachmentDraft.addFiles(files);
               }}
             />
-            <label className="da-model-picker da-model-picker-compact">
-              <select
-                aria-label="Agent model"
-                title={
-                  state?.models.find((model) => model.key === selectedModelKey)
-                    ?.label ?? "Agent model"
-                }
-                value={selectedModelKey ?? ""}
-                disabled={running || !state?.models.length}
-                onChange={(event) => setModelKey(event.target.value)}
-              >
-                {!state?.models.length && <option value="">Model</option>}
-                {state?.models.map((model) => (
-                  <option key={model.key} value={model.key}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ModelPicker
+              models={state?.models ?? []}
+              selectedKey={selectedModelKey}
+              disabled={running || !visible}
+              onSelect={setModelKey}
+            />
             {running ? (
               <button
                 type="button"
@@ -978,26 +959,30 @@ function HealthCard({
   );
 }
 
-function ToolCard({
-  tool,
+function MessageTools({
+  tools,
+  messageId,
 }: {
-  tool: z.infer<typeof conversationSchema>["tools"][number];
+  tools: z.infer<typeof conversationSchema>["tools"];
+  messageId: string;
 }) {
+  const used = tools.filter((tool) => tool.messageId === messageId);
+  if (!used.length) return null;
   return (
-    <details className="da-tool-card">
+    <details className="da-message-tools">
       <summary>
-        <span className={`da-tool-dot ${tool.status}`} />
-        <code>{tool.name}</code>
-        <span>{tool.status}</span>
+        <Glyph name="tools" size={14} />
+        Tools used · {used.length}
       </summary>
-      <strong>Arguments</strong>
-      <pre>{JSON.stringify(tool.input, null, 2)}</pre>
-      {tool.output !== undefined && (
-        <>
-          <strong>Result</strong>
-          <pre>{JSON.stringify(tool.output, null, 2)}</pre>
-        </>
-      )}
+      <ul>
+        {used.map((tool) => (
+          <li key={tool.id}>
+            <span className={`da-tool-dot ${tool.status}`} />
+            <code>{tool.name}</code>
+            <span>{tool.status}</span>
+          </li>
+        ))}
+      </ul>
     </details>
   );
 }
