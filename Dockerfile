@@ -25,9 +25,7 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
 
 FROM oven/bun:1.3.12
 WORKDIR /app
-ARG DSUI_DBT_VERSION=1.10.15
-ENV DSUI_DBT_VERSION=$DSUI_DBT_VERSION \
-    PIPX_BIN_DIR=/usr/local/bin \
+ENV PIPX_BIN_DIR=/usr/local/bin \
     PIPX_HOME=/opt/pipx
 COPY --from=build /out/image-dependencies.json /tmp/image-dependencies.json
 COPY --from=build /src/packages/server/src/image-dependencies.ts /tmp/image-dependencies.ts

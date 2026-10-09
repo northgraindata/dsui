@@ -32,11 +32,11 @@ afterEach(async () => {
 describe("image dependencies", () => {
   it("collects and deduplicates adapter and plugin declarations", async () => {
     const root = await makeWorkspace();
-    await addPackage(root, "packages/adapter-dbt", {
+    await addPackage(root, "packages/adapter-cli", {
       dsui: {
         image: {
           apt: ["python3", "python3-venv"],
-          pipx: [`dbt-core==\${DSUI_DBT_VERSION}`],
+          pipx: [`example-cli==\${EXAMPLE_CLI_VERSION}`],
         },
       },
     });
@@ -49,7 +49,7 @@ describe("image dependencies", () => {
 
     expect(await collectImageDependencies(root)).toEqual({
       apt: ["git", "python3", "python3-venv"],
-      pipx: [`dbt-core==\${DSUI_DBT_VERSION}`],
+      pipx: [`example-cli==\${EXAMPLE_CLI_VERSION}`],
     });
   });
 
@@ -58,18 +58,18 @@ describe("image dependencies", () => {
       resolveImageDependencies(
         {
           apt: ["python3"],
-          pipx: [`dbt-core==\${DSUI_DBT_VERSION}`],
+          pipx: [`example-cli==\${EXAMPLE_CLI_VERSION}`],
         },
-        { DSUI_DBT_VERSION: "1.10.15" },
+        { EXAMPLE_CLI_VERSION: "4.2.0" },
       ),
-    ).toEqual({ apt: ["python3"], pipx: ["dbt-core==1.10.15"] });
+    ).toEqual({ apt: ["python3"], pipx: ["example-cli==4.2.0"] });
 
     expect(() =>
       resolveImageDependencies(
-        { pipx: [`dbt-core==\${DSUI_DBT_VERSION}`] },
+        { pipx: [`example-cli==\${EXAMPLE_CLI_VERSION}`] },
         {},
       ),
-    ).toThrow("Missing DSUI_DBT_VERSION");
+    ).toThrow("Missing EXAMPLE_CLI_VERSION");
     expect(() =>
       resolveImageDependencies({ apt: ["git && curl evil"] }, {}),
     ).toThrow("Invalid apt package specification");
