@@ -8,6 +8,7 @@ COPY apps ./apps
 COPY packages ./packages
 COPY examples ./examples
 COPY scripts ./scripts
+COPY patches ./patches
 RUN bun install --frozen-lockfile --ignore-scripts
 RUN bun run --filter @northgraindata/dsui-web build
 RUN mkdir -p /out/data /out/runtime/plugins && \
