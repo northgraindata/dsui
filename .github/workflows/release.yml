@@ -120,6 +120,19 @@ jobs:
         id: release-version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Build and publish multi-architecture image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          build-args: |
+            DSUI_VERSION=${{ steps.release-version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Build npm package
         env:
           DSUI_VERSION: ${{ steps.release-version.outputs.version }}
@@ -136,19 +149,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm publish ./dist/npm --provenance --access public
-
-      - name: Build and publish multi-architecture image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
-          build-args: |
-            DSUI_VERSION=${{ steps.release-version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Generate release notes
         env:
