@@ -98,6 +98,23 @@ await run([
   join(output, "dist", "runtime", "plugins", "code-repository.browser.mjs"),
 ]);
 
+await bundle(
+  "packages/plugin-ai-agent/src/plugin.ts",
+  join(output, "dist", "runtime", "plugins", "ai-agent.mjs"),
+);
+await run([
+  "bun",
+  "build",
+  "packages/plugin-ai-agent/src/browser.tsx",
+  "--bundle",
+  "--target",
+  "browser",
+  "--format",
+  "esm",
+  "--outfile",
+  join(output, "dist", "runtime", "plugins", "ai-agent.browser.mjs"),
+]);
+
 await cp(join(root, "apps", "web", "dist"), join(output, "web"), {
   recursive: true,
 });

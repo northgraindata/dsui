@@ -2,6 +2,12 @@ import type { z } from "zod";
 import type { StoreActionAccessor } from "../action/types";
 import type { RefreshStrategy } from "../refresh/types";
 
+/** Discovery metadata. Policies describe trusted adapter behavior, not a SQL sandbox. */
+export interface ResourceMetadata {
+  readonly description?: string;
+  readonly policy?: "metadata" | "preview" | "sql";
+}
+
 /** Runtime helpers available to resource queries. */
 export interface ResourceRuntimeContext {
   /** Access to adapter-scoped stores, including persistent stores. */
@@ -57,7 +63,8 @@ export interface ResourceBinding<TInput, TOutput, TContext = unknown>
  *
  * Created by {@link defineResource}; never constructed by hand.
  */
-export interface ResourceDefinition<TInput, TOutput, TContext = unknown> {
+export interface ResourceDefinition<TInput, TOutput, TContext = unknown>
+  extends ResourceMetadata {
   /** Discriminant: always `"resource"`. */
   readonly kind: "resource";
   /** Unique within the adapter, e.g. `"schemas"`. */
@@ -77,7 +84,7 @@ export interface ResourceDefinition<TInput, TOutput, TContext = unknown> {
  * Structural subset for heterogeneous resource collections
  * (adapter definitions, invalidation targets).
  */
-export interface AnyResourceDefinition {
+export interface AnyResourceDefinition extends ResourceMetadata {
   /** Discriminant: always `"resource"`. */
   readonly kind: "resource";
   /** Unique within the adapter. */
@@ -99,7 +106,10 @@ export interface AnyResourceDefinition {
  * const binding = warehouses();
  * ```
  */
-export type InputlessResource<TOutput, TContext = unknown> = {
+export type InputlessResource<
+  TOutput,
+  TContext = unknown,
+> = ResourceMetadata & {
   /** Creates a binding without executing the query. */
   (): ResourceBinding<undefined, TOutput, TContext>;
   /** Discriminant: always `"resource"`. */
@@ -126,7 +136,11 @@ export type InputlessResource<TOutput, TContext = unknown> = {
  * const binding = schemas({ database: "ANALYTICS" });
  * ```
  */
-export type InputResource<TInput, TOutput, TContext = unknown> = {
+export type InputResource<
+  TInput,
+  TOutput,
+  TContext = unknown,
+> = ResourceMetadata & {
   /**
    * Validates input and creates a binding without executing the query.
    *

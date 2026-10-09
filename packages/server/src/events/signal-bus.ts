@@ -13,6 +13,7 @@ export interface PublishSignalInput {
   readonly sourceId: string;
   readonly serviceId?: string;
   readonly payload: unknown;
+  readonly origin?: SignalEvent["origin"];
   readonly idempotencyKey?: string;
 }
 
@@ -25,6 +26,7 @@ function toEvent(row: Record<string, unknown>): SignalEvent {
     sourceId: String(row.source_id),
     ...(row.service_id === null ? {} : { serviceId: String(row.service_id) }),
     payload: JSON.parse(String(row.payload_json)),
+    ...(row.origin_json ? { origin: JSON.parse(String(row.origin_json)) } : {}),
     occurredAt: String(row.occurred_at),
   };
 }
@@ -47,8 +49,8 @@ export class SignalBus {
       .query(
         `INSERT INTO events
            (id, signal_id, type, source_type, source_id, service_id, payload_json,
-            idempotency_key, occurred_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            idempotency_key, occurred_at, origin_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT DO NOTHING`,
       )
       .run(
@@ -61,12 +63,13 @@ export class SignalBus {
         payloadJson,
         input.idempotencyKey ?? null,
         occurredAt,
+        input.origin ? JSON.stringify(input.origin) : null,
       );
     const row = input.idempotencyKey
       ? (this.db
           .query(
             `SELECT id, signal_id, type, source_type, source_id, service_id,
-                    payload_json, occurred_at
+                    payload_json, occurred_at, origin_json
                FROM events
               WHERE source_type = ? AND source_id = ? AND signal_id = ?
                 AND idempotency_key = ?`,
@@ -80,7 +83,7 @@ export class SignalBus {
       : (this.db
           .query(
             `SELECT id, signal_id, type, source_type, source_id, service_id,
-                    payload_json, occurred_at
+                    payload_json, occurred_at, origin_json
                FROM events WHERE id = ?`,
           )
           .get(id) as Record<string, unknown> | undefined);
@@ -135,7 +138,7 @@ export class SignalBus {
       this.db
         .query(
           `SELECT id, signal_id, type, source_type, source_id, service_id,
-                  payload_json, occurred_at
+                  payload_json, occurred_at, origin_json
              FROM events ${where}
             ORDER BY occurred_at DESC, id DESC LIMIT ?`,
         )

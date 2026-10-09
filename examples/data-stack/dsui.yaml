@@ -5,6 +5,20 @@ adapters:
   duckdb:
     package: "@northgraindata/dsui-adapter-duckdb"
 
+plugins:
+  ai-agent:
+    package: "@northgraindata/dsui-plugin-ai-agent"
+    browserBundle: "@northgraindata/dsui-plugin-ai-agent/browser"
+    enabled: true
+    config:
+      allowReadOnlySql: false # Opt-in PostgreSQL only; also requires connection.allowAgentSql.
+      allowTablePreview: true # Set false to disable sample-row reads.
+      model:
+        provider: openai
+        id: gpt-4.1-mini
+        # Set your own key here, or use ${DSUI_AGENT_API_KEY}.
+        apiKey: ""
+
 services:
   - id: analytics
     adapter: duckdb

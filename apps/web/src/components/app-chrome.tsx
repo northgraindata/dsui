@@ -3,6 +3,7 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getPluginCatalog } from "../api";
 import {
+  PluginShellActions,
   PluginSlot,
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
@@ -35,6 +36,7 @@ export function AppChrome({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Route changes refresh permission-dependent plugin navigation.
   useEffect(() => {
     let active = true;
     let retryTimer: number | undefined;
@@ -99,6 +101,7 @@ export function AppChrome({
             <kbd>⌘ K</kbd>
           </button>
         </div>
+        <PluginShellActions />
       </header>
       <div className="app-body">
         {!inAdapter && (

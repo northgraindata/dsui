@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { PluginServiceProbe } from "@northgraindata/dsui-plugin-sdk";
+import {
+  PluginRequestError,
+  type PluginServiceProbe,
+} from "@northgraindata/dsui-plugin-sdk";
 import { Hono } from "hono";
 import { type AdapterLoadOptions, loadAdapter } from "./adapters/loader.js";
 import { AdapterRegistry } from "./adapters/registry.js";
@@ -123,6 +126,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         id: service.id,
         name,
         adapter: service.adapter,
+        adapterName: registry
+          .list()
+          .find((adapter) => adapter.id === service.adapter)?.metadata.name,
         iconUrl: registry
           .list()
           .find((adapter) => adapter.id === service.adapter)?.metadata.iconUrl,
@@ -145,6 +151,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           id: service.id,
           name,
           adapter: service.adapter,
+          adapterName: registry
+            .list()
+            .find((adapter) => adapter.id === service.adapter)?.metadata.name,
           managedBy: "ui" as const,
           iconUrl: registry
             .list()
@@ -234,15 +243,133 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
               (service) => service.id === id,
             ) ?? null)
           : null,
+      describe: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        const catalog = registry.get(source.service.adapter).catalog;
+        return { resources: catalog.resources, actions: catalog.actions };
+      },
+      query: async (id, resourceId, input) => {
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new PluginRequestError("Insufficient service permission", 403);
+        const source = serviceSource(config, database, id);
+        if (!source) throw new PluginRequestError("Service not found", 404);
+        return (
+          await registry
+            .get(source.service.adapter)
+            .backend.executeResource(
+              resourceId,
+              connectionFor(cipher, source),
+              input,
+              { persistenceNamespace: id },
+            )
+        ).data;
+      },
+      execute: async (id, actionId, input, options) => {
+        await pluginRuntime.requireServiceAccess(id, "execute");
+        const source = serviceSource(config, database, id);
+        if (!source) throw new PluginRequestError("Service not found", 404);
+        const adapter = registry.get(source.service.adapter);
+        const result = await adapter.backend.executeAction(
+          actionId,
+          connectionFor(cipher, source),
+          input,
+          options?.signal
+            ? AbortSignal.any([options.signal, AbortSignal.timeout(600000)])
+            : AbortSignal.timeout(600000),
+          { persistenceNamespace: id },
+        );
+        for (const emission of result.emissions) {
+          const declared = adapter.catalog.signals.find(
+            (signal) => signal.id === emission.signalId,
+          );
+          if (!declared)
+            throw new Error("Adapter emitted an undeclared signal");
+          signalBus.publish({
+            signalId: `${adapter.id}.${emission.signalId}`,
+            type: declared.type,
+            sourceType: "adapter",
+            sourceId: id,
+            serviceId: id,
+            payload: emission.payload,
+            origin: options?.origin,
+            ...(emission.idempotencyKey
+              ? { idempotencyKey: emission.idempotencyKey }
+              : {}),
+          });
+        }
+        database.audit(
+          options?.origin?.pluginId ?? "plugin",
+          "action.execute",
+          id,
+          { action: actionId, runId: options?.origin?.runId },
+        );
+        if (result.result.status === "error")
+          throw new PluginRequestError(result.result.message, 422);
+        return result.result.data;
+      },
       signals: async (id) => {
         if (!(await pluginRuntime.canAccessService(id))) return null;
         const source = serviceSource(config, database, id);
         if (!source) return null;
+        if (!registry.has(source.service.adapter)) return null;
         const adapter = registry.get(source.service.adapter);
         return adapter.catalog.signals.map((signal) => ({
           id: `${adapter.id}.${signal.id}`,
           type: signal.type,
         }));
+      },
+      resources: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.resources.map(
+            ({ id, inputSchema, description, policy }) => ({
+              id,
+              ...(description !== undefined ? { description } : {}),
+              ...(policy !== undefined ? { policy } : {}),
+              ...(inputSchema ? { inputSchema } : {}),
+            }),
+          );
+      },
+      actions: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.actions.map(({ id, inputSchema, description }) => ({
+            id,
+            ...(description !== undefined ? { description } : {}),
+            ...(inputSchema ? { inputSchema } : {}),
+          }));
+      },
+      readResource: async (id, resourceId, input) => {
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error("Insufficient service permission");
+        const source = serviceSource(config, database, id);
+        if (!source) throw new Error("Service not found");
+        const adapter = registry.get(source.service.adapter);
+        if (
+          !adapter.catalog.resources.some(
+            (resource) => resource.id === resourceId,
+          )
+        )
+          throw new Error("Unknown adapter resource");
+        const result = await adapter.backend.executeResource(
+          resourceId,
+          connectionFor(cipher, source),
+          input,
+          { persistenceNamespace: id },
+        );
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error(
+            "Service permission was revoked during the resource read",
+          );
+        return result.data;
       },
       probe: async (id, probeOptions) =>
         (await pluginRuntime.canAccessService(id))
@@ -255,6 +382,18 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       storage: (pluginId) => createPluginStorage(dataDir, pluginId),
       stores: (pluginId) => createPluginStores(database, pluginId),
       capabilities: (pluginId) => ({
+        plugins: {
+          available: (id) =>
+            pluginRuntime
+              .catalog()
+              .plugins.some(
+                (plugin) => plugin.id === id && plugin.status === "ready",
+              ),
+          query: (id, resourceId, input) =>
+            pluginRuntime.invokePlugin(id, resourceId, input, "resource"),
+          call: (id, procedureId, input) =>
+            pluginRuntime.invokePlugin(id, procedureId, input, "procedure"),
+        },
         jobs: {
           enqueue: async (jobId, input) => ({
             runId: pluginJobs.enqueue(pluginId, jobId, input, undefined, true)

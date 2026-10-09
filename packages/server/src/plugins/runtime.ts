@@ -103,14 +103,21 @@ export type PluginHostCapabilities = {
   storage(pluginId: string): PluginStorageHandle;
   /** Typed JSON state, namespaced to the plugin. */
   stores(pluginId: string): PluginStores;
-  capabilities?(pluginId: string): Pick<PluginCapabilities, "jobs" | "events">;
+  capabilities?(
+    pluginId: string,
+  ): Pick<PluginCapabilities, "jobs" | "events" | "plugins">;
 };
 
 function resolveInstalledBundle(specifier: string): string {
   const bundled = bundledPluginPath(specifier);
   if (bundled) return bundled;
   if (isAbsolute(specifier)) return specifier;
-  return requireFromWorkingDirectory.resolve(specifier);
+  try {
+    return requireFromWorkingDirectory.resolve(specifier);
+  } catch {
+    // First-party workspace packages are linked to the host, not necessarily its caller's cwd.
+    return createRequire(import.meta.url).resolve(specifier);
+  }
 }
 
 /**
@@ -436,6 +443,7 @@ export class PluginRuntime {
           logger: pluginLogger(id),
           ...this.host.capabilities?.(id),
           access: {
+            principal: () => this.principalContext.getStore() ?? null,
             requireAdmin: async () => {
               if (this.backgroundContext.getStore()) return;
               const principal = this.principalContext.getStore();
@@ -1062,6 +1070,19 @@ export class PluginRuntime {
     return this.principalContext.run(principal, operation);
   }
 
+  async requireServiceAccess(
+    id: string,
+    permission: PluginPermission,
+  ): Promise<void> {
+    if (this.backgroundContext.getStore()) return;
+    const principal = this.principalContext.getStore();
+    if (
+      !principal ||
+      !(await this.authorize(principal, permission, { type: "service", id }))
+    )
+      throw new PluginRequestError("Insufficient service permission", 403);
+  }
+
   async canAccessGlobalEvents(): Promise<boolean> {
     if (this.backgroundContext.getStore()) return true;
     const principal = this.principalContext.getStore();
@@ -1109,6 +1130,32 @@ export class PluginRuntime {
   resources(pluginId: string): RuntimePluginResource[] {
     if (!this.active.has(pluginId)) return [];
     return this.contributions.get(pluginId)?.resources ?? [];
+  }
+
+  async invokePlugin(
+    pluginId: string,
+    id: string,
+    input: unknown,
+    kind: "resource" | "procedure",
+  ): Promise<unknown> {
+    const binding =
+      kind === "procedure"
+        ? this.procedure(pluginId, id)?.procedure
+        : this.resources(pluginId).find((resource) => resource.id === id);
+    if (!binding)
+      throw new PluginRequestError("Plugin capability unavailable", 404);
+    const principal = this.principalContext.getStore();
+    const permission = "permission" in binding ? binding.permission : "inspect";
+    if (
+      !this.backgroundContext.getStore() &&
+      (!principal ||
+        !(await this.authorize(principal, permission, {
+          type: "plugin",
+          id: pluginId,
+        })))
+    )
+      throw new PluginRequestError("Insufficient plugin permission", 403);
+    return binding.invoke(input);
   }
 
   /** Active jobs available to the in-process background worker. */

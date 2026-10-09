@@ -148,6 +148,35 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
     if (!Array.isArray(catalog[key]))
       throw new AdapterLoadError(`Invalid adapter catalog from ${from}`);
   }
+  for (const key of ["resources", "actions"] as const) {
+    const entries = catalog[key];
+    if (!Array.isArray(entries))
+      throw new AdapterLoadError(`Invalid adapter catalog from ${from}`);
+    for (const entry of entries) {
+      if (
+        !entry ||
+        typeof entry !== "object" ||
+        typeof entry.id !== "string" ||
+        !entry.id
+      )
+        throw new AdapterLoadError(`Invalid adapter ${key} from ${from}`);
+      if (
+        entry.description !== undefined &&
+        typeof entry.description !== "string"
+      )
+        throw new AdapterLoadError(
+          `Invalid adapter discovery description from ${from}`,
+        );
+      if (
+        key === "resources" &&
+        entry.policy !== undefined &&
+        !["metadata", "preview", "sql"].includes(entry.policy)
+      )
+        throw new AdapterLoadError(
+          `Invalid adapter resource policy from ${from}`,
+        );
+    }
+  }
   const signals = Array.isArray(catalog.signals) ? catalog.signals : [];
   for (const entry of signals) {
     if (!entry || typeof entry !== "object")
