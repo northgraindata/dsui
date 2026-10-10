@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 const [tarball, name, version] = process.argv.slice(2);
 if (!tarball || !name || !version)
   throw new Error("Usage: publish-npm.ts <tarball> <name> <version>");
+const tarballPath = resolve(tarball);
 const registry = "https://registry.npmjs.org";
 const lookup = Bun.spawnSync([
   "npm",
@@ -16,7 +18,7 @@ const lookup = Bun.spawnSync([
 if (lookup.exitCode === 0) {
   const expected = JSON.parse(lookup.stdout.toString());
   const actual = `sha512-${createHash("sha512")
-    .update(await readFile(tarball))
+    .update(await readFile(tarballPath))
     .digest("base64")}`;
   if (expected !== actual)
     throw new Error(
@@ -34,7 +36,7 @@ if (lookup.exitCode === 0) {
     [
       "npm",
       "publish",
-      tarball,
+      tarballPath,
       `--registry=${registry}`,
       "--access",
       "public",
