@@ -1,0 +1,117 @@
+name: Plugin SDK release
+
+on:
+  push:
+    tags: ["plugin-sdk-v*"]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing plugin-sdk-vX.Y.Z tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-plugin-sdk
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref_name }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-sdk-${{ hashFiles('bun.lock') }}
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Validate tag and version
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+          LAYER: plugin-sdk
+        run: |
+          [[ "$LAYER" == adapter-sdk || "$LAYER" == plugin-sdk ]]
+          [[ "$RELEASE_TAG" =~ ^${LAYER}-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor "$RELEASE_TAG" origin/main
+          VERSION="${RELEASE_TAG#${LAYER}-v}"
+          test "$VERSION" = "$(jq -r .version "packages/$LAYER/package.json")"
+      - name: Verify selected SDK and consumers
+        run: |
+          bun scripts/ci-layer.ts 'plugin-sdk' lint
+          bun scripts/ci-layer.ts 'plugin-sdk' typecheck
+          bun scripts/ci-layer.ts 'plugin-sdk' test
+          bun scripts/ci-layer.ts 'plugin-sdk' build
+          bun scripts/verify-sdk-packages.ts 'plugin-sdk'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-tarballs
+          path: dist/sdk-smoke/*.tgz
+          retention-days: 7
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag || github.ref_name }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --global npm@11.19.1
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-tarballs
+          path: dist/sdk-tarballs
+      - name: Publish in dependency order
+        env:
+          LAYER: plugin-sdk
+        run: |
+          if [[ "$LAYER" == adapter-sdk ]]; then
+            for PACKAGE in ui adapter-sdk; do
+              VERSION="$(jq -r .version "packages/$PACKAGE/package.json")"
+              bun scripts/publish-npm.ts "dist/sdk-tarballs/northgraindata-dsui-$PACKAGE-$VERSION.tgz" "@northgraindata/dsui-$PACKAGE" "$VERSION"
+            done
+          else
+            VERSION="$(jq -r .version packages/plugin-sdk/package.json)"
+            ADAPTER_VERSION="$(jq -r .version packages/adapter-sdk/package.json)"
+            npm view "@northgraindata/dsui-adapter-sdk@$ADAPTER_VERSION" version --registry=https://registry.npmjs.org
+            bun scripts/publish-npm.ts "dist/sdk-tarballs/northgraindata-dsui-plugin-sdk-$VERSION.tgz" @northgraindata/dsui-plugin-sdk "$VERSION"
+          fi
+      - name: Create component release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+          LAYER: plugin-sdk
+        run: |
+          VERSION="${RELEASE_TAG#${LAYER}-v}"
+          {
+            echo "Install with: bun add @northgraindata/dsui-$LAYER@$VERSION"
+            echo
+            echo "See https://dsui.northgraindata.com/docs/$LAYER/release for compatibility."
+            echo
+            cat "packages/$LAYER/CHANGELOG.md"
+          } > release-notes.md
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then exit 0; fi
+          FLAGS=()
+          if [[ "$VERSION" == *-* ]]; then FLAGS+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" --verify-tag --latest=false --title "DSUI $LAYER v$VERSION" --notes-file release-notes.md "${FLAGS[@]}"

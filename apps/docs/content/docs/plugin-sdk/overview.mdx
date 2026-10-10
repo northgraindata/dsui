@@ -1,0 +1,30 @@
+---
+title: Plugin SDK
+description: Build extensions for the DSUI workspace.
+---
+
+A plugin adds workspace features across services: pages, navigation, UI slots,
+operations, background jobs and storage. An adapter connects one external system;
+a plugin composes capabilities across the installation.
+
+Plugins are trusted server code. DSUI validates inputs and enforces request
+permissions, but a plugin runs inside the server process.
+
+| Primitive | Purpose | Guide |
+| --- | --- | --- |
+| Plugin | Identity, configuration and lifecycle | [Create a plugin](/docs/plugin-sdk/create-a-plugin) |
+| Page and slot | Routes and contributions to host UI | [Pages and slots](/docs/plugin-sdk/pages) |
+| Resource | Read data with a refresh policy | [Resources](/docs/plugin-sdk/resources) |
+| Procedure and action | Validated operations | [Actions and procedures](/docs/plugin-sdk/actions) |
+| Job | Durable background work | [Jobs](/docs/plugin-sdk/jobs) |
+| Signal | Typed events and event reading | [Signals](/docs/plugin-sdk/signals) |
+| Store and storage | JSON state and private SQLite databases | [Stores and storage](/docs/plugin-sdk/stores) |
+| Host capabilities | Service access and authorization | [Host capabilities](/docs/plugin-sdk/host-capabilities) |
+
+Start with [create a plugin](/docs/plugin-sdk/create-a-plugin), then add the
+capabilities your extension needs. See [testing](/docs/plugin-sdk/testing) and
+[release](/docs/plugin-sdk/release) before distributing it.
+
+The public package is `@northgraindata/dsui-plugin-sdk`. Shared page components
+are re-exported from the Adapter SDK, so both extension types use the same
+[component vocabulary](/docs/adapter-sdk/components).

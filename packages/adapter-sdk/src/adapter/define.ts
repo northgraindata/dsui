@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { InvalidDefinitionError } from "../shared/errors";
 import {
+  ADAPTER_API_VERSION,
   ADAPTER_SDK_VERSION,
   type AdapterDefinition,
   type ConnectionMethodDefinition,
@@ -94,6 +95,7 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
   return {
     kind: "adapter",
     sdkVersion: ADAPTER_SDK_VERSION,
+    apiVersion: ADAPTER_API_VERSION,
     metadata: { ...metadata },
     connectionSchema,
     connectionMethods,

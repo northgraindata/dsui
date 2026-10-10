@@ -98,7 +98,7 @@ docker pull ghcr.io/northgraindata/dsui:latest
 
 ## Contributing
 
-Contributions are welcome. See `[CONTRIBUTING.md](./CONTRIBUTING.md)` to get started.
+Contributions are welcome. Start with [your first contribution](./CONTRIBUTING.md#your-first-contribution), browse [good first issues](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22), or explore [help wanted](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22).
 
 ## License
 

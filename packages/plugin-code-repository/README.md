@@ -1,3 +1,7 @@
+![DSUI Code repositories plugin — Bring source code into your workspace.](./assets/banner.png)
+
+[Plugin SDK](../plugin-sdk) · [Source](./src/plugin.ts) · [DSUI](../../README.md)
+
 # Code repositories
 
 Connect GitHub, GitLab, or a folder on the DSUI host to a service. Each service can
@@ -82,3 +86,19 @@ A changed snapshot publishes `code-repository.updated` with service ID,
 connection ID and version. No code content is included in the signal. Sharing
 code with another plugin is a later integration; instructions are already saved
 with the connection as context for that work.
+
+## Development
+
+Run from the repository root after installing dependencies:
+
+```sh
+bun run --filter @northgraindata/dsui-plugin-code-repository test
+bun run --filter @northgraindata/dsui-plugin-code-repository typecheck
+bun run --filter @northgraindata/dsui-plugin-code-repository build
+```
+
+See [CONTRIBUTING.md](../../CONTRIBUTING.md) for repository checks.
+
+## License
+
+[Apache License 2.0](../../LICENSE), developed by [Northgrain Data](https://northgraindata.com).

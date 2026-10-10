@@ -1,0 +1,71 @@
+---
+title: Create a plugin
+description: Define configuration, contributions and lifecycle.
+---
+
+Create a TypeScript package with a default export in `src/plugin.ts`.
+The SDK ships TypeScript source for Bun and TS-aware bundlers. Once a version
+has been published to npm, pin it in your extension's dependencies:
+
+```sh
+bun add @northgraindata/dsui-plugin-sdk@0.2.0
+```
+
+The first independent npm publication requires maintainer setup; until then,
+work from the repository's example package. Use the package version supported
+by your target DSUI release, rather than assuming package versions match DSUI.
+
+```ts
+import {
+  definePlugin,
+  PLUGIN_API_VERSION,
+  z,
+} from "@northgraindata/dsui-plugin-sdk";
+
+export default definePlugin({
+  metadata: {
+    id: "greeting",
+    name: "Greeting",
+    version: "1.0.0",
+    apiVersion: PLUGIN_API_VERSION,
+  },
+  configSchema: z.object({
+    greeting: z.string().default("Hello"),
+  }),
+  setup(registry) {
+    registry.procedure({
+      id: "greet",
+      permission: "inspect",
+      input: z.object({ name: z.string().min(1) }),
+      output: z.string(),
+      handler: (context, input) =>
+        `${context.config.greeting}, ${input.name}`,
+    });
+  },
+});
+```
+
+`definePlugin` validates the definition and parses configuration before setup.
+`setup(registry, config)` registers contributions. Use `start(context)` for
+initialization that needs host capabilities and `stop()` to release owned
+resources. Put recurring work in [jobs](/docs/plugin-sdk/jobs).
+
+From a repository checkout, start DSUI from the repository root with:
+
+```yaml
+plugins:
+  greeting:
+    source: local
+    path: ./examples/example-plugin
+    enabled: true
+    config:
+      greeting: Hello
+```
+
+The configuration above loads the existing example plugin. Replace its path
+with your own package when using the greeting definition. The local source
+builder prepares server and declared browser bundles. Restart DSUI after
+changing plugin configuration.
+
+Use the [complete example](https://github.com/northgraindata/dsui/tree/main/examples/example-plugin)
+for a working package layout and page contributions.

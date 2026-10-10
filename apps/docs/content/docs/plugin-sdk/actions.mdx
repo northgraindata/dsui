@@ -1,0 +1,24 @@
+---
+title: Actions and procedures
+description: Expose validated operations with explicit permissions.
+---
+
+Register a procedure using `registry.procedure({ id, permission, input,
+output?, handler })`. The handler receives `(context, input)`. Its input schema
+validates requests, and its optional output schema validates returned values.
+
+Use `defineAction` and `registry.action(action)` when a declarative component
+needs an action reference. Action handlers receive `(input, context)`; this
+argument order differs from procedure handlers.
+
+Declare `inspect` for reads, `execute` for operations or `manage` for configuration.
+For a service-specific operation, also call `context.access.require(serviceId,
+permission)`; a procedure's plugin permission does not authorize an arbitrary
+service. See [host capabilities](/docs/plugin-sdk/host-capabilities).
+
+## Errors
+
+Throw `PluginRequestError(message, status)` for an intentional message safe for a
+caller to see. Supported statuses are 400, 403, 404, 409 and 422. Unknown exceptions
+remain redacted by the host. A job throwing `PluginRequestError` fails without
+retry; other failures follow its configured retry policy.

@@ -1,4 +1,4 @@
-name: Release
+name: Product release
 
 on:
   push:
@@ -13,6 +13,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-product
+  cancel-in-progress: false
 
 jobs:
   verify:
@@ -51,8 +55,10 @@ jobs:
       - name: Test image dependency declarations
         run: bun test packages/server/test/image-dependencies.test.ts
 
-      - name: Typecheck workspaces
-        run: bun run typecheck
+      - name: Verify product
+        run: |
+          bun scripts/ci-layer.ts product typecheck
+          bun scripts/ci-layer.ts product test
 
       - name: Build npm package
         env:
@@ -67,17 +73,16 @@ jobs:
       - name: Install npm CLI release version
         run: npm install --global npm@11.19.1
 
-      - name: Verify npm package can be packed
-        run: npm pack ./dist/npm --dry-run --ignore-scripts --json > "$RUNNER_TEMP/npm-pack.json"
+      - name: Pack verified npm artifact
+        run: |
+          npm pack ./dist/npm --ignore-scripts --json --pack-destination dist > "$RUNNER_TEMP/npm-pack.json"
+          mv "dist/$(jq -r '.[0].filename' "$RUNNER_TEMP/npm-pack.json")" dist/product.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: product-npm
+          path: dist/product.tgz
+          retention-days: 7
 
-      - name: Build release image
-        env:
-          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
-        run: >-
-          docker build
-          --build-arg DSUI_VERSION="${RELEASE_TAG#v}"
-          --tag ghcr.io/northgraindata/dsui:release-check
-          .
 
   publish:
     name: Publish Docker image, npm packages, and GitHub release
@@ -158,13 +163,13 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
             DSUI_VERSION=${{ steps.release-version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=product
+          cache-to: type=gha,scope=product,mode=max
 
-      - name: Build npm package
-        env:
-          DSUI_VERSION: ${{ steps.release-version.outputs.version }}
-        run: bun run package:npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: product-npm
+          path: dist
 
       - name: Configure npm registry
         uses: actions/setup-node@v4
@@ -175,12 +180,8 @@ jobs:
         run: npm install --global npm@11.19.1
 
       # Configure npm Trusted Publishing for northgraindata/dsui and release.yml.
-      - name: Publish npm package with OIDC
-        run: |
-          env -u NODE_AUTH_TOKEN -u NPM_CONFIG_USERCONFIG \
-            npm publish ./dist/npm \
-              --registry=https://registry.npmjs.org \
-              --access public
+      - name: Publish verified npm artifact with OIDC
+        run: bun scripts/publish-npm.ts dist/product.tgz @northgraindata/dsui '${{ steps.release-version.outputs.version }}'
 
       - name: Generate release notes
         env:
@@ -220,6 +221,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-banner.png --clobber
+            exit 0
+          fi
           if [[ "$RELEASE_TAG" == *-* ]]; then
             gh release create "$RELEASE_TAG" release-banner.png \
               --verify-tag \

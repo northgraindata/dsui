@@ -31,4 +31,4 @@ export type {
   ConnectionRequestConcurrency,
   DefineAdapterOptions,
 } from "./types";
-export { ADAPTER_SDK_VERSION } from "./types";
+export { ADAPTER_API_VERSION, ADAPTER_SDK_VERSION } from "./types";

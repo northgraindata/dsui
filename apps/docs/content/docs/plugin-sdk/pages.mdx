@@ -1,0 +1,58 @@
+---
+title: Pages and UI slots
+description: Compose plugin routes and contribute to host interfaces.
+---
+
+Pages use the shared declarative page nodes. Define a page, then register its
+presentation separately:
+
+```ts
+import { definePage, PageHeader } from "@northgraindata/dsui-plugin-sdk";
+
+const overview = definePage({
+  path: "/",
+  render: () => [PageHeader({ title: "My plugin" })],
+});
+
+// Inside setup(registry):
+registry.page(overview, { id: "overview", title: "My plugin" });
+registry.navigation({
+  id: "overview-link",
+  area: "primary",
+  label: "My plugin",
+  pageId: "overview",
+});
+```
+
+`definePage({ path, render })` supports static segments, `:named` parameters and
+one final `*named` wildcard. For example, `/services/:serviceId/items/*path`
+captures both `serviceId` and a nested `path`; the wildcard can be empty.
+The catalog includes declared paths. The browser and host share
+`resolvePluginPage` so legacy page IDs and static paths precede dynamic routes.
+A page render receives decoded route parameters. Use percent encoding for path
+segments and an optional URL fragment for client-side anchors.
+
+## Slots
+
+Use `defineSlot` and `registry.slot(slot)` to contribute to a named host slot.
+The host owns the slot's placement and supplies its context. See the
+[example contributions](https://github.com/northgraindata/dsui/blob/main/examples/example-plugin/src/components/contributions.ts).
+
+`sidebar.profile` replaces the sidebar's workspace profile when a plugin returns
+content. With no contribution, an empty result or a request error, the host keeps
+its default workspace/settings link. Request it with an empty `serviceIds` array;
+the result has `serviceId: ""` because this slot belongs to the workspace.
+
+Its render input includes the authenticated `principal` and an undefined
+`service`. The host supplies the principal, never the request payload, and still
+checks plugin inspect permission. Service slots keep receiving their service and
+now also receive the authenticated principal. Keep personal account presentation
+and data lookup in the contributing plugin.
+
+## Browser components
+
+Built-in page primitives render through the host's component registry. A custom
+browser component needs a declared browser entry (`dsui.browser` in the package
+manifest) or an explicit `browserBundle` for an installed plugin.
+The [example plugin](https://github.com/northgraindata/dsui/tree/main/examples/example-plugin)
+shows a browser entry with `createComponents(React)` and host-supplied React.

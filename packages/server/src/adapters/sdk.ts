@@ -14,8 +14,8 @@ import { createHash } from "node:crypto";
 import {
   cp,
   mkdir,
-  readFile,
   readdir,
+  readFile,
   rm,
   stat,
   writeFile,
@@ -90,11 +90,10 @@ export function sdkPackageAt(root: string, name: string): string {
  * Kept as the version the monorepo already uses, which is what stops a plugin
  * from ending up with a second React copy alongside the host's.
  */
-function selfContained(manifest: Manifest, version: string): Manifest {
+function selfContained(manifest: Manifest): Manifest {
   const { peerDependencies, devDependencies, private: _p, ...rest } = manifest;
   const next: Manifest = {
     ...rest,
-    version,
     dependencies: { ...((rest.dependencies as object) ?? {}) },
   };
   const dependencies = next.dependencies as Record<string, string>;
@@ -114,13 +113,11 @@ function selfContained(manifest: Manifest, version: string): Manifest {
  *
  * @param packagesDir - Directory holding `ui/`, `adapter-sdk/`, `plugin-sdk/`.
  * @param target - Root receiving `node_modules/@northgraindata/*`.
- * @param version - Version stamped on the prepared packages.
  * @param install - Run `bun install` for each package. Off in tests.
  */
 export async function prepareSdk(
   packagesDir: string,
   target: string,
-  version: string,
   install = true,
 ): Promise<void> {
   for (const { directory, name } of TREE) {
@@ -142,7 +139,7 @@ export async function prepareSdk(
     await cp(join(source, "src"), join(destination, "src"), {
       recursive: true,
     });
-    const prepared = selfContained(manifest, version);
+    const prepared = selfContained(manifest);
     const dependencies = (prepared.dependencies ?? {}) as Record<
       string,
       string
@@ -217,7 +214,7 @@ export async function resolveSdkRoot(options: {
         // A tree made by an older host has no source marker and must refresh.
       }
       if (preparedHash !== sourceHash) {
-        await prepareSdk(dirname(candidate), target, options.version);
+        await prepareSdk(dirname(candidate), target);
         await writeFile(join(target, SDK_SOURCE_MARKER), sourceHash, "utf8");
       }
       return target;

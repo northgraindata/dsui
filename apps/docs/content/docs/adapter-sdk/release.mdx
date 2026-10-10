@@ -1,19 +1,36 @@
 ---
 title: Releasing an adapter
-description: Package a manifest and a single bundle, then pin it in dsui.yaml.
+description: Distribute an adapter and declare its SDK and host requirements.
 ---
 
-A published adapter is `dsui.adapter.json` plus one self-contained `dist/adapter.mjs` bundle — and a browser bundle when it ships custom components.
+Adapters and the Adapter SDK have separate versions. Pin the SDK package version
+you tested; the host checks `ADAPTER_API_VERSION` (or the legacy `sdkVersion`
+marker) rather than equating it with npm SemVer.
 
-## Manifest
+## Source builds
 
-The manifest declares identity, the SDK version it targets, the entry path, the ids for resources, actions, pages, and components, and the byte count and SHA-256 of each bundle. See `adapterManifestSchema` in the SDK for the exact shape.
+A source adapter provides `package.json` and `src/adapter.ts`, with an optional
+`dsui.browser` entry for custom browser components. DSUI installs dependencies,
+bundles the server entry and starts an isolated adapter host. Ordinary npm and
+native dependencies are supported by this source-build path.
 
-The bundle must be a single ESM file with all dependencies inlined — no native addons and no code splitting.
+```yaml
+adapters:
+  example:
+    source: local
+    path: ./examples/example-adapter
+```
 
-## From npm
+Run DSUI from the repository root for the relative path above. Git source builds
+also accept a repository, ref and optional package path. Review source before
+configuring it; lifecycle scripts are disabled but source builds are trusted code.
 
-Publish the package, then pin it with the tarball SRI.
+## Prebuilt artifacts
+
+The prebuilt npm installation path uses a pinned package version and tarball SRI.
+A prebuilt artifact includes the adapter manifest and server bundle, plus a browser
+bundle for custom components. Follow the manifest and integrity contract enforced
+by the host; these requirements differ from the source-build path.
 
 ```yaml
 adapters:
@@ -23,32 +40,14 @@ adapters:
     integrity: "sha512-..."
 ```
 
-## From git
+See the [complete example](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter)
+and the host's [installation schemas](https://github.com/northgraindata/dsui/blob/main/packages/server/src/config.ts).
 
-Commit the manifest and bundle, then pin the commit and the bundle's SRI.
+## SDK releases
 
-```yaml
-adapters:
-  example:
-    source: git
-    repository: "git+https://github.com/your-org/dsui-adapter-example"
-    commit: "<full-40-char-sha>"
-    integrity: "sha384-..."
-```
+Adapter SDK uses its own npm package, changelog and `adapter-sdk-vX.Y.Z` tags.
+Its technical UI dependency is published first with the same version. SDKs ship
+TypeScript source, types, CSS and browser subpaths for Bun and TS-aware bundlers.
 
-Both install verified and run isolated in an `adapter-host` subprocess. Unpinned versions and floating refs are rejected.
-
-The [example adapter](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter) is the smallest complete package.
-
-## Publishing DSUI
-
-DSUI releases publish both runtime forms:
-
-- `ghcr.io/northgraindata/dsui:<version>` for isolated Docker deployments.
-- `@northgraindata/dsui@<version>` on npm for the npx-first local runtime.
-
-Run the local runtime with npx:
-
-```bash
-npx @northgraindata/dsui@latest
-```
+See [release policy](/docs/releases) for versioning, Changesets and CI. Product
+releases remain separate and publish both npm and Docker distributions.

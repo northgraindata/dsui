@@ -3,7 +3,6 @@
  * Page = composition, Context = environment, Adapter = application boundary.
  */
 import { z } from "zod";
-import { ADAPTER_SDK_VERSION } from "./adapter/index";
 
 export {
   type ActionBinding,
@@ -22,6 +21,7 @@ export {
   type InputlessAction,
 } from "./action/index";
 export {
+  ADAPTER_API_VERSION,
   ADAPTER_SDK_VERSION,
   type AdapterDefinition,
   type AdapterHealthCheck,
@@ -177,6 +177,12 @@ export {
   type ValueNode,
   type ValueProps,
 } from "./components/index";
+export type {
+  CodeExplorerContent,
+  CodeExplorerFile,
+  CodeExplorerProps,
+} from "./components/primitives/code-explorer";
+export { CodeExplorer } from "./components/primitives/code-explorer";
 export type { ComponentClient, ComponentProps } from "./components/runtime";
 export { componentProps } from "./components/runtime";
 export {
@@ -256,10 +262,3 @@ export {
   type StoreStatus,
 } from "./store/index";
 export { z };
-
-export { CodeExplorer } from "./components/primitives/code-explorer";
-export type {
-  CodeExplorerProps,
-  CodeExplorerFile,
-  CodeExplorerContent,
-} from "./components/primitives/code-explorer";

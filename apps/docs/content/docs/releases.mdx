@@ -1,0 +1,128 @@
+---
+title: Releases and versioning
+description: Independent product and SDK releases, compatibility and CI ownership.
+---
+
+DSUI has three release lines. Each has its own version and publication workflow.
+A release of one line does not automatically publish the others.
+
+| Line | Package and artifacts | Tag |
+| --- | --- | --- |
+| Product | `@northgraindata/dsui`, `ghcr.io/northgraindata/dsui` | `vX.Y.Z` |
+| Adapter SDK | `@northgraindata/dsui-adapter-sdk` and its UI implementation package | `adapter-sdk-vX.Y.Z` |
+| Plugin SDK | `@northgraindata/dsui-plugin-sdk` | `plugin-sdk-vX.Y.Z` |
+
+The technical `@northgraindata/dsui-ui` package shares a fixed version with
+Adapter SDK and is published first by that release workflow. Plugin SDK depends
+on a specific Adapter SDK version, but has an independent SemVer version.
+
+Official adapter and plugin packages currently remain private workspace packages;
+their READMEs do not imply independent registry publication.
+
+## Version policy
+
+Use patch for compatible fixes and minor for features. Before 1.0, breaking
+changes also increment minor and require migration notes. From 1.0, breaking
+public API changes increment major. Stable releases use npm `latest`;
+`X.Y.Z-rc.N` and other prereleases use `next`. Only stable product releases are
+marked as the repository's latest GitHub release.
+
+The Adapter SDK package version is independent from `ADAPTER_API_VERSION`.
+The legacy `ADAPTER_SDK_VERSION` export and definition field `sdkVersion` remain
+as compatibility aliases for the host contract. New definitions also declare
+`apiVersion`. The host accepts matching API contracts, including legacy definitions,
+and rejects an explicitly incompatible contract. Do not bump the contract marker
+for a compatible SDK patch.
+
+Plugin definitions declare `PLUGIN_API_VERSION`. A matching API marker is only
+one part of compatibility: optional host capabilities still need an explicit
+minimum runtime requirement. Record that requirement in the extension's README.
+
+## Prepare an SDK release
+
+1. Add a changeset with `bun run changeset` when changing public SDK behavior.
+   Select the affected SDK, the SemVer increment and a useful changelog entry.
+2. Run `bun run version:sdk` in a release preparation PR. Review package versions,
+   changelogs and dependent ranges, then update `bun.lock` with `bun install`.
+3. Run the selected SDK checks and `bun scripts/verify-sdk-packages.ts adapter-sdk`
+   or `plugin-sdk`. Merge the reviewed version changes into `main`.
+4. Create the matching `adapter-sdk-vX.Y.Z` or `plugin-sdk-vX.Y.Z` tag on that commit.
+   Tags must point to commits reachable from `main`, and their version must match
+   the package manifest. Publish Adapter SDK before a Plugin SDK that depends on it.
+
+The SDK workflows pack and verify tarballs before publication. The publisher uses
+those same artifacts, publishes in dependency order and refuses to reuse an
+existing version with a different integrity hash. An existing identical npm
+artifact can be skipped on a retry. SDK releases never build Docker.
+
+If an automation creates tags with `GITHUB_TOKEN`, do not assume those tags trigger
+another workflow. Use an explicit dispatch or an appropriately configured app token.
+
+## First publication and trusted publishing
+
+npm creates each scoped package on its first publication. Trusted Publisher
+settings are available only after that package exists. Bootstrap the three SDK
+packages once in dependency order (`ui`, `adapter-sdk`, `plugin-sdk`) by publishing
+a clearly marked prerelease from `dist/sdk/<package>` with an authorized maintainer
+account (`npm publish --access public --tag next`). Build each directory with
+`bun scripts/release-packages.ts <ui|adapter-sdk|plugin-sdk>`. Then configure
+Trusted Publishing for each package and publish its first real release through
+the matching GitHub workflow within two days; npm expires an unused new trust
+configuration after that window.
+
+The product retains `release.yml`, including its existing OIDC publication path.
+SDK publication runs directly in `release-adapter-sdk.yml` and
+`release-plugin-sdk.yml`. Configure those exact workflow filenames as trusted
+publishers; use `release-adapter-sdk.yml` for both the UI package and Adapter SDK.
+Registry/account setup is external to the repository and must be completed before
+the first automated release.
+
+## Product releases
+
+Product tags remain `vX.Y.Z`. The release workflow verifies product checks, builds
+and packs npm once, then downloads that artifact for publication. Docker images
+are built only in the product publication job. The manual dispatch retains its
+npm retry behavior; Docker publication runs for tag pushes.
+
+Product distributions include `sdk-versions.json` with the exact UI, Adapter SDK
+and Plugin SDK package versions. Runtime source builds continue using the SDKs
+shipped with the host, so publishing a newer SDK does not update existing DSUI
+installations. Release a new product when users need a changed runtime capability.
+
+The product's `@northgraindata/dsui/plugin-sdk` export remains during migration.
+New plugin code should depend on `@northgraindata/dsui-plugin-sdk`.
+
+## CI ownership
+
+| Pipeline | Owned code | Downstream checks |
+| --- | --- | --- |
+| Adapter SDK | SDK, UI, official adapters, example adapter | Plugin and product checks when affected |
+| Plugin SDK | SDK, official plugins, example plugin | Product checks when affected |
+| Product | Server, core, renderer, web, delivery scripts | Docs/site and Docker when relevant |
+
+Each pipeline has separate lint, typecheck, test and build jobs. Cheap scope jobs
+always run; expensive jobs run only for affected layers. SDK changes verify host
+consumers but do not trigger Docker on a PR. Shared dependency/configuration changes
+conservatively run all layers. Docs-only changes build the documentation surfaces.
+
+For branch protection, replace the old monolithic required checks with the three
+workflow status jobs (`checks / status` under Product, Adapter SDK and Plugin SDK).
+Select the actual check names shown by GitHub after the first run. A status job fails
+if a selected check failed or was cancelled; unaffected layers can skip their work.
+
+Bun and Turbo caches are reused between runs. PR runs can cancel older runs;
+publication workflows serialize each release line and do not cancel in-flight publishing.
+
+## References behind this layout
+
+[Backstage's versioning policy](https://backstage.io/docs/overview/versioning-policy/)
+separates each package's SemVer from the platform release and records tested package
+combinations. DSUI applies that idea through independent SDK versions and the
+product's `sdk-versions.json`.
+
+[Vite's release policy](https://vite.dev/releases) makes release channels,
+prereleases and migration expectations explicit. DSUI documents those decisions
+here, without adopting a fixed release calendar.
+
+[Changesets fixed groups](https://github.com/changesets/changesets/blob/main/docs/fixed-packages.md)
+provide the version coupling used only for Adapter SDK and its UI implementation.

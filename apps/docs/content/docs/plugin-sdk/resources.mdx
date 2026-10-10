@@ -1,0 +1,26 @@
+---
+title: Resources
+description: Read plugin data with runtime-managed refresh.
+---
+
+Define a resource with `defineResource({ id, input?, query, refresh? })`, then
+register it with `registry.resource(resource)`. `query(input, context)` receives
+validated input and the plugin context. The default refresh policy is manual;
+use `poll("5s")` for data that should refresh while watched.
+
+```ts
+import { defineResource, poll } from "@northgraindata/dsui-plugin-sdk";
+
+const clock = defineResource({
+  id: "clock",
+  query: () => ({ timestamp: new Date().toISOString() }),
+  refresh: poll("5s"),
+});
+```
+
+Read declared resources through the page render function's `resource` reader.
+Keep reads in resources, mutations in [actions](/docs/plugin-sdk/actions), and
+scheduled work that must run without an open page in [jobs](/docs/plugin-sdk/jobs).
+
+The [Health plugin](https://github.com/northgraindata/dsui/tree/main/packages/plugin-health/src/resources)
+shows host-backed service resources.

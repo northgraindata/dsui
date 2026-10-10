@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contribution guide
+    url: https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md
+    about: Setup, first contributions, and pull request expectations.
+  - name: Security policy
+    url: https://github.com/northgraindata/dsui/blob/main/SECURITY.md
+    about: Follow the security policy when reporting vulnerabilities.
