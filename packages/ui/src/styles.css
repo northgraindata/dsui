@@ -78,6 +78,141 @@
   }
 }
 
+/* Keep picker rules unlayered so plugin styles cannot override its menu. */
+.dsui-option-select {
+  position: relative;
+  min-width: 0;
+}
+.dsui-option-select .dsui-option-select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 9px;
+  border: 1px solid #29496e;
+  border-radius: 8px;
+  background: #101e34;
+  color: #dceaff;
+  font-size: 12px;
+  text-align: left;
+}
+.dsui-option-select .dsui-option-select-trigger:hover:not(:disabled),
+.dsui-option-select .dsui-option-select-trigger[aria-expanded="true"] {
+  border-color: #428af0;
+  background: #15305a;
+}
+.dsui-option-select-trigger:disabled {
+  opacity: 0.5;
+}
+.dsui-option-select-trigger-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsui-option-select-trigger > svg:last-child {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: #8fafda;
+}
+.dsui-option-select-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #17345b;
+  color: #d9ebff;
+}
+.dsui-option-select-icon img,
+.dsui-option-select-icon svg {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+.dsui-option-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.dsui-option-select-menu:popover-open {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  inset: auto;
+  margin: 0;
+  overflow-y: auto;
+  padding: 7px;
+  border: 1px solid #2c496e;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #101f36, #081321);
+  color: #dceaff;
+  box-shadow: 0 16px 48px #000b;
+  scrollbar-width: thin;
+}
+.dsui-option-select-menu .dsui-option-select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #e8f2ff;
+  text-align: left;
+}
+.dsui-option-select-option + .dsui-option-select-option {
+  margin-top: 3px;
+}
+.dsui-option-select-menu .dsui-option-select-option:hover:not(:disabled),
+.dsui-option-select-menu .dsui-option-select-option:focus-visible {
+  border-color: #315f9b;
+  background: #142b4b;
+}
+.dsui-option-select-menu .dsui-option-select-option[aria-selected="true"] {
+  border-color: #2c71d1;
+  background: linear-gradient(115deg, #173d78, #102b52);
+}
+.dsui-option-select-option:disabled {
+  opacity: 0.45;
+}
+.dsui-option-select-copy {
+  min-width: 0;
+  flex: 1;
+}
+.dsui-option-select-copy strong,
+.dsui-option-select-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsui-option-select-copy strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.dsui-option-select-copy small {
+  margin-top: 2px;
+  color: #92a9c8;
+  font-size: 10px;
+}
+.dsui-option-select-check {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: #83beff;
+}
+
 @layer components {
   .command-palette__backdrop {
     opacity: 0;

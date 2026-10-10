@@ -1,3 +1,4 @@
+import { OptionSelect } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
 import type { QueryEditorProps } from "../../primitives/query-editor";
 import { type ComponentProps, componentProps } from "../../runtime";
@@ -76,20 +77,19 @@ function QueryEditorContent({
     <section className="query-workspace" aria-label="Query workspace">
       <div className="query-editor-panel">
         {props.database ? (
-          <label className="query-database-picker">
+          <div className="query-database-picker">
             <span>{props.database.label ?? "Database"}</span>
-            <select
+            <OptionSelect
+              ariaLabel={props.database.label ?? "Database"}
               value={database}
-              onChange={(event) => setDatabase(event.target.value)}
-            >
-              <option value="">Configured database</option>
-              {databases.map((item) => (
-                <option key={item.name} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              placeholder="Configured database"
+              options={databases.map((item) => ({
+                value: item.name,
+                label: item.name,
+              }))}
+              onValueChange={setDatabase}
+            />
+          </div>
         ) : null}
         <QueryToolbar
           tabs={tabs}
