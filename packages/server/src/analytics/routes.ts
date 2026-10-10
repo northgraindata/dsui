@@ -2,7 +2,11 @@ import type { Hono } from "hono";
 import { allowed } from "../auth.js";
 import type { ServiceDeps } from "../routes/services.js";
 import { serviceSource } from "../routes/services.js";
-import { dashboardSchema, moduleSchema } from "./definitions.js";
+import {
+  dashboardModuleGroups,
+  dashboardSchema,
+  moduleSchema,
+} from "./definitions.js";
 import { AnalyticsStore } from "./storage.js";
 
 export function registerAnalyticsRoutes(
@@ -87,28 +91,38 @@ export function registerAnalyticsRoutes(
     }
   });
   app.get("/api/v1/analytics/dashboards", async (context) => {
-    if (!(await can(context.get("principal"), "inspect")))
+    const principal = context.get("principal");
+    if (!(await can(principal, "inspect")))
       return context.json({ message: "Insufficient permission" }, 403);
     try {
       const visible = new Set(
-        (await visibleModules(context.get("principal"))).map(
+        (await visibleModules(principal)).map(
           (module) => `${module.subfolder ?? ""}/${module.name}`,
         ),
       );
+      const favorites = new Set(deps.database.dashboardFavorites(principal.id));
       const dashboards = await store.dashboards();
       return context.json(
-        dashboards.filter((dashboard) =>
-          dashboard.modules.every((item) =>
-            visible.has(`${item.subfolder ?? ""}/${item.module}`),
-          ),
-        ),
+        dashboards
+          .filter((dashboard) =>
+            dashboardModuleGroups(dashboard)
+              .flat()
+              .every((item) =>
+                visible.has(`${item.subfolder ?? ""}/${item.module}`),
+              ),
+          )
+          .map((dashboard) => ({
+            ...dashboard,
+            favorite: favorites.has(dashboard.name),
+          })),
       );
     } catch (error) {
       return context.json({ message: message(error) }, 422);
     }
   });
   app.put("/api/v1/analytics/dashboards", async (context) => {
-    if (!(await can(context.get("principal"), "manage")))
+    const principal = context.get("principal");
+    if (!(await can(principal, "manage")))
       return context.json({ message: "Insufficient permission" }, 403);
     try {
       const body = (await context.req.json()) as {
@@ -117,21 +131,61 @@ export function registerAnalyticsRoutes(
       };
       if (!("expectedRevision" in body))
         throw new Error("Expected revision is required");
-      const definition = dashboardSchema.parse(body.definition);
+      const parsed = dashboardSchema.parse(body.definition);
       const visible = new Set(
-        (await visibleModules(context.get("principal"))).map(
+        (await visibleModules(principal)).map(
           (module) => `${module.subfolder ?? ""}/${module.name}`,
         ),
       );
       if (
-        definition.modules.some(
-          (item) => !visible.has(`${item.subfolder ?? ""}/${item.module}`),
-        )
+        dashboardModuleGroups(parsed)
+          .flat()
+          .some(
+            (item) => !visible.has(`${item.subfolder ?? ""}/${item.module}`),
+          )
       )
         return context.json({ message: "Module is not available" }, 403);
       return context.json(
-        await store.saveDashboard(definition, body.expectedRevision),
+        await store.saveDashboard(parsed, body.expectedRevision),
       );
+    } catch (error) {
+      return context.json({ message: message(error) }, 422);
+    }
+  });
+  app.put("/api/v1/analytics/dashboards/:name/favorite", async (context) => {
+    const principal = context.get("principal");
+    if (!(await can(principal, "inspect")))
+      return context.json({ message: "Insufficient permission" }, 403);
+    try {
+      const name = context.req.param("name");
+      const body: unknown = await context.req.json();
+      if (
+        !body ||
+        typeof body !== "object" ||
+        !("favorite" in body) ||
+        typeof body.favorite !== "boolean"
+      )
+        return context.json({ message: "favorite must be a boolean" }, 422);
+      const dashboard = (await store.dashboards()).find(
+        (item) => item.name === name,
+      );
+      if (!dashboard)
+        return context.json({ message: "Dashboard not found" }, 404);
+      const visible = new Set(
+        (await visibleModules(principal)).map(
+          (module) => `${module.subfolder ?? ""}/${module.name}`,
+        ),
+      );
+      if (
+        !dashboardModuleGroups(dashboard)
+          .flat()
+          .every((item) =>
+            visible.has(`${item.subfolder ?? ""}/${item.module}`),
+          )
+      )
+        return context.json({ message: "Dashboard not found" }, 404);
+      deps.database.setDashboardFavorite(principal.id, name, body.favorite);
+      return context.json({ favorite: body.favorite });
     } catch (error) {
       return context.json({ message: message(error) }, 422);
     }
