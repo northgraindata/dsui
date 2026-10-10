@@ -12,6 +12,7 @@ import { migration_0010_events } from "./0010_events.js";
 import { migration_0011_event_type } from "./0011_event_type.js";
 
 import { migration_0012_event_sequence } from "./0012_event_sequence.js";
+import { migration_0014_dashboard_favorites } from "./0014_dashboard_favorites.js";
 
 /** All migrations in version order. Add new files here, never reorder. */
 export const migrations: Migration[] = [
@@ -27,4 +28,5 @@ export const migrations: Migration[] = [
   migration_0010_events,
   migration_0011_event_type,
   migration_0012_event_sequence,
+  migration_0014_dashboard_favorites,
 ];
