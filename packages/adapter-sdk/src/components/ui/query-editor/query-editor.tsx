@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { QueryEditorProps } from "../../primitives/query-editor";
 import { type ComponentProps, componentProps } from "../../runtime";
 import { QueryToolbar } from "./query-toolbar";
@@ -71,18 +71,6 @@ function QueryEditorContent({
   const workspace = useQueryWorkspace(client, action, props.value ?? "");
   const { tabs, tab, activeId, setActiveId, setSql, run, closeTab, newTab } =
     workspace;
-  const notifiedResult = useRef<unknown>(undefined);
-  useEffect(() => {
-    if (
-      tab?.result &&
-      !tab.running &&
-      !tab.error &&
-      notifiedResult.current !== tab.result
-    ) {
-      notifiedResult.current = tab.result;
-      client.notifyInteraction?.({ target: "query.results", event: "success" });
-    }
-  }, [tab?.result, tab?.running, tab?.error, client.notifyInteraction]);
   if (!tab) return null;
   return (
     <section className="query-workspace" aria-label="Query workspace">

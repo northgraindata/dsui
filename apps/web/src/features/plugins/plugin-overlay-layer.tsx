@@ -177,11 +177,15 @@ function OverlayDialog({
   targetRect?: TargetRect;
 }) {
   const panel = useRef<HTMLElement>(null);
+  const previousFocus = useRef<Element | null>(null);
+  const presentation = contribution?.presentation;
+  const anchored = presentation?.mode === "anchored";
   const [height, setHeight] = useState(240);
   useLayoutEffect(() => {
     if (!panel.current) return;
     setHeight(panel.current.getBoundingClientRect().height);
-    const previousFocus = document.activeElement;
+    previousFocus.current ??= document.activeElement;
+    const element = panel.current;
     panel.current.focus({ preventScroll: true });
     const observer = new ResizeObserver(() =>
       setHeight(panel.current?.getBoundingClientRect().height ?? 240),
@@ -189,12 +193,76 @@ function OverlayDialog({
     observer.observe(panel.current);
     return () => {
       observer.disconnect();
-      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
-        previousFocus.focus({ preventScroll: true });
+      // Restore after the modal effect removes inertness and its focus guard.
+      queueMicrotask(() => {
+        if (element.isConnected || document.activeElement !== document.body)
+          return;
+        const target = previousFocus.current;
+        if (target instanceof HTMLElement && target.isConnected)
+          target.focus({ preventScroll: true });
+      });
     };
   }, []);
-  const presentation = contribution?.presentation;
-  const anchored = presentation?.mode === "anchored";
+  useLayoutEffect(() => {
+    const element = panel.current;
+    if (anchored || !element) return;
+    const siblings = new Map<HTMLElement, boolean>();
+    let branch: HTMLElement = element;
+    while (branch.parentElement) {
+      for (const sibling of branch.parentElement.children) {
+        if (sibling !== branch && sibling instanceof HTMLElement) {
+          siblings.set(sibling, sibling.inert);
+          sibling.inert = true;
+        }
+      }
+      branch = branch.parentElement;
+      if (branch === document.body) break;
+    }
+    const focusable = () =>
+      Array.from(
+        element.querySelectorAll<HTMLElement>(
+          "button, a[href], input, select, textarea, [tabindex]",
+        ),
+      ).filter(
+        (item) =>
+          item.tabIndex >= 0 &&
+          !item.matches(":disabled") &&
+          item.getClientRects().length > 0,
+      );
+    const onTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      const first = items[0];
+      const last = items.at(-1);
+      if (!first || !last) {
+        event.preventDefault();
+        element.focus();
+      } else if (
+        event.shiftKey &&
+        (document.activeElement === first || document.activeElement === element)
+      ) {
+        event.preventDefault();
+        last.focus();
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === last || document.activeElement === element)
+      ) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const keepFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !element.contains(event.target))
+        element.focus();
+    };
+    document.addEventListener("keydown", onTab);
+    document.addEventListener("focusin", keepFocus);
+    return () => {
+      document.removeEventListener("keydown", onTab);
+      document.removeEventListener("focusin", keepFocus);
+      for (const [sibling, inert] of siblings) sibling.inert = inert;
+    };
+  }, [anchored]);
   const label = presentation?.label ?? "Plugin overlay";
   const style =
     targetRect && presentation
