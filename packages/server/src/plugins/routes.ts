@@ -112,7 +112,14 @@ export function registerPluginRoutes(
     if (!(await deps.runtime.authorize(context.get("principal"), "inspect")))
       return context.json({ message: "Insufficient permission" }, 403);
     const inputSchema = z
-      .object({ serviceIds: z.array(z.string().min(1)).max(100) })
+      .object({
+        serviceIds: z.array(z.string().min(1)).max(100),
+        pluginId: z
+          .string()
+          .regex(/^[a-z][a-z0-9-]*$/)
+          .optional(),
+        slotIds: z.array(z.string().min(1)).max(100).optional(),
+      })
       .strict();
     const parsed = inputSchema.safeParse(
       await context.req.json().catch(() => null),
@@ -123,16 +130,24 @@ export function registerPluginRoutes(
     if (
       slot !== "dashboard.service-card.trailing" &&
       slot !== "service.workspace.after-header" &&
-      slot !== "sidebar.profile"
+      slot !== "sidebar.profile" &&
+      slot !== "overlay"
     )
       return context.json({ message: "Unknown plugin slot" }, 404);
     const contributions = deps.runtime
       .catalog()
-      .slots.filter((item) => item.slot === slot);
+      .slots.filter(
+        (item) =>
+          item.slot === slot &&
+          (!parsed.data.pluginId || item.pluginId === parsed.data.pluginId) &&
+          (!parsed.data.slotIds || parsed.data.slotIds.includes(item.id)),
+      );
     const result: PluginSlotResult[] = [];
     // Global slots carry request identity without requiring visibility of a service.
     const serviceIds =
-      slot === "sidebar.profile" ? [""] : parsed.data.serviceIds;
+      slot === "sidebar.profile" || slot === "overlay"
+        ? [""]
+        : parsed.data.serviceIds;
     for (const id of new Set(serviceIds)) {
       if (
         id &&
@@ -170,6 +185,10 @@ export function registerPluginRoutes(
               serviceId: id,
               pluginId: contribution.pluginId,
               slotId: contribution.id,
+              slot: contribution.slot,
+              ...(contribution.presentation
+                ? { presentation: contribution.presentation }
+                : {}),
               nodes,
             });
         } catch (error) {
@@ -178,6 +197,10 @@ export function registerPluginRoutes(
             serviceId: id,
             pluginId: contribution.pluginId,
             slotId: contribution.id,
+            slot: contribution.slot,
+            ...(contribution.presentation
+              ? { presentation: contribution.presentation }
+              : {}),
             nodes: [],
             error: "Plugin widget unavailable",
           });

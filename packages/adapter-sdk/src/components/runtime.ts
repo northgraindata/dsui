@@ -17,6 +17,9 @@ export interface ComponentClient {
     | { status: "error"; message?: string }
   >;
   navigate(path: string): void;
+  /** Open an overlay contributed by the calling plugin, when supported. */
+  openOverlay?(overlayId: string): void;
+  notifyInteraction?(interaction: { target: string; event: string }): void;
 }
 
 /** Props shared by every browser component implementation. */

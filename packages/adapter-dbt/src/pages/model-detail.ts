@@ -5,6 +5,7 @@ import {
   PageHeader,
   Resource,
   Table,
+  Target,
 } from "@northgraindata/dsui-adapter-sdk";
 import { DependencyGraph } from "../components/dependency-graph.js";
 import {
@@ -41,11 +42,21 @@ export const modelDetailPage = definePage({
       }),
       Resource({
         source: modelDetail(input),
-        content: CodeBlock({
-          label: "Compiled SQL",
-          value: { field: "compiledCode" },
-          language: "sql",
-        }),
+        content: [
+          Target({
+            id: "dbt.model.source",
+            content: CodeBlock({
+              label: "Model source SQL",
+              value: { field: "rawCode" },
+              language: "sql",
+            }),
+          }),
+          CodeBlock({
+            label: "Compiled SQL",
+            value: { field: "compiledCode" },
+            language: "sql",
+          }),
+        ],
       }),
     ];
   },

@@ -180,6 +180,7 @@ export type PluginUiSlot = {
   readonly id: string;
   readonly slot: PluginSlotName;
   readonly order?: number;
+  readonly presentation?: PluginOverlayPresentation;
 };
 
 import type {
@@ -190,12 +191,13 @@ import type {
 } from "./job";
 import type {
   AnyPluginSlot,
+  PluginOverlayPresentation,
   PluginSlotDefinition,
   PluginSlotName,
 } from "./slot";
 import { defineSlot } from "./slot";
 
-export type { PluginSlotDefinition, PluginSlotName };
+export type { PluginOverlayPresentation, PluginSlotDefinition, PluginSlotName };
 
 export type RuntimePluginSlot = PluginUiSlot & {
   readonly render: (input: {
@@ -290,6 +292,8 @@ export type PluginSlotResult = {
   serviceId: string;
   pluginId: string;
   slotId: string;
+  slot: PluginSlotName;
+  presentation?: PluginOverlayPresentation;
   nodes: readonly PageNode[];
   error?: string;
 };
@@ -699,6 +703,9 @@ export function definePlugin<TConfig>(
                 id: slot.id,
                 slot: slot.slot,
                 order: slot.order,
+                ...(slot.presentation
+                  ? { presentation: slot.presentation }
+                  : {}),
                 render: async ({ service, principal }) =>
                   serializeNodes(
                     await slot.render({ context, service, principal }),

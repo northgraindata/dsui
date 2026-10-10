@@ -5,6 +5,7 @@ import { getPluginCatalog, getServices, type Service } from "../api";
 import { AppChrome } from "../components/app-chrome";
 import { Icon } from "../components/icon";
 import { ServiceMark } from "../components/service-mark";
+import { PluginOverlayLayer } from "../features/plugins/plugin-overlay-layer";
 
 function useShortcut(key: string, fn: () => void) {
   useEffect(() => {
@@ -40,8 +41,10 @@ export function AppShell() {
       return;
     }
     let active = true;
-    const pluginId = decodeURIComponent(pluginPage[1]!);
-    const pageId = decodeURIComponent(pluginPage[2]!);
+    const [, rawPluginId, rawPageId] = pluginPage;
+    if (!rawPluginId || !rawPageId) return;
+    const pluginId = decodeURIComponent(rawPluginId);
+    const pageId = decodeURIComponent(rawPageId);
     getPluginCatalog()
       .then((catalog) => {
         if (!active) return;
@@ -57,7 +60,7 @@ export function AppShell() {
     return () => {
       active = false;
     };
-  }, [pathname]);
+  }, [pathname, pluginPage?.[1], pluginPage?.[2]]);
 
   useShortcut("k", () => {
     if (!hideAppChrome) setCommandOpen(true);
@@ -68,6 +71,7 @@ export function AppShell() {
   return (
     <>
       <AppChrome pathname={pathname} openSearch={() => setCommandOpen(true)} />
+      <PluginOverlayLayer />
       {commandOpen && <CommandPalette close={() => setCommandOpen(false)} />}
     </>
   );

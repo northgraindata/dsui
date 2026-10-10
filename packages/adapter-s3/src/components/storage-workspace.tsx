@@ -384,7 +384,10 @@ export default function StorageWorkspace({ client, node }: ComponentProps) {
               <tbody>
                 {!loading &&
                   rows.map((row) => (
-                    <tr key={row.key}>
+                    <tr
+                      key={row.key}
+                      data-dsui-overlay-target={`s3.object.${row.key}`}
+                    >
                       <td>
                         {row.type === "folder" ? (
                           <button

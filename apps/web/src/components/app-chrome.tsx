@@ -35,6 +35,7 @@ export function AppChrome({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Navigation refreshes the caller profile even when its pathname is not read.
   useEffect(() => {
     let active = true;
     let retryTimer: number | undefined;
@@ -153,7 +154,11 @@ export function AppChrome({
             </div>
           </aside>
         )}
-        <main id="main-content" className="app-content">
+        <main
+          id="main-content"
+          className="app-content"
+          data-dsui-overlay-target="app.content"
+        >
           <Outlet />
         </main>
       </div>
