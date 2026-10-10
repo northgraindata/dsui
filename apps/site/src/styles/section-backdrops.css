@@ -1,0 +1,75 @@
+/* Artwork keeps a bounded scale so tall sections never magnify its grain. */
+.section-atmosphere {
+  isolation: isolate;
+}
+.section-atmosphere > .landing-container {
+  position: relative;
+  z-index: 1;
+}
+.section-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
+  user-select: none;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 12%,
+    black 85%,
+    transparent
+  );
+}
+.section-backdrop::before,
+.section-backdrop::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: min(100%, 100rem);
+  aspect-ratio: 1672 / 941;
+  transform: translateX(-50%);
+  background: var(--section-art) center / 100% 100% no-repeat;
+  opacity: 0.42;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black 20%,
+    black 65%,
+    transparent
+  );
+}
+.section-backdrop::after {
+  top: auto;
+  bottom: 0;
+  transform: translateX(-50%) rotate(180deg);
+}
+.section-backdrop--flows {
+  --section-art: url("/assets/generated/architecture-grain.webp");
+}
+.section-backdrop--context,
+.section-backdrop--modules,
+.section-backdrop--branches {
+  --section-art: url("/assets/generated/atmosphere-grain.webp");
+}
+.section-backdrop--perspective {
+  --section-art: url("/assets/generated/architecture-grain.webp");
+}
+.section-backdrop--modules::before {
+  top: 12%;
+}
+.section-backdrop--modules::after {
+  bottom: 8%;
+}
+.section-backdrop--branches::before {
+  transform: translateX(-50%) scaleX(-1);
+}
+@media (max-width: 760px) {
+  .section-backdrop::before,
+  .section-backdrop::after {
+    width: 100%;
+    aspect-ratio: 1;
+    background-size: auto 100%;
+    opacity: 0.3;
+  }
+}

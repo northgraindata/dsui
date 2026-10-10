@@ -1,0 +1,490 @@
+.architecture-diagram {
+  max-width: 57rem;
+  margin: 0 auto;
+  padding: 2rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent);
+  border-radius: 1rem;
+  background-image: var(--ds-dots-bg);
+  background-size: 20px 20px;
+}
+.architecture-workspace {
+  border: 1px solid color-mix(in srgb, var(--ds-color-brand) 55%, transparent);
+  border-radius: 0.8rem 0.8rem 0 0;
+  background: var(--ds-secondary-gradient);
+  padding: 2rem;
+}
+.architecture-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+.architecture-brand strong {
+  font-size: 1.7rem;
+  letter-spacing: -0.04em;
+}
+.architecture-brand > span {
+  color: var(--ds-color-copy);
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+.architecture-capabilities {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 2rem;
+  margin-top: 1.5rem;
+  color: var(--ds-color-brand-muted);
+  font:
+    0.65rem ui-monospace,
+    monospace;
+}
+.architecture-plugins {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.7rem 1.5rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-brand) 30%, transparent);
+  border-top: none;
+  border-radius: 0 0 0.8rem 0.8rem;
+  background: var(--ds-color-surface);
+  font-size: 0.75rem;
+  color: var(--ds-color-copy);
+}
+.architecture-bridge {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  padding-block: 2.5rem;
+}
+.architecture-bridge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ds-color-brand);
+  opacity: 0.4;
+}
+.architecture-bridge span {
+  z-index: 1;
+  max-width: 90%;
+  text-align: center;
+  background: var(--ds-color-canvas);
+  border: 1px solid color-mix(in srgb, var(--ds-color-brand) 30%, transparent);
+  border-radius: 0.4rem;
+  padding: 0.65rem 1rem;
+  color: var(--ds-color-brand-muted);
+  font:
+    0.65rem / 1.8 ui-monospace,
+    monospace;
+}
+.architecture-services {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+.architecture-services > div {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 1.5rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-copy) 15%, transparent);
+  border-radius: 0.7rem;
+  background: var(--ds-color-surface);
+}
+.architecture-services img {
+  object-fit: contain;
+  height: 2rem;
+}
+.architecture-services strong {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  font-weight: 550;
+}
+.architecture-services small {
+  margin-top: 0.4rem;
+  font-size: 0.65rem;
+  color: var(--ds-color-copy-subtle);
+}
+.architecture-diagram figcaption {
+  text-align: center;
+  margin-top: 1.8rem;
+  font-size: 0.75rem;
+  color: var(--ds-color-copy-subtle);
+}
+.architecture-principles {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem 2.5rem;
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: var(--ds-color-copy);
+}
+.section-link {
+  text-align: center;
+  margin-top: 2rem;
+}
+.setup-section {
+  border-top: 1px solid
+    color-mix(in srgb, var(--ds-color-copy) 10%, transparent);
+}
+.setup-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+.setup-heading .section-heading {
+  margin-bottom: 0;
+}
+.setup-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3rem;
+  margin-top: 3.5rem;
+  list-style: none;
+}
+.setup-steps > li {
+  min-width: 0;
+  border-top: 1px solid
+    color-mix(in srgb, var(--ds-color-copy) 15%, transparent);
+  padding-top: 1.5rem;
+}
+.setup-steps h3 {
+  margin-block: 1rem;
+}
+.terminal-command {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-copy) 15%, transparent);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  overflow: auto;
+}
+.terminal-command > span {
+  color: var(--ds-color-brand-muted);
+}
+.terminal-command code {
+  white-space: nowrap;
+}
+.oss-plan-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 6rem;
+}
+.oss-plan-layout .section-heading {
+  margin: 0;
+}
+.oss-plan {
+  padding: 2.5rem;
+  border: 1px solid
+    color-mix(in srgb, var(--ds-color-brand-muted) 25%, transparent);
+  border-radius: 1rem;
+  background: var(--ds-secondary-gradient);
+}
+.plan-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.plan-heading h3 {
+  font-size: 1.5rem;
+  font-weight: 550;
+  margin-top: 0.8rem;
+  letter-spacing: -0.03em;
+}
+.plan-price {
+  font-size: 2.5rem;
+  letter-spacing: -0.05em;
+  margin-top: 2rem;
+}
+.plan-price span {
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  color: var(--ds-color-copy-subtle);
+}
+.plan-features {
+  display: grid;
+  gap: 1rem;
+  margin-block: 2rem;
+  padding-block: 1.5rem;
+  border-block: 1px solid
+    color-mix(in srgb, var(--ds-color-copy) 12%, transparent);
+  font-size: 0.85rem;
+  color: var(--ds-color-copy);
+}
+.plan-features li {
+  display: flex;
+  gap: 0.8rem;
+}
+.plan-features li > span {
+  color: var(--ds-color-brand-muted);
+}
+.landing-button {
+  min-height: 3rem;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.landing-button--primary {
+  background: var(--ds-primary-bg);
+  box-shadow: var(--ds-shadow-primary);
+  color: var(--ds-color-foreground);
+}
+.landing-button--primary:hover {
+  box-shadow: var(--ds-shadow-primary-hover);
+}
+.oss-plan .landing-button {
+  width: 100%;
+}
+.open-source-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4rem;
+}
+.open-source-heading .section-heading {
+  margin: 0;
+}
+.github-orbit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  width: 15rem;
+  height: 15rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid
+    color-mix(in srgb, var(--ds-color-brand-muted) 20%, transparent);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ds-color-brand) 18%, transparent),
+    transparent 70%
+  );
+  box-shadow:
+    0 0 0 1.5rem color-mix(in srgb, var(--ds-color-brand) 3%, transparent),
+    0 0 0 3rem color-mix(in srgb, var(--ds-color-brand) 2%, transparent);
+}
+.github-orbit svg {
+  width: 4rem;
+  height: 4rem;
+}
+.github-orbit > span {
+  font:
+    0.7rem ui-monospace,
+    monospace;
+  color: var(--ds-color-brand-muted);
+}
+.github-orbit:hover {
+  border-color: var(--ds-color-brand-muted);
+}
+.open-source-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem 2.5rem;
+  margin-top: 3rem;
+}
+.star-note {
+  color: var(--ds-color-copy-subtle);
+  font-size: 0.8rem;
+  margin-top: 1rem;
+}
+.landing-section a:focus-visible,
+.landing-section video:focus-visible {
+  outline: 2px solid var(--ds-color-brand-muted);
+  outline-offset: 5px;
+  border-radius: 0.3rem;
+}
+@media (max-width: 960px) {
+  .ai-layout,
+  .sdk-layout {
+    gap: 2.5rem;
+  }
+  .lineage-map {
+    padding: 2.5rem 1rem;
+    gap: 0.4rem;
+  }
+  .lineage-node {
+    padding: 0.75rem;
+  }
+  .extension-card {
+    padding: 1.5rem;
+  }
+  .oss-plan-layout {
+    gap: 3rem;
+  }
+}
+@media (max-width: 760px) {
+  .landing-section {
+    padding: 4.5rem 1.25rem;
+  }
+  .section-heading {
+    margin-bottom: 2.5rem;
+  }
+  .benefit-strip,
+  .editorial-grid,
+  .extension-grid,
+  .setup-steps {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .ai-layout,
+  .sdk-layout,
+  .oss-plan-layout {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  .sdk-layout {
+    margin-top: 3.5rem;
+  }
+  .lineage-map {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 2rem;
+  }
+  .lineage-node {
+    width: 100%;
+    max-width: 22rem;
+    padding: 1.25rem;
+  }
+  .lineage-arrow {
+    transform: rotate(90deg);
+  }
+  .context-summary {
+    flex-wrap: wrap;
+  }
+  .context-summary p {
+    flex-basis: 100%;
+    order: 1;
+  }
+  .architecture-diagram {
+    padding: 1rem;
+  }
+  .architecture-workspace {
+    padding: 1.5rem 1rem;
+  }
+  .architecture-brand > span {
+    flex-basis: 100%;
+    text-align: center;
+    margin-left: 0;
+  }
+  .architecture-services {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .setup-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .oss-plan {
+    padding: 1.5rem;
+  }
+  .open-source-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3rem;
+  }
+  .github-orbit {
+    width: 10rem;
+    height: 10rem;
+    align-self: center;
+    margin-block: 1rem;
+    gap: 1rem;
+  }
+  .github-orbit svg {
+    width: 3rem;
+    height: 3rem;
+  }
+  .agent-conversation {
+    padding: 1rem;
+  }
+  .agent-question {
+    margin-left: 1rem;
+  }
+  .status-label {
+    display: none;
+  }
+}
+
+/* Clip decorative adapter glows without turning the page into a scroll container. */
+main {
+  overflow-x: clip;
+}
+
+.skip-link {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 50;
+  transform: translateY(-200%);
+  background: var(--ds-color-surface);
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--ds-color-brand-muted);
+  border-radius: 0.5rem;
+  color: var(--ds-color-foreground);
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+.mobile-navigation summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--ds-color-copy);
+  cursor: pointer;
+  list-style: none;
+}
+.mobile-navigation summary::-webkit-details-marker {
+  display: none;
+}
+.mobile-navigation > div {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  left: 0;
+  padding: 0.75rem;
+  border: 1px solid
+    color-mix(in srgb, var(--ds-color-brand-muted) 20%, transparent);
+  border-radius: 0.85rem;
+  background: var(--ds-color-canvas);
+  box-shadow: var(--ds-shadow-navbar);
+}
+.mobile-navigation a {
+  display: block;
+  padding: 0.7rem 1rem;
+  border-radius: 0.5rem;
+  color: var(--ds-color-copy);
+  font-size: 0.85rem;
+}
+.mobile-navigation a:hover {
+  background: var(--ds-color-surface);
+}
+.mobile-navigation summary:focus-visible,
+.mobile-navigation a:focus-visible {
+  outline: 2px solid var(--ds-color-brand-muted);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  #product h1 {
+    font-size: clamp(2.5rem, 11vw, 3.75rem);
+  }
+}

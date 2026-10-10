@@ -19,6 +19,12 @@ const integrations = [
     glow: "bg-adapter-postgres-glow/18",
   },
   {
+    name: "Trino",
+    src: "/assets/logos/trino.png",
+    gradient: "from-adapter-trino/75 via-brand/25 to-transparent",
+    glow: "bg-adapter-trino-glow/18",
+  },
+  {
     name: "S3",
     src: "/assets/logos/s3.svg",
     gradient: "from-adapter-airflow/70 via-brand/25 to-transparent",
@@ -40,8 +46,8 @@ const integrations = [
 
 const rows = [
   integrations.slice(0, 2),
-  integrations.slice(2, 4),
-  integrations.slice(4, 6),
+  integrations.slice(2, 5),
+  integrations.slice(5, 7),
 ];
 
 const docsBaseUrl = import.meta.env.DEV
