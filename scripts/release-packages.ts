@@ -1,7 +1,7 @@
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
-export const sdkPackages = ["ui", "adapter-sdk", "plugin-sdk"] as const;
+export const sdkPackages = ["adapter-sdk", "plugin-sdk"] as const;
 export type SdkPackage = (typeof sdkPackages)[number];
 const root = resolve(import.meta.dir, "..");
 
@@ -39,6 +39,43 @@ export function registryRange(
   throw new Error(`Unsupported workspace range: ${range}`);
 }
 
+async function rewriteBundledUiImports(sourceRoot: string): Promise<void> {
+  const uiEntry = join(sourceRoot, "ui", "index.tsx");
+  const visit = async (directoryPath: string): Promise<void> => {
+    for (const entry of await readdir(directoryPath, { withFileTypes: true })) {
+      const path = join(directoryPath, entry.name);
+      if (entry.isDirectory()) {
+        await visit(path);
+      } else if (/\.tsx?$/.test(entry.name)) {
+        const bundledUi = relative(dirname(path), uiEntry).split(sep).join("/");
+        const specifier = bundledUi.startsWith(".")
+          ? bundledUi
+          : `./${bundledUi}`;
+        const sourceText = await readFile(path, "utf8");
+        await writeFile(
+          path,
+          sourceText.replaceAll(
+            '"@northgraindata/dsui-ui"',
+            JSON.stringify(specifier),
+          ),
+        );
+      }
+    }
+  };
+  await visit(sourceRoot);
+}
+
+async function embedUiImplementation(target: string): Promise<void> {
+  const uiSource = join(root, "packages", "ui", "src");
+  const sourceRoot = join(target, "src");
+  await cp(uiSource, join(sourceRoot, "ui"), { recursive: true });
+  await rewriteBundledUiImports(sourceRoot);
+  const adapterStyles = join(sourceRoot, "styles.css");
+  const uiStyles = await readFile(join(uiSource, "styles.css"), "utf8");
+  const currentStyles = await readFile(adapterStyles, "utf8");
+  await writeFile(adapterStyles, `${uiStyles}\n${currentStyles}`);
+}
+
 /** Bun-native source exports preserve all TS/TSX subpaths and their types. */
 export async function packageSdk(directory: SdkPackage): Promise<string> {
   const source = join(root, "packages", directory);
@@ -53,6 +90,21 @@ export async function packageSdk(directory: SdkPackage): Promise<string> {
     scripts: _scripts,
     ...published
   } = manifest;
+  if (directory === "adapter-sdk") {
+    const ui: PackageManifest = JSON.parse(
+      await readFile(join(root, "packages", "ui", "package.json"), "utf8"),
+    );
+    const dependencies = {
+      ...ui.dependencies,
+      ...published.dependencies,
+    } as Record<string, string>;
+    delete dependencies[ui.name];
+    published.dependencies = dependencies;
+    published.peerDependencies = {
+      ...ui.peerDependencies,
+      ...published.peerDependencies,
+    };
+  }
   for (const field of ["dependencies", "peerDependencies"] as const) {
     if (!published[field]) continue;
     published[field] = Object.fromEntries(
@@ -68,8 +120,9 @@ export async function packageSdk(directory: SdkPackage): Promise<string> {
     recursive: true,
     filter: (path) => !/\.(test|spec)\.tsx?$/.test(path),
   });
+  if (directory === "adapter-sdk") await embedUiImplementation(target);
   await cp(join(root, "LICENSE"), join(target, "LICENSE"));
-  if (directory !== "ui") {
+  {
     let readme = await readFile(join(source, "README.md"), "utf8");
     readme = readme
       .replaceAll(
@@ -112,13 +165,9 @@ export async function packageSdk(directory: SdkPackage): Promise<string> {
 
 if (import.meta.main) {
   const directory = process.argv[2];
-  if (
-    directory !== "ui" &&
-    directory !== "adapter-sdk" &&
-    directory !== "plugin-sdk"
-  ) {
+  if (directory !== "adapter-sdk" && directory !== "plugin-sdk") {
     throw new Error(
-      "Usage: bun scripts/release-packages.ts <ui|adapter-sdk|plugin-sdk>",
+      "Usage: bun scripts/release-packages.ts <adapter-sdk|plugin-sdk>",
     );
   }
   console.log(await packageSdk(directory));

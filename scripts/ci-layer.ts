@@ -67,7 +67,6 @@ if (import.meta.main) {
     ]);
     if (task === "build" && layer !== "product") {
       const { packageSdk } = await import("./release-packages");
-      if (layer === "adapter-sdk") await packageSdk("ui");
       await packageSdk(layer);
     }
   } else throw new Error("Unknown CI task");

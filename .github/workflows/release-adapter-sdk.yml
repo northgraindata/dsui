@@ -86,17 +86,8 @@ jobs:
         env:
           LAYER: adapter-sdk
         run: |
-          if [[ "$LAYER" == adapter-sdk ]]; then
-            for PACKAGE in ui adapter-sdk; do
-              VERSION="$(jq -r .version "packages/$PACKAGE/package.json")"
-              bun scripts/publish-npm.ts "dist/sdk-tarballs/northgraindata-dsui-$PACKAGE-$VERSION.tgz" "@northgraindata/dsui-$PACKAGE" "$VERSION"
-            done
-          else
-            VERSION="$(jq -r .version packages/plugin-sdk/package.json)"
-            ADAPTER_VERSION="$(jq -r .version packages/adapter-sdk/package.json)"
-            npm view "@northgraindata/dsui-adapter-sdk@$ADAPTER_VERSION" version --registry=https://registry.npmjs.org
-            bun scripts/publish-npm.ts "dist/sdk-tarballs/northgraindata-dsui-plugin-sdk-$VERSION.tgz" @northgraindata/dsui-plugin-sdk "$VERSION"
-          fi
+          VERSION="$(jq -r .version packages/adapter-sdk/package.json)"
+          bun scripts/publish-npm.ts "dist/sdk-tarballs/northgraindata-dsui-adapter-sdk-$VERSION.tgz" @northgraindata/dsui-adapter-sdk "$VERSION"
       - name: Create component release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

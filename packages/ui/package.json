@@ -1,6 +1,6 @@
 {
   "name": "@northgraindata/dsui-ui",
-  "private": false,
+  "private": true,
   "version": "0.3.0",
   "type": "module",
   "exports": {
@@ -20,9 +20,6 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "typescript": "^5.9.2"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "license": "Apache-2.0",
   "types": "./src/index.tsx",

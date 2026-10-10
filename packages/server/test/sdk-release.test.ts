@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { sdkVersions } from "../../../scripts/release-packages";
 import { assertAdapterDefinition } from "../src/adapters/definition";
 import { prepareSdk, sdkPackageAt } from "../src/adapters/sdk";
 
@@ -23,6 +24,10 @@ test("prepared runtime SDKs retain their independent package versions", async ()
       expect(prepared.version).toBe(original.version);
       expect(Object.values(prepared.dependencies)).not.toContain("workspace:*");
     }
+    expect(Object.keys(await sdkVersions())).toEqual([
+      "@northgraindata/dsui-adapter-sdk",
+      "@northgraindata/dsui-plugin-sdk",
+    ]);
   } finally {
     await rm(target, { recursive: true, force: true });
   }

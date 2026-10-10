@@ -9,14 +9,30 @@ await rm(smoke, { recursive: true, force: true });
 await mkdir(smoke, { recursive: true });
 const dependencies: Record<string, string> = {};
 const selected =
-  process.argv[2] === "adapter-sdk"
-    ? sdkPackages.filter((name) => name !== "plugin-sdk")
-    : sdkPackages;
+  process.argv[2] === "adapter-sdk" ? (["adapter-sdk"] as const) : sdkPackages;
 for (const directory of selected) {
   const target = await packageSdk(directory);
   const manifest = JSON.parse(
     await readFile(join(target, "package.json"), "utf8"),
   );
+  if (directory === "adapter-sdk") {
+    if (manifest.dependencies?.["@northgraindata/dsui-ui"])
+      throw new Error("Adapter SDK package must embed its private UI code");
+    const embeddedUi = await readFile(
+      join(target, "src", "ui", "index.tsx"),
+      "utf8",
+    );
+    const adapterUi = await readFile(
+      join(target, "src", "components", "ui", "form.tsx"),
+      "utf8",
+    );
+    if (!embeddedUi.includes("./components/button"))
+      throw new Error("Adapter SDK package is missing embedded UI sources");
+    if (adapterUi.includes("@northgraindata/dsui-ui"))
+      throw new Error(
+        "Adapter SDK package contains an unresolved private UI import",
+      );
+  }
   const pack = Bun.spawnSync(
     [
       "npm",

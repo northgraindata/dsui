@@ -9,12 +9,12 @@ A release of one line does not automatically publish the others.
 | Line | Package and artifacts | Tag |
 | --- | --- | --- |
 | Product | `@northgraindata/dsui`, `ghcr.io/northgraindata/dsui` | `vX.Y.Z` |
-| Adapter SDK | `@northgraindata/dsui-adapter-sdk` and its UI implementation package | `adapter-sdk-vX.Y.Z` |
+| Adapter SDK | `@northgraindata/dsui-adapter-sdk` (includes its UI implementation) | `adapter-sdk-vX.Y.Z` |
 | Plugin SDK | `@northgraindata/dsui-plugin-sdk` | `plugin-sdk-vX.Y.Z` |
 
-The technical `@northgraindata/dsui-ui` package shares a fixed version with
-Adapter SDK and is published first by that release workflow. Plugin SDK depends
-on a specific Adapter SDK version, but has an independent SemVer version.
+The UI implementation remains a private workspace package and is embedded in
+the published Adapter SDK artifact. Plugin SDK depends on a specific Adapter
+SDK version, but has an independent SemVer version.
 
 Official adapter and plugin packages currently remain private workspace packages;
 their READMEs do not imply independent registry publication.
@@ -61,19 +61,22 @@ another workflow. Use an explicit dispatch or an appropriately configured app to
 ## First publication and trusted publishing
 
 npm creates each scoped package on its first publication. Trusted Publisher
-settings are available only after that package exists. Bootstrap the three SDK
-packages once in dependency order (`ui`, `adapter-sdk`, `plugin-sdk`) by publishing
-a clearly marked prerelease from `dist/sdk/<package>` with an authorized maintainer
-account (`npm publish --access public --tag next`). Build each directory with
-`bun scripts/release-packages.ts <ui|adapter-sdk|plugin-sdk>`. Then configure
-Trusted Publishing for each package and publish its first real release through
-the matching GitHub workflow within two days; npm expires an unused new trust
-configuration after that window.
+settings are available only after that package exists. Bootstrap the two public
+SDK packages in dependency order (`adapter-sdk`, then `plugin-sdk`) by publishing
+a first version from `dist/sdk/<package>` with an authorized maintainer account,
+using the `next` dist-tag while Trusted Publishing is being configured:
+`npm publish --access public --tag next`. Build each directory with
+`bun scripts/release-packages.ts <adapter-sdk|plugin-sdk>`. Then configure
+Trusted Publishing for each package, prepare a new patch changeset, and publish
+that version through the matching GitHub workflow within two days. npm expires an
+unused new trust configuration after that window. The workflow applies `latest`
+to stable versions, replacing the temporary `next` dist-tag.
 
 The product retains `release.yml`, including its existing OIDC publication path.
 SDK publication runs directly in `release-adapter-sdk.yml` and
 `release-plugin-sdk.yml`. Configure those exact workflow filenames as trusted
-publishers; use `release-adapter-sdk.yml` for both the UI package and Adapter SDK.
+publishers for `@northgraindata/dsui-adapter-sdk` and
+`@northgraindata/dsui-plugin-sdk` respectively.
 Registry/account setup is external to the repository and must be completed before
 the first automated release.
 
@@ -84,8 +87,8 @@ and packs npm once, then downloads that artifact for publication. Docker images
 are built only in the product publication job. The manual dispatch retains its
 npm retry behavior; Docker publication runs for tag pushes.
 
-Product distributions include `sdk-versions.json` with the exact UI, Adapter SDK
-and Plugin SDK package versions. Runtime source builds continue using the SDKs
+Product distributions include `sdk-versions.json` with the exact Adapter SDK and
+Plugin SDK package versions. Runtime source builds continue using the SDKs
 shipped with the host, so publishing a newer SDK does not update existing DSUI
 installations. Release a new product when users need a changed runtime capability.
 
@@ -124,5 +127,6 @@ product's `sdk-versions.json`.
 prereleases and migration expectations explicit. DSUI documents those decisions
 here, without adopting a fixed release calendar.
 
-[Changesets fixed groups](https://github.com/changesets/changesets/blob/main/docs/fixed-packages.md)
-provide the version coupling used only for Adapter SDK and its UI implementation.
+The Adapter SDK package embeds its UI implementation, so its public SemVer and
+release artifact cover the complete extension UI surface without a separate
+public UI package.

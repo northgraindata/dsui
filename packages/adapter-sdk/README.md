@@ -10,7 +10,13 @@ Package name: `@northgraindata/dsui-adapter-sdk`.
 
 ## Get started
 
-The SDK is packaged independently for Bun and TypeScript-aware bundlers. DSUI also ships a tested SDK copy for runtime extension builds. The first registry publication requires maintainer setup; see the [release policy](https://dsui.northgraindata.com/docs/releases).
+Install the public SDK package:
+
+```sh
+bun add @northgraindata/dsui-adapter-sdk
+```
+
+Import `@northgraindata/dsui-adapter-sdk/styles.css` once in the consuming app to load the shared UI and adapter component styles. Those UI primitives ship inside this package; no separate DSUI UI package is needed. DSUI also ships a tested SDK copy for runtime extension builds. See the [release policy](https://dsui.northgraindata.com/docs/releases).
 
 Start with the [example adapter](../../examples/example-adapter). It includes a connection schema, resource, action, page, custom browser component and tests. The [DuckDB adapter](../adapter-duckdb) is a larger reference implementation.
 

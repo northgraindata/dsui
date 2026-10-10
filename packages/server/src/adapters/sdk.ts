@@ -1,10 +1,8 @@
 /**
- * Prepares the self-contained package trees a plugin build needs.
- *
- * Two trees, because a plugin depends on both SDKs and neither is published:
- * `@northgraindata/dsui-adapter-sdk` for pages, components and resources, and
- * `@northgraindata/dsui-plugin-sdk` for the `defineX` family. Both depend on
- * `@northgraindata/dsui-ui`, so it is prepared once and both point at it.
+ * Prepares the self-contained workspace package trees extension builds need.
+ * The public Adapter SDK artifact embeds the private UI implementation, while
+ * the product runtime keeps UI, Adapter SDK and Plugin SDK as separate trees.
+ * This lets source checkouts resolve the same package layout as the workspace.
  *
  * A released DSUI ships both trees; a source checkout builds them on first use.
  * Without them a plugin build fails on `workspace:*`, because a plugin lives
