@@ -5,6 +5,8 @@ export const dagInput = z.object({ dagId: z.string().min(1) });
 
 export const dags = defineResource({
   id: "dags",
+  description: "List Airflow DAGs with paused or active status.",
+  policy: "metadata",
   query: async (_, ctx: AirflowContext) =>
     (await ctx.client.listDags()).map((dag) => ({
       ...dag,
@@ -16,6 +18,8 @@ export const dags = defineResource({
 
 export const dagDetails = defineResource({
   id: "dag-details",
+  description: "Read metadata and configuration for one Airflow DAG.",
+  policy: "metadata",
   input: dagInput,
   query: ({ dagId }, ctx: AirflowContext) => ctx.client.getDag(dagId),
   refresh: poll("5s"),

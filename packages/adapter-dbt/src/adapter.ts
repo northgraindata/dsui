@@ -5,7 +5,7 @@ import { execute } from "./actions/local.js";
 import { cancelRun } from "./actions/runs.js";
 import { createContext, dbtConnectionMethods } from "./context.js";
 import { dbtHealth } from "./health.js";
-import { dbtJobs, dbtSignals } from "./jobs.js";
+import { dbtJobs, dbtSignals, dbtStores } from "./jobs.js";
 import { artifactDetailPage, artifactsPage } from "./pages/artifacts.js";
 import { sourcesPage, testsPage } from "./pages/catalog.js";
 import { jobsPage, projectsPage } from "./pages/cloud.js";
@@ -25,7 +25,11 @@ import {
 } from "./resources/artifacts.js";
 import { sources, tests } from "./resources/catalog.js";
 import { jobs, projects } from "./resources/cloud.js";
-import { dashboard, recentRuns } from "./resources/dashboard.js";
+import {
+  dashboard,
+  recentFailures,
+  recentRuns,
+} from "./resources/dashboard.js";
 import {
   catalogRelations,
   freshnessRows,
@@ -43,7 +47,6 @@ import { overview } from "./resources/overview.js";
 import { runArtifacts, runDetail, runLogs } from "./resources/run-detail.js";
 import { runs } from "./resources/runs.js";
 import { dbtRunStore } from "./stores/runs.js";
-import { dbtStores } from "./jobs.js";
 
 export function createDbtAdapter() {
   return defineAdapter({
@@ -83,6 +86,7 @@ export function createDbtAdapter() {
       tests,
       dashboard,
       recentRuns,
+      recentFailures,
       manifestOverview,
       semanticOverview,
       semanticModels,

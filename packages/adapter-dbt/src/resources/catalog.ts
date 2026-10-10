@@ -54,6 +54,9 @@ export const sources = defineResource({
 
 export const tests = defineResource({
   id: "tests",
+  description:
+    "List dbt Local tests, their latest status and failure messages.",
+  policy: "metadata",
   query: async (_input: undefined, ctx: DbtContext) => {
     const config = local(ctx);
     const [manifest, results] = await Promise.all([

@@ -23,6 +23,9 @@ export const taskTryInput = taskInstanceInput.extend({
 
 export const dagRuns = defineResource({
   id: "dag-runs",
+  description:
+    "List recent runs for one Airflow DAG, including state and timestamps.",
+  policy: "metadata",
   input: dagInput,
   query: async ({ dagId }, ctx: AirflowContext) =>
     (await ctx.client.listDagRuns(dagId)).map(formatDagRunForTable),
@@ -115,6 +118,8 @@ export const dagOverview = defineResource({
 
 export const recentDagRuns = defineResource({
   id: "recent-dag-runs",
+  description: "List the five most recent runs for one Airflow DAG.",
+  policy: "metadata",
   input: dagInput,
   query: async ({ dagId }, ctx: AirflowContext) =>
     (await ctx.client.listDagRuns(dagId)).slice(0, 5).map((run) => ({
@@ -124,6 +129,55 @@ export const recentDagRuns = defineResource({
       stateTone: runStateTone(run.state),
     })),
   refresh: poll("5s"),
+});
+
+export const latestFailedDagRuns = defineResource({
+  id: "latest-failed-dag-runs",
+  description:
+    "Find the latest failed run among each DAG's latest 100 runs in a bounded DAG page. Use nextDagOffset for more DAGs; this is not a complete failure history.",
+  policy: "metadata",
+  input: z.object({
+    dagOffset: z.number().int().min(0).default(0),
+    maxDags: z.number().int().min(1).max(25).default(10),
+  }),
+  query: async ({ dagOffset, maxDags }, ctx: AirflowContext) => {
+    const dags = await ctx.client.listDags();
+    const selected = dags.slice(dagOffset, dagOffset + maxDags);
+    const results = await Promise.allSettled(
+      selected.map((dag) => ctx.client.listDagRuns(dag.dagId)),
+    );
+    const items = results.flatMap((result) => {
+      if (result.status !== "fulfilled") return [];
+      const latest = result.value
+        .filter((run) => run.state.toLowerCase() === "failed")
+        .sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate))[0];
+      return latest ? [formatDagRunForTable(latest)] : [];
+    });
+    items.sort((a, b) => Date.parse(b.startDate) - Date.parse(a.startDate));
+    const nextDagOffset =
+      dagOffset + selected.length < dags.length
+        ? dagOffset + selected.length
+        : undefined;
+    const failedDagReads = results.filter(
+      (result) => result.status === "rejected",
+    ).length;
+    const runHistoryCappedDags = results.filter(
+      (result) => result.status === "fulfilled" && result.value.length === 100,
+    ).length;
+    return {
+      items,
+      scannedDags: selected.length,
+      totalDags: dags.length,
+      runsExaminedPerDag: "latest 100",
+      failedDagReads,
+      runHistoryCappedDags,
+      nextDagOffset,
+      partial:
+        failedDagReads > 0 ||
+        runHistoryCappedDags > 0 ||
+        nextDagOffset !== undefined,
+    };
+  },
 });
 
 export const dagRunDetails = defineResource({
@@ -136,6 +190,8 @@ export const dagRunDetails = defineResource({
 
 export const taskInstances = defineResource({
   id: "task-instances",
+  description: "List task instances and states for a specified DAG run.",
+  policy: "metadata",
   input: dagRunInput,
   query: async ({ dagId, dagRunId }, ctx: AirflowContext) =>
     (await ctx.client.listTaskInstances(dagId, dagRunId)).map((instance) => ({
@@ -281,6 +337,8 @@ export const taskInstanceDetails = defineResource({
 
 export const taskLog = defineResource({
   id: "task-log",
+  description: "Read the log content for a specified Airflow task attempt.",
+  policy: "preview",
   input: taskTryInput,
   query: (input, ctx: AirflowContext) => ctx.client.getTaskLog(input),
   refresh: poll("10s"),
@@ -302,6 +360,8 @@ function formatTaskLog(
 
 export const dagRunLogs = defineResource({
   id: "dag-run-logs",
+  description: "Read logs for a specified Airflow DAG run.",
+  policy: "preview",
   input: dagRunInput,
   query: async ({ dagId, dagRunId }, ctx: AirflowContext) => {
     const instances = await ctx.client.listTaskInstances(dagId, dagRunId);

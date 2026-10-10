@@ -6,6 +6,8 @@ const input = z.object({ runId: z.string().min(1) });
 
 export const runDetail = defineResource({
   id: "run-detail",
+  description: "Read status and details for a dbt run by runId.",
+  policy: "metadata",
   input,
   query: async ({ runId }, ctx: DbtContext) => {
     if (ctx.cloud) return ctx.cloud.getRun(runId);
@@ -47,6 +49,8 @@ export const runDetail = defineResource({
 
 export const runLogs = defineResource({
   id: "run-logs",
+  description: "Read log content for a dbt run by runId.",
+  policy: "preview",
   input,
   query: async ({ runId }, ctx: DbtContext) => {
     if (ctx.cloud) {

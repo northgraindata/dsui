@@ -259,6 +259,9 @@ export const runResultsOverview = defineResource({
 
 export const runResultRows = defineResource({
   id: "run-result-rows",
+  description:
+    "List node and test statuses, messages, and failure counts from the latest local dbt run_results.json artifact.",
+  policy: "metadata",
   query: async (_input: undefined, ctx: DbtContext) => {
     const artifact = await readArtifact(local(ctx), "run_results.json");
     const results = Array.isArray(artifact.data?.results)

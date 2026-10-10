@@ -1,4 +1,4 @@
-import { defineResource } from "@northgraindata/dsui-adapter-sdk";
+import { defineResource, z } from "@northgraindata/dsui-adapter-sdk";
 import { readArtifact } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
 
@@ -78,6 +78,9 @@ export const dashboard = defineResource({
 
 export const recentRuns = defineResource({
   id: "recent-runs",
+  description:
+    "Show the ten most recent dbt Cloud runs or the latest local run.",
+  policy: "metadata",
   query: async (_input: undefined, ctx: DbtContext): Promise<RunRow[]> => {
     if (ctx.cloud) {
       const runs = await ctx.cloud.listRuns();
@@ -117,6 +120,67 @@ export const recentRuns = defineResource({
             : "",
       },
     ];
+  },
+});
+
+export const recentFailures = defineResource({
+  id: "recent-failures",
+  description:
+    "Summarize failed dbt Cloud runs from the latest 100, or failed nodes and tests from the latest local run_results.json artifact. Results are bounded, not a full history.",
+  policy: "metadata",
+  input: z.object({ limit: z.number().int().min(1).max(50).default(20) }),
+  query: async ({ limit }, ctx: DbtContext) => {
+    if (ctx.cloud) {
+      const runs = await ctx.cloud.listRuns(undefined, 100);
+      const failures = runs.filter((run) =>
+        ["error", "fail", "failed", "20"].includes(
+          run.status?.toLowerCase() ?? "",
+        ),
+      );
+      return {
+        source: "cloud",
+        coverage: "latest 100 runs",
+        scanned: runs.length,
+        items: failures.slice(0, limit).map((run) => ({
+          runId: run.id,
+          jobId: run.job_id,
+          status: run.status,
+          cause: run.cause,
+          startedAt: run.started_at,
+          finishedAt: run.finished_at,
+        })),
+        truncated: failures.length > limit || runs.length === 100,
+      };
+    }
+    if (ctx.config.method !== "local")
+      throw new Error("Unsupported dbt connection");
+    const artifact = await readArtifact(ctx.config, "run_results.json");
+    const rows = Array.isArray(artifact.data?.results)
+      ? artifact.data.results
+      : [];
+    const failures = rows.flatMap((value) => {
+      const row = record(value);
+      if (
+        !["error", "fail", "failed"].includes(
+          String(row?.status ?? "").toLowerCase(),
+        )
+      )
+        return [];
+      return [
+        {
+          uniqueId: typeof row?.unique_id === "string" ? row.unique_id : "",
+          status: row?.status,
+          message: typeof row?.message === "string" ? row.message : "",
+        },
+      ];
+    });
+    return {
+      source: "local",
+      coverage: "latest run_results.json artifact",
+      scanned: rows.length,
+      items: failures.slice(0, limit),
+      truncated: failures.length > limit,
+    };
   },
 });
 
