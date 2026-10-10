@@ -79,8 +79,11 @@ bar charts use the `x` and `y` fields. Metric uses the first row's `y` field.
 ## Dashboard
 
 Dashboards live in `analytics/dashboards/`. The dashboard gallery opens each
-dashboard as a card. A dashboard can contain named views, shown as tabs. Each
-view names modules without file paths or `.yaml` extensions:
+dashboard as a card. Define tabs in the dashboard YAML under `views:`. Each
+entry creates one tab: `name` is its unique lowercase ID, `title` is the label
+shown in the UI, and `modules` lists the tiles on that tab. Add another entry
+under `views:` to create another tab. Module references use names without file
+paths or `.yaml` extensions:
 
 ```yaml
 name: executive
@@ -111,7 +114,11 @@ library, drag tiles into order, change their width, or remove them. Save changes
 to write the dashboard YAML. Dashboard `styles` sets one or two
 columns and the gap between cards. If a YAML file changes while the
 editor is open, reload before saving to avoid overwriting that change.
-Existing dashboards with top-level `modules` still open as a single Overview view.
+
+Use `views:` or top-level `modules:`, not both. Existing dashboards with only
+top-level `modules:` still open as a single Overview tab. A dashboard supports
+up to 12 tabs, and each tab supports up to 40 modules.
+
 Tags appear on dashboard cards and can be edited in the dashboard builder. The
 gallery has All and Favorites filters. Favorites belong to each user and are
 stored in DSUI's database; dashboard files do not contain them. Existing
