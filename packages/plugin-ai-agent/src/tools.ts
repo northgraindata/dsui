@@ -13,6 +13,10 @@ const discoveryInput = serviceInput.extend({
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(50).default(20),
 });
+const resourceReadInput = serviceInput.extend({
+  resourceId: z.string().min(1),
+  input: z.record(z.unknown()).default({}),
+});
 export const toolInputSchemas = {
   list_skills: z.object({}),
   read_skill: z.object({ id: z.string().min(1) }),
@@ -20,12 +24,19 @@ export const toolInputSchemas = {
     cursor: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(50),
   }),
+  search_workspace_resources: z.object({
+    query: z.string().trim().min(1).max(100),
+    serviceIds: z.array(z.string().min(1)).min(1).max(10).optional(),
+    cursor: z.string().optional(),
+    offset: z.number().int().min(0).default(0),
+    limit: z.number().int().min(1).max(50).default(20),
+  }),
   get_service_health: serviceInput,
   discover_resources: discoveryInput,
   list_actions: discoveryInput,
-  read_resource: serviceInput.extend({
-    resourceId: z.string().min(1),
-    input: z.record(z.unknown()).default({}),
+  read_resource: resourceReadInput,
+  read_resources_batch: z.object({
+    requests: z.array(resourceReadInput).min(1).max(5),
   }),
   list_events: z.object({
     serviceId: z.string().optional(),
@@ -93,6 +104,66 @@ export async function executeTool(
         ),
       };
     }
+    case "search_workspace_resources": {
+      const input = toolInputSchemas.search_workspace_resources.parse(raw);
+      if (!context.services.resources)
+        throw new PluginRequestError(
+          "Host does not support resource discovery",
+          422,
+        );
+      const page = input.serviceIds
+        ? {
+            items: await Promise.all(input.serviceIds.map(requireService)),
+            nextCursor: undefined,
+          }
+        : await context.services.list({ cursor: input.cursor, limit: 25 });
+      const query = input.query.toLowerCase();
+      const visibleServices = page.items.filter(
+        (service) => !serviceIds.length || serviceIds.includes(service.id),
+      );
+      const discovered = await Promise.all(
+        visibleServices.map(async (service) => {
+          const resources =
+            (await context.services.resources?.(service.id)) ?? [];
+          return resources
+            .filter((resource) =>
+              [
+                resource.id,
+                resource.description ?? "",
+                service.name,
+                service.adapter,
+              ]
+                .join(" ")
+                .toLowerCase()
+                .includes(query),
+            )
+            .sort((a, b) => a.id.localeCompare(b.id))
+            .map((resource) => ({
+              serviceId: service.id,
+              serviceName: service.name,
+              adapter: service.adapter,
+              resourceId: resource.id,
+              description: resource.description,
+              policy: resource.policy,
+              available: resourceAllowed(resource, context.config),
+            }));
+        }),
+      );
+      const matches = discovered.flat();
+      const items = matches.slice(input.offset, input.offset + input.limit);
+      return {
+        items,
+        nextOffset:
+          input.offset + input.limit < matches.length
+            ? input.offset + input.limit
+            : undefined,
+        nextCursor:
+          input.offset + input.limit >= matches.length
+            ? page.nextCursor
+            : undefined,
+        scannedServices: visibleServices.length,
+      };
+    }
     case "get_service_health": {
       const { serviceId } = serviceInput.parse(raw);
       await requireService(serviceId);
@@ -141,6 +212,39 @@ export async function executeTool(
       const input = toolInputSchemas.read_resource.parse(raw);
       await requireService(input.serviceId);
       return readResource(context, input);
+    }
+    case "read_resources_batch": {
+      const { requests } = toolInputSchemas.read_resources_batch.parse(raw);
+      const items = await Promise.all(
+        requests.map(async (request) => {
+          try {
+            await requireService(request.serviceId);
+            const output = await readResource(context, request);
+            return {
+              serviceId: request.serviceId,
+              resourceId: request.resourceId,
+              status: "completed" as const,
+              output: boundOutput(
+                output,
+                4_000,
+                [],
+                context.config.sensitiveColumns,
+              ),
+            };
+          } catch (cause) {
+            return {
+              serviceId: request.serviceId,
+              resourceId: request.resourceId,
+              status: "error" as const,
+              error:
+                cause instanceof PluginRequestError
+                  ? cause.message
+                  : "Resource unavailable or access denied",
+            };
+          }
+        }),
+      );
+      return { items };
     }
     case "list_events": {
       const input = toolInputSchemas.list_events.parse(raw);

@@ -389,6 +389,11 @@ export function createAiAgentPlugin(
                     ) {
                       for (const item of output.items) {
                         if (item && typeof item === "object") {
+                          if (
+                            name === "read_resources_batch" &&
+                            item.status !== "completed"
+                          )
+                            continue;
                           const id =
                             name === "list_services" ? item.id : item.serviceId;
                           if (typeof id === "string")

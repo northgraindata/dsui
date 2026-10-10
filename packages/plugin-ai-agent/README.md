@@ -58,6 +58,24 @@ for a relevant task. Both tools read packaged plugin content only. A skill
 describes a workflow, while live claims still require adapter and DSUI tool
 evidence. Skill reads count toward `maxToolCalls`.
 
+## Read-only investigation
+
+`search_workspace_resources` searches resource IDs and descriptions across a
+bounded page of visible services, with optional service IDs. Follow `nextOffset`
+for more matches on that page, then `nextCursor` for the next service page.
+`discover_resources` supplies the selected resource's input schema and policy.
+`read_resources_batch` reads up to five independent resources in one tool call;
+each item reports success or an error separately. The same permission and
+resource-policy checks apply as for `read_resource`. Batch outputs are bounded
+and sensitive columns are redacted.
+
+Airflow exposes `latest-failed-dag-runs`: at most one failed run from each DAG's
+latest 100 runs in a page of up to 25 DAGs. Follow `nextDagOffset` to inspect
+more DAGs.
+dbt exposes `recent-failures`: it covers the latest 100 Cloud runs or the latest
+local `run_results.json` artifact, not full history. Both resources are read-only
+and state when their results are partial.
+
 ## Development
 
 From the repository root, using the pinned Bun version:
