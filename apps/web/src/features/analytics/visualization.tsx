@@ -119,8 +119,7 @@ function Graph({
     1,
     Math.ceil(shown.length / Math.max(2, Math.floor(plotWidth / 90))),
   );
-  const hoveredPoint =
-    type === "line" && tooltipPoint !== null ? shown[tooltipPoint] : undefined;
+  const hoveredPoint = tooltipPoint !== null ? shown[tooltipPoint] : undefined;
   return (
     <div className="analytics-graph" ref={containerRef}>
       <svg
@@ -154,17 +153,25 @@ function Graph({
         {type === "line" ? (
           <>
             <polyline
+              className="analytics-line-path"
               points={shown
                 .map((point, index) => `${xAt(index)},${yAt(point.value)}`)
                 .join(" ")}
+              pathLength={1}
               fill="none"
               stroke={accentColor}
               strokeWidth="2.5"
               strokeLinejoin="round"
             />
             {shown.map((point, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share X values; markers have no local state.
-              <g key={`${point.label}-${index}`}>
+              <g
+                // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share X values; markers have no local state.
+                key={`${point.label}-${index}`}
+                className="analytics-line-point"
+                style={{
+                  animationDelay: `${(index / Math.max(1, shown.length - 1)) * 850}ms`,
+                }}
+              >
                 <circle
                   className={`analytics-point-marker ${activePoint === index ? "analytics-point-marker--active" : ""}`}
                   cx={xAt(index)}
@@ -183,6 +190,12 @@ function Graph({
             <rect
               // biome-ignore lint/suspicious/noArrayIndexKey: SVG bars have no local state and duplicate labels are valid.
               key={`${point.label}-${index}`}
+              className={`analytics-chart-bar ${activePoint === index ? "analytics-chart-bar--active" : ""}`}
+              style={{
+                animationDelay: `${index * 45}ms`,
+                transformOrigin:
+                  point.value >= 0 ? "center bottom" : "center top",
+              }}
               x={xAt(index) - barWidth / 2}
               y={Math.min(yAt(point.value), baseline)}
               width={barWidth}
@@ -234,6 +247,27 @@ function Graph({
             onClick={() => showPoint(index)}
           />
         ))}
+      {type === "bar" &&
+        shown.map((point, index) => (
+          <button
+            // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share X values; hit targets have no local state.
+            key={`${point.label}-${index}`}
+            type="button"
+            className="analytics-bar-hit"
+            aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}`}
+            style={{
+              left: xAt(index) - barWidth / 2,
+              top: 14 + Math.min(yAt(point.value), baseline),
+              width: barWidth,
+              height: Math.max(12, Math.abs(baseline - yAt(point.value))),
+            }}
+            onMouseEnter={() => showPoint(index)}
+            onMouseLeave={() => setActivePoint(null)}
+            onFocus={() => showPoint(index)}
+            onBlur={() => setActivePoint(null)}
+            onClick={() => showPoint(index)}
+          />
+        ))}
       {unit && <span className="analytics-unit">{unit}</span>}
       {hoveredPoint && tooltipPoint !== null && (
         <div
@@ -245,9 +279,14 @@ function Graph({
             top: 14 + yAt(hoveredPoint.value),
           }}
         >
-          <span>{hoveredPoint.label}</span>
+          <span>
+            {type === "bar" ? `${x}: ` : ""}
+            {hoveredPoint.label}
+          </span>
           <strong>
-            {display(hoveredPoint.value)} {unit || y}
+            {type === "bar" ? `${y}: ` : ""}
+            {display(hoveredPoint.value)} {unit && ` ${unit}`}
+            {type === "line" && !unit && ` ${y}`}
           </strong>
         </div>
       )}
