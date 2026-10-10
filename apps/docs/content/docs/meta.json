@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "how-dsui-works",
+    "analytics",
     "getting-started",
     "adapters",
     "adapter-sdk",

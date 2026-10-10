@@ -1,0 +1,100 @@
+---
+title: Analytics dashboards
+description: Build reusable reporting modules and dashboards in DSUI.
+---
+
+Open **Analytics → Dashboards** to create a module, then add it to a dashboard. A
+module defines a data source, visualization, headline, and description. A
+dashboard controls the order and width of its modules. The UI writes the same
+YAML definitions you can edit by hand under `DSUI_DATA_DIR/analytics/`.
+Without `DSUI_DATA_DIR`, DSUI uses `~/.local/share/dsui/analytics/`. For a
+repository-local workspace, start DSUI from the repository root with
+`DSUI_DATA_DIR="$PWD/data" bun run dev`. UI saves then create or update YAML files
+in `./data/analytics/`. This also moves the local SQLite state and master key into
+`./data`. The entire `data/` directory, including analytics definitions, is
+ignored by Git; keep copies elsewhere if you need to share or back them up.
+
+## Module
+
+Modules live in `analytics/modules/` and can be grouped into subfolders. For
+example, `analytics/modules/finance/monthly-revenue.yaml`:
+
+```yaml
+name: monthly-revenue
+subfolder: finance
+title: Monthly revenue
+description: Revenue by month
+source:
+  serviceId: warehouse
+  resourceId: report-query
+  input:
+    sql: SELECT month, revenue FROM reporting.monthly_revenue ORDER BY month
+    maxRows: 100
+  rowsPath: ""
+chart:
+  type: line
+  x: month
+  y: revenue
+  unit: USD
+styles:
+  accentColor: "#377dff"
+  height: regular
+  showGrid: true
+```
+
+`styles` controls the module accent color, card height (`compact`, `regular`, or
+`tall`), and chart grid. It is optional; existing modules receive defaults. These
+options are also available in the module editor.
+
+For longer queries, save a `.sql` file under `analytics/queries/` and refer to it
+from the module instead of putting SQL in `input`:
+
+```yaml
+source:
+  serviceId: warehouse
+  resourceId: report-query
+  sqlFile: finance/monthly-revenue.sql
+  input:
+    maxRows: 100
+  rowsPath: ""
+```
+
+`sqlFile` is relative to `analytics/queries/`; for this example the file is
+`analytics/queries/finance/monthly-revenue.sql`. Use lowercase names and `.sql`.
+Choose **Write SQL here** or **Use a .sql file** in the module editor. Create
+SQL files in the data directory before selecting them. After editing a SQL file,
+reload the dashboard to use the new query. Use either `input.sql` or `sqlFile`,
+not both.
+
+The `report-query` resource is currently available for PostgreSQL services. It
+runs `SELECT` or `WITH` queries in a read-only transaction and limits results to
+at most 1,000 rows. Connect a database account with only the access the report
+needs. Other adapter resources can also supply rows; set `rowsPath` when the
+resource returns an object containing an array, such as `rows` or `data.items`.
+
+The first visualization types are `metric`, `line`, `bar`, and `table`. Line and
+bar charts use the `x` and `y` fields. Metric uses the first row's `y` field.
+
+## Dashboard
+
+Dashboards live in `analytics/dashboards/`. A dashboard names modules, without
+file paths or `.yaml` extensions:
+
+```yaml
+name: executive
+title: Executive overview
+description: Key business results
+styles:
+  columns: 2
+  spacing: regular
+modules:
+  - module: monthly-revenue
+    subfolder: finance
+    width: full
+```
+
+`subfolder` is optional. A module's `name` and `subfolder` identify its file, so
+the UI keeps those fields fixed after creation. Use the UI to add or remove
+modules and choose `half` or `full` width. Dashboard `styles` sets one or two
+columns and the gap between cards. If a YAML file changes while the
+editor is open, reload before saving to avoid overwriting that change.

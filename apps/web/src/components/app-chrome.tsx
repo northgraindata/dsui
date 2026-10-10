@@ -12,6 +12,7 @@ import { Wordmark } from "./wordmark";
 const destinations = [
   { to: "/", label: "Home", icon: "home" },
   { to: "/services", label: "Adapters", icon: "plug" },
+  { to: "/analytics/dashboards", label: "Analytics", icon: "chart" },
   { to: "/settings", label: "Settings", icon: "gear" },
 ];
 
@@ -26,6 +27,9 @@ export function AppChrome({
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
   const [topbarHidden, setTopbarHidden] = useState(false);
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(
+    pathname.startsWith("/analytics"),
+  );
   const [pluginNavigation, setPluginNavigation] = useState<
     PluginCatalog["navigation"]
   >([]);
@@ -35,6 +39,7 @@ export function AppChrome({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Refresh extension links after navigation.
   useEffect(() => {
     let active = true;
     let retryTimer: number | undefined;
@@ -69,22 +74,49 @@ export function AppChrome({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [pathname]);
-  const navigation = destinations.map((item) => (
-    <Link
-      key={item.to}
-      activeOptions={{ exact: true }}
-      to={item.to}
-      className="app-nav-link"
-      aria-current={
-        (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to))
-          ? "page"
-          : undefined
-      }
-    >
-      <Icon name={item.icon} />
-      <span>{item.label}</span>
-    </Link>
-  ));
+  const navigation = destinations.map((item) =>
+    item.to === "/analytics/dashboards" ? (
+      <div className="app-nav-group" key={item.to}>
+        <button
+          type="button"
+          className="app-nav-link app-nav-group-toggle"
+          aria-expanded={analyticsExpanded}
+          onClick={() => setAnalyticsExpanded((current) => !current)}
+        >
+          <Icon name="chart" />
+          <span>Analytics</span>
+          <Icon name="chevron" size={14} />
+        </button>
+        {analyticsExpanded && (
+          <Link
+            to="/analytics/dashboards"
+            className="app-nav-link app-nav-sub-link"
+            aria-current={
+              pathname.startsWith("/analytics") ? "page" : undefined
+            }
+          >
+            <Icon name="chart" size={16} />
+            <span>Dashboards</span>
+          </Link>
+        )}
+      </div>
+    ) : (
+      <Link
+        key={item.to}
+        activeOptions={{ exact: true }}
+        to={item.to}
+        className="app-nav-link"
+        aria-current={
+          (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to))
+            ? "page"
+            : undefined
+        }
+      >
+        <Icon name={item.icon} />
+        <span>{item.label}</span>
+      </Link>
+    ),
+  );
   return (
     <div className={`app-chrome ${inAdapter ? "app-chrome--adapter" : ""}`}>
       <a href="#main-content" className="skip-link">

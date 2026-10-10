@@ -7,6 +7,7 @@ export const iconPaths: Record<string, ReactNode> = {
       <path d="M9 6V3H5v6" />
     </>
   ),
+  chart: <path d="M4 20V4m0 16h17M7 15l4-5 4 3 5-7" />,
   play: <path d="m7 4 14 8-14 8Z" />,
   activity: (
     <>

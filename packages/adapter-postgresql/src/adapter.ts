@@ -9,7 +9,6 @@ import {
   postgresqlConnectionSchema,
 } from "./context.js";
 import { postgresqlHealth } from "./health.js";
-import { postgresqlSignals } from "./signals.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -43,7 +42,9 @@ import {
   databaseRelationPreviewRows,
   relationPreview,
 } from "./resources/preview.js";
+import { reportQuery } from "./resources/report-query.js";
 import { serverInfo } from "./resources/server.js";
+import { postgresqlSignals } from "./signals.js";
 import { activityFiltersStore } from "./stores/activity-filters.js";
 import { queryEditorStore } from "./stores/query-editor.js";
 
@@ -95,6 +96,7 @@ export function createPostgreSQLAdapter() {
       constraints,
       databaseConstraints,
       relationPreview,
+      reportQuery,
       databaseRelationPreview,
       databaseRelationPreviewRows,
       activity,

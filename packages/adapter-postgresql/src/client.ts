@@ -125,6 +125,7 @@ export interface PostgreSQLClient {
   }): Promise<PostgreSQLActivityEntry[]>;
   cancelQuery(pid: number): Promise<boolean>;
   execute(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
+  executeReadOnly(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
   dispose(): Promise<void>;
 }
 
@@ -453,32 +454,58 @@ export function createPostgreSQLClient(
 
     async execute(query, maxRows) {
       const result = await sql.unsafe<Record<string, unknown>[]>(query);
-      if (result.length > maxRows)
-        throw new Error(
-          `Query returned more than ${maxRows} rows; narrow the query or raise the limit`,
-        );
+      return formatQueryResult(result, maxRows);
+    },
 
-      const columns = result.columns.map((column) => column.name);
-      const columnTypes = result.columns.map((column) =>
-        postgresTypeName(column.type),
-      );
-      if (new Set(columns).size !== columns.length)
-        throw new Error("Query returned duplicate column names; use aliases");
-      const rows = result.map((row) =>
-        Object.fromEntries(
-          columns.map((column) => [column, toSerializableValue(row[column])]),
-        ),
-      );
-      const resultBytes = Buffer.byteLength(JSON.stringify(rows));
-      if (resultBytes > MAX_RESULT_BYTES)
-        throw new Error("Query result exceeds the 16 MiB response limit");
-      return { columns, columnTypes, rows, rowCount: rows.length };
+    async executeReadOnly(query, maxRows) {
+      const bounded = boundedReportSql(query, maxRows);
+      const result = await sql.begin("read only", async (transaction) => {
+        const rows =
+          await transaction.unsafe<Record<string, unknown>[]>(bounded);
+        return rows;
+      });
+      return formatQueryResult(result, maxRows);
     },
 
     async dispose() {
       await sql.end({ timeout: 5 });
     },
   };
+}
+
+export function boundedReportSql(query: string, maxRows: number): string {
+  const statement = query.trim().replace(/;$/, "");
+  if (!/^(select|with)\b/i.test(statement))
+    throw new Error("Reports require a SELECT query");
+  return `select * from (${statement}) as dsui_report limit ${maxRows + 1}`;
+}
+
+function formatQueryResult(
+  result: ReadonlyArray<Record<string, unknown>> & {
+    columns: ReadonlyArray<{ name: string; type: number }>;
+  },
+  maxRows: number,
+): PostgreSQLQueryResult {
+  if (result.length > maxRows)
+    throw new Error(
+      `Query returned more than ${maxRows} rows; narrow the query or raise the limit`,
+    );
+
+  const columns = result.columns.map((column) => column.name);
+  const columnTypes = result.columns.map((column) =>
+    postgresTypeName(column.type),
+  );
+  if (new Set(columns).size !== columns.length)
+    throw new Error("Query returned duplicate column names; use aliases");
+  const rows = result.map((row) =>
+    Object.fromEntries(
+      columns.map((column) => [column, toSerializableValue(row[column])]),
+    ),
+  );
+  const resultBytes = Buffer.byteLength(JSON.stringify(rows));
+  if (resultBytes > MAX_RESULT_BYTES)
+    throw new Error("Query result exceeds the 16 MiB response limit");
+  return { columns, columnTypes, rows, rowCount: rows.length };
 }
 
 function toSerializableValue(value: unknown): unknown {

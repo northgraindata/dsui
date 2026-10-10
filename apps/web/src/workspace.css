@@ -123,6 +123,26 @@
   background: linear-gradient(110deg, #0c1c45, #0a142f);
   color: var(--color-primary);
 }
+.app-nav-group-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.app-nav-group-toggle svg:last-child {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+.app-nav-group-toggle[aria-expanded="true"] svg:last-child {
+  transform: rotate(90deg);
+}
+.app-nav-sub-link {
+  margin-left: 16px;
+  padding: 11px 16px;
+  font-size: 12px;
+}
 .app-topnav {
   display: flex;
   position: absolute;

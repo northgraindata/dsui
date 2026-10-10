@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { type AdapterLoadOptions, loadAdapter } from "./adapters/loader.js";
 import { AdapterRegistry } from "./adapters/registry.js";
 import type { AdapterReadiness, LoadedAdapter } from "./adapters/types.js";
+import { registerAnalyticsRoutes } from "./analytics/routes.js";
 import {
   type AdapterSource,
   type DsuiConfig,
@@ -549,6 +550,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   });
   registerServiceRoutes(app, serviceDeps);
   registerExecuteRoutes(app, serviceDeps);
+  registerAnalyticsRoutes(app, dataDir, serviceDeps);
 
   return {
     app,

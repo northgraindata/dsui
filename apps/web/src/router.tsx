@@ -14,6 +14,7 @@ import {
   AdaptersScreen,
   AddAdapterScreen,
 } from "./features/adapters/adapter-screens";
+import { AnalyticsScreen } from "./features/analytics/analytics-screen";
 import { DashboardScreen } from "./features/dashboard/dashboard-screen";
 import { PluginPageScreen } from "./features/plugins/plugin-page-screen";
 import { SettingsScreen } from "./features/settings/settings-screen";
@@ -28,6 +29,11 @@ const servicesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/services",
   component: AdaptersScreen,
+});
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analytics/dashboards",
+  component: AnalyticsScreen,
 });
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -67,6 +73,7 @@ const pluginPageRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   servicesRoute,
+  analyticsRoute,
   settingsRoute,
   addRoute,
   detailRoute,
