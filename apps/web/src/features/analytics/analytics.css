@@ -441,6 +441,38 @@
   min-height: 280px;
   padding: 18px 19px 10px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  animation: analytics-card-enter 430ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.analytics-card-visual {
+  animation: analytics-visual-enter 300ms ease-out both;
+}
+@keyframes analytics-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes analytics-visual-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes analytics-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.analytics-page .analytics-refreshing svg {
+  animation: analytics-refresh-spin 750ms linear infinite;
 }
 .analytics-card--compact {
   min-height: 225px;
@@ -489,6 +521,10 @@
   color: white;
   background: #142d52;
 }
+.analytics-card-actions button:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
 .analytics-card footer {
   border-top: 1px solid #142b49;
   padding-top: 8px;
@@ -502,6 +538,47 @@
 .analytics-graph svg {
   width: 100%;
   display: block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .analytics-line-path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: analytics-line-draw 850ms ease-out forwards;
+  }
+  .analytics-line-point {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: analytics-point-reveal 180ms ease-out both;
+  }
+  .analytics-chart-bar {
+    transform-box: fill-box;
+    animation: analytics-bar-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes analytics-line-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes analytics-point-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes analytics-bar-rise {
+  from {
+    opacity: 0.65;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 .analytics-unit {
   position: absolute;
@@ -574,10 +651,31 @@
 .analytics-point-marker--active {
   transform: scale(1.4);
 }
+.analytics-chart-bar--active {
+  filter: brightness(1.18);
+}
+.analytics-page .analytics-bar-hit {
+  position: absolute;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  cursor: default;
+}
+.analytics-page .analytics-bar-hit:focus-visible {
+  outline: 2px solid #eaf3ff;
+  outline-offset: 2px;
+}
 @media (prefers-reduced-motion: reduce) {
   .analytics-chart-tooltip,
   .analytics-point-marker {
     transition: none;
+  }
+  .analytics-card,
+  .analytics-card-visual,
+  .analytics-page .analytics-refreshing svg {
+    animation: none;
   }
 }
 .analytics-page .analytics-point-hit:focus-visible {
