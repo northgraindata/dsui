@@ -89,6 +89,24 @@ export function QueryResults({
           <WorkbenchIcon name="expand" />
         </Button>
       </header>
+      {result && !running && (
+        <div style={{ padding: "8px 16px", fontSize: 12 }}>
+          {result.queryId && <p>Query ID: {result.queryId}</p>}
+          {result.rowsChanged !== undefined && (
+            <p>{result.rowsChanged} rows affected</p>
+          )}
+          {result.truncated && (
+            <p role="status">
+              Results limited. Remaining result retrieval was cancelled.
+            </p>
+          )}
+          {[...new Set(result.warnings ?? [])].map((warning) => (
+            <p key={warning} role="status">
+              {warning}
+            </p>
+          ))}
+        </div>
+      )}
       {displayError && (
         <p className="query-error" role="alert">
           {displayError}

@@ -12,7 +12,7 @@ export type NotebookBlockDocument =
         columns: { name: string; type?: string }[];
         rows: Record<string, unknown>[];
         elapsedMs?: number;
-        rowsChanged?: number;
+        rowsChanged?: number | string;
       };
     };
 

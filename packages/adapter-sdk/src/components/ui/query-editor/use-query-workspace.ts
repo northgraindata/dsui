@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentClient } from "../../runtime";
 import { parseQueryResult, type QueryResultView } from "./query-result";
 
@@ -17,6 +17,13 @@ export function useQueryWorkspace(
 ) {
   const sequence = useRef(1);
   const inFlight = useRef(new Set<number>());
+  const controllers = useRef(new Map<number, AbortController>());
+  useEffect(
+    () => () => {
+      for (const controller of controllers.current.values()) controller.abort();
+    },
+    [],
+  );
   const [tabs, setTabs] = useState<QueryTab[]>([
     { id: 1, sql: initialSql, running: false },
   ]);
@@ -35,18 +42,23 @@ export function useQueryWorkspace(
     if (!tab?.sql.trim() || inFlight.current.has(tab.id)) return;
     const id = tab.id;
     inFlight.current.add(id);
+    const controller = new AbortController();
+    controllers.current.set(id, controller);
     updateTab(id, { running: true, error: undefined, result: undefined });
     const started = performance.now();
     try {
-      const response = await client.executeAction({
-        ...action,
-        input: {
-          ...(typeof action.input === "object" && action.input !== null
-            ? action.input
-            : {}),
-          sql: tab.sql,
+      const response = await client.executeAction(
+        {
+          ...action,
+          input: {
+            ...(typeof action.input === "object" && action.input !== null
+              ? action.input
+              : {}),
+            sql: tab.sql,
+          },
         },
-      });
+        { signal: controller.signal },
+      );
       if (response.status !== "success")
         throw new Error(response.message ?? "Query failed");
       const result = parseQueryResult(response.data);
@@ -62,11 +74,13 @@ export function useQueryWorkspace(
       });
     } finally {
       inFlight.current.delete(id);
+      controllers.current.delete(id);
       updateTab(id, { running: false });
     }
   }, [action, client, tab, updateTab]);
   const closeTab = useCallback(
     (id: number) => {
+      controllers.current.get(id)?.abort();
       const remaining = tabs.filter((entry) => entry.id !== id);
       setTabs(remaining);
       if (activeId === id && remaining[0]) setActiveId(remaining[0].id);
@@ -85,6 +99,7 @@ export function useQueryWorkspace(
     setActiveId,
     setSql,
     run,
+    cancel: () => controllers.current.get(activeId)?.abort(),
     closeTab,
     newTab,
   };

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { QueryEditorProps } from "../../primitives/query-editor";
 import { type ComponentProps, componentProps } from "../../runtime";
+import { ContextSelector } from "./context-selectors";
+import { QueryExplorer } from "./explorer";
 import { QueryToolbar } from "./query-toolbar";
 import { QueryResults } from "./results";
 import { SqlEditor } from "./sql-editor";
@@ -29,6 +31,25 @@ function QueryEditorContent({
   props: QueryEditorProps;
 }) {
   const baseAction = actionReference(props.action);
+  const [selections, setSelections] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (props.contextSelectors ?? []).map((selector) => [
+        selector.name,
+        selector.initialValue ?? "",
+      ]),
+    ),
+  );
+  const changeSelection = (name: string, value: string) =>
+    setSelections((current) => {
+      const next = { ...current, [name]: value };
+      const changed = new Set([name]);
+      for (const selector of props.contextSelectors ?? [])
+        if (selector.dependsOn?.some((dependency) => changed.has(dependency))) {
+          next[selector.name] = "";
+          changed.add(selector.name);
+        }
+      return next;
+    });
   const [databases, setDatabases] = useState<{ name: string }[]>([]);
   const [database, setDatabase] = useState(props.database?.initialValue ?? "");
   useEffect(() => {
@@ -68,13 +89,57 @@ function QueryEditorContent({
           },
         }
       : baseAction;
-  const workspace = useQueryWorkspace(client, action, props.value ?? "");
+  const contextualAction = {
+    ...action,
+    input: {
+      ...(typeof action.input === "object" && action.input !== null
+        ? action.input
+        : {}),
+      ...Object.fromEntries(
+        Object.entries(selections).filter(([, value]) => value.length > 0),
+      ),
+    },
+  };
+  const workspace = useQueryWorkspace(
+    client,
+    contextualAction,
+    props.value ?? "",
+  );
   const { tabs, tab, activeId, setActiveId, setSql, run, closeTab, newTab } =
     workspace;
   if (!tab) return null;
   return (
     <section className="query-workspace" aria-label="Query workspace">
+      {props.explorer && (
+        <aside
+          aria-label="Database explorer"
+          style={{
+            borderBottom: "1px solid var(--color-border)",
+            padding: 12,
+            maxHeight: 260,
+            overflow: "auto",
+          }}
+        >
+          <details>
+            <summary>Explorer</summary>
+            <QueryExplorer
+              client={client}
+              definition={props.explorer}
+              onSelect={(names) => setSql(selectFromRelation(names))}
+            />
+          </details>
+        </aside>
+      )}
       <div className="query-editor-panel">
+        {props.contextSelectors?.map((selector) => (
+          <ContextSelector
+            key={selector.name}
+            client={client}
+            selector={selector}
+            values={selections}
+            change={changeSelection}
+          />
+        ))}
         {props.database ? (
           <label className="query-database-picker">
             <span>{props.database.label ?? "Database"}</span>
@@ -100,6 +165,7 @@ function QueryEditorContent({
           onClose={closeTab}
           onNew={newTab}
           onRun={run}
+          onCancel={workspace.cancel}
         />
         <SqlEditor
           value={tab.sql}

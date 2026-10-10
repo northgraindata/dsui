@@ -135,11 +135,12 @@ export function ServiceScreen({
                 window.clearInterval(timer);
               };
             },
-            executeAction: async (reference) => {
+            executeAction: async (reference, options) => {
               const result = await executeAction(
                 service.id,
                 reference.actionId,
                 reference.input,
+                options,
               );
               return result.status === "success"
                 ? { status: "success" as const, data: result.data }

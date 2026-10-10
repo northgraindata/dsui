@@ -81,7 +81,7 @@ export class AdapterHostClient {
   constructor(private readonly options: AdapterHostClientOptions) {}
 
   async request(request: AdapterHostRequest): Promise<unknown> {
-    const max = this.options.maxOutputBytes ?? 256 * 1024;
+    const max = this.options.maxOutputBytes ?? 32 * 1024 * 1024;
     const timeoutMs = request.timeoutMs ?? this.options.timeoutMs ?? 10_000;
     const input = `${JSON.stringify({
       jsonrpc: "2.0",
@@ -106,7 +106,10 @@ export class AdapterHostClient {
     const cancelled = new Promise<never>((_, reject) => {
       if (!request.signal) return;
       abortListener = () => {
-        child.kill();
+        child.kill("SIGTERM");
+        // Give the adapter time to cancel remote work before forcing process exit.
+        const forceExit = setTimeout(() => child.kill("SIGKILL"), 6000);
+        forceExit.unref();
         reject(
           request.signal?.reason ??
             new AdapterHostError("Adapter host aborted"),
@@ -160,7 +163,7 @@ export class AdapterHostClient {
       if (timeout !== undefined) clearTimeout(timeout);
       if (abortListener)
         request.signal?.removeEventListener("abort", abortListener);
-      child.kill();
+      if (!request.signal?.aborted) child.kill();
     }
   }
 }
