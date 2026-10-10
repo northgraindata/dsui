@@ -1,14 +1,22 @@
 import type { Dirent } from "node:fs";
-import { cp, lstat, readdir, readlink, rm } from "node:fs/promises";
-import { join } from "node:path";
+import {
+  chmod,
+  copyFile,
+  cp,
+  lstat,
+  mkdtemp,
+  readdir,
+  readlink,
+  rename,
+  rm,
+} from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 /**
  * Recursively replaces symlinks under `root` with physical copies of their
- * targets. npm 11 exits with "Exit handler never called!" on Linux when
- * packing a directory that contains symlinks, so the published npm package
- * must be a plain tree. Relative links are resolved against their own
- * location; a linked directory is copied with dereferencing, a linked file is
- * copied verbatim.
+ * targets so SDK dependencies are shipped as regular files. Relative links
+ * are resolved against their own location; directories are copied with
+ * dereferencing and files are copied verbatim.
  */
 export async function materializeSymlinks(root: string): Promise<void> {
   let entries: Dirent[];
@@ -36,5 +44,30 @@ export async function materializeSymlinks(root: string): Promise<void> {
     } else if (info.isDirectory()) {
       await materializeSymlinks(path);
     }
+  }
+}
+
+/** Detach Bun's hardlinked dependencies from their cache before npm packs them. */
+export async function materializeHardlinks(root: string): Promise<void> {
+  // Keep the replacement on the same filesystem so rename remains atomic.
+  const temporary = await mkdtemp(join(dirname(root), ".dsui-hardlinks-"));
+  const replacement = join(temporary, "file");
+  async function visit(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      const info = await lstat(path);
+      if (info.isDirectory()) {
+        await visit(path);
+      } else if (info.isFile() && info.nlink > 1) {
+        await copyFile(path, replacement);
+        await chmod(replacement, info.mode);
+        await rename(replacement, path);
+      }
+    }
+  }
+  try {
+    await visit(root);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
   }
 }
