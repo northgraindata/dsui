@@ -1,6 +1,7 @@
 import { chmod, cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { prepareSdk } from "../packages/server/src/adapters/sdk";
+import { materializeSymlinks } from "../packages/server/src/adapters/symlinks";
 
 const root = resolve(import.meta.dir, "..");
 const output = join(root, "dist", "npm");
@@ -104,6 +105,10 @@ await cp(join(root, "apps", "web", "dist"), join(output, "web"), {
 // Adapters are built from source at runtime, so the package ships the SDK they
 // resolve against instead of bundling each adapter up front.
 await prepareSdk(join(root, "packages"), join(output, "sdk"), version);
+// bun install leaves a symlink forest under the SDK's node_modules. npm 11
+// crashes on Linux when packing a directory that contains symlinks, so replace
+// them with real files before the package is published.
+await materializeSymlinks(join(output, "sdk"));
 await mkdir(join(output, "bin"), { recursive: true });
 await writeFile(
   join(output, "bin", "dsui.mjs"),
