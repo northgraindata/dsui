@@ -3,7 +3,13 @@ title: Contributing
 description: Make a focused change and verify it before opening a pull request.
 ---
 
-Read the [contribution guide](https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md) before you start.
+Start with the [first contribution walkthrough](https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md#your-first-contribution).
+
+Browse [good first issues](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
+for a bounded change, or [help wanted](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22)
+for broader projects. Documentation fixes, reproductions, and manual verification
+are welcome alongside code contributions. Comment on the issue before starting
+and ask questions there; no chat account is required.
 
 Follow the contribution guide for repository boundaries, change scope, and
 verification expectations.
@@ -11,10 +17,19 @@ verification expectations.
 ```bash
 bun install --frozen-lockfile
 bun run check
+bun run test
 bun run build
 ```
 
 Keep a pull request focused. Add tests for behavior changes and update the docs when a public contract changes.
+
+Use a branch such as `fix/dsui-123-wrap-long-values`, with the synced Linear ID
+listed in the GitHub issue. Ask a maintainer if the ID is missing. PRs from forks
+follow the same naming rule. Include both `Fixes #<github-issue-number>` and
+`Fixes DSUI-<linear-id>` in the PR description.
+
+For documentation-only work, check links and examples and build the changed
+surface. See the contribution guide for focused commands and the repository map.
 
 For an adapter, start from the [Adapter SDK](/docs/adapter-sdk/overview). Validate the connection, keep credentials server-side, and state the coverage and limitations explicitly.
 

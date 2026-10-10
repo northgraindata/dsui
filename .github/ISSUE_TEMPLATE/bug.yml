@@ -1,0 +1,34 @@
+name: Bug report
+description: Report an observable problem with a minimal reproduction.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check existing issues before reporting. For vulnerabilities, follow SECURITY.md instead. Remove credentials and private data from examples and logs.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal configuration or query and the steps needed to observe the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include DSUI version or commit, adapter and service versions, OS/browser, and npx, Docker, or source installation.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or screenshots
+      description: Include relevant evidence without secrets or private infrastructure details.

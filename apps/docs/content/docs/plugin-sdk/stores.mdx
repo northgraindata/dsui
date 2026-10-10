@@ -1,0 +1,25 @@
+---
+title: Stores and storage
+description: Choose typed JSON state or plugin-owned relational storage.
+---
+
+Use `defineStore` for JSON-shaped state with typed actions. The host namespaces
+plugin stores so two plugins can reuse the same store ID. Use
+`context.stores.get(definition)` to obtain an instance; wait for `ready()` before
+reading persisted state and `flush()` when you need writes to finish.
+
+Choose memory persistence for temporary state or persistent storage with a stable
+key and version for durable state. Store migrations remain the plugin's concern.
+
+## SQLite and private files
+
+`context.storage.openDatabase(name)` returns a cached SQLite handle in the
+plugin's own data directory. `context.storage.directory?.()` returns that private
+directory when supported by the host. The plugin owns its schema and migrations.
+
+Use SQLite for relational data, indexes and transactions, and stores for values
+consumed as one JSON object. Persist event processing results and their cursor
+in the same transaction when consuming [signals](/docs/plugin-sdk/signals).
+
+The [Code Repository plugin](https://github.com/northgraindata/dsui/tree/main/packages/plugin-code-repository)
+provides a working storage and durable-job example.

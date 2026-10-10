@@ -1,10 +1,8 @@
 /**
- * Prepares the self-contained package trees a plugin build needs.
- *
- * Two trees, because a plugin depends on both SDKs and neither is published:
- * `@northgraindata/dsui-adapter-sdk` for pages, components and resources, and
- * `@northgraindata/dsui-plugin-sdk` for the `defineX` family. Both depend on
- * `@northgraindata/dsui-ui`, so it is prepared once and both point at it.
+ * Prepares the self-contained workspace package trees extension builds need.
+ * The public Adapter SDK artifact embeds the private UI implementation, while
+ * the product runtime keeps UI, Adapter SDK and Plugin SDK as separate trees.
+ * This lets source checkouts resolve the same package layout as the workspace.
  *
  * A released DSUI ships both trees; a source checkout builds them on first use.
  * Without them a plugin build fails on `workspace:*`, because a plugin lives
@@ -14,8 +12,8 @@ import { createHash } from "node:crypto";
 import {
   cp,
   mkdir,
-  readFile,
   readdir,
+  readFile,
   rm,
   stat,
   writeFile,
@@ -90,11 +88,10 @@ export function sdkPackageAt(root: string, name: string): string {
  * Kept as the version the monorepo already uses, which is what stops a plugin
  * from ending up with a second React copy alongside the host's.
  */
-function selfContained(manifest: Manifest, version: string): Manifest {
+function selfContained(manifest: Manifest): Manifest {
   const { peerDependencies, devDependencies, private: _p, ...rest } = manifest;
   const next: Manifest = {
     ...rest,
-    version,
     dependencies: { ...((rest.dependencies as object) ?? {}) },
   };
   const dependencies = next.dependencies as Record<string, string>;
@@ -114,13 +111,11 @@ function selfContained(manifest: Manifest, version: string): Manifest {
  *
  * @param packagesDir - Directory holding `ui/`, `adapter-sdk/`, `plugin-sdk/`.
  * @param target - Root receiving `node_modules/@northgraindata/*`.
- * @param version - Version stamped on the prepared packages.
  * @param install - Run `bun install` for each package. Off in tests.
  */
 export async function prepareSdk(
   packagesDir: string,
   target: string,
-  version: string,
   install = true,
 ): Promise<void> {
   for (const { directory, name } of TREE) {
@@ -142,7 +137,7 @@ export async function prepareSdk(
     await cp(join(source, "src"), join(destination, "src"), {
       recursive: true,
     });
-    const prepared = selfContained(manifest, version);
+    const prepared = selfContained(manifest);
     const dependencies = (prepared.dependencies ?? {}) as Record<
       string,
       string
@@ -217,7 +212,7 @@ export async function resolveSdkRoot(options: {
         // A tree made by an older host has no source marker and must refresh.
       }
       if (preparedHash !== sourceHash) {
-        await prepareSdk(dirname(candidate), target, options.version);
+        await prepareSdk(dirname(candidate), target);
         await writeFile(join(target, SDK_SOURCE_MARKER), sourceHash, "utf8");
       }
       return target;

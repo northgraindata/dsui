@@ -1,0 +1,46 @@
+---
+title: Release and compatibility
+description: Publish plugins against independently versioned SDKs.
+---
+
+The SDK package, the plugin's `metadata.version`, `PLUGIN_API_VERSION` and the
+DSUI product version are separate contracts. A Plugin SDK release does not
+publish the product or upgrade installed runtimes.
+
+SDKs ship TypeScript source for Bun and TS-aware bundlers, including the types.
+Pin the SDK version you tested and document the minimum DSUI release and optional
+host capabilities your plugin needs. `metadata.apiVersion` must match the host's
+supported `PLUGIN_API_VERSION`.
+
+## Distribute a plugin
+
+For local development, use `source: local` and the package path. For an installed
+package, configure its server entry and optional browser bundle:
+
+```yaml
+plugins:
+  example-plugin:
+    package: "@your-org/dsui-plugin-example"
+    browserBundle: "@your-org/dsui-plugin-example/browser"
+    enabled: true
+```
+
+The package must already be installed and resolvable by the host; this configuration
+does not publish or download a private workspace package from npm. Declare
+`dsui.entry` and `dsui.browser` for source-built plugins. See the
+[example package](https://github.com/northgraindata/dsui/tree/main/examples/example-plugin)
+for browser exports and configuration.
+
+Git source builds support a repository, ref and optional subdirectory. A prebuilt
+GitHub plugin artifact uses a full commit pin and the integrity of its plugin
+manifest; these are distinct installation paths. Review trusted plugin code before
+loading it.
+
+## Release the SDK
+
+Plugin SDK uses `plugin-sdk-vX.Y.Z` tags, its own changelog and npm package.
+Adapter SDK dependencies are versioned independently. The old
+`@northgraindata/dsui/plugin-sdk` product export remains during migration; new
+extensions should use `@northgraindata/dsui-plugin-sdk`.
+
+See [release policy](/docs/releases) for Changesets, CI and the publication process.

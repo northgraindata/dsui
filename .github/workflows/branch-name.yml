@@ -1,0 +1,24 @@
+name: Branch name
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions: {}
+
+jobs:
+  branch-name:
+    name: Linear branch name
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check branch format
+        env:
+          PR_BRANCH: ${{ github.head_ref }}
+        shell: bash
+        run: |
+          if [[ ! "$PR_BRANCH" =~ ^(feature|fix|docs|test|refactor|chore|ci)/dsui-[1-9][0-9]*-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            echo '::error::Use <type>/dsui-<number>-<short-description>, e.g. fix/dsui-123-wrap-long-values. Find the synced Linear ID in the GitHub issue or ask a maintainer.'
+            exit 1
+          fi
