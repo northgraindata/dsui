@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import type { StorePersistenceRequest } from "@northgraindata/dsui-adapter-sdk";
 import type { EncryptedValue } from "./crypto";
 import { runMigrations } from "./migrate";
+import { migration_0014_dashboard_favorites } from "./migrations/0014_dashboard_favorites";
 import { migrations } from "./migrations/index";
 
 export type UiServiceRow = {
@@ -60,6 +61,18 @@ export class DsuiDatabase {
     runMigrations(this.sqlite, migrations);
   }
 
+  private ensureDashboardFavorites(): void {
+    const exists = this.sqlite
+      .query<{ name: string }, [string]>(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      )
+      .get("dashboard_favorites");
+    if (exists) return;
+    // Dev servers can retain a database opened before this migration.
+    runMigrations(this.sqlite, [migration_0014_dashboard_favorites]);
+    migration_0014_dashboard_favorites.up(this.sqlite);
+  }
+
   listUiServices(): UiServiceRow[] {
     return this.sqlite
       .query<UiServiceRow, []>(
@@ -114,6 +127,34 @@ export class DsuiDatabase {
         target,
         JSON.stringify(metadata),
       );
+  }
+  dashboardFavorites(principalId: string): string[] {
+    this.ensureDashboardFavorites();
+    return this.sqlite
+      .query<{ dashboard_name: string }, [string]>(
+        "SELECT dashboard_name FROM dashboard_favorites WHERE principal_id = ?",
+      )
+      .all(principalId)
+      .map((row) => row.dashboard_name);
+  }
+  setDashboardFavorite(
+    principalId: string,
+    dashboardName: string,
+    favorite: boolean,
+  ): void {
+    this.ensureDashboardFavorites();
+    if (favorite)
+      this.sqlite
+        .query(
+          "INSERT OR IGNORE INTO dashboard_favorites (principal_id, dashboard_name) VALUES (?, ?)",
+        )
+        .run(principalId, dashboardName);
+    else
+      this.sqlite
+        .query(
+          "DELETE FROM dashboard_favorites WHERE principal_id = ? AND dashboard_name = ?",
+        )
+        .run(principalId, dashboardName);
   }
   hasLocalUsers(): boolean {
     return Boolean(
