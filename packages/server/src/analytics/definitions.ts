@@ -82,11 +82,22 @@ export const moduleSchema = z
       });
   });
 
+const dashboardModuleSchema = z
+  .object({
+    module: slug,
+    subfolder,
+    width: z.enum(["half", "full"]).default("half"),
+  })
+  .strict();
+
 export const dashboardSchema = z
   .object({
     name: slug,
     title: z.string().trim().min(1).max(120),
     description: z.string().max(500).default(""),
+    tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
+    ownerId: z.string().min(1).optional(),
+    visibility: z.enum(["private", "shared"]).optional(),
     styles: z
       .object({
         columns: z.union([z.literal(1), z.literal(2)]).default(2),
@@ -94,19 +105,50 @@ export const dashboardSchema = z
       })
       .strict()
       .default({}),
-    modules: z
+    modules: z.array(dashboardModuleSchema).max(40).default([]),
+    views: z
       .array(
         z
           .object({
-            module: slug,
-            subfolder,
-            width: z.enum(["half", "full"]).default("half"),
+            name: slug,
+            title: z.string().trim().min(1).max(80),
+            modules: z.array(dashboardModuleSchema).max(40),
           })
           .strict(),
       )
-      .max(40),
+      .max(12)
+      .default([]),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    const tags = value.tags.map((tag) => tag.toLowerCase());
+    if (new Set(tags).size !== tags.length)
+      context.addIssue({
+        code: "custom",
+        path: ["tags"],
+        message: "Tags must be unique",
+      });
+    if (!value.views.length) return;
+    if (value.modules.length)
+      context.addIssue({
+        code: "custom",
+        path: ["modules"],
+        message: "Use views or top-level modules, not both",
+      });
+    const names = value.views.map((view) => view.name);
+    if (new Set(names).size !== names.length)
+      context.addIssue({
+        code: "custom",
+        path: ["views"],
+        message: "View names must be unique",
+      });
+  });
 
 export type AnalyticsModule = z.infer<typeof moduleSchema>;
 export type AnalyticsDashboard = z.infer<typeof dashboardSchema>;
+
+export function dashboardModuleGroups(dashboard: AnalyticsDashboard) {
+  return dashboard.views.length
+    ? dashboard.views.map((view) => view.modules)
+    : [dashboard.modules];
+}
