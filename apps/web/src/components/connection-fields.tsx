@@ -1,4 +1,4 @@
-import { Input } from "@northgraindata/dsui-ui";
+import { Input, OptionSelect } from "@northgraindata/dsui-ui";
 import { useId } from "react";
 import type { Field } from "../api";
 
@@ -42,19 +42,14 @@ export function ConnectionFields({
           )}
         </label>
         {field.type === "select" ? (
-          <select
+          <OptionSelect
             id={id}
             value={values[field.key] ?? ""}
             required={field.required}
-            onChange={(event) => update(field.key, event.target.value)}
-          >
-            <option value="">Select…</option>
-            {field.options?.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            placeholder="Select…"
+            options={field.options ?? []}
+            onValueChange={(value) => update(field.key, value)}
+          />
         ) : (
           <Input
             id={id}

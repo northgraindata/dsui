@@ -7,5 +7,10 @@ export { DialogContent } from "./components/dialog-content";
 export { Field } from "./components/field";
 export { Input } from "./components/input";
 export { KeyValueList } from "./components/key-value-list";
+export type {
+  OptionSelectOption,
+  OptionSelectProps,
+} from "./components/option-select";
+export { OptionSelect } from "./components/option-select";
 export { Status } from "./components/status";
 export { Surface } from "./components/surface";

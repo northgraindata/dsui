@@ -343,8 +343,7 @@
   font-weight: 400;
   font-size: 10px;
 }
-.connection-field input,
-.connection-field select {
+.connection-field input {
   width: 100%;
   height: 36px;
   border: 1px solid var(--color-border-strong);
@@ -354,8 +353,7 @@
   color: var(--color-primary);
   font-size: 12px;
 }
-.connection-field input:focus,
-.connection-field select:focus {
+.connection-field input:focus {
   border-color: var(--color-accent);
 }
 .connection-field small {

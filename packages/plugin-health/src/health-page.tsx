@@ -1,6 +1,9 @@
 import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
+import { createOptionSelect } from "@northgraindata/dsui-ui/option-select-factory";
 import { React } from "./react";
 import { styles } from "./styles";
+
+const OptionSelect = createOptionSelect(() => React);
 
 type HealthStatus = "healthy" | "warning" | "unavailable" | "unknown";
 
@@ -223,23 +226,44 @@ export function HealthPage({ client }: ComponentProps) {
                 placeholder="Search services"
               />
             </label>
-            <select
-              aria-label="Filter by health status"
+            <OptionSelect
+              ariaLabel="Filter by health status"
               value={filter}
-              onChange={(event) =>
-                setFilter(
-                  isHealthStatus(event.target.value)
-                    ? event.target.value
-                    : "all",
-                )
+              onValueChange={(value) =>
+                setFilter(isHealthStatus(value) ? value : "all")
               }
-            >
-              <option value="all">All statuses</option>
-              <option value="healthy">Healthy</option>
-              <option value="warning">Warning</option>
-              <option value="unavailable">Unavailable</option>
-              <option value="unknown">Unknown</option>
-            </select>
+              options={[
+                { value: "all", label: "All statuses", icon: <span>◉</span> },
+                {
+                  value: "healthy",
+                  label: "Healthy",
+                  icon: (
+                    <span style={{ color: "var(--color-healthy)" }}>●</span>
+                  ),
+                },
+                {
+                  value: "warning",
+                  label: "Warning",
+                  icon: (
+                    <span style={{ color: "var(--color-warning)" }}>●</span>
+                  ),
+                },
+                {
+                  value: "unavailable",
+                  label: "Unavailable",
+                  icon: (
+                    <span style={{ color: "var(--color-unavailable)" }}>●</span>
+                  ),
+                },
+                {
+                  value: "unknown",
+                  label: "Unknown",
+                  icon: (
+                    <span style={{ color: "var(--color-unknown)" }}>●</span>
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
 
