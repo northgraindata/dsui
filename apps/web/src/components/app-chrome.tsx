@@ -92,11 +92,23 @@ export function AppChrome({
             to="/analytics/dashboards"
             className="app-nav-link app-nav-sub-link"
             aria-current={
-              pathname.startsWith("/analytics") ? "page" : undefined
+              pathname.startsWith("/analytics/dashboards") ? "page" : undefined
             }
           >
             <Icon name="chart" size={16} />
             <span>Dashboards</span>
+          </Link>
+        )}
+        {analyticsExpanded && (
+          <Link
+            to="/analytics/modules"
+            className="app-nav-link app-nav-sub-link"
+            aria-current={
+              pathname === "/analytics/modules" ? "page" : undefined
+            }
+          >
+            <Icon name="layers" size={16} />
+            <span>Modules</span>
           </Link>
         )}
       </div>
