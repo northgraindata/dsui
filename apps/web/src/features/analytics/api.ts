@@ -20,18 +20,29 @@ export interface ModuleDefinition {
     showGrid: boolean;
   };
 }
+export interface DashboardModule {
+  module: string;
+  subfolder?: string;
+  width: "half" | "full";
+}
+export interface DashboardView {
+  name: string;
+  title: string;
+  modules: DashboardModule[];
+}
 export interface DashboardDefinition {
   name: string;
   title: string;
   description: string;
+  tags: string[];
+  ownerId?: string;
+  visibility?: "private" | "shared";
   styles: { columns: 1 | 2; spacing: "compact" | "regular" | "relaxed" };
-  modules: Array<{
-    module: string;
-    subfolder?: string;
-    width: "half" | "full";
-  }>;
+  modules: DashboardModule[];
+  views: DashboardView[];
 }
 export type Saved<T> = T & { revision: string };
+export type DashboardItem = Saved<DashboardDefinition> & { favorite: boolean };
 export type ResourceOption = {
   id: string;
   inputSchema?: Record<string, unknown>;
@@ -56,7 +67,12 @@ async function analyticsRequest<T>(
 export const listModules = () =>
   analyticsRequest<Array<Saved<ModuleDefinition>>>("modules");
 export const listDashboards = () =>
-  analyticsRequest<Array<Saved<DashboardDefinition>>>("dashboards");
+  analyticsRequest<DashboardItem[]>("dashboards");
+export const setDashboardFavorite = (name: string, favorite: boolean) =>
+  analyticsRequest<{ favorite: boolean }>(
+    `dashboards/${encodeURIComponent(name)}/favorite`,
+    { method: "PUT", body: JSON.stringify({ favorite }) },
+  );
 export const listResources = (serviceId: string) =>
   analyticsRequest<ResourceOption[]>(
     `resources/${encodeURIComponent(serviceId)}`,
