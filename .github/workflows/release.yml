@@ -159,14 +159,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
 
       - name: Install npm CLI release version
         run: npm install --global npm@11.19.1
 
       # Configure npm Trusted Publishing for northgraindata/dsui and release.yml.
       - name: Publish npm package with OIDC
-        run: npm publish ./dist/npm --access public
+        run: |
+          env -u NODE_AUTH_TOKEN -u NPM_CONFIG_USERCONFIG \
+            npm publish ./dist/npm \
+              --registry=https://registry.npmjs.org \
+              --access public \
+              --loglevel verbose
 
       - name: Generate release notes
         env:
