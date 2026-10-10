@@ -170,7 +170,16 @@ jobs:
             npm publish ./dist/npm \
               --registry=https://registry.npmjs.org \
               --access public \
-              --loglevel verbose
+              --loglevel silly
+
+      - name: Dump npm debug log
+        if: failure()
+        run: |
+          shopt -s nullglob
+          for f in "$HOME"/.npm/_logs/*.log; do
+            echo "===== $f ====="
+            cat "$f"
+          done
 
       - name: Generate release notes
         env:
