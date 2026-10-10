@@ -11,6 +11,7 @@ import { parse, stringify } from "yaml";
 import {
   type AnalyticsDashboard,
   type AnalyticsModule,
+  dashboardModuleGroups,
   dashboardSchema,
   moduleSchema,
 } from "./definitions.js";
@@ -123,17 +124,20 @@ export class AnalyticsStore {
 
   async saveDashboard(raw: unknown, expectedRevision: string | null) {
     const value = dashboardSchema.parse(raw);
-    const references = value.modules.map(
-      (item) => `${item.subfolder ?? ""}/${item.module}`,
-    );
-    if (new Set(references).size !== references.length)
-      throw new Error("A module can appear only once per dashboard");
+    const groups = dashboardModuleGroups(value);
+    for (const group of groups) {
+      const references = group.map(
+        (item) => `${item.subfolder ?? ""}/${item.module}`,
+      );
+      if (new Set(references).size !== references.length)
+        throw new Error("A module can appear only once per view");
+    }
     const available = new Set(
       (await this.modules()).map(
         (module) => `${module.subfolder ?? ""}/${module.name}`,
       ),
     );
-    for (const item of value.modules) {
+    for (const item of groups.flat()) {
       if (!available.has(`${item.subfolder ?? ""}/${item.module}`))
         throw new Error(
           `Unknown module: ${item.subfolder ? `${item.subfolder}/` : ""}${item.module}`,
