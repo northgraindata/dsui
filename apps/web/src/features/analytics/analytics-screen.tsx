@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { executeResource, getServices, type Service } from "../../api";
 import { Icon } from "../../components/icon";
 import {
@@ -82,28 +82,69 @@ function errorText(error: unknown) {
 }
 const galleryTabs = ["all", "favorites"] as const;
 
-function ModuleCard({ module }: { module: Saved<ModuleDefinition> }) {
+function ModuleCard({
+  module,
+  order = 0,
+  refreshEpoch = 0,
+  onRefreshComplete,
+}: {
+  module: Saved<ModuleDefinition>;
+  order?: number;
+  refreshEpoch?: number;
+  onRefreshComplete?: (epoch: number) => void;
+}) {
   const [data, setData] = useState<unknown>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const refresh = useCallback(() => {
-    setLoading(true);
-    setError("");
-    executeResource(
+  const [renderVersion, setRenderVersion] = useState(0);
+  const requestId = useRef(0);
+  const refresh = useCallback(
+    async (notifyParent = false) => {
+      const currentRequest = ++requestId.current;
+      const started = Date.now();
+      setLoading(true);
+      setError("");
+      try {
+        const result = await executeResource(
+          module.source.serviceId,
+          module.source.resourceId,
+          module.source.input,
+        );
+        if (requestId.current === currentRequest) {
+          setData(result.data);
+          setRenderVersion((version) => version + 1);
+        }
+      } catch (cause) {
+        if (requestId.current === currentRequest) setError(errorText(cause));
+      } finally {
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, Math.max(0, 500 - (Date.now() - started))),
+        );
+        if (requestId.current === currentRequest) {
+          setLoading(false);
+          if (notifyParent) onRefreshComplete?.(refreshEpoch);
+        }
+      }
+    },
+    [
       module.source.serviceId,
       module.source.resourceId,
       module.source.input,
-    )
-      .then((result) => setData(result.data))
-      .catch((cause) => setError(errorText(cause)))
-      .finally(() => setLoading(false));
-  }, [module.source.serviceId, module.source.resourceId, module.source.input]);
+      onRefreshComplete,
+      refreshEpoch,
+    ],
+  );
   useEffect(() => {
-    refresh();
+    void refresh(true);
+    return () => {
+      requestId.current += 1;
+    };
   }, [refresh]);
   return (
     <article
       className={`analytics-card analytics-card--${module.styles.height}`}
+      style={{ animationDelay: `${Math.min(order, 8) * 65}ms` }}
+      aria-busy={loading}
     >
       <header>
         <div>
@@ -113,21 +154,25 @@ function ModuleCard({ module }: { module: Saved<ModuleDefinition> }) {
         <div className="analytics-card-actions">
           <button
             type="button"
-            onClick={refresh}
+            onClick={() => void refresh()}
             aria-label={`Refresh ${module.title}`}
             title="Refresh"
+            className={loading ? "analytics-refreshing" : undefined}
+            disabled={loading}
           >
             <Icon name="refresh" size={16} />
           </button>
         </div>
       </header>
-      {loading && data === undefined ? (
-        <div className="analytics-empty-visual">Loading data…</div>
-      ) : error ? (
-        <div className="analytics-error">{error}</div>
-      ) : (
-        <Visualization definition={module} data={data} />
-      )}
+      <div className="analytics-card-visual" key={renderVersion}>
+        {loading && data === undefined ? (
+          <div className="analytics-empty-visual">Loading data…</div>
+        ) : error ? (
+          <div className="analytics-error">{error}</div>
+        ) : (
+          <Visualization definition={module} data={data} />
+        )}
+      </div>
       <footer>
         {module.source.serviceId} · {module.source.resourceId}
       </footer>
@@ -146,6 +191,10 @@ export function AnalyticsScreen({
   const [favoriteBusy, setFavoriteBusy] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState("");
+  const [dashboardRefresh, setDashboardRefresh] = useState({
+    epoch: 0,
+    pending: 0,
+  });
   const [editMode, setEditMode] = useState(false);
   const [layoutDraft, setLayoutDraft] = useState<DashboardDefinition | null>(
     null,
@@ -417,6 +466,29 @@ export function AnalyticsScreen({
       setBusy(false);
     }
   };
+  const refreshDashboard = () => {
+    const pending =
+      activeView?.modules.filter((item) =>
+        modules.some((module) => keyOf(module) === keyOf(item)),
+      ).length ?? 0;
+    setDashboardRefresh((current) => ({
+      epoch: current.epoch + 1,
+      pending,
+    }));
+  };
+  const handleModuleRefreshComplete = useCallback((epoch: number) => {
+    setDashboardRefresh((current) =>
+      current.epoch === epoch && current.pending > 0
+        ? { ...current, pending: current.pending - 1 }
+        : current,
+    );
+  }, []);
+  const selectView = (name: string) => {
+    setSelectedView(name);
+    setDashboardRefresh((current) =>
+      current.pending ? { ...current, pending: 0 } : current,
+    );
+  };
 
   return (
     <div className="analytics-page">
@@ -525,16 +597,31 @@ export function AnalyticsScreen({
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                className="analytics-primary"
-                onClick={() => {
-                  setLayoutDraft(layoutDefinition(dashboard));
-                  setEditMode(true);
-                }}
-              >
-                <Icon name="gear" size={15} /> Edit
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={refreshDashboard}
+                  disabled={dashboardRefresh.pending > 0}
+                  aria-label="Refresh dashboard"
+                  className={
+                    dashboardRefresh.pending > 0
+                      ? "analytics-refreshing"
+                      : undefined
+                  }
+                >
+                  <Icon name="refresh" size={15} /> Refresh
+                </button>
+                <button
+                  type="button"
+                  className="analytics-primary"
+                  onClick={() => {
+                    setLayoutDraft(layoutDefinition(dashboard));
+                    setEditMode(true);
+                  }}
+                >
+                  <Icon name="gear" size={15} /> Edit
+                </button>
+              </>
             ))}
         </div>
       </div>
@@ -589,9 +676,9 @@ export function AnalyticsScreen({
         <div className="analytics-empty">Loading analytics…</div>
       ) : section === "modules" ? (
         <div className="analytics-modules-gallery">
-          {modules.map((module) => (
+          {modules.map((module, index) => (
             <div className="analytics-module-preview" key={keyOf(module)}>
-              <ModuleCard module={module} />
+              <ModuleCard module={module} order={index} />
               {editMode && (
                 <button
                   type="button"
@@ -637,6 +724,9 @@ export function AnalyticsScreen({
                 onClick={() => {
                   setSelected(item.name);
                   setSelectedView(dashboardViews(item)[0]?.name ?? "overview");
+                  setDashboardRefresh((current) =>
+                    current.pending ? { ...current, pending: 0 } : current,
+                  );
                 }}
               >
                 <span className="analytics-dashboard-icon">
@@ -726,7 +816,7 @@ export function AnalyticsScreen({
                 aria-controls="analytics-view-panel"
                 aria-selected={view.name === activeView?.name}
                 tabIndex={view.name === activeView?.name ? 0 : -1}
-                onClick={() => setSelectedView(view.name)}
+                onClick={() => selectView(view.name)}
                 onKeyDown={(event) => {
                   const current = views.findIndex(
                     (item) => item.name === view.name,
@@ -742,7 +832,7 @@ export function AnalyticsScreen({
                   event.preventDefault();
                   const name = views[next]?.name;
                   if (!name) return;
-                  setSelectedView(name);
+                  selectView(name);
                   document.getElementById(`analytics-view-${name}`)?.focus();
                 }}
               >
@@ -766,13 +856,13 @@ export function AnalyticsScreen({
                 ],
               }}
             >
-              {activeView?.modules.map((item) => {
+              {activeView?.modules.map((item, index) => {
                 const module = modules.find(
                   (candidate) => keyOf(candidate) === keyOf(item),
                 );
                 return (
                   <fieldset
-                    key={keyOf(item)}
+                    key={`${keyOf(item)}-${dashboardRefresh.epoch}`}
                     aria-label={`${module?.title ?? item.module} tile`}
                     className={`analytics-tile ${item.width === "full" ? "analytics-span-full" : ""} ${editMode ? "analytics-layout-tile" : ""} ${dropTarget === keyOf(item) ? "analytics-layout-tile--target" : ""}`}
                     draggable={editMode}
@@ -874,7 +964,12 @@ export function AnalyticsScreen({
                       </div>
                     )}
                     {module ? (
-                      <ModuleCard module={module} />
+                      <ModuleCard
+                        module={module}
+                        order={index}
+                        refreshEpoch={dashboardRefresh.epoch}
+                        onRefreshComplete={handleModuleRefreshComplete}
+                      />
                     ) : (
                       <div className="analytics-card analytics-missing">
                         Missing module: {keyOf(item)}
