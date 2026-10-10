@@ -14,6 +14,7 @@ changes, preserve unrelated work, and keep each change focused and reviewable.
 - Inspect relevant callers, contracts, and tests before changing behavior.
 - Prefer the smallest clear implementation that satisfies the requirement.
 - Verify observable behavior with focused checks; report commands and results honestly.
+- Do not create `*.test.ts` files at this point.
 - Preserve type safety. Avoid unsafe casts and silent fallbacks.
 - Keep comments focused on intent or non-obvious constraints.
 - Use Conventional Commits for new commits: `type(scope): short description`
