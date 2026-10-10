@@ -74,7 +74,10 @@ function QueryEditorContent({
   if (!tab) return null;
   return (
     <section className="query-workspace" aria-label="Query workspace">
-      <div className="query-editor-panel">
+      <div
+        className="query-editor-panel"
+        data-dsui-overlay-target="query.editor"
+      >
         {props.database ? (
           <label className="query-database-picker">
             <span>{props.database.label ?? "Database"}</span>

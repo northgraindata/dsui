@@ -102,7 +102,19 @@ export function pluginRendererClient(
     },
     executePluginProcedure: (procedureId, input) =>
       executePluginProcedure(pluginId, procedureId, input),
+    notifyInteraction: (interaction) =>
+      window.dispatchEvent(
+        new CustomEvent("dsui:interaction", {
+          detail: { ...interaction, pluginId },
+        }),
+      ),
     navigate,
+    openOverlay: (overlayId) =>
+      window.dispatchEvent(
+        new CustomEvent("dsui:overlay-open", {
+          detail: { pluginId, overlayId },
+        }),
+      ),
   };
 }
 

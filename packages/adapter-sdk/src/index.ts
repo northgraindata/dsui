@@ -167,6 +167,8 @@ export {
   type TabsItem,
   type TabsNode,
   type TabsProps,
+  Target,
+  type TargetProps,
   TextInput,
   type TextInputNode,
   type TextInputProps,

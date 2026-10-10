@@ -1,6 +1,6 @@
 import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   executeAction,
@@ -24,6 +24,9 @@ export function ServiceScreen({
   pagePath?: string;
 }) {
   const navigate = useNavigate();
+  const search = useRouterState({
+    select: (state) => state.location.searchStr,
+  });
   const [service, setService] = useState<Service>();
   const [paths, setPaths] = useState<string[]>([]);
   const [page, setPage] = useState<PageDocument>();
@@ -56,7 +59,7 @@ export function ServiceScreen({
     if (!path) return;
     let active = true;
     setPage(undefined);
-    getPage(serviceId, path)
+    getPage(serviceId, `${path}${search}`)
       .then((document) => active && setPage(document))
       .catch(
         (cause) =>
@@ -68,7 +71,7 @@ export function ServiceScreen({
     return () => {
       active = false;
     };
-  }, [serviceId, path]);
+  }, [serviceId, path, search]);
 
   if (error)
     return (
@@ -90,8 +93,15 @@ export function ServiceScreen({
     <AdapterWorkspace service={service} paths={paths} path={path}>
       {page ? (
         <DeclarativePageRenderer
+          key={`${serviceId}/${path}${search}`}
           nodes={page.nodes}
           client={{
+            notifyInteraction: (interaction) =>
+              window.dispatchEvent(
+                new CustomEvent("dsui:interaction", {
+                  detail: { ...interaction, serviceId },
+                }),
+              ),
             connection: {
               name: service.name,
               endpoint: service.endpoint ?? "",

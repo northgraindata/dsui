@@ -12,7 +12,7 @@ import {
 
 export const queryPage = definePage({
   path: "/query",
-  render: () => [
+  render: ({ query }) => [
     PageHeader({
       title: "Query editor",
       description:
@@ -20,6 +20,7 @@ export const queryPage = definePage({
     }),
     QueryEditor({
       language: "sql",
+      value: query.get("sql") ?? undefined,
       action: runQuery,
       database: { source: databases() },
       explorer: {
@@ -40,13 +41,14 @@ export const queryPage = definePage({
 
 export const databaseQueryPage = definePage({
   path: "/query/:database",
-  render: ({ params }) => [
+  render: ({ params, query }) => [
     PageHeader({
       title: `Query editor · ${params.database}`,
       description: `Run bounded SQL statements against ${params.database}. Use schema.table names; PostgreSQL databases cannot be referenced from SQL.`,
     }),
     QueryEditor({
       language: "sql",
+      value: query.get("sql") ?? undefined,
       action: runQuery({ database: params.database }),
       database: {
         source: databases(),

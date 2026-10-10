@@ -8,6 +8,10 @@ export interface ButtonProps {
   action?: ActionTarget | FieldReference;
   successLink?: TableRowLink;
   link?: string | FieldReference;
+  /** Open a host overlay surface by its contribution id, when supported. */
+  overlay?: string;
+  /** Open an overlay only after the action succeeds. */
+  successOverlay?: string;
   icon?: string | FieldReference;
   description?: string | FieldReference;
   kbd?: string | FieldReference;

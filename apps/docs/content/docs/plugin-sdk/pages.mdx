@@ -49,6 +49,77 @@ checks plugin inspect permission. Service slots keep receiving their service and
 now also receive the authenticated principal. Keep personal account presentation
 and data lookup in the contributing plugin.
 
+### Overlay slots
+
+An overlay is a plugin-owned slot rendered by the host above the current app
+screen. It is useful for help panels, guided tours and contextual actions. The
+plugin owns its nodes; the host owns positioning, the dialog frame and dismissal.
+Overlay IDs are local to their plugin. A trigger can open only a contribution
+from its own plugin:
+
+```ts
+import { Button, Card, Section, defineSlot } from "@northgraindata/dsui-plugin-sdk";
+
+const helpOverlay = defineSlot({
+  id: "help",
+  slot: "overlay",
+  presentation: { mode: "modal", label: "Help" },
+  render: () => [
+    Section({
+      title: "Help",
+      content: Card({ title: "Useful context", description: "Help content." }),
+    }),
+  ],
+});
+
+const sidebarHelp = defineSlot({
+  id: "sidebar-help",
+  slot: "sidebar.profile",
+  render: () => [Button({ label: "Help", overlay: "help" })],
+});
+```
+
+Use `presentation: { mode: "anchored", target: "service.workspace.header" }`
+to place a non-modal panel beside a stable host target. Add `path: "/services/example/data"` to navigate in the current tab before locating the target and `highlight: true` to dim the surrounding screen. The host waits for asynchronous pages, scrolls the target into view and keeps the panel inside the viewport. Targets are named by the
+host and exposed through `data-dsui-overlay-target`; plugins cannot pass CSS
+selectors or inject DOM. The current host publishes the service workspace
+header, navigation, content and individual page-link targets (`service.workspace.page.data`, for example). Dashboard targets include `dashboard.services` and `dashboard.service.<serviceId>`; `app.content` identifies the current main screen. These targets describe app surfaces rather than a particular plugin. If an anchored target is not present, the host displays a waiting state with a close control. Modal overlays open above the current screen and close
+with the host close control or Escape.
+
+Use `dock: "bottom-right"` to keep the panel in a fixed corner while its
+highlight moves. Adapter and plugin pages can publish their own page-unique
+anchors with the Adapter SDK's `Target({ id: "team.runbook", content: ... })`.
+The host also publishes `query.editor`, `query.run`, `query.results`, and
+`dbt.model.source` on the corresponding components. The Airflow graph publishes
+`airflow.dag.graph`; S3 object rows publish `s3.object.<objectKey>`.
+
+Query pages in the PostgreSQL and DuckDB adapters accept `?sql=<encoded SQL>`
+to fill the editor. Opening a deep link never runs the query automatically.
+An anchored contribution can advance after the visitor runs it successfully:
+
+```ts
+presentation: {
+  mode: "anchored",
+  path: "/services/warehouse/query?sql=SELECT%201",
+  target: "query.editor",
+  dock: "bottom-right",
+  advanceOn: {
+    serviceId: "warehouse",
+    target: "query.results",
+    event: "success",
+    overlay: "query-result",
+  },
+}
+```
+
+`advanceOn` matches the interaction target, event and originating service.
+For plugin components use `pluginId` instead; omitting both defaults to the
+contributing plugin. Custom components report interactions through the optional
+`client.notifyInteraction({ target, event })` hook. Events carry no action input
+or result data. Give the result contribution the same path to preserve editor
+state. `Button({ action, successOverlay: "verified", ... })` opens a follow-up
+overlay only after its action succeeds; errors remain visible on the button.
+
 ## Browser components
 
 Built-in page primitives render through the host's component registry. A custom

@@ -122,14 +122,22 @@ export function HomeDashboard({
               {loading ? "Refreshing…" : "Refresh"}
             </button>
           </header>
-          <div className="stack-cards" aria-busy={loading}>
+          <div
+            className="stack-cards"
+            data-dsui-overlay-target="dashboard.services"
+            aria-busy={loading}
+          >
             {loading && (
               <p className="stack-loading" role="status">
                 Checking your services…
               </p>
             )}
             {services.map((service) => (
-              <article key={service.id} className="stack-card">
+              <article
+                key={service.id}
+                className="stack-card"
+                data-dsui-overlay-target={`dashboard.service.${service.id}`}
+              >
                 <Link
                   to="/services/$serviceId"
                   params={{ serviceId: service.id }}

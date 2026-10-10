@@ -37,6 +37,7 @@ export function useQueryWorkspace(
     inFlight.current.add(id);
     updateTab(id, { running: true, error: undefined, result: undefined });
     const started = performance.now();
+    let succeeded = false;
     try {
       const response = await client.executeAction({
         ...action,
@@ -56,6 +57,7 @@ export function useQueryWorkspace(
           elapsedMs: result.elapsedMs ?? performance.now() - started,
         },
       });
+      succeeded = true;
     } catch (cause) {
       updateTab(id, {
         error: cause instanceof Error ? cause.message : "Query failed",
@@ -63,6 +65,11 @@ export function useQueryWorkspace(
     } finally {
       inFlight.current.delete(id);
       updateTab(id, { running: false });
+      if (succeeded)
+        client.notifyInteraction?.({
+          target: "query.results",
+          event: "success",
+        });
     }
   }, [action, client, tab, updateTab]);
   const closeTab = useCallback(

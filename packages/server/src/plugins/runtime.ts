@@ -90,6 +90,50 @@ type PluginLoadRequest = {
   browserSha256?: string;
 };
 
+function validateSlot(slot: RuntimePluginSlot): void {
+  if (slot.slot === "overlay" && !slot.presentation)
+    throw new Error(`Overlay slot "${slot.id}" requires a presentation`);
+  if (slot.slot !== "overlay" && slot.presentation)
+    throw new Error("Only overlay slots may specify a presentation");
+  if (!slot.presentation) return;
+  if (slot.presentation.mode === "anchored") {
+    const { dock, advanceOn } = slot.presentation;
+    if (dock !== undefined && dock !== "bottom-right")
+      throw new Error("Invalid overlay dock");
+    if (
+      advanceOn &&
+      (!advanceOn.target.trim() ||
+        !advanceOn.event.trim() ||
+        !advanceOn.overlay.trim() ||
+        (advanceOn.serviceId !== undefined && !advanceOn.serviceId.trim()) ||
+        (advanceOn.pluginId !== undefined && !advanceOn.pluginId.trim()) ||
+        (advanceOn.serviceId !== undefined && advanceOn.pluginId !== undefined))
+    )
+      throw new Error("Invalid overlay interaction binding");
+    const path = slot.presentation.path;
+    if (
+      path !== undefined &&
+      (!path.startsWith("/") ||
+        path.startsWith("//") ||
+        Array.from(path).some(
+          (character) => character === "\\" || character.charCodeAt(0) < 32,
+        ))
+    )
+      throw new Error("Overlay paths must be local app paths");
+    if (!slot.presentation.target.trim())
+      throw new Error(`Overlay slot "${slot.id}" requires a target id`);
+    if (
+      slot.presentation.placement !== undefined &&
+      !["top", "right", "bottom", "left"].includes(slot.presentation.placement)
+    )
+      throw new Error(`Overlay slot "${slot.id}" has an invalid placement`);
+  } else if (slot.presentation.mode !== "modal") {
+    throw new Error(
+      `Overlay slot "${slot.id}" has an invalid presentation mode`,
+    );
+  }
+}
+
 export type PluginModuleLoader = (specifier: string) => Promise<unknown>;
 
 /**
@@ -528,8 +572,10 @@ export class PluginRuntime {
         },
         navigation: (item: PluginNavigationItem) =>
           uniqueId(seenNavigation, item, "navigation", request.id),
-        slot: (slot: RuntimePluginSlot) =>
-          uniqueId(seenSlots, slot, "slot", request.id),
+        slot: (slot: RuntimePluginSlot) => {
+          validateSlot(slot);
+          uniqueId(seenSlots, slot, "slot", request.id);
+        },
         procedure: (procedure: RegisteredProcedure) => {
           uniqueId(seenProcedures, procedure, "procedure", request.id);
           contributions.procedures.push(procedure);
@@ -805,10 +851,11 @@ export class PluginRuntime {
         ...items.navigation.map((item) => ({ ...item, pluginId })),
       );
       slots.push(
-        ...items.slots.map(({ id, slot, order }) => ({
+        ...items.slots.map(({ id, slot, order, presentation }) => ({
           id,
           slot,
           order,
+          ...(presentation ? { presentation } : {}),
           pluginId,
         })),
       );

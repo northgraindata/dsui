@@ -8,13 +8,14 @@ import { databases, relations, schemas } from "../resources/catalog.js";
 
 export const queryPage = definePage({
   path: "/query",
-  render: () => [
+  render: ({ query }) => [
     PageHeader({
       title: "Query",
       description: "Write and run SQL against this DuckDB instance.",
     }),
     QueryEditor({
       language: "sql",
+      value: query.get("sql") ?? undefined,
       action: runQuery,
       explorer: {
         source: databases(),

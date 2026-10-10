@@ -482,7 +482,8 @@
     font-size: 12px;
   }
   .app-sidebar-bottom {
-    display: none;
+    display: block;
+    padding: 8px 4px 0;
   }
   .sidebar-star-banner {
     display: none;
