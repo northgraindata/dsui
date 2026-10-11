@@ -2,6 +2,7 @@
 FROM oven/bun:1.3.12 AS build
 WORKDIR /src
 ARG DSUI_VERSION=0.1.0
+ARG DSUI_WEB_BASE_PATH=/
 
 COPY package.json bun.lock tsconfig.json turbo.json biome.json ./
 COPY apps ./apps
@@ -10,7 +11,7 @@ COPY examples ./examples
 COPY scripts ./scripts
 COPY patches ./patches
 RUN bun install --frozen-lockfile --ignore-scripts
-RUN bun run --filter @northgraindata/dsui-web build
+RUN DSUI_WEB_BASE_PATH="$DSUI_WEB_BASE_PATH" bun run --filter @northgraindata/dsui-web build
 RUN mkdir -p /out/data /out/runtime/plugins && \
   bun build packages/server/src/main.ts --compile --minify --outfile /out/dsui && \
   bun build examples/example-plugin/src/index.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/example-plugin.mjs && \

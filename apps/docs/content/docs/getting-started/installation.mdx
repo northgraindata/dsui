@@ -46,6 +46,11 @@ The `/data` volume holds DSUI's local state and any file-backed data you mount
 there. DSUI does not start the services declared in `dsui.yaml`; it connects to
 services that are already running.
 
+To host the UI below a URL prefix, build the image with
+`--build-arg DSUI_WEB_BASE_PATH=/demo/` and configure the reverse proxy to route
+`/demo` to the container with prefix stripping enabled. The default `/` keeps
+the standard root-hosted behavior.
+
 ### Limitations
 
 Docker is intentionally isolated from the host. If an adapter requires an

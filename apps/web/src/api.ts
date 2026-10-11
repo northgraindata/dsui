@@ -293,7 +293,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`/api/v1${path}`, {
+    response = await fetch(`${import.meta.env.BASE_URL}api/v1${path}`, {
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
       ...init,
