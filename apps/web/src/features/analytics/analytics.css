@@ -81,12 +81,15 @@
   gap: 16px;
 }
 .analytics-module-preview {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 .analytics-module-preview .analytics-card {
-  height: 100%;
+  flex: 1;
 }
 .analytics-page .analytics-module-edit {
+  align-self: flex-start;
   margin-top: 8px;
   padding: 8px 12px;
   border: 1px solid #274365;
