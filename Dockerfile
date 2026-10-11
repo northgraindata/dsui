@@ -2,6 +2,7 @@
 FROM oven/bun:1.3.12 AS build
 WORKDIR /src
 ARG DSUI_VERSION=0.1.0
+ARG DSUI_WEB_BASE_PATH=/
 
 COPY package.json bun.lock tsconfig.json turbo.json biome.json ./
 COPY apps ./apps
@@ -10,7 +11,7 @@ COPY examples ./examples
 COPY scripts ./scripts
 COPY patches ./patches
 RUN bun install --frozen-lockfile --ignore-scripts
-RUN bun run --filter @northgraindata/dsui-web build
+RUN DSUI_WEB_BASE_PATH="$DSUI_WEB_BASE_PATH" bun run --filter @northgraindata/dsui-web build
 RUN mkdir -p /out/data /out/runtime/plugins && \
   bun build packages/server/src/main.ts --compile --minify --outfile /out/dsui && \
   bun build examples/example-plugin/src/index.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/example-plugin.mjs && \
@@ -25,6 +26,7 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
 
 FROM oven/bun:1.3.12
 WORKDIR /app
+ARG DSUI_WEB_BASE_PATH=/
 ENV PIPX_BIN_DIR=/usr/local/bin \
     PIPX_HOME=/opt/pipx
 COPY --from=build /out/image-dependencies.json /tmp/image-dependencies.json
@@ -43,6 +45,7 @@ ARG DSUI_VERSION=0.1.0
 # the network. Keep the package-manager cache on the data volume so a restart
 # reuses it instead of re-downloading every adapter's dependencies.
 ENV     DSUI_HOST=0.0.0.0 \
+    DSUI_WEB_BASE_PATH=$DSUI_WEB_BASE_PATH \
     DSUI_PORT=4192 \
     DSUI_DATA_DIR=/data \
     DSUI_WEB_ROOT=/app/web \

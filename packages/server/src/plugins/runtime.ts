@@ -32,6 +32,7 @@ import {
 import { resolveSdkRoot } from "../adapters/sdk.js";
 import { allowed } from "../auth.js";
 import type { PluginSource } from "../config.js";
+import { withWebBasePath } from "../web-path.js";
 import { buildPlugin, type PluginFetch } from "./build.js";
 import { parseCron } from "./cron.js";
 import {
@@ -945,7 +946,9 @@ export class PluginRuntime {
             ...record,
             props: {
               ...props,
-              browserUrl: `/api/v1/plugins/${encodeURIComponent(pluginId)}/components.mjs`,
+              browserUrl: withWebBasePath(
+                `/api/v1/plugins/${encodeURIComponent(pluginId)}/components.mjs`,
+              ),
             },
           };
         }
