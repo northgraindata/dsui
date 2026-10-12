@@ -1,0 +1,60 @@
+---
+import IntegrationsSection from "./ui/integrations-3.astro";
+import SectionBackdrop from "./section-backdrop.astro";
+---
+
+<IntegrationsSection />
+
+<section id="intelligence" class="landing-section section-atmosphere">
+  <SectionBackdrop motif="flows" />
+  <div class="landing-container">
+    <div class="section-heading">
+      <p class="eyebrow">CROSS-STACK INTELLIGENCE</p>
+      <h2>The connections matter<br />as much as the tools.</h2>
+      <p>A pipeline, a model, and a table tell different parts of the same story. Follow the relationships and bring their context together.</p>
+    </div>
+    <figure class="lineage-panel" aria-labelledby="lineage-caption">
+      <div class="frame-toolbar"><span>Stack overview / Revenue pipeline</span><span class="context-pill">Shared context</span></div>
+      <div class="lineage-map">
+        <div class="lineage-node"><img src="/assets/logos/s3.svg" alt="" width="28" height="28" /><span class="node-kind">SOURCE / S3</span><strong>raw.orders</strong><small>Incoming order events</small></div>
+        <span class="lineage-arrow" aria-hidden="true">→</span>
+        <div class="lineage-node"><img src="/assets/logos/airflow.svg" alt="" width="28" height="28" /><span class="node-kind">PIPELINE / AIRFLOW</span><strong>ingest_orders</strong><small>Scheduled every hour</small></div>
+        <span class="lineage-arrow" aria-hidden="true">→</span>
+        <div class="lineage-node lineage-node--accent"><img src="/assets/logos/dbt.png" alt="" width="28" height="28" /><span class="node-kind">MODEL / DBT</span><strong>fct_orders</strong><small>Revenue transformation</small></div>
+        <span class="lineage-arrow" aria-hidden="true">→</span>
+        <div class="lineage-node"><span class="warehouse-icon" aria-hidden="true">❄</span><span class="node-kind">WAREHOUSE / SNOWFLAKE</span><strong>analytics.orders</strong><small>Ready for your team</small></div>
+      </div>
+      <figcaption id="lineage-caption" class="context-summary"><span class="context-pill">One connected view</span><p>From the source file to the downstream table, keep the relationship in sight.</p><span class="example-label">Example stack</span></figcaption>
+    </figure>
+    <div class="editorial-grid">
+      <article><span class="feature-mark" aria-hidden="true">↗</span><h3>Follow the lineage</h3><p>Trace how data moves through your stack and understand what depends on it.</p></article>
+      <article><span class="feature-mark" aria-hidden="true">⌁</span><h3>See what needs attention</h3><p>Bring service health and monitoring into the same workspace as your daily work.</p></article>
+      <article><span class="feature-mark" aria-hidden="true">⊞</span><h3>Keep context connected</h3><p>Carry relationships between services, resources, and code across tool boundaries.</p></article>
+    </div>
+
+  </div>
+</section>
+
+<section id="ai-agent" class="landing-section section-atmosphere">
+  <SectionBackdrop motif="context" />
+  <div class="landing-container ai-layout">
+    <div class="section-heading">
+      <p class="eyebrow">AI AGENT</p>
+      <h2>Your whole stack.<br />In the conversation.</h2>
+      <p>Ask questions with context from across your connected services. Let the agent gather evidence, connect the details, and help you understand what to investigate next.</p>
+      <ul class="plain-features"><li>Choose the services that matter to your question.</li><li>Bring service health and resource data into the answer.</li><li>Follow the evidence back to your workspace.</li></ul>
+      <a class="text-link" href="#extensibility">Powered by the same extensible foundation <span aria-hidden="true">→</span></a>
+    </div>
+    <figure class="agent-panel">
+      <div class="frame-toolbar"><span class="agent-title"><img src="/branding/logo-icon.svg" alt="" width="18" height="18" /> DSUI Agent</span><span class="example-label">Example conversation</span></div>
+      <div class="agent-conversation">
+        <div class="agent-context"><span>CONTEXT</span><span class="context-pill">Airflow</span><span class="context-pill">dbt</span><span class="context-pill">Warehouse</span></div>
+        <blockquote class="agent-question">Where should I look first if the orders data is behind?</blockquote>
+        <div class="agent-evidence"><span class="evidence-check" aria-hidden="true">✓</span><span>Inspecting connected services<br /><small>Service health · declared resources · recent events</small></span></div>
+        <div class="agent-answer"><span class="eyebrow">DSUI AGENT</span><p>Start with the upstream ingestion job. Its latest run failed before new orders reached the warehouse.</p><p>The downstream model completed against the previous load. Check the failed task before rerunning the transformation.</p></div>
+        <div class="evidence-sources"><span>Sources to inspect</span><div><span>↗ Airflow · latest run</span><span>↗ dbt · model status</span><span>↗ Warehouse · orders</span></div></div>
+      </div>
+      <figcaption class="frame-caption">From a question to the next useful step.</figcaption>
+    </figure>
+  </div>
+</section>

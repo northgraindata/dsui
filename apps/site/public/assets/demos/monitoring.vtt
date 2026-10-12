@@ -1,0 +1,13 @@
+WEBVTT
+
+00:00.000 --> 00:02.000
+Open the Host resources page from the DSUI workspace.
+
+00:02.000 --> 00:07.000
+Inspect CPU load, memory use and disk volumes reported by the monitoring plugin.
+
+00:07.000 --> 00:12.000
+Scroll to the history charts for CPU load and memory use.
+
+00:12.000 --> 00:15.800
+Review recorded measurements in the same workspace as your connected services.

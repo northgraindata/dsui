@@ -1,0 +1,23 @@
+---
+import SectionBackdrop from "./section-backdrop.astro";
+
+const docs = import.meta.env.DEV ? "http://localhost:4322/docs" : "/docs";
+const github = "https://github.com/northgraindata/dsui";
+---
+
+<section id="plans" class="landing-section section-wash">
+  <div class="landing-container oss-plan-layout">
+    <div class="section-heading"><p class="eyebrow">START WITH OPEN SOURCE</p><h2>A workspace you<br />can make your own.</h2><p>Run DSUI in your environment. Connect your stack and build on an open foundation.</p></div>
+    <article class="oss-plan"><div class="plan-heading"><div><p class="eyebrow">OSS</p><h3>Open source</h3></div><span class="context-pill">Apache 2.0</span></div><p class="plan-price">Free<span> to self-host</span></p><ul class="plan-features"><li><span aria-hidden="true">✓</span> Self-hosted deployment</li><li><span aria-hidden="true">✓</span> Official adapters and plugins</li><li><span aria-hidden="true">✓</span> Adapter SDK and Plugin SDK</li><li><span aria-hidden="true">✓</span> Custom and internal extensions</li><li><span aria-hidden="true">✓</span> Source code on GitHub</li></ul><a class="landing-button landing-button--primary" href={`${docs}/getting-started/quickstart`}>Get started with OSS <span aria-hidden="true">→</span></a></article>
+  </div>
+</section>
+
+<section id="open-source" class="landing-section open-source-section section-atmosphere">
+  <SectionBackdrop motif="branches" />
+  <div class="landing-container">
+    <div class="open-source-heading"><div class="section-heading"><p class="eyebrow">OPEN SOURCE, OPEN POSSIBILITIES</p><h2>Use it. Extend it.<br />Help shape what’s next.</h2><p>DSUI is Apache 2.0 licensed. Read the code, run it yourself, and build the integrations your stack deserves.</p></div><a class="github-orbit" href={github} aria-label="Star DSUI on GitHub"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.86c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82c.85 0 1.71.11 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10Z" /></svg><span>Build with us <span aria-hidden="true">↗</span></span></a></div>
+    <div class="editorial-grid"><article><h3>Your infrastructure</h3><p>Self-host the workspace alongside the services you already operate.</p></article><article><h3>Your extensions</h3><p>Use the SDKs to connect internal systems and create your own workflows.</p></article><article><h3>Your contribution</h3><p>Share an adapter, improve a plugin, report a rough edge, or propose an idea.</p></article></div>
+    <div class="open-source-actions"><a class="landing-button landing-button--primary" href={github}><span aria-hidden="true">☆</span> Star on GitHub</a><a class="text-link" href={`${docs}/adapter-sdk`}>Build an adapter <span aria-hidden="true">→</span></a><a class="text-link" href={`${github}/blob/main/CONTRIBUTING.md`}>Contribute <span aria-hidden="true">↗</span></a></div>
+    <p class="star-note">Interested in where DSUI is going? A star helps others discover the project.</p>
+  </div>
+</section>

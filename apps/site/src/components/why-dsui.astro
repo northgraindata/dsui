@@ -5,7 +5,6 @@ const tools = [
   { name: "Airflow", src: "/assets/logos/airflow.svg" },
   { name: "dbt", src: "/assets/logos/dbt.png" },
   { name: "PostgreSQL", src: "/assets/logos/postgresql.svg" },
-  { name: "Trino", src: "/assets/logos/trino.png" },
   { name: "S3", src: "/assets/logos/s3.svg" },
   { name: "MinIO", src: "/assets/logos/minio.svg" },
   { name: "DuckDB", src: "/assets/logos/duckdb.svg" },
@@ -13,6 +12,7 @@ const tools = [
 ---
 
 <section
+  id="why-dsui"
   class="relative overflow-hidden bg-canvas pb-28 pt-16 text-foreground sm:pb-40 sm:pt-24"
 >
   <div
@@ -105,7 +105,7 @@ const tools = [
         </div>
 
         <div
-          class="mx-auto grid h-80 w-full grid-rows-4 items-center justify-items-end gap-6 lg:mx-0"
+          class="mx-auto grid h-80 w-full grid-rows-3 items-center justify-items-end gap-6 lg:mx-0"
         >
           {
             tools.slice(3).map((tool) => (
