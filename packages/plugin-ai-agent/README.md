@@ -42,7 +42,7 @@ the current page session. Arrow keys, Home/End and Delete work on focused tabs.
 Schema-summary tables use fixed column proportions to align adjacent summaries;
 data-preview tables retain their content-based layout.
 
-The **Prompts** menu beside the current chat name lists numbered previews of all
+The **Messages** menu beside the current chat name lists numbered previews of all
 user messages, including attachment-only prompts. Search or select a preview to
 jump to that prompt and its following response. Reading older messages pauses
 automatic scrolling; scroll back to the bottom or send another message to follow
@@ -102,7 +102,7 @@ plugins:
     config:
       model:
         provider: openai
-        id: gpt-4.1-mini
+        id: gpt-6-sol
         apiKey: "${DSUI_AGENT_API_KEY}"
 ```
 
@@ -135,12 +135,12 @@ plugins:
         - key: fast
           label: Fast
           provider: openai
-          id: gpt-4.1-mini
+          id: gpt-6-luna
           apiKey: "${DSUI_AGENT_API_KEY}"
         - key: detailed
           label: Detailed
           provider: openai
-          id: gpt-4.1
+          id: gpt-6-sol
           apiKey: "${DSUI_AGENT_API_KEY}"
 ```
 
