@@ -15,7 +15,7 @@ plugins:
       allowTablePreview: true # Set false to disable sample-row reads.
       model:
         provider: openai
-        id: gpt-4.1-mini
+        id: gpt-6-sol
         # Set your own key here, or use ${DSUI_AGENT_API_KEY}.
         apiKey: ""
 
