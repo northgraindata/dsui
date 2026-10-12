@@ -206,7 +206,7 @@ export class AiSdkRuntime implements AgentRuntime {
         message: message.slice(0, 2_000),
         attachments: attachmentNames.slice(0, 10),
       }),
-      maxOutputTokens: 32,
+      maxOutputTokens: 256,
       maxRetries: 0,
       abortSignal: signal,
     });
