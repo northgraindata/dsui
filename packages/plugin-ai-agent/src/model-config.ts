@@ -3,7 +3,7 @@ import type { Config } from "./model";
 
 export const modelConnectionSchema = z.object({
   provider: z.enum(["openai", "anthropic", "gateway"]).default("openai"),
-  id: z.string().min(1).default("gpt-4.1-mini"),
+  id: z.string().min(1).default("gpt-6-sol"),
   apiKey: z.string().default(""),
 });
 export const namedModelSchema = modelConnectionSchema.extend({
