@@ -22,11 +22,13 @@ export const dbtConnectionMethods = {
     label: "dbt Cloud",
     description: "Connect to a dbt Cloud account with an API token.",
     schema: dbtCloudSchema,
+    contextIdleTimeoutMs: 300_000,
   },
   local: {
     label: "dbt Local",
     description: "Connect to a dbt Core or Fusion project on the DSUI host.",
     schema: dbtLocalSchema,
+    contextIdleTimeoutMs: 300_000,
   },
 } as const;
 
@@ -47,10 +49,8 @@ export interface DbtContext {
 export async function createContext(config: DbtConfig): Promise<DbtContext> {
   if (config.method === "cloud") {
     const cloud = createDbtCloudClient(config);
-    await cloud.getAccount();
     return { config, cloud };
   }
   const local = createDbtLocalClient(config);
-  await local.version();
   return { config, local };
 }

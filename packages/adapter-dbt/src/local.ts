@@ -103,12 +103,18 @@ function commandArgs(
 }
 
 export function createDbtLocalClient(config: DbtLocalConfig): DbtLocalClient {
+  let cachedVersion: { value: string; expiresAt: number } | undefined;
   return {
     async version(signal) {
+      signal?.throwIfAborted();
+      if (cachedVersion && cachedVersion.expiresAt > Date.now())
+        return cachedVersion.value;
       const result = await runProcess(config, ["--version"], signal);
       if (result.exitCode !== 0)
         throw new Error(result.stderr || "Could not determine dbt version");
-      return result.stdout.trim();
+      const value = result.stdout.trim();
+      cachedVersion = { value, expiresAt: Date.now() + 60_000 };
+      return value;
     },
     async execute(command, options, signal) {
       const result = await runProcess(

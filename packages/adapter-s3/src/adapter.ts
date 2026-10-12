@@ -17,7 +17,6 @@ import {
   s3ConnectionSchema,
 } from "./context.js";
 import { s3Health } from "./health.js";
-import { s3Signals } from "./signals.js";
 import { browserPage } from "./pages/browser.js";
 import { fileBrowserPage } from "./pages/buckets.js";
 import {
@@ -28,6 +27,7 @@ import {
   preview,
   versions,
 } from "./resources/s3.js";
+import { s3Signals } from "./signals.js";
 
 export function createS3Adapter(
   createClient: (config: S3Config) => S3Client = createS3Client,
@@ -47,6 +47,7 @@ export function createS3Adapter(
         label: "S3-compatible storage",
         description: "AWS S3, MinIO, or a compatible endpoint.",
         schema: s3ConnectionSchema,
+        contextIdleTimeoutMs: 300_000,
       },
     },
     context: async (config: S3Config) => {

@@ -64,6 +64,8 @@ export interface ConnectionMethodDefinition {
   readonly description?: string;
   /** Defaults to `parallel`; `serial` queues requests for this method. */
   readonly requestConcurrency: ConnectionRequestConcurrency;
+  /** Retain the adapter context after a request; 0 (default) disposes immediately. */
+  readonly contextIdleTimeoutMs?: number;
   /** Zod object schema for this method's fields (excludes `method`). */
   readonly schema: z.ZodTypeAny;
   /**
@@ -203,6 +205,7 @@ export interface DefineAdapterOptions<TContext, TConfig> {
         description?: string;
         /** Defaults to `parallel`; `serial` queues requests for this method. */
         requestConcurrency?: ConnectionRequestConcurrency;
+        contextIdleTimeoutMs?: number;
         schema: z.ZodTypeAny;
       }
     | {
@@ -215,6 +218,7 @@ export interface DefineAdapterOptions<TContext, TConfig> {
             description?: string;
             /** Defaults to `parallel`; `serial` queues requests for this method. */
             requestConcurrency?: ConnectionRequestConcurrency;
+            contextIdleTimeoutMs?: number;
             schema: z.ZodTypeAny;
           }
         >;
