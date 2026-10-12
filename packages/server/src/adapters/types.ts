@@ -44,6 +44,7 @@ export interface LoadedConnectionMethod {
   label: string;
   description?: string;
   requestConcurrency: "parallel" | "serial";
+  contextIdleTimeoutMs: number;
   schema: JsonSchema;
   group?: {
     id: string;
@@ -105,6 +106,10 @@ export interface AdapterExecutionContext {
  * on adapter origin.
  */
 export interface AdapterBackend {
+  /** Release isolated hosts during runtime shutdown or adapter replacement. */
+  close?(): Promise<void>;
+  /** Release the host for a removed or reconfigured service. */
+  invalidateService?(namespace: string): Promise<void>;
   /** Validate a connection object; returns the parsed value. */
   validateConnection(connection: unknown): unknown;
   /** Probe: instantiate (and dispose) against a connection. */

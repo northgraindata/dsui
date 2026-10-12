@@ -92,3 +92,57 @@ connection fields, wrap its reads and commands as resources and actions, and
 compose the result with shared DSUI components. Private adapters are an
 extension path for unsupported services, not a requirement for using the
 built-in adapters.
+
+## Reuse clients between requests
+
+A connection method can opt into retaining its context between reads:
+
+```ts
+connectionMethods: {
+  api: {
+    label: "API",
+    schema: apiConnectionSchema,
+    contextIdleTimeoutMs: 300_000,
+  },
+}
+```
+
+`contextIdleTimeoutMs` defaults to `0`: the host calls `disposeContext` after
+that request, before returning its response. Positive values retain the client
+until the configured number of milliseconds has elapsed after the last
+completed request. A running operation cannot expire. Values must be integers
+between `0` and `2147483647`; grouped connection methods declare this on each
+leaf method.
+
+The server retains isolated host processes per service for five minutes of
+idle time, or longer when the method requests a longer context timeout. Host
+retention is capped at 16 processes per adapter. Idle hosts can be evicted;
+when every retained host is busy, another service uses an ephemeral host.
+Context retention is an optimization, not a guarantee of session durability.
+
+Page, resource, and health requests for one service run sequentially in its
+host; different services can run concurrently. Actions, scheduled jobs, and
+unscoped connection tests use separate ephemeral hosts, so a long command does
+not block page reads. `requestConcurrency: "serial"` still queues all calls for
+that adapter method, including actions and jobs, when an external resource
+requires exclusive access.
+
+Retained contexts are never shared between services or connection
+configurations. Stores and resource execution scopes are recreated per request,
+so reads see persisted updates made by isolated actions and jobs. No resource
+result cache is introduced. Removing a service, replacing an adapter, and
+runtime shutdown release its hosts. A failed, timed-out, or cancelled request
+is not replayed automatically.
+
+Keep context creation lightweight; explicit connection testing and `health`
+should perform availability probes. Always release sockets, pools, and database
+instances through `disposeContext`. DuckDB file methods keep the default `0`
+to release their file lock after every operation, even while their host stays
+warm. Closing a DuckDB connection alone is insufficient; close its database
+instance too.
+
+The official dbt, Airflow, PostgreSQL, and S3 methods retain contexts for five
+minutes. Local dbt caches successful CLI version probes for sixty seconds;
+failed or cancelled probes are not cached, and other health checks still run.
+These policies apply in the DSUI server; direct SDK callers continue to own
+instance disposal explicitly.

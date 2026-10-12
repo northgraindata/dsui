@@ -414,7 +414,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
    */
   const syncAdapters = async (loaded: DsuiConfig) => {
     if (adapterSync !== undefined) return adapterSync;
-    const signature = JSON.stringify(Object.keys(loaded.adapters ?? {}).sort());
+    const signature = JSON.stringify(
+      Object.entries(loaded.adapters ?? {})
+        .filter(([, entry]) => isAdapterSource(entry))
+        .sort(([left], [right]) => left.localeCompare(right)),
+    );
     if (adaptersLoaded && signature === adapterSignature) return;
     adapterSync = (async () => {
       const next: LoadedAdapter[] = [];
@@ -467,7 +471,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       // The previous registry is only replaced once every adapter has been
       // attempted, so a failed adapter leaves its working siblings in place
       // instead of clearing the registry and reporting them all as unknown.
+      const previous = registry.list();
       registry.reset(next);
+      await Promise.all(previous.map((adapter) => adapter.backend.close?.()));
       for (const [id, override] of Object.entries(loaded.adapters ?? {}))
         if (!isAdapterSource(override)) registry.applyMetadata(id, override);
       adapterSignature = signature;
@@ -505,7 +511,22 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       throw new Error(
         `Service IDs are managed twice; remove them from one source: ${duplicates.join(", ")}`,
       );
+    const previousConfig = config;
     config = loaded;
+    await Promise.all(
+      previousConfig.services.map(async (service) => {
+        const next = loaded.services.find((entry) => entry.id === service.id);
+        if (
+          !next ||
+          next.adapter !== service.adapter ||
+          JSON.stringify(next.connection) !== JSON.stringify(service.connection)
+        )
+          await registry
+            .list()
+            .find((adapter) => adapter.id === service.adapter)
+            ?.backend.invalidateService?.(service.id);
+      }),
+    );
     await syncAdapters(loaded);
     await syncPlugins(loaded);
     pluginJobs.refreshDefinitions();
@@ -562,6 +583,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       unsubscribeSignalJobs();
       await pluginJobs.close();
       await pluginRuntime.close();
+      await Promise.all(
+        registry.list().map((adapter) => adapter.backend.close?.()),
+      );
       database.close();
     },
   };
