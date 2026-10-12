@@ -63,7 +63,11 @@ export function PromptNavigator({
       .includes(query.trim().toLowerCase()),
   );
   return (
-    <nav className="da-prompt-nav" ref={root} aria-label="Prompts in this chat">
+    <nav
+      className="da-prompt-nav"
+      ref={root}
+      aria-label="Messages in this chat"
+    >
       <button
         type="button"
         className="da-prompt-toggle"
@@ -72,19 +76,19 @@ export function PromptNavigator({
         onClick={() => setOpen(!open)}
         disabled={!prompts.length}
       >
-        Prompts <span>{prompts.length}</span> ▾
+        Messages <span>{prompts.length}</span> ▾
       </button>
       {open && (
         <section
           className="da-prompt-menu"
           id={id}
-          aria-label="Jump to a prompt"
+          aria-label="Jump to a message"
         >
-          <strong>Jump to a prompt</strong>
+          <strong>Jump to a message</strong>
           <input
             ref={search}
-            aria-label="Search prompts"
-            placeholder="Search prompts…"
+            aria-label="Search messages"
+            placeholder="Search messages…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -105,7 +109,7 @@ export function PromptNavigator({
               </li>
             ))}
           </ol>
-          {!visible.length && <p>No matching prompts.</p>}
+          {!visible.length && <p>No matching messages.</p>}
         </section>
       )}
     </nav>
