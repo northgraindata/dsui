@@ -41,6 +41,22 @@ function display(value: unknown): string {
   return JSON.stringify(value);
 }
 
+function horizontalAxisTicks(min: number, max: number): number[] {
+  const roughStep = (max - min || 1) / 5;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
+  let step = magnitude;
+  if (normalized > 5) step *= 10;
+  else if (normalized > 2) step *= 5;
+  else if (normalized > 1) step *= 2;
+
+  const start = Math.floor(min / step);
+  const end = Math.max(start + 1, Math.ceil(max / step));
+  return Array.from({ length: end - start + 1 }, (_, index) =>
+    Number(((start + index) * step).toPrecision(12)),
+  );
+}
+
 function Graph({
   rows,
   type,
@@ -336,60 +352,81 @@ function HorizontalBars({
     );
   const min = Math.min(0, ...points.map((point) => point.value));
   const max = Math.max(0, ...points.map((point) => point.value));
-  const span = max - min || 1;
-  const zero = ((0 - min) / span) * 100;
+  const ticks = horizontalAxisTicks(min, max);
+  const axisMin = ticks[0];
+  const axisMax = ticks[ticks.length - 1];
+  const span = axisMax - axisMin;
+  const position = (value: number) => ((value - axisMin) / span) * 100;
+  const zero = position(0);
   return (
     <div className="analytics-horizontal-bars">
-      {points.map((point, index) => {
-        const value = ((point.value - min) / span) * 100;
-        return (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share categories; bars have no local state.
-            key={`${point.label}-${index}`}
-            className={`analytics-horizontal-row ${activeBar === index ? "analytics-horizontal-row--active" : ""}`}
-          >
-            <span className="analytics-horizontal-label" title={point.label}>
-              {point.label}
-            </span>
-            <div className="analytics-horizontal-track">
-              <span
-                className="analytics-horizontal-zero"
-                style={{ left: `${zero}%` }}
-              />
-              <button
-                type="button"
-                className="analytics-horizontal-bar"
-                aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}`}
-                style={{
-                  left: `${Math.min(zero, value)}%`,
-                  width: `${Math.max(1, Math.abs(value - zero))}%`,
-                  backgroundColor: accentColor,
-                  transformOrigin: point.value >= 0 ? "left" : "right",
-                  animationDelay: `${index * 45}ms`,
-                }}
-                onMouseEnter={() => setActiveBar(index)}
-                onMouseLeave={() => setActiveBar(null)}
-                onFocus={() => setActiveBar(index)}
-                onBlur={() => setActiveBar(null)}
-                onClick={() => setActiveBar(index)}
-              />
-            </div>
-            {activeBar === index && (
-              <div className="analytics-horizontal-tooltip" role="tooltip">
-                <span>
-                  {x}: {point.label}
-                </span>
-                <strong>
-                  {y}: {display(point.value)} {unit}
-                </strong>
+      <div className="analytics-horizontal-plot">
+        <div className="analytics-horizontal-grid" aria-hidden="true">
+          {ticks.map((tick) => (
+            <span
+              key={tick}
+              className={`analytics-horizontal-gridline ${tick === 0 ? "analytics-horizontal-gridline--zero" : ""}`}
+              style={{ left: `${position(tick)}%` }}
+            />
+          ))}
+        </div>
+        {points.map((point, index) => {
+          const value = position(point.value);
+          return (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share categories; bars have no local state.
+              key={`${point.label}-${index}`}
+              className={`analytics-horizontal-row ${activeBar === index ? "analytics-horizontal-row--active" : ""}`}
+            >
+              <span className="analytics-horizontal-label" title={point.label}>
+                {point.label}
+              </span>
+              <div className="analytics-horizontal-track">
+                <button
+                  type="button"
+                  className="analytics-horizontal-bar"
+                  aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}`}
+                  style={{
+                    left: `${Math.min(zero, value)}%`,
+                    width: `${Math.max(1, Math.abs(value - zero))}%`,
+                    backgroundColor: accentColor,
+                    transformOrigin: point.value >= 0 ? "left" : "right",
+                    animationDelay: `${index * 45}ms`,
+                  }}
+                  onMouseEnter={() => setActiveBar(index)}
+                  onMouseLeave={() => setActiveBar(null)}
+                  onFocus={() => setActiveBar(index)}
+                  onBlur={() => setActiveBar(null)}
+                  onClick={() => setActiveBar(index)}
+                />
               </div>
-            )}
-          </div>
-        );
-      })}
+              {activeBar === index && (
+                <div className="analytics-horizontal-tooltip" role="tooltip">
+                  <span>
+                    {x}: {point.label}
+                  </span>
+                  <strong>
+                    {y}: {display(point.value)} {unit}
+                  </strong>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
       <div className="analytics-horizontal-axis">
-        <span>{display(min)}</span>
-        <span>{display(max)}</span>
+        <div className="analytics-horizontal-axis-values">
+          {ticks.map((tick) => (
+            <span key={tick} style={{ left: `${position(tick)}%` }}>
+              {Math.abs(tick) >= 10000
+                ? new Intl.NumberFormat(undefined, {
+                    notation: "compact",
+                    maximumFractionDigits: 1,
+                  }).format(tick)
+                : display(tick)}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
