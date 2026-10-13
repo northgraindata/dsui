@@ -52,7 +52,7 @@ function Graph({
   height,
 }: {
   rows: Row[];
-  type: Extract<ChartType, "line" | "bar">;
+  type: Extract<ChartType, "line" | "bar" | "area">;
   x: string;
   y: string;
   unit: string;
@@ -150,8 +150,21 @@ function Graph({
             </text>
           </g>
         ))}
-        {type === "line" ? (
+        {type === "line" || type === "area" ? (
           <>
+            {type === "area" && (
+              <polygon
+                className="analytics-area-fill"
+                points={[
+                  `${xAt(0)},${baseline}`,
+                  ...shown.map(
+                    (point, index) => `${xAt(index)},${yAt(point.value)}`,
+                  ),
+                  `${xAt(shown.length - 1)},${baseline}`,
+                ].join(" ")}
+                fill={accentColor}
+              />
+            )}
             <polyline
               className="analytics-line-path"
               points={shown
@@ -231,7 +244,7 @@ function Graph({
           ) : null,
         )}
       </svg>
-      {type === "line" &&
+      {(type === "line" || type === "area") &&
         shown.map((point, index) => (
           <button
             // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share X values; hit targets have no local state.
@@ -286,10 +299,98 @@ function Graph({
           <strong>
             {type === "bar" ? `${y}: ` : ""}
             {display(hoveredPoint.value)} {unit && ` ${unit}`}
-            {type === "line" && !unit && ` ${y}`}
+            {type !== "bar" && !unit && ` ${y}`}
           </strong>
         </div>
       )}
+    </div>
+  );
+}
+
+function HorizontalBars({
+  rows,
+  x,
+  y,
+  unit,
+  accentColor,
+}: {
+  rows: Row[];
+  x: string;
+  y: string;
+  unit: string;
+  accentColor: string;
+}) {
+  const [activeBar, setActiveBar] = useState<number | null>(null);
+  const points = rows
+    .map((row) => ({ label: display(row[x]), value: numeric(row[y]) }))
+    .filter(
+      (point): point is { label: string; value: number } =>
+        point.value !== null,
+    )
+    .slice(0, 12);
+  if (!points.length)
+    return (
+      <div className="analytics-empty-visual">
+        Choose a category field and a numeric value field in the query result.
+      </div>
+    );
+  const min = Math.min(0, ...points.map((point) => point.value));
+  const max = Math.max(0, ...points.map((point) => point.value));
+  const span = max - min || 1;
+  const zero = ((0 - min) / span) * 100;
+  return (
+    <div className="analytics-horizontal-bars">
+      {points.map((point, index) => {
+        const value = ((point.value - min) / span) * 100;
+        return (
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share categories; bars have no local state.
+            key={`${point.label}-${index}`}
+            className={`analytics-horizontal-row ${activeBar === index ? "analytics-horizontal-row--active" : ""}`}
+          >
+            <span className="analytics-horizontal-label" title={point.label}>
+              {point.label}
+            </span>
+            <div className="analytics-horizontal-track">
+              <span
+                className="analytics-horizontal-zero"
+                style={{ left: `${zero}%` }}
+              />
+              <button
+                type="button"
+                className="analytics-horizontal-bar"
+                aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}`}
+                style={{
+                  left: `${Math.min(zero, value)}%`,
+                  width: `${Math.max(1, Math.abs(value - zero))}%`,
+                  backgroundColor: accentColor,
+                  transformOrigin: point.value >= 0 ? "left" : "right",
+                  animationDelay: `${index * 45}ms`,
+                }}
+                onMouseEnter={() => setActiveBar(index)}
+                onMouseLeave={() => setActiveBar(null)}
+                onFocus={() => setActiveBar(index)}
+                onBlur={() => setActiveBar(null)}
+                onClick={() => setActiveBar(index)}
+              />
+            </div>
+            {activeBar === index && (
+              <div className="analytics-horizontal-tooltip" role="tooltip">
+                <span>
+                  {x}: {point.label}
+                </span>
+                <strong>
+                  {y}: {display(point.value)} {unit}
+                </strong>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <div className="analytics-horizontal-axis">
+        <span>{display(min)}</span>
+        <span>{display(max)}</span>
+      </div>
     </div>
   );
 }
@@ -318,7 +419,58 @@ export function Visualization({
         <span>{unit}</span>
       </div>
     );
-  if (type === "line" || type === "bar")
+  if (type === "kpi") {
+    const current = numeric(rows[0]?.[y]);
+    const previous = numeric(rows[0]?.[definition.chart.compareTo ?? ""]);
+    if (current === null || previous === null)
+      return (
+        <div className="analytics-empty-visual">
+          The query must return numeric current and previous period fields.
+        </div>
+      );
+    const change = current - previous;
+    const changeText = `${change > 0 ? "+" : ""}${display(change)}`;
+    const percentage =
+      previous === 0
+        ? null
+        : new Intl.NumberFormat(undefined, {
+            style: "percent",
+            maximumFractionDigits: 1,
+          }).format(change / Math.abs(previous));
+    return (
+      <div className="analytics-kpi">
+        <div className="analytics-kpi-value">
+          <strong style={{ color: definition.styles.accentColor }}>
+            {display(current)}
+          </strong>
+          {unit && <span>{unit}</span>}
+        </div>
+        <div className="analytics-kpi-comparison">
+          <strong>
+            {changeText} {unit}
+          </strong>
+          {percentage && <span>({percentage})</span>}
+          <span>
+            vs {definition.chart.comparisonLabel || "previous period"}
+          </span>
+        </div>
+        <p>
+          Previous: {display(previous)} {unit}
+        </p>
+      </div>
+    );
+  }
+  if (type === "horizontal-bar")
+    return (
+      <HorizontalBars
+        rows={rows}
+        x={x}
+        y={y}
+        unit={unit}
+        accentColor={definition.styles.accentColor}
+      />
+    );
+  if (type === "line" || type === "area" || type === "bar")
     return (
       <Graph
         rows={rows}
