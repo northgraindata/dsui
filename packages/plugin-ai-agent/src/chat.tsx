@@ -1113,7 +1113,7 @@ function renderMarkdown(
   services: ReturnType<typeof mentionServices>,
 ) {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
-  const blocks = [];
+  const blocks: React.ReactNode[] = [];
   let index = 0;
   while (index < lines.length) {
     const line = lines[index] ?? "";
@@ -1151,6 +1151,7 @@ function renderMarkdown(
       )
     ) {
       const headers = splitMarkdownTableRow(line);
+      const headerKeys = stableMarkdownKeys(headers);
       const schemaTable =
         headers.length >= 2 &&
         headers.length <= 3 &&
@@ -1164,6 +1165,7 @@ function renderMarkdown(
         rows.push(splitMarkdownTableRow(lines[index] ?? ""));
         index += 1;
       }
+      const rowKeys = stableMarkdownKeys(rows.map((row) => row.join("\u0000")));
       blocks.push(
         <div className="da-markdown-table-wrap" key={`table:${index}`}>
           <table
@@ -1180,25 +1182,28 @@ function renderMarkdown(
             <thead>
               <tr>
                 {headers.map((cell, cellIndex) => (
-                  <th key={`${cellIndex}:${cell}`}>
+                  <th key={headerKeys[cellIndex]}>
                     {renderInlineMarkdown(cell, services)}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, rowIndex) => (
-                <tr key={`row:${rowIndex}`}>
-                  {headers.map((_, cellIndex) => {
-                    const cell = row[cellIndex] ?? "";
-                    return (
-                      <td key={`${cellIndex}:${cell}`}>
-                        {renderInlineMarkdown(cell, services)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {rows.map((row, rowIndex) => {
+                const cellKeys = stableMarkdownKeys(row);
+                return (
+                  <tr key={rowKeys[rowIndex]}>
+                    {headers.map((_, cellIndex) => {
+                      const cell = row[cellIndex] ?? "";
+                      return (
+                        <td key={cellKeys[cellIndex]}>
+                          {renderInlineMarkdown(cell, services)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>,
@@ -1223,7 +1228,7 @@ function renderMarkdown(
     const listItem = /^\s*([-*+] |\d+\. )(.*)$/.exec(line);
     if (listItem) {
       const ordered = /^\s*\d+\./.test(line);
-      const items = [];
+      const items: React.ReactNode[] = [];
       while (index < lines.length) {
         const item = /^\s*([-*+] |\d+\. )(.*)$/.exec(lines[index] ?? "");
         if (!item || ordered !== /^\s*\d+\./.test(lines[index] ?? "")) break;
@@ -1244,17 +1249,18 @@ function renderMarkdown(
       continue;
     }
     if (line.startsWith("> ")) {
-      const quote = [];
+      const quote: string[] = [];
       while (index < lines.length && (lines[index] ?? "").startsWith("> ")) {
-        quote.push(
-          renderInlineMarkdown((lines[index] ?? "").slice(2), services),
-        );
+        quote.push((lines[index] ?? "").slice(2));
         index += 1;
       }
+      const quoteKeys = stableMarkdownKeys(quote);
       blocks.push(
         <blockquote key={`quote:${index}`}>
           {quote.map((content, quoteIndex) => (
-            <p key={quoteIndex}>{content}</p>
+            <p key={quoteKeys[quoteIndex]}>
+              {renderInlineMarkdown(content, services)}
+            </p>
           ))}
         </blockquote>,
       );
@@ -1277,6 +1283,15 @@ function renderMarkdown(
     );
   }
   return blocks;
+}
+
+function stableMarkdownKeys(values: string[]): string[] {
+  const occurrences = new Map<string, number>();
+  return values.map((value) => {
+    const occurrence = occurrences.get(value) ?? 0;
+    occurrences.set(value, occurrence + 1);
+    return `${value}:${occurrence}`;
+  });
 }
 
 function splitMarkdownTableRow(value: string): string[] {

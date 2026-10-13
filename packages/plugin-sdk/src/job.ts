@@ -13,8 +13,8 @@
  */
 import type { z } from "zod";
 import type {
-  PluginCapabilityCatalog,
   PluginCapabilities,
+  PluginCapabilityCatalog,
   PluginServiceCatalog,
   PluginStorage,
   PluginStores,
