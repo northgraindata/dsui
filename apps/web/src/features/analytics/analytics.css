@@ -548,6 +548,9 @@
     stroke-dashoffset: 1;
     animation: analytics-line-draw 850ms ease-out forwards;
   }
+  .analytics-area-fill {
+    animation: analytics-area-reveal 850ms ease-out both;
+  }
   .analytics-line-point {
     transform-box: fill-box;
     transform-origin: center;
@@ -556,6 +559,10 @@
   .analytics-chart-bar {
     transform-box: fill-box;
     animation: analytics-bar-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .analytics-horizontal-bar {
+    animation: analytics-horizontal-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1)
+      both;
   }
 }
 @keyframes analytics-line-draw {
@@ -582,6 +589,27 @@
     opacity: 1;
     transform: scaleY(1);
   }
+}
+@keyframes analytics-area-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes analytics-horizontal-rise {
+  from {
+    opacity: 0.65;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+.analytics-area-fill {
+  opacity: 0.2;
 }
 .analytics-unit {
   position: absolute;
@@ -698,6 +726,143 @@
 }
 .analytics-metric span {
   color: #9bb5d6;
+}
+.analytics-kpi {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 193px;
+  padding: 18px 8px 12px;
+}
+.analytics-kpi-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.analytics-kpi-value strong {
+  font-size: clamp(36px, 4vw, 58px);
+  letter-spacing: -0.06em;
+}
+.analytics-kpi-value span,
+.analytics-kpi p {
+  color: #9bb5d6;
+  font-size: 12px;
+}
+.analytics-kpi-comparison {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 10px;
+  color: #c7dcf7;
+  font-size: 12px;
+}
+.analytics-kpi-comparison strong {
+  color: #e8f2ff;
+  font-size: 15px;
+}
+.analytics-kpi-comparison span:last-child {
+  color: #9bb5d6;
+}
+.analytics-kpi p {
+  margin: 12px 0 0;
+}
+.analytics-horizontal-bars {
+  padding: 19px 0 10px;
+}
+.analytics-horizontal-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(88px, 32%) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 29px;
+}
+.analytics-horizontal-row--active {
+  z-index: 3;
+}
+.analytics-horizontal-label {
+  overflow: hidden;
+  color: #a9c1e0;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.analytics-horizontal-track {
+  position: relative;
+  height: 18px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(
+    to right,
+    #203754 0 1px,
+    transparent 1px 25%
+  );
+}
+.analytics-horizontal-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #57749b;
+}
+.analytics-page .analytics-horizontal-bar {
+  position: absolute;
+  top: 1px;
+  height: 16px;
+  min-width: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  cursor: default;
+}
+.analytics-page .analytics-horizontal-bar:hover,
+.analytics-page .analytics-horizontal-bar:focus-visible {
+  filter: brightness(1.18);
+}
+.analytics-page .analytics-horizontal-bar:focus-visible {
+  outline: 2px solid #eaf3ff;
+  outline-offset: 2px;
+}
+.analytics-horizontal-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  max-width: min(220px, 85%);
+  padding: 8px 10px;
+  border: 1px solid #376397;
+  border-radius: 8px;
+  background: #0c1e37;
+  box-shadow: 0 8px 24px #0008;
+  color: #eaf3ff;
+  font-size: 11px;
+  pointer-events: none;
+}
+.analytics-horizontal-tooltip span,
+.analytics-horizontal-tooltip strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.analytics-horizontal-tooltip span {
+  color: #9db8dd;
+  margin-bottom: 3px;
+}
+.analytics-horizontal-axis {
+  display: grid;
+  grid-template-columns: minmax(88px, 32%) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+  color: #8da6cc;
+  font-size: 11px;
+}
+.analytics-horizontal-axis span:first-child {
+  grid-column: 2;
+  justify-self: start;
+}
+.analytics-horizontal-axis span:last-child {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
 }
 .analytics-table-wrap {
   max-height: 213px;
