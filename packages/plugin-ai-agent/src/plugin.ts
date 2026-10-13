@@ -63,6 +63,8 @@ export function createAiAgentPlugin(
     { controller: AbortController; done: Promise<void>; ownerId: string }
   >();
   const requests = new Map<string, number[]>();
+  let globalRequests: number[] = [];
+  const maxRequestsPerMinuteGlobal = 30;
   const maxConcurrentTurns = 8;
   const load = (context: PluginContext<Config>, id: string) => {
     const conversation = read(context, id);
@@ -252,9 +254,17 @@ export function createAiAgentPlugin(
           const recent = (requests.get(ownerId) ?? []).filter(
             (timestamp) => nowMs - timestamp < 60_000,
           );
+          globalRequests = globalRequests.filter(
+            (timestamp) => nowMs - timestamp < 60_000,
+          );
           if (recent.length >= context.config.requestsPerMinute)
             throw new PluginRequestError(
               "Too many agent requests. Please wait a minute and try again.",
+              429,
+            );
+          if (globalRequests.length >= maxRequestsPerMinuteGlobal)
+            throw new PluginRequestError(
+              "The agent has reached its request limit. Please try again later.",
               429,
             );
           if (
@@ -271,6 +281,7 @@ export function createAiAgentPlugin(
               429,
             );
           recent.push(nowMs);
+          globalRequests.push(nowMs);
           while (requests.size >= 10_000) {
             const oldest = requests.keys().next().value;
             if (!oldest) break;
