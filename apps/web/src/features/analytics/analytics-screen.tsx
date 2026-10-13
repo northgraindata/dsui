@@ -1254,34 +1254,49 @@ export function AnalyticsScreen({
                           ...moduleDraft.chart,
                           type: event.target
                             .value as ModuleDefinition["chart"]["type"],
+                          compareTo:
+                            event.target.value === "kpi"
+                              ? moduleDraft.chart.compareTo
+                              : undefined,
+                          comparisonLabel:
+                            event.target.value === "kpi"
+                              ? moduleDraft.chart.comparisonLabel
+                              : undefined,
                         },
                       })
                     }
                   >
                     <option value="metric">Metric</option>
+                    <option value="kpi">KPI comparison</option>
                     <option value="line">Line chart</option>
+                    <option value="area">Area chart</option>
                     <option value="bar">Bar chart</option>
+                    <option value="horizontal-bar">Horizontal bar chart</option>
                     <option value="table">Table</option>
                   </select>
                 </label>
                 <div className="analytics-form-row">
+                  {moduleDraft.chart.type !== "kpi" && (
+                    <label>
+                      X field
+                      <input
+                        value={moduleDraft.chart.x}
+                        onChange={(event) =>
+                          updateModule({
+                            chart: {
+                              ...moduleDraft.chart,
+                              x: event.target.value,
+                            },
+                          })
+                        }
+                        placeholder="month"
+                      />
+                    </label>
+                  )}
                   <label>
-                    X field
-                    <input
-                      value={moduleDraft.chart.x}
-                      onChange={(event) =>
-                        updateModule({
-                          chart: {
-                            ...moduleDraft.chart,
-                            x: event.target.value,
-                          },
-                        })
-                      }
-                      placeholder="month"
-                    />
-                  </label>
-                  <label>
-                    Y field
+                    {moduleDraft.chart.type === "kpi"
+                      ? "Current value field"
+                      : "Y field"}
                     <input
                       value={moduleDraft.chart.y}
                       onChange={(event) =>
@@ -1296,6 +1311,40 @@ export function AnalyticsScreen({
                     />
                   </label>
                 </div>
+                {moduleDraft.chart.type === "kpi" && (
+                  <div className="analytics-form-row">
+                    <label>
+                      Previous period value field
+                      <input
+                        value={moduleDraft.chart.compareTo ?? ""}
+                        onChange={(event) =>
+                          updateModule({
+                            chart: {
+                              ...moduleDraft.chart,
+                              compareTo: event.target.value,
+                            },
+                          })
+                        }
+                        placeholder="previous_revenue"
+                      />
+                    </label>
+                    <label>
+                      Previous period label
+                      <input
+                        value={moduleDraft.chart.comparisonLabel ?? ""}
+                        onChange={(event) =>
+                          updateModule({
+                            chart: {
+                              ...moduleDraft.chart,
+                              comparisonLabel: event.target.value,
+                            },
+                          })
+                        }
+                        placeholder="Previous 30 days"
+                      />
+                    </label>
+                  </div>
+                )}
                 <label>
                   Unit / suffix
                   <input
@@ -1348,7 +1397,8 @@ export function AnalyticsScreen({
                     </select>
                   </label>
                 </div>
-                {moduleDraft.chart.type === "line" && (
+                {(moduleDraft.chart.type === "line" ||
+                  moduleDraft.chart.type === "area") && (
                   <label className="analytics-check-label">
                     <input
                       type="checkbox"
