@@ -69,6 +69,7 @@ export function registerExecuteRoutes(
         !(await deps.pluginRuntime.authorize(principal, "execute", {
           type: "service",
           id: context.req.param("id"),
+          actionId: context.req.param("actionId"),
         })))
     )
       return context.json({ message: "Insufficient permission" }, 403);

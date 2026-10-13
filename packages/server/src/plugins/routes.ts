@@ -9,7 +9,7 @@ import type { PluginRuntime } from "./runtime.js";
 function publicPluginFailure(
   error: unknown,
   fallback: string,
-): { message: string; status: 400 | 403 | 404 | 409 | 422 | 500 } {
+): { message: string; status: 400 | 403 | 404 | 409 | 422 | 429 | 500 } {
   if (
     error instanceof Error &&
     error.name === "PluginRequestError" &&
@@ -21,7 +21,8 @@ function publicPluginFailure(
       status === 403 ||
       status === 404 ||
       status === 409 ||
-      status === 422
+      status === 422 ||
+      status === 429
     )
       return { message: error.message, status };
   }
