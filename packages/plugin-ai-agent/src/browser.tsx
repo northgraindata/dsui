@@ -1,7 +1,7 @@
 import type * as ReactTypes from "react";
 import type * as ReactDOMTypes from "react-dom";
-import { AgentDrawer, AgentLauncher } from "./chat";
-import { initializeReact } from "./react";
+import { AgentDrawer, AgentLauncher } from "./chat/chat";
+import { initializeReact } from "./chat/react";
 export function createComponents(
   react: typeof ReactTypes,
   reactDOM: typeof ReactDOMTypes,

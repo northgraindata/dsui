@@ -9,7 +9,7 @@ import {
   MAX_ATTACHMENTS,
   MAX_FILE_BYTES,
   MAX_TEXT_BYTES,
-} from "./attachments";
+} from "../attachments/attachments";
 import { React } from "./react";
 
 function readFile(file: File): Promise<string> {

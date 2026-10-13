@@ -7,25 +7,35 @@ import {
   type PluginServiceSummary,
   z,
 } from "@northgraindata/dsui-plugin-sdk";
-import { type AgentRuntime, AiSdkRuntime } from "./agent";
-import { validateAttachments } from "./attachment-validation";
+import { type AgentRuntime, AiSdkRuntime } from "./agent/agent";
+import { validateAttachments } from "./attachments/validation";
 import {
   attachmentUploadSchema,
   MAX_ATTACHMENTS,
   MAX_CONVERSATION_ATTACHMENT_BYTES,
-} from "./attachments";
-import { history, owner, read, readAttachmentData, save } from "./database";
-import { mentionServices, serviceMentions } from "./mentions";
+} from "./attachments/attachments";
+import {
+  history,
+  owner,
+  read,
+  readAttachmentData,
+  save,
+} from "./storage/database";
+import { mentionServices, serviceMentions } from "./chat/mentions";
 import {
   type Config,
   type Conversation,
   configSchema,
   toolDescriptions,
   toolNames,
-} from "./model";
-import { configuredModels, modelSecrets, selectModel } from "./model-config";
-import { replyInputSchema, resolveReply } from "./replies";
-import { boundOutput, executeTool, withAbortSignal } from "./tools";
+} from "./agent/model";
+import {
+  configuredModels,
+  modelSecrets,
+  selectModel,
+} from "./agent/model-config";
+import { replyInputSchema, resolveReply } from "./chat/replies";
+import { boundOutput, executeTool, withAbortSignal } from "./agent/tools";
 
 const launcher = defineComponent({
   id: "ai-agent/launcher",

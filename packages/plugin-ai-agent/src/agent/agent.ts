@@ -12,10 +12,10 @@ import {
   tool,
   type UserContent,
 } from "ai";
-import { isTextAttachment } from "./attachments";
-import { readAttachmentData } from "./database";
+import { isTextAttachment } from "../attachments/attachments";
+import { readAttachmentData } from "../storage/database";
 import { type Config, type Conversation, toolDescriptions } from "./model";
-import { replyContext } from "./replies";
+import { replyContext } from "../chat/replies";
 import { responseFormatInstructions } from "./skills";
 import { toolInputSchemas } from "./tools";
 

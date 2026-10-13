@@ -1,7 +1,7 @@
 import { z } from "@northgraindata/dsui-plugin-sdk";
-import { attachmentSchema, MAX_ATTACHMENTS } from "./attachments";
+import { attachmentSchema, MAX_ATTACHMENTS } from "../attachments/attachments";
 import { modelConnectionSchema, namedModelSchema } from "./model-config";
-import { messageReplySchema } from "./replies";
+import { messageReplySchema } from "../chat/replies";
 
 export const configSchema = z.object({
   model: modelConnectionSchema.default({}),

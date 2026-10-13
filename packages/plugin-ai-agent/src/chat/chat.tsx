@@ -17,7 +17,7 @@ import {
 } from "./chat-tabs";
 import { HighlightedMentions, MentionInput } from "./mention-input";
 import { mentionServices } from "./mentions";
-import { conversationSchema } from "./model";
+import { conversationSchema } from "../agent/model";
 import { ModelPicker } from "./model-picker";
 import { PromptNavigator } from "./prompt-navigator";
 import { React } from "./react";

@@ -1,4 +1,4 @@
-import type { Conversation } from "./model";
+import type { Conversation } from "../agent/model";
 
 type Service = { id: string; name: string };
 type ToolRun = Conversation["tools"][number];
