@@ -781,8 +781,20 @@
 .analytics-horizontal-bars {
   padding: 19px 0 10px;
 }
+.analytics-horizontal-plot {
+  position: relative;
+}
+.analytics-horizontal-grid {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: calc(max(88px, 32%) + 10px);
+  pointer-events: none;
+}
 .analytics-horizontal-row {
   position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(88px, 32%) minmax(0, 1fr);
   align-items: center;
@@ -803,17 +815,15 @@
   position: relative;
   height: 18px;
   border-radius: 3px;
-  background: repeating-linear-gradient(
-    to right,
-    #203754 0 1px,
-    transparent 1px 25%
-  );
 }
-.analytics-horizontal-zero {
+.analytics-horizontal-gridline {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 1px;
+  background: #203754;
+}
+.analytics-horizontal-gridline--zero {
   background: #57749b;
 }
 .analytics-page .analytics-horizontal-bar {
@@ -865,14 +875,21 @@
   color: #8da6cc;
   font-size: 11px;
 }
-.analytics-horizontal-axis span:first-child {
+.analytics-horizontal-axis-values {
+  position: relative;
   grid-column: 2;
-  justify-self: start;
+  height: 16px;
 }
-.analytics-horizontal-axis span:last-child {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
+.analytics-horizontal-axis-values span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.analytics-horizontal-axis-values span:first-child {
+  transform: none;
+}
+.analytics-horizontal-axis-values span:last-child {
+  transform: translateX(-100%);
 }
 .analytics-table-wrap {
   max-height: 213px;
