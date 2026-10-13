@@ -1,6 +1,11 @@
 import { chmod, cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { prepareSdk } from "../packages/server/src/adapters/sdk";
+import {
+  materializeHardlinks,
+  materializeSymlinks,
+} from "../packages/server/src/adapters/symlinks";
+import { sdkVersions } from "./release-packages";
 
 const root = resolve(import.meta.dir, "..");
 const output = join(root, "dist", "npm");
@@ -120,7 +125,16 @@ await cp(join(root, "apps", "web", "dist"), join(output, "web"), {
 });
 // Adapters are built from source at runtime, so the package ships the SDK they
 // resolve against instead of bundling each adapter up front.
-await prepareSdk(join(root, "packages"), join(output, "sdk"), version);
+await prepareSdk(join(root, "packages"), join(output, "sdk"));
+await writeFile(
+  join(output, "sdk-versions.json"),
+  `${JSON.stringify(await sdkVersions(), null, 2)}\n`,
+);
+// Ship the SDK's linked dependencies as regular files in the npm package.
+await materializeSymlinks(join(output, "sdk"));
+// Linux installs also share file inodes with Bun's cache. npm's tar stream can
+// exit before completing when it encounters these hardlinks.
+await materializeHardlinks(join(output, "sdk"));
 await mkdir(join(output, "bin"), { recursive: true });
 await writeFile(
   join(output, "bin", "dsui.mjs"),
@@ -177,7 +191,7 @@ await writeFile(
       type: "module",
       bin: { dsui: "bin/dsui.mjs" },
       exports: { "./plugin-sdk": "./dist/plugin-sdk.mjs" },
-      files: ["bin", "dist", "sdk", "web"],
+      files: ["bin", "dist", "sdk", "web", "sdk-versions.json"],
       engines: { node: ">=18" },
       dependencies: { bun: bunVersion },
       repository: {

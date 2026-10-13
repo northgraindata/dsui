@@ -53,6 +53,7 @@ export function AdapterWorkspace({
   const pageLink = (item: string, icons: boolean) => (
     <Link
       key={item}
+      data-dsui-overlay-target={`service.workspace.page.${item === "/" ? "overview" : item.slice(1)}`}
       activeOptions={{ exact: true }}
       to="/services/$serviceId/$"
       params={{ serviceId: service.id, _splat: item.slice(1) }}
@@ -84,12 +85,19 @@ export function AdapterWorkspace({
             </small>
           </div>
         </div>
-        <nav className="adapter-pages" aria-label="Adapter pages">
+        <nav
+          className="adapter-pages"
+          aria-label="Adapter pages"
+          data-dsui-overlay-target="service.workspace.navigation"
+        >
           {pages.map((item) => pageLink(item, true))}
         </nav>
       </aside>
       <div className="adapter-main">
-        <header className="adapter-heading flex items-center justify-between">
+        <header
+          className="adapter-heading flex items-center justify-between"
+          data-dsui-overlay-target="service.workspace.header"
+        >
           <div className="adapter-heading-identity">
             <ServiceMark
               adapter={service.adapter}
@@ -107,7 +115,9 @@ export function AdapterWorkspace({
           results={pluginSlots.results}
           error={pluginSlots.error}
         />
-        {children}
+        <div data-dsui-overlay-target="service.workspace.content">
+          {children}
+        </div>
       </div>
     </div>
   );

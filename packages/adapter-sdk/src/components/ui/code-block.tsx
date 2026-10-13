@@ -15,7 +15,7 @@ export function CodeBlock({ node, context }: ComponentProps) {
   const value = resolve(props.value, dataContext) ?? "";
   const language = resolve(props.language, dataContext) ?? "text";
   return (
-    <div className="resource-code-block">
+    <div className="resource-code-block" data-dsui-overlay-target="code.block">
       <h3>{label}</h3>
       <div>
         <pre>

@@ -5,6 +5,12 @@ import { getPluginShellActions, getPluginSlots } from "../../api";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
+const hostRenderedSlots = new Set([
+  "dashboard.service-card.trailing",
+  "service.workspace.after-header",
+  "sidebar.profile",
+]);
+
 export function usePluginSlotBatch(slot: string, serviceIdsKey?: string) {
   const [results, setResults] = useState<PluginSlotResult[]>([]);
   const [error, setError] = useState<string>();
@@ -95,7 +101,10 @@ export function PluginSlot({
   error?: string;
   fallback?: ReactNode;
 }) {
-  const selected = results.filter((result) => result.serviceId === serviceId);
+  const selected = results.filter(
+    (result) =>
+      result.serviceId === serviceId && hostRenderedSlots.has(result.slot),
+  );
   if (!selected.some((item) => !item.error && item.nodes.length) && fallback)
     return <>{fallback}</>;
   if (!selected.length && !error) return null;

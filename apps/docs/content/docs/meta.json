@@ -6,6 +6,8 @@
     "getting-started",
     "adapters",
     "adapter-sdk",
+    "plugin-sdk",
+    "releases",
     "troubleshooting",
     "contributing"
   ]

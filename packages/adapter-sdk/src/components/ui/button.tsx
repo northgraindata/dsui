@@ -36,6 +36,10 @@ export function Button({ client, node, context }: ComponentProps) {
           )
         )
           return;
+        if (props.overlay) {
+          client.openOverlay?.(props.overlay);
+          return;
+        }
         if (link) {
           client.navigate(link);
           return;
@@ -50,6 +54,8 @@ export function Button({ client, node, context }: ComponentProps) {
               setActionError(result.message ?? "Action failed");
               return;
             }
+            if (props.successOverlay)
+              client.openOverlay?.(props.successOverlay);
             if (!props.successLink) return;
             const resultData =
               result.data && typeof result.data === "object"

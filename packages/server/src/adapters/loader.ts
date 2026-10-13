@@ -42,7 +42,10 @@ export interface AdapterLoadOptions {
       runId?: string;
       signal?: AbortSignal;
       timeoutMs?: number;
+      hostIdleTimeoutMs?: number;
     }): Promise<unknown>;
+    close?(): Promise<void>;
+    invalidateService?(namespace: string): Promise<void>;
   };
   /** Host call budget in ms (actions run long). */
   hostTimeoutMs?: number;
@@ -215,10 +218,13 @@ type RemoteHostRequest = {
   runId?: string;
   signal?: AbortSignal;
   timeoutMs?: number;
+  hostIdleTimeoutMs?: number;
 };
 
 type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
+  close?(): Promise<void>;
+  invalidateService?(namespace: string): Promise<void>;
 };
 
 const serialRequestQueues = new Map<string, Promise<void>>();
@@ -242,12 +248,19 @@ function queueSerialRequest(
 }
 
 export class RemoteBackend implements AdapterBackend {
+  async close(): Promise<void> {
+    await this.host.close?.();
+  }
+
+  async invalidateService(namespace: string): Promise<void> {
+    await this.host.invalidateService?.(namespace);
+  }
   constructor(
     private readonly host: RemoteHost,
     private readonly adapterId: string,
     private readonly connectionMethods: readonly Pick<
       LoadedConnectionMethod,
-      "id" | "requestConcurrency"
+      "id" | "requestConcurrency" | "contextIdleTimeoutMs"
     >[],
   ) {}
 
@@ -261,11 +274,20 @@ export class RemoteBackend implements AdapterBackend {
           : undefined;
     if (typeof methodId !== "string") return this.host.request(request);
     const method = this.connectionMethods.find(({ id }) => id === methodId);
-    if (!method || method.requestConcurrency !== "serial")
-      return this.host.request(request);
+    const scheduled = method
+      ? {
+          ...request,
+          hostIdleTimeoutMs: Math.max(
+            300_000,
+            method.contextIdleTimeoutMs ?? 0,
+          ),
+        }
+      : request;
+    if (method?.requestConcurrency !== "serial")
+      return this.host.request(scheduled);
 
     return queueSerialRequest(`${this.adapterId}:${method.id}`, () =>
-      this.host.request(request),
+      this.host.request(scheduled),
     );
   }
 
@@ -336,7 +358,7 @@ export class RemoteBackend implements AdapterBackend {
     actionId: string,
     connection: unknown,
     input: unknown,
-    _signal?: AbortSignal,
+    signal?: AbortSignal,
     context?: AdapterExecutionContext,
   ): Promise<{
     result:
@@ -350,6 +372,7 @@ export class RemoteBackend implements AdapterBackend {
   }> {
     const result = (await this.request({
       method: "action",
+      signal,
       connection,
       target: actionId,
       input,
@@ -499,6 +522,7 @@ function toConnectionMethods(
       ...(entry.description ? { description: entry.description } : {}),
       requestConcurrency:
         entry.requestConcurrency === "serial" ? "serial" : "parallel",
+      contextIdleTimeoutMs: entry.contextIdleTimeoutMs ?? 0,
       schema: entry.schema ?? {},
       ...(entry.group ? { group: { ...entry.group } } : {}),
     };

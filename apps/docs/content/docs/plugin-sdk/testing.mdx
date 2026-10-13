@@ -1,0 +1,26 @@
+---
+title: Testing plugins
+description: Verify contributions and host behavior separately.
+---
+
+Keep pure definitions and transformations testable without a DSUI server.
+Use Bun tests to validate configuration, route matching, resource outputs, job
+options and storage behavior. SDK tests cover the shared definition semantics;
+plugin tests should cover the behavior your extension contributes.
+
+From the repository root:
+
+```sh
+bun run --filter @northgraindata/dsui-plugin-sdk test
+bun run --filter @northgraindata/dsui-plugin-sdk typecheck
+bun run --filter @northgraindata/dsui-plugin-health test
+bun run --filter @northgraindata/dsui-plugin-health typecheck
+```
+
+Host contracts also need integration checks: service authorization, request error
+redaction, durable jobs and browser bundle loading. These tests belong to product
+CI, which runs when affected SDK or plugin code changes.
+
+Before an SDK release, `bun scripts/verify-sdk-packages.ts plugin-sdk` packs the
+SDKs, installs their tarballs in a separate project and checks server imports and
+a browser subpath build. This verifies package boundaries beyond workspace links.

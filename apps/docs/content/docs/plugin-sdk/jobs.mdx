@@ -1,0 +1,40 @@
+---
+title: Jobs
+description: Schedule and enqueue durable plugin work.
+---
+
+Define work with `defineJob`, then register it with `registry.job(job)`.
+A job can run on demand, on an interval, on a five-field UTC cron schedule or
+in response to declared signal subscriptions.
+
+```ts
+import { defineJob } from "@northgraindata/dsui-plugin-sdk";
+
+const refresh = defineJob({
+  id: "refresh",
+  intervalMs: 60000,
+  timeoutMs: 5000,
+  retry: { maxAttempts: 2, backoffMs: 1000 },
+  run: async ({ context }) => {
+    context.signal.throwIfAborted();
+    context.logger.info("Refreshing plugin data");
+  },
+});
+```
+
+`await context.jobs.enqueue(jobId, input)` enqueues a job owned by the calling
+plugin and returns its `runId`. The input is checked against the job definition.
+Identical queued/running inputs are coalesced atomically; a completed run does
+not prevent another refresh with the same input. Scheduled work uses `defineJob`
+with an interval or cron. Background jobs are trusted plugin operations and run
+outside request identity; they can access the host service catalog even when an
+authorization provider is installed. Job handlers must respect the provided
+abort signal and recheck mutable state before publishing results.
+
+Choose `singleton` for work that must not overlap, or `per-key` for independent
+inputs. `maxAttempts` includes the first attempt. Call `context.reportSideEffect()`
+before an irreversible effect so lease loss or timeout does not cause an unsafe
+automatic retry. Cancellation is cooperative; a handler must honor its abort signal.
+
+The [Monitoring plugin](https://github.com/northgraindata/dsui/blob/main/packages/plugin-monitoring/src/plugin.ts)
+shows sampling that runs without an open dashboard.

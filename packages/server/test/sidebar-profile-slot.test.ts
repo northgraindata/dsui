@@ -40,6 +40,14 @@ test("global profile slots receive the authenticated caller without service acce
           },
         }),
       );
+      registry.slot(
+        defineSlot({
+          id: "help-overlay",
+          slot: "overlay",
+          presentation: { mode: "modal", label: "Help" },
+          render: () => [],
+        }),
+      );
     },
   });
   const runtime = createRuntime({
@@ -66,6 +74,23 @@ test("global profile slots receive the authenticated caller without service acce
   try {
     await runtime.refreshConfig();
     expect((await call()).status).toBe(200);
+    const overlays = await (
+      await call("overlay", {
+        serviceIds: [],
+        pluginId: "identity",
+        slotIds: ["help-overlay"],
+      })
+    ).json();
+    expect(overlays.items).toEqual([
+      {
+        serviceId: "",
+        pluginId: "identity",
+        slotId: "help-overlay",
+        slot: "overlay",
+        presentation: { mode: "modal", label: "Help" },
+        nodes: [],
+      },
+    ]);
     principal = { id: "bob", role: "operator" };
     expect((await call()).status).toBe(200);
     expect(seen).toEqual([

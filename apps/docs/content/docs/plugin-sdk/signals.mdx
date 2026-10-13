@@ -1,0 +1,25 @@
+---
+title: Signals and event reading
+description: Declare events and consume durable event history.
+---
+
+Declare a signal using `registry.signal({ id: "updated", payload: schema,
+type: "success" })`, then publish it with
+`await context.events.emit("updated", payload, serviceId)`. The SDK validates the
+payload and declaration; the host namespaces its ID as `<pluginId>.updated`,
+persists it through the existing signal bus and dispatches subscribed jobs.
+The default signal type is `info`.
+
+## Read persisted events
+
+`context.events.read({ cursor, limit })` reads persisted signals in their stable
+append order, returning `{ items, cursor, hasMore }`. Use `cursor: "latest"` to
+start at the current tail; an omitted cursor replays the available history.
+Page sizes are 1–500. Store the returned cursor atomically with processing results
+in plugin storage and deduplicate effects by event ID. Empty pages can still
+advance the cursor because the host filters events by service visibility. Signals
+without a service are visible only to installation administrators or background
+jobs. A cursor is specific to one DSUI database; it is not a timestamp.
+
+`events.read` is an optional host capability. Check that the target host provides
+it before relying on event replay. See [compatibility](/docs/plugin-sdk/release).

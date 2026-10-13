@@ -2,6 +2,7 @@ import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { ComponentType, ReactNode } from "react";
 import { Chart } from "../components/chart";
 import type { RendererClient } from "../types/renderer-types";
+import { lookupComponent } from "./component-lookup";
 
 export interface ComponentProps {
   client: RendererClient;
@@ -54,11 +55,11 @@ for (const [path, module] of Object.entries(localAdapterComponents)) {
     type: "sync",
     component: module.default,
   });
-  components.set(`./${file}.tsx`, {
+  components.set(`${adapterId}:./${file}.tsx`, {
     type: "sync",
     component: module.default,
   });
-  components.set(`./components/${file}.tsx`, {
+  components.set(`${adapterId}:./components/${file}.tsx`, {
     type: "sync",
     component: module.default,
   });
@@ -75,5 +76,5 @@ export function resolveComponent(
   id: string,
   path?: string,
 ): ComponentEntry | null {
-  return components.get(path ?? "") ?? components.get(id) ?? null;
+  return lookupComponent(components, id, path);
 }

@@ -4,9 +4,6 @@ import type { DbtContext } from "../context.js";
 
 export const runs = defineResource({
   id: "runs",
-  description:
-    "List dbt Cloud runs or the latest local run from run_results.json.",
-  policy: "metadata",
   query: async (_input: undefined, ctx: DbtContext) => {
     if (ctx.cloud) return ctx.cloud.listRuns();
     if (ctx.config.method !== "local")

@@ -1,4 +1,4 @@
-name: CI
+name: Product
 
 on:
   pull_request:
@@ -15,115 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.12
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # TODO(baseline): 59 pre-existing violations fail this job today:
-      # conditional hooks, import cycles, floating promises, undeclared
-      # dependencies, index keys and evolving types. They are reported, not
-      # suppressed, so the debt stays visible while it is paid down.
-      - name: Check lint
-        run: bun run lint
-
-  format:
-    name: Format check
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.12
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      # TODO(baseline): 2 pre-existing formatting violations fail this job
-      # today: packages/ui/src/components/data-table.tsx and
-      # scripts/prepare-sdk.ts. `bun run format` clears both.
-      - name: Check formatting
-        run: bun run format:check
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.12
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run workspace tests
-        run: bun run test
-
-  typecheck:
-    name: Typecheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.12
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Typecheck workspaces
-        run: bun run typecheck
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.12
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build workspaces
-        run: bun run build
-
-  docker:
-    name: Build container image
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Build image
-        run: docker build --tag ghcr.io/northgraindata/dsui:ci .
+  checks:
+    uses: ./.github/workflows/ci-layer.yml
+    with:
+      layer: product

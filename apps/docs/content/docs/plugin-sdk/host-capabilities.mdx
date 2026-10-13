@@ -1,0 +1,35 @@
+---
+title: Host capabilities and permissions
+description: Access services and installation administration explicitly.
+---
+
+A request that operates on a service must call
+`await context.access.require(serviceId, "inspect" | "execute" | "manage")`
+in addition to declaring its procedure permission. `context.services.get(id)`
+checks service visibility and returns `null` for a missing or inaccessible
+service. The service catalog includes an optional `iconUrl` for presentation.
+
+`context.services.signals(id)` returns the visible service adapter’s declared
+signals as qualified IDs and severity types, without opening a connection.
+A missing or inaccessible service returns `null`. This optional capability
+requires a host that supports the signal catalog; plugins should check for it
+when they depend on enumerating signals before the first event occurs.
+
+## Installation administration
+
+`await context.access.requireAdmin()` requires an owner/admin request identity
+and plugin manage permission. Use it for installation-wide settings or secrets
+that service-level manage permission cannot authorize. Both additions are optional
+host capabilities for compatibility; plugins using them must require a host that
+implements them. Background jobs run as trusted installation operations.
+
+## Compatibility
+
+The new host capabilities are additive. An older plugin can continue using its
+existing pages and storage. A plugin using a capability absent from its host
+receives an explicit unavailable-capability error.
+
+Declare the minimum host capabilities your plugin needs in its README and release
+notes. Matching `PLUGIN_API_VERSION` does not guarantee every optional capability
+exists on an older host. Request permissions are enforced by the host; background
+jobs run as trusted installation code, without request identity.

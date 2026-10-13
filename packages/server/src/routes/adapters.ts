@@ -3,6 +3,7 @@ import type { PublicAdapter } from "@northgraindata/dsui-core";
 import type { Hono } from "hono";
 import type { AdapterRegistry } from "../adapters/registry.js";
 import type { AdapterReadiness, LoadedAdapter } from "../adapters/types.js";
+import { withWebBasePath } from "../web-path.js";
 
 export function publicAdapterPayload(
   adapter: LoadedAdapter,
@@ -36,7 +37,9 @@ export function publicAdapterPayload(
     })),
     ...(adapter.browserBundlePath
       ? {
-          browserComponentsUrl: `/api/v1/adapters/${adapter.id}/components.mjs`,
+          browserComponentsUrl: withWebBasePath(
+            `/api/v1/adapters/${adapter.id}/components.mjs`,
+          ),
         }
       : {}),
   };

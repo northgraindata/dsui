@@ -31,6 +31,7 @@ export function QueryResults({
     <section
       ref={container}
       className="query-results"
+      data-dsui-overlay-target="query.results"
       aria-label="Query results"
       aria-busy={running}
     >

@@ -7,15 +7,17 @@ import type { AnySignalDefinition } from "../signal";
 import type { AnyStoreDefinition } from "../store/index";
 
 /**
- * Current SDK version. Adapter definitions record it so future
- * major versions can detect incompatibility.
+ * Host API contract version, independent of the npm package version.
+ * Adapter definitions record it so the host can detect incompatibility.
  *
  * @example
  * ```ts
  * adapter.sdkVersion === ADAPTER_SDK_VERSION; // true
  * ```
  */
-export const ADAPTER_SDK_VERSION = "0.2.0";
+export const ADAPTER_API_VERSION = "0.2.0";
+/** @deprecated Use ADAPTER_API_VERSION. This is a host contract, not npm SemVer. */
+export const ADAPTER_SDK_VERSION = ADAPTER_API_VERSION;
 
 /**
  * Adapter identity and presentation.
@@ -62,6 +64,8 @@ export interface ConnectionMethodDefinition {
   readonly description?: string;
   /** Defaults to `parallel`; `serial` queues requests for this method. */
   readonly requestConcurrency: ConnectionRequestConcurrency;
+  /** Retain the adapter context after a request; 0 (default) disposes immediately. */
+  readonly contextIdleTimeoutMs?: number;
   /** Zod object schema for this method's fields (excludes `method`). */
   readonly schema: z.ZodTypeAny;
   /**
@@ -126,6 +130,8 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
   readonly kind: "adapter";
   /** SDK version this definition was built with. */
   readonly sdkVersion: string;
+  /** Host contract version; independent from the SDK's npm version. */
+  readonly apiVersion?: string;
   /** Author-declared identity and presentation. */
   readonly metadata: AdapterInfo;
   /** Optional Zod schema validating per-instance configuration. */
@@ -199,6 +205,7 @@ export interface DefineAdapterOptions<TContext, TConfig> {
         description?: string;
         /** Defaults to `parallel`; `serial` queues requests for this method. */
         requestConcurrency?: ConnectionRequestConcurrency;
+        contextIdleTimeoutMs?: number;
         schema: z.ZodTypeAny;
       }
     | {
@@ -211,6 +218,7 @@ export interface DefineAdapterOptions<TContext, TConfig> {
             description?: string;
             /** Defaults to `parallel`; `serial` queues requests for this method. */
             requestConcurrency?: ConnectionRequestConcurrency;
+            contextIdleTimeoutMs?: number;
             schema: z.ZodTypeAny;
           }
         >;

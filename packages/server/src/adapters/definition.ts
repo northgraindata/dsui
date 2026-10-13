@@ -1,5 +1,5 @@
 import {
-  ADAPTER_SDK_VERSION,
+  ADAPTER_API_VERSION,
   type AdapterDefinition,
 } from "@northgraindata/dsui-adapter-sdk";
 import { AdapterLoadError } from "./types.js";
@@ -17,9 +17,10 @@ export function assertAdapterDefinition(
   const metadata = candidate.metadata as Record<string, unknown>;
   if (!metadata || typeof metadata.id !== "string" || !metadata.id)
     throw problem("metadata.id must be a non-empty string");
-  if (candidate.sdkVersion !== ADAPTER_SDK_VERSION)
+  const apiVersion = candidate.apiVersion ?? candidate.sdkVersion;
+  if (apiVersion !== ADAPTER_API_VERSION)
     throw problem(
-      `targets SDK ${String(candidate.sdkVersion)}; host requires ${ADAPTER_SDK_VERSION}`,
+      `targets adapter API ${String(apiVersion)}; host requires ${ADAPTER_API_VERSION}`,
     );
   if (typeof candidate.createContext !== "function")
     throw problem("missing createContext factory");

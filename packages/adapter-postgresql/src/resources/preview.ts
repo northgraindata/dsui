@@ -12,7 +12,6 @@ export const relationPreview = defineResource<
   PostgreSQLContext
 >({
   id: "relation-preview",
-  policy: "preview",
   input: z.object({
     schema: z.string().min(1),
     relation: z.string().min(1),
@@ -33,7 +32,6 @@ export const databaseRelationPreview = defineResource<
   PostgreSQLContext
 >({
   id: "database-relation-preview",
-  policy: "preview",
   input: z.object({
     database: z.string().min(1),
     schema: z.string().min(1),
@@ -55,7 +53,6 @@ export const databaseRelationPreviewRows = defineResource<
   PostgreSQLContext
 >({
   id: "database-relation-preview-rows",
-  policy: "preview",
   input: z.object({
     database: z.string().min(1),
     schema: z.string().min(1),

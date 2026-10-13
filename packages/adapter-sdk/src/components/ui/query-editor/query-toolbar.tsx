@@ -49,6 +49,7 @@ export function QueryToolbar({
         </span>
         <Button
           className="run-query"
+          data-dsui-overlay-target="query.run"
           onClick={onRun}
           disabled={running || !canRun}
         >

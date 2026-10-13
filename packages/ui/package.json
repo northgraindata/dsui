@@ -1,10 +1,11 @@
 {
   "name": "@northgraindata/dsui-ui",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.3.0",
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
+    "./option-select-factory": "./src/components/option-select-factory.tsx",
     "./styles.css": "./src/styles.css"
   },
   "dependencies": {
@@ -20,5 +21,12 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "typescript": "^5.9.2"
-  }
+  },
+  "license": "Apache-2.0",
+  "types": "./src/index.tsx",
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
 }

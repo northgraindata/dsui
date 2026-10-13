@@ -1,0 +1,28 @@
+name: Adapter request
+description: Propose an integration and its most useful workflows.
+labels: [enhancement]
+body:
+  - type: input
+    id: service
+    attributes:
+      label: Service and official documentation
+      description: Name the service and link its official API or integration documentation.
+    validations:
+      required: true
+  - type: textarea
+    id: workflows
+    attributes:
+      label: Workflows to support
+      description: Which resources, pages, and actions would make this integration useful?
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Connection and runtime requirements
+      description: Include versions, authentication methods, deployment model, and any required CLI. Do not provide credentials.
+  - type: textarea
+    id: contribution
+    attributes:
+      label: How you could help
+      description: Optional implementation, testing, documentation, or access to a reproducible test environment.

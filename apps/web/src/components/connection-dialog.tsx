@@ -1,4 +1,4 @@
-import { Button, Input } from "@northgraindata/dsui-ui";
+import { Button, Input, OptionSelect } from "@northgraindata/dsui-ui";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
@@ -290,17 +290,16 @@ export function ConnectionDialog({
               {top?.kind === "group" && (
                 <div className="connection-field">
                   <label htmlFor="connection-method">Connection method</label>
-                  <select
+                  <OptionSelect
                     id="connection-method"
                     value={methodId}
-                    onChange={(event) => chooseMethod(event.target.value)}
-                  >
-                    {top.methods.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={top.methods.map((candidate) => ({
+                      value: candidate.id,
+                      label: candidate.label,
+                      description: candidate.description,
+                    }))}
+                    onValueChange={chooseMethod}
+                  />
                   <small>{method?.description}</small>
                 </div>
               )}

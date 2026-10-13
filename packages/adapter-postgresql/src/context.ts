@@ -17,7 +17,6 @@ export const postgresqlConnectionSchema = z.object({
   connectTimeout: z.coerce.number().int().positive().default(10),
   statementTimeout: z.coerce.number().int().positive().default(60_000),
   applicationName: z.string().min(1).default("dsui"),
-  allowAgentSql: z.boolean().default(false),
 });
 
 export type PostgreSQLConfig = z.output<typeof postgresqlConnectionSchema>;
@@ -41,8 +40,6 @@ export function createPostgreSQLContext(
     client,
     config,
     getClient(database) {
-      if (config.databaseScope === "selected" && database !== config.database)
-        throw new Error("Database is outside this service's configured scope");
       const existing = clients.get(database);
       if (existing) return existing;
       const next = createPostgreSQLClient({ ...config, database });

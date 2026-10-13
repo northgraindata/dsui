@@ -32,6 +32,7 @@ export function createPageScope(
   const pageStores = new Map<string, AnyStoreInstance>();
   const listeners = new Set<() => void>();
   let scopeDisposed = false;
+  const subscriptions = new Map<string, () => void>();
 
   const notifyScope = (): void => {
     if (scopeDisposed) return;
@@ -48,7 +49,11 @@ export function createPageScope(
             Record<string, (...args: never[]) => unknown>
           >,
         );
-        adapterInstance.subscribe(() => notifyScope());
+        if (!subscriptions.has(def.id))
+          subscriptions.set(
+            def.id,
+            adapterInstance.subscribe(() => notifyScope()),
+          );
         return liveView(adapterInstance) as never;
       }
       let pageInstance = pageStores.get(def.id);
@@ -136,6 +141,8 @@ export function createPageScope(
     dispose: () => {
       scopeDisposed = true;
       listeners.clear();
+      for (const unsubscribe of subscriptions.values()) unsubscribe();
+      subscriptions.clear();
       for (const instance of pageStores.values()) instance.destroy();
       pageStores.clear();
     },

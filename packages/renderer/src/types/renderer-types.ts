@@ -25,6 +25,9 @@ export interface RendererClient {
   ): Promise<unknown>;
   /** Navigate to an adapter page path, e.g. "/databases/memory". */
   navigate(path: string): void;
+  /** Open an overlay contributed by the calling plugin, when supported. */
+  openOverlay?(overlayId: string): void;
+  notifyInteraction?(interaction: { target: string; event: string }): void;
 }
 
 export interface DeclarativePageRendererProps {

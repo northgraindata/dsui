@@ -3,7 +3,6 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getPluginCatalog } from "../api";
 import {
-  PluginShellActions,
   PluginSlot,
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
@@ -36,7 +35,7 @@ export function AppChrome({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Route changes refresh permission-dependent plugin navigation.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Navigation refreshes the caller profile even when its pathname is not read.
   useEffect(() => {
     let active = true;
     let retryTimer: number | undefined;
@@ -101,7 +100,6 @@ export function AppChrome({
             <kbd>⌘ K</kbd>
           </button>
         </div>
-        <PluginShellActions />
       </header>
       <div className="app-body">
         {!inAdapter && (
@@ -156,7 +154,11 @@ export function AppChrome({
             </div>
           </aside>
         )}
-        <main id="main-content" className="app-content">
+        <main
+          id="main-content"
+          className="app-content"
+          data-dsui-overlay-target="app.content"
+        >
           <Outlet />
         </main>
       </div>

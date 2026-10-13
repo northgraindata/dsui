@@ -30,6 +30,12 @@ export { CodeBlock } from "./primitives/code-block";
 export type { CodeEditorNode, CodeEditorProps } from "./primitives/code-editor";
 export { CodeEditor } from "./primitives/code-editor";
 export type {
+  CodeExplorerContent,
+  CodeExplorerFile,
+  CodeExplorerProps,
+} from "./primitives/code-explorer";
+export { CodeExplorer } from "./primitives/code-explorer";
+export type {
   CollectionNode,
   CollectionProps,
   FieldReference,
@@ -141,6 +147,7 @@ export type {
 export { Table } from "./primitives/table";
 export type { TabsItem, TabsNode, TabsProps } from "./primitives/tabs";
 export { Tabs } from "./primitives/tabs";
+export { Target, type TargetProps } from "./primitives/target";
 export type { TextInputNode, TextInputProps } from "./primitives/text-input";
 export { TextInput } from "./primitives/text-input";
 export type { ValueFormat, ValueNode, ValueProps } from "./primitives/value";
@@ -150,10 +157,3 @@ export {
   serializeNodes,
   UnserializablePageError,
 } from "./serialize";
-
-export { CodeExplorer } from "./primitives/code-explorer";
-export type {
-  CodeExplorerProps,
-  CodeExplorerFile,
-  CodeExplorerContent,
-} from "./primitives/code-explorer";

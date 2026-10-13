@@ -67,7 +67,6 @@ import {
   dagRunLogs,
   dagRuns,
   latestDagTaskGraph,
-  latestFailedDagRuns,
   recentDagRuns,
   taskInstanceDetails,
   taskInstanceGraph,
@@ -95,12 +94,14 @@ export function createAirflowAdapter(
         description:
           "Enter the Airflow deployment URL and login credentials. JWT authentication is handled automatically.",
         schema: airflowConnectionSchema,
+        contextIdleTimeoutMs: 300_000,
       },
       "airflow-2": {
         label: "Airflow 2.10",
         description:
           "Enter the Airflow deployment URL and Basic-auth username and password configured for the stable REST API.",
         schema: airflow2ConnectionSchema,
+        contextIdleTimeoutMs: 300_000,
       },
     },
     context: async (config: AirflowConfig) => {
@@ -114,13 +115,7 @@ export function createAirflowAdapter(
             }
           : config;
       const client = createClient(clientConfig);
-      try {
-        await client.getVersion();
-        return createContext(client, config);
-      } catch (error) {
-        client.dispose();
-        throw error;
-      }
+      return createContext(client, config);
     },
     disposeContext: (ctx) => ctx.client.dispose(),
     // A remote HTTP API; a couple of seconds is normal for DAG enumeration.
@@ -140,7 +135,6 @@ export function createAirflowAdapter(
       dagOverview,
       dagRuns,
       recentDagRuns,
-      latestFailedDagRuns,
       dagRunDetails,
       dagRunLogs,
       taskInstances,

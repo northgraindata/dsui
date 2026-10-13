@@ -1,0 +1,112 @@
+name: Layer checks
+
+on:
+  workflow_call:
+    inputs:
+      layer:
+        required: true
+        type: string
+      force:
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+      docs: ${{ steps.scope.outputs.docs }}
+      docker: ${{ steps.scope.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+      - id: scope
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_FORCE: ${{ inputs.force }}
+        run: bun scripts/ci-scope.ts '${{ inputs.layer }}'
+  checks:
+    name: ${{ matrix.task }}
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, typecheck, test, build]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            .turbo
+          key: ${{ runner.os }}-bun-${{ inputs.layer }}-${{ matrix.task }}-${{ hashFiles('bun.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-bun-${{ inputs.layer }}-${{ matrix.task }}-${{ hashFiles('bun.lock') }}-
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun scripts/ci-layer.ts '${{ inputs.layer }}' '${{ matrix.task }}'
+      - name: Verify packed SDKs outside the monorepo
+        if: matrix.task == 'build' && inputs.layer != 'product'
+        run: bun scripts/verify-sdk-packages.ts '${{ inputs.layer }}'
+  docs:
+    needs: scope
+    if: needs.scope.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-docs-${{ hashFiles('bun.lock') }}
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun x --no-install biome check apps/docs apps/site
+      - run: bun run --filter @northgraindata/dsui-docs build
+      - run: bun run --filter @northgraindata/dsui-site build
+  docker:
+    needs: scope
+    if: needs.scope.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha,scope=product
+          cache-to: type=gha,scope=product,mode=max
+  status:
+    name: status
+    needs: [scope, checks, docs, docker]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all selected checks to pass
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          CHECKS: ${{ needs.checks.result }}
+          DOCS: ${{ needs.docs.result }}
+          DOCKER: ${{ needs.docker.result }}
+        run: |
+          test "$SCOPE" = success
+          for result in "$CHECKS" "$DOCS" "$DOCKER"; do
+            case "$result" in success|skipped) ;; *) exit 1 ;; esac
+          done

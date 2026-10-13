@@ -1,0 +1,16 @@
+{
+  "title": "Plugin SDK",
+  "pages": [
+    "overview",
+    "create-a-plugin",
+    "pages",
+    "resources",
+    "actions",
+    "jobs",
+    "signals",
+    "stores",
+    "host-capabilities",
+    "testing",
+    "release"
+  ]
+}

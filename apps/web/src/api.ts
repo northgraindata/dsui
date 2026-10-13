@@ -293,7 +293,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`/api/v1${path}`, {
+    response = await fetch(`${import.meta.env.BASE_URL}api/v1${path}`, {
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
       ...init,
@@ -330,10 +330,14 @@ export function getPluginPage(pluginId: string, pageId: string) {
     `/plugins/${encodeURIComponent(pluginId)}/pages/${encodeURIComponent(pageId)}`,
   );
 }
-export function getPluginSlots(slot: string, serviceIds: string[]) {
+export function getPluginSlots(
+  slot: string,
+  serviceIds: string[],
+  options?: { pluginId?: string; slotIds?: string[] },
+) {
   return request<{ items: PluginSlotResult[] }>(
     `/plugins/slots/${encodeURIComponent(slot)}`,
-    { method: "POST", body: JSON.stringify({ serviceIds }) },
+    { method: "POST", body: JSON.stringify({ serviceIds, ...options }) },
   );
 }
 export function getPluginShellActions() {

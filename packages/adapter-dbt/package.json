@@ -7,6 +7,7 @@
     ".": "./src/adapter.ts"
   },
   "scripts": {
+    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,7 +16,17 @@
     "react": "^19.0.0"
   },
   "dsui": {
-    "browser": "./src/browser.ts"
+    "browser": "./src/browser.ts",
+    "image": {
+      "apt": [
+        "python3",
+        "python3-venv",
+        "pipx"
+      ],
+      "pipx": [
+        "dbt-core==1.10.15"
+      ]
+    }
   },
   "devDependencies": {
     "@types/react": "^19.2.0"

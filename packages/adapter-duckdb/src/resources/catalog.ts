@@ -307,7 +307,6 @@ export const tableColumns = defineResource({
 
 export const tablePreview = defineResource({
   id: "table-preview",
-  policy: "preview",
   input: z.object({
     database: z.string(),
     schema: z.string(),

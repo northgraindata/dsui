@@ -113,6 +113,7 @@ async function readModel(ctx: DbtContext, modelId: string) {
     alias: typeof value.alias === "string" ? value.alias : "",
     compiledCode:
       typeof value.compiled_code === "string" ? value.compiled_code : "",
+    rawCode: typeof value.raw_code === "string" ? value.raw_code : "",
     dependencies:
       dependsOn && typeof dependsOn === "object" && !Array.isArray(dependsOn)
         ? ((dependsOn as Record<string, unknown>).nodes ?? [])

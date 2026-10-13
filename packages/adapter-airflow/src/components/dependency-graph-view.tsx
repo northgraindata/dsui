@@ -1030,7 +1030,7 @@ function DependencyGraphContent({
       </Surface>
     );
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2" data-dsui-overlay-target="airflow.dag.graph">
       {error ? (
         <p className="m-0 text-[11px] text-unavailable" role="alert">
           Live refresh failed: {error}

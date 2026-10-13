@@ -3,7 +3,6 @@
  * Page = composition, Context = environment, Adapter = application boundary.
  */
 import { z } from "zod";
-import { ADAPTER_SDK_VERSION } from "./adapter/index";
 
 export {
   type ActionBinding,
@@ -22,6 +21,7 @@ export {
   type InputlessAction,
 } from "./action/index";
 export {
+  ADAPTER_API_VERSION,
   ADAPTER_SDK_VERSION,
   type AdapterDefinition,
   type AdapterHealthCheck,
@@ -167,6 +167,8 @@ export {
   type TabsItem,
   type TabsNode,
   type TabsProps,
+  Target,
+  type TargetProps,
   TextInput,
   type TextInputNode,
   type TextInputProps,

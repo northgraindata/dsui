@@ -1,5 +1,4 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
 import type { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import type { PluginRuntime } from "../plugins/runtime.js";
@@ -24,6 +23,9 @@ export function registerSystemRoutes(
   const webRoot = deps.webRoot ?? process.env.DSUI_WEB_ROOT;
   if (webRoot && existsSync(webRoot)) {
     app.use("/*", serveStatic({ root: webRoot }));
-    app.get("*", serveStatic({ path: join(webRoot, "index.html") }));
+    const index = serveStatic({ root: webRoot, path: "index.html" });
+    app.get("*", (context, next) =>
+      context.req.path.startsWith("/api/") ? next() : index(context, next),
+    );
   }
 }

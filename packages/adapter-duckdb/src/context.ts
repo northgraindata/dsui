@@ -1,5 +1,4 @@
 import { z } from "@northgraindata/dsui-adapter-sdk";
-import type { CatalogInput, CatalogTable } from "./resources/agent.js";
 
 /**
  * DuckDB reference adapter context: runtime dependencies for one
@@ -265,12 +264,6 @@ export interface QueryHistoryEntry {
 }
 
 export interface DuckDbClient {
-  searchCatalog(input: CatalogInput): Promise<CatalogTable[]>;
-  getConstraints(
-    database: string,
-    schema: string,
-    table: string,
-  ): Promise<Record<string, unknown>[]>;
   /** Abort in-flight work when the owning instance is disposed. */
   dispose(): void;
   /** Cancel the currently running statement (cooperative interrupt). */

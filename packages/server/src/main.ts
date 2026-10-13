@@ -72,6 +72,20 @@ async function serve(): Promise<never> {
   // server.port is the port actually bound, which differs from the request
   // when DSUI_PORT is 0 and the OS picks one.
   const server = Bun.serve({ fetch: runtime.app.fetch, hostname, port });
+  let stopping = false;
+  const shutdown = async () => {
+    if (stopping) return;
+    stopping = true;
+    await server.stop(true);
+    await runtime.close();
+    process.exit(0);
+  };
+  process.once("SIGINT", () => {
+    void shutdown();
+  });
+  process.once("SIGTERM", () => {
+    void shutdown();
+  });
   process.stdout.write(
     renderServe({
       url: openableUrl(hostname, server.port ?? port),

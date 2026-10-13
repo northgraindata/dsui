@@ -69,7 +69,7 @@ interface DependencyGraphProps {
 interface DependencyGraphNode {
   readonly kind: "custom";
   readonly props: {
-    component: "airflow/dependency-graph";
+    component: "dbt/dependency-graph";
     props?: DependencyGraphProps;
   };
 }
@@ -897,10 +897,7 @@ export function DependencyGraphView({
   client: ComponentClient;
   node: PageNode;
 }) {
-  if (
-    node.kind !== "custom" ||
-    node.props.component !== "airflow/dependency-graph"
-  )
+  if (node.kind !== "custom" || node.props.component !== "dbt/dependency-graph")
     return null;
   const graphNode = node as DependencyGraphNode;
   const sourceKey = JSON.stringify(graphNode.props.props?.source ?? null);

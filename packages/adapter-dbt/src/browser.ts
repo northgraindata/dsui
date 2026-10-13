@@ -10,7 +10,7 @@ import DependencyGraph from "./components/dependency-graph-view";
 
 export function createComponents(React: typeof import("react")) {
   return {
-    "airflow/dependency-graph": (props: Record<string, unknown>) =>
+    "dbt/dependency-graph": (props: Record<string, unknown>) =>
       React.createElement(DependencyGraph as never, props as never),
   };
 }

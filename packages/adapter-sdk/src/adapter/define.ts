@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { InvalidDefinitionError } from "../shared/errors";
 import {
+  ADAPTER_API_VERSION,
   ADAPTER_SDK_VERSION,
   type AdapterDefinition,
   type ConnectionMethodDefinition,
@@ -94,6 +95,7 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
   return {
     kind: "adapter",
     sdkVersion: ADAPTER_SDK_VERSION,
+    apiVersion: ADAPTER_API_VERSION,
     metadata: { ...metadata },
     connectionSchema,
     connectionMethods,
@@ -154,6 +156,7 @@ function normalizeConnectionMethods(
         methods.push({
           ...child,
           requestConcurrency: child.requestConcurrency ?? "parallel",
+          contextIdleTimeoutMs: child.contextIdleTimeoutMs ?? 0,
           id: childId,
           group,
         });
@@ -163,6 +166,7 @@ function normalizeConnectionMethods(
       methods.push({
         ...entry,
         requestConcurrency: entry.requestConcurrency ?? "parallel",
+        contextIdleTimeoutMs: entry.contextIdleTimeoutMs ?? 0,
         id,
       });
     } else {
@@ -193,8 +197,22 @@ function assertMethodId(id: string): void {
 
 function assertLeaf(
   id: string,
-  entry: { label: string; description?: string; schema: unknown },
+  entry: {
+    label: string;
+    description?: string;
+    schema: unknown;
+    contextIdleTimeoutMs?: number;
+  },
 ): void {
+  if (
+    entry.contextIdleTimeoutMs !== undefined &&
+    (!Number.isSafeInteger(entry.contextIdleTimeoutMs) ||
+      entry.contextIdleTimeoutMs < 0 ||
+      entry.contextIdleTimeoutMs > 2_147_483_647)
+  )
+    throw new InvalidDefinitionError(
+      `Connection method "${id}" contextIdleTimeoutMs must be an integer between 0 and 2147483647`,
+    );
   if (!entry.label)
     throw new InvalidDefinitionError(
       `Connection method "${id}" requires a label`,

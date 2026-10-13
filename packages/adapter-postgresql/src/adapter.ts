@@ -17,11 +17,6 @@ import { databaseQueryPage, queryPage } from "./pages/query.js";
 import { relationPage } from "./pages/relation.js";
 import { schemaPage } from "./pages/schema.js";
 import { activity } from "./resources/activity.js";
-import {
-  agentReadonlyQuery,
-  agentSqlCapabilities,
-  catalogTables,
-} from "./resources/agent.js";
 import { capabilities } from "./resources/capabilities.js";
 import {
   columns,
@@ -36,7 +31,6 @@ import {
   relations,
   schemas,
 } from "./resources/catalog.js";
-import { explorationResources } from "./resources/exploration.js";
 import {
   connectionUsage,
   overview,
@@ -69,6 +63,7 @@ export function createPostgreSQLAdapter() {
         description:
           "Connect to a PostgreSQL server using structured settings. Database is the initial connection target; Database Scope controls whether all accessible databases or only that database are shown.",
         schema: postgresqlConnectionSchema,
+        contextIdleTimeoutMs: 300_000,
       },
     },
     context: async (config) => {
@@ -88,10 +83,6 @@ export function createPostgreSQLAdapter() {
     signals: postgresqlSignals,
     stores: [queryEditorStore, activityFiltersStore],
     resources: [
-      ...explorationResources,
-      catalogTables,
-      agentReadonlyQuery,
-      agentSqlCapabilities,
       serverInfo,
       databases,
       schemas,

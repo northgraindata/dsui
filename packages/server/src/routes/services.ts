@@ -8,8 +8,8 @@ import { allowed } from "../auth.js";
 import type { ConfiguredService, DsuiConfig } from "../config.js";
 import type { ConnectionCipher } from "../db/crypto.js";
 import type { DsuiDatabase, UiServiceRow } from "../db/database.js";
-import type { PluginRuntime } from "../plugins/runtime.js";
 import type { SignalBus } from "../events/signal-bus.js";
+import type { PluginRuntime } from "../plugins/runtime.js";
 import { errorMessage, httpStatus } from "./errors.js";
 
 export const createServiceSchema = z.object({
@@ -160,7 +160,7 @@ export function registerServiceRoutes(
           )
           .map((row) => row.id),
       ];
-      const visible = [];
+      const visible: string[] = [];
       for (const id of ids)
         if (
           !deps.pluginRuntime ||
@@ -252,6 +252,10 @@ export function registerServiceRoutes(
           "Configuration-managed services cannot be deleted here",
         );
       deps.database.deleteUiService(source.service.id);
+      await deps.registry
+        .list()
+        .find((adapter) => adapter.id === source.service.adapter)
+        ?.backend.invalidateService?.(source.service.id);
       deps.refreshJobs?.();
       deps.audit(principal.id, "service.delete", source.service.id, {
         adapter: source.service.adapter,
