@@ -1,4 +1,5 @@
 import type { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { AdapterExecutionError } from "../adapters/types.js";
 import { allowed } from "../auth.js";
 import { errorMessage, httpStatus } from "./errors.js";
@@ -32,6 +33,10 @@ export function registerExecuteRoutes(
     ): void;
   },
 ): void {
+  app.use(
+    "/api/v1/services/:id/actions/:actionId",
+    bodyLimit({ maxSize: 10 * 1024 * 1024 }),
+  );
   app.post("/api/v1/services/:id/resources/:resourceId", async (context) => {
     const principal = context.get("principal");
     if (
@@ -63,6 +68,9 @@ export function registerExecuteRoutes(
 
   app.post("/api/v1/services/:id/actions/:actionId", async (context) => {
     const principal = context.get("principal");
+    const body = (await context.req.json().catch(() => ({}))) as {
+      input?: unknown;
+    };
     if (
       !allowed(principal, "execute") ||
       (deps.pluginRuntime &&
@@ -70,13 +78,11 @@ export function registerExecuteRoutes(
           type: "service",
           id: context.req.param("id"),
           actionId: context.req.param("actionId"),
+          actionInput: body.input,
         })))
     )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
-      const body = (await context.req.json().catch(() => ({}))) as {
-        input?: unknown;
-      };
       const result = await executeServiceAction(
         deps,
         context.req.param("id"),

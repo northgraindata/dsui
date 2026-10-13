@@ -395,6 +395,8 @@ export type PluginResource = {
   id: string;
   /** Present when authorizing one service action rather than all execution. */
   actionId?: string;
+  /** Untrusted request input for action-specific authorization checks. */
+  actionInput?: unknown;
 };
 
 export interface PluginAuthenticationProvider {
