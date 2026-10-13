@@ -171,3 +171,74 @@ gallery has All and Favorites filters. Favorites belong to each user and are
 stored in DSUI's database; dashboard files do not contain them. Existing
 `ownerId` and `visibility` fields in dashboard files are preserved for
 compatibility but do not affect which dashboards appear in the gallery.
+
+## Filters
+
+Filters are optional and defined per dashboard. Add date ranges and selections
+in a dashboard YAML file or in the dashboard editor. For example, a retail
+dashboard can filter by reporting period and region:
+
+```yaml
+filters:
+  - name: period
+    label: Reporting period
+    type: date-range
+  - name: region
+    label: Region
+    type: select
+    options: [North, South]
+```
+
+A date range supplies `period.start` and `period.end`; a selection supplies
+`region`. Bind these to positional SQL parameters in each module that should
+respond to the filter:
+
+```yaml
+source:
+  serviceId: warehouse
+  resourceId: report-query
+  sqlFile: sales/by-day.sql
+  input: { maxRows: 100 }
+  rowsPath: ""
+  parameters: [period.start, period.end, region]
+```
+
+```sql
+SELECT day, revenue FROM sales.daily
+WHERE ($1::date IS NULL OR day >= $1::date)
+  AND ($2::date IS NULL OR day <= $2::date)
+  AND ($3::text IS NULL OR region = $3::text)
+ORDER BY day
+```
+
+Empty filters and modules shown outside a dashboard pass `NULL`. Use optional
+predicates as above. Filter values are passed as PostgreSQL query parameters,
+not inserted into SQL text. Bindings work with PostgreSQL `report-query` modules.
+
+## Click through to details
+
+Line, area, and bar charts can open another module when a viewer clicks a point
+or bar. The clicked `x` value is passed to one named SQL parameter on the target
+module. For example:
+
+```yaml
+chart:
+  type: horizontal-bar
+  x: artist
+  y: plays
+  unit: plays
+  drilldown:
+    module: recent-listens
+    subfolder: spotify
+    parameter: artist
+```
+
+The target module must list `artist` in its `source.parameters`. The module
+editor can configure the destination and binding. The result opens in a side
+panel with the selected value applied.
+
+## PDF export
+
+Choose **Export PDF** in a dashboard toolbar to open the browser print dialog
+with the current tab prepared for PDF output. Choose **Save as PDF** there.
+Export other tabs separately.
