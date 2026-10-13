@@ -5,6 +5,12 @@ description: Commands, mutations, and side effects.
 
 An action is a command. It defines behavior only — never presentation.
 
+An optional `description` on `defineAction` describes the operation for discovery,
+not a UI label. Plugin SDK `context.services.actions(serviceId)` exposes visible
+services' action IDs, descriptions and input schemas without executing them.
+Discovery grants no action execution capability. The AI agent currently lists
+actions only; mutations require a separate permission/confirmation workflow.
+
 ## Inputless action
 
 ```ts

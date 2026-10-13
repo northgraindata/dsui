@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { PluginServiceProbe } from "@northgraindata/dsui-plugin-sdk";
+import {
+  PluginRequestError,
+  type PluginServiceProbe,
+} from "@northgraindata/dsui-plugin-sdk";
 import { Hono } from "hono";
 import { type AdapterLoadOptions, loadAdapter } from "./adapters/loader.js";
 import { AdapterRegistry } from "./adapters/registry.js";
@@ -28,6 +31,8 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerExecuteRoutes } from "./routes/execute.js";
 import {
   connectionFor,
+  executeServiceAction,
+  queryServiceResource,
   registerServiceRoutes,
   serviceSource,
 } from "./routes/services.js";
@@ -123,6 +128,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         id: service.id,
         name,
         adapter: service.adapter,
+        adapterName: registry
+          .list()
+          .find((adapter) => adapter.id === service.adapter)?.metadata.name,
         iconUrl: registry
           .list()
           .find((adapter) => adapter.id === service.adapter)?.metadata.iconUrl,
@@ -145,6 +153,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           id: service.id,
           name,
           adapter: service.adapter,
+          adapterName: registry
+            .list()
+            .find((adapter) => adapter.id === service.adapter)?.metadata.name,
           managedBy: "ui" as const,
           iconUrl: registry
             .list()
@@ -234,15 +245,87 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
               (service) => service.id === id,
             ) ?? null)
           : null,
+      executeAction: async (id, actionId, input, options) => {
+        await pluginRuntime.requireServiceAccess(id, "execute");
+        const result = await executeServiceAction(
+          {
+            registry,
+            database,
+            cipher,
+            getConfig: () => config,
+            refreshConfig,
+            signalBus,
+            audit: (actor, action, target, metadata) =>
+              database.audit(actor, action, target, metadata),
+          },
+          id,
+          actionId,
+          input,
+          options?.signal
+            ? AbortSignal.any([options.signal, AbortSignal.timeout(600000)])
+            : AbortSignal.timeout(600000),
+          options?.origin?.pluginId ?? "plugin",
+          { origin: options?.origin },
+        );
+        if (result.result.status === "error")
+          throw new PluginRequestError(result.result.message, 422);
+        return result.result.data;
+      },
       signals: async (id) => {
         if (!(await pluginRuntime.canAccessService(id))) return null;
         const source = serviceSource(config, database, id);
         if (!source) return null;
+        if (!registry.has(source.service.adapter)) return null;
         const adapter = registry.get(source.service.adapter);
         return adapter.catalog.signals.map((signal) => ({
           id: `${adapter.id}.${signal.id}`,
           type: signal.type,
         }));
+      },
+      listResources: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.resources.map(({ id, inputSchema, description }) => ({
+            id,
+            ...(description !== undefined ? { description } : {}),
+            ...(inputSchema ? { inputSchema } : {}),
+          }));
+      },
+      listActions: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.actions.map(({ id, inputSchema, description }) => ({
+            id,
+            ...(description !== undefined ? { description } : {}),
+            ...(inputSchema ? { inputSchema } : {}),
+          }));
+      },
+      queryResource: async (id, resourceId, input) => {
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error("Insufficient service permission");
+        const result = await queryServiceResource(
+          {
+            registry,
+            database,
+            cipher,
+            getConfig: () => config,
+            refreshConfig,
+          },
+          id,
+          resourceId,
+          input,
+        );
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error(
+            "Service permission was revoked during the resource read",
+          );
+        return result.data;
       },
       probe: async (id, probeOptions) =>
         (await pluginRuntime.canAccessService(id))
@@ -254,6 +337,8 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     {
       storage: (pluginId) => createPluginStorage(dataDir, pluginId),
       stores: (pluginId) => createPluginStores(database, pluginId),
+      plugins: () => pluginRuntime.pluginCapabilities(),
+      audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
         jobs: {
           enqueue: async (jobId, input) => ({

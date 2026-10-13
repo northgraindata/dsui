@@ -48,6 +48,13 @@ test("global profile slots receive the authenticated caller without service acce
           render: () => [],
         }),
       );
+      registry.slot(
+        defineSlot({
+          id: "shell-action",
+          slot: "app.shell.actions",
+          render: () => [],
+        }),
+      );
     },
   });
   const runtime = createRuntime({
@@ -74,6 +81,18 @@ test("global profile slots receive the authenticated caller without service acce
   try {
     await runtime.refreshConfig();
     expect((await call()).status).toBe(200);
+    const shellActions = await (
+      await call("app.shell.actions", { serviceIds: [] })
+    ).json();
+    expect(shellActions.items).toEqual([
+      {
+        serviceId: "",
+        pluginId: "identity",
+        slotId: "shell-action",
+        slot: "app.shell.actions",
+        nodes: [],
+      },
+    ]);
     const overlays = await (
       await call("overlay", {
         serviceIds: [],

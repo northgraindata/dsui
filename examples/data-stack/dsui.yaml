@@ -5,6 +5,18 @@ adapters:
   duckdb:
     package: "@northgraindata/dsui-adapter-duckdb"
 
+plugins:
+  ai-agent:
+    source: local
+    path: packages/plugin-ai-agent
+    enabled: true
+    config:
+      model:
+        provider: openai
+        id: gpt-6-sol
+        # Set your own key here, or use ${DSUI_AGENT_API_KEY}.
+        apiKey: ""
+
 services:
   - id: analytics
     adapter: duckdb

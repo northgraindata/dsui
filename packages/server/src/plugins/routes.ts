@@ -131,6 +131,7 @@ export function registerPluginRoutes(
       slot !== "dashboard.service-card.trailing" &&
       slot !== "service.workspace.after-header" &&
       slot !== "sidebar.profile" &&
+      slot !== "app.shell.actions" &&
       slot !== "overlay"
     )
       return context.json({ message: "Unknown plugin slot" }, 404);
@@ -145,7 +146,9 @@ export function registerPluginRoutes(
     const result: PluginSlotResult[] = [];
     // Global slots carry request identity without requiring visibility of a service.
     const serviceIds =
-      slot === "sidebar.profile" || slot === "overlay"
+      slot === "sidebar.profile" ||
+      slot === "app.shell.actions" ||
+      slot === "overlay"
         ? [""]
         : parsed.data.serviceIds;
     for (const id of new Set(serviceIds)) {

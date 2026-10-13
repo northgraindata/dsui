@@ -15,6 +15,53 @@ A missing or inaccessible service returns `null`. This optional capability
 requires a host that supports the signal catalog; plugins should check for it
 when they depend on enumerating signals before the first event occurs.
 
+Plugins can discover and operate any visible adapter service through the
+generic service catalog:
+
+```ts
+const resources = await context.services.listResources(serviceId);
+const actions = await context.services.listActions(serviceId);
+const result = await context.services.queryResource(
+  serviceId,
+  resourceId,
+  input,
+);
+const actionResult = await context.services.executeAction(
+  serviceId,
+  actionId,
+  input,
+);
+```
+
+Discovery returns the adapter's declared IDs, descriptions, and input schemas
+without opening a connection. The host keeps credentials private, validates
+inputs against the adapter definition, and checks `inspect` for resources and
+`execute` for actions. Plugins do not need to import or name concrete adapters.
+
+Plugins can also discover resources and actions contributed by other visible
+plugins through `context.plugins`:
+
+```ts
+const plugins = await context.plugins.list();
+const resources = await context.plugins.listResources(pluginId);
+const actions = await context.plugins.listActions(pluginId);
+const data = await context.plugins.queryResource(
+  pluginId,
+  resourceId,
+  input,
+);
+const result = await context.plugins.executeAction(
+  pluginId,
+  actionId,
+  input,
+);
+```
+
+The host filters discovery by the caller's plugin inspect permission, validates
+resource and action inputs against their declarations, and checks the permission
+declared on each action before invoking it. Plugin code never receives another
+plugin's context or storage handle.
+
 ## Installation administration
 
 `await context.access.requireAdmin()` requires an owner/admin request identity

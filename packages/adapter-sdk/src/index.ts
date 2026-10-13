@@ -220,6 +220,7 @@ export {
   type InputResource,
   type ResourceBinding,
   type ResourceDefinition,
+  type ResourceMetadata,
   type ResourceReference,
   type ResourceRuntimeContext,
 } from "./resource/index";

@@ -55,6 +55,12 @@
 .app-topbar > * {
   position: relative;
 }
+.app-shell-actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+}
 .app-topbar-search {
   flex: 1;
   display: flex;

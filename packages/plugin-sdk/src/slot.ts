@@ -18,6 +18,7 @@ import { assertNonEmptyId } from "./shared/validators";
  * the host simply renders no contribution rather than failing the plugin.
  */
 export type PluginSlotName =
+  | "app.shell.actions"
   | "dashboard.service-card.trailing"
   | "service.workspace.after-header"
   | "sidebar.profile"
@@ -27,6 +28,11 @@ export type PluginSlotName =
 /** How an overlay contribution is positioned by the host UI. */
 export type PluginOverlayPresentation =
   | { readonly mode: "modal"; readonly label?: string }
+  | {
+      readonly mode: "drawer";
+      readonly label?: string;
+      readonly width?: number;
+    }
   | {
       readonly mode: "anchored";
       /** Stable host target id, never an arbitrary CSS selector. */
@@ -155,6 +161,7 @@ export function defineSlot<
   if (
     options.presentation &&
     options.presentation.mode !== "modal" &&
+    options.presentation.mode !== "drawer" &&
     options.presentation.mode !== "anchored"
   )
     throw new InvalidDefinitionError("Invalid overlay presentation mode");
@@ -183,6 +190,16 @@ export function defineSlot<
     )
       throw new InvalidDefinitionError("Invalid overlay interaction binding");
   }
+  if (
+    options.presentation?.mode === "drawer" &&
+    options.presentation.width !== undefined &&
+    (!Number.isInteger(options.presentation.width) ||
+      options.presentation.width < 320 ||
+      options.presentation.width > 900)
+  )
+    throw new InvalidDefinitionError(
+      "Drawer width must be between 320 and 900 pixels",
+    );
   return {
     kind: "slot",
     id: options.id,

@@ -39,6 +39,30 @@ export function usePluginSlotBatch(slot: string, serviceIdsKey?: string) {
   return { results, error };
 }
 
+/** Global extension controls are contributed by plugins, just like service widgets. */
+export function PluginShellActions() {
+  const { results, error } = usePluginSlotBatch("app.shell.actions");
+  return (
+    <div className="app-shell-actions">
+      {error && (
+        <span role="status">Extension controls could not be loaded</span>
+      )}
+      {results.map((item) => (
+        <PluginErrorBoundary key={`${item.pluginId}/${item.slotId}`}>
+          <DeclarativePageRenderer
+            nodes={item.nodes}
+            client={pluginRendererClient(item.pluginId, (path) =>
+              window.location.assign(
+                `/plugins/${encodeURIComponent(item.pluginId)}/${path.replace(/^\/+/, "")}`,
+              ),
+            )}
+          />
+        </PluginErrorBoundary>
+      ))}
+    </div>
+  );
+}
+
 export function PluginSlot({
   serviceId,
   results,

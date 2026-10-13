@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { CSSProperties } from "react";
 import { getPluginSlots } from "../../api";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
@@ -180,6 +181,7 @@ function OverlayDialog({
   const previousFocus = useRef<Element | null>(null);
   const presentation = contribution?.presentation;
   const anchored = presentation?.mode === "anchored";
+  const drawer = presentation?.mode === "drawer";
   const [height, setHeight] = useState(240);
   useLayoutEffect(() => {
     if (!panel.current) return;
@@ -205,7 +207,7 @@ function OverlayDialog({
   }, []);
   useLayoutEffect(() => {
     const element = panel.current;
-    if (anchored || !element) return;
+    if (anchored || drawer || !element) return;
     const siblings = new Map<HTMLElement, boolean>();
     let branch: HTMLElement = element;
     while (branch.parentElement) {
@@ -262,32 +264,30 @@ function OverlayDialog({
       document.removeEventListener("focusin", keepFocus);
       for (const [sibling, inert] of siblings) sibling.inert = inert;
     };
-  }, [anchored]);
+  }, [anchored, drawer]);
   const label = presentation?.label ?? "Plugin overlay";
-  const style =
-    targetRect && presentation
-      ? anchoredStyle(presentation, targetRect, height)
-      : undefined;
+  let style: CSSProperties | undefined;
+  if (drawer) style = { width: `min(${presentation.width ?? 520}px, 100vw)` };
+  else if (targetRect && presentation)
+    style = anchoredStyle(presentation, targetRect, height);
+  const backdropClass = anchored
+    ? "pointer-events-none fixed inset-0 z-[100]"
+    : drawer
+      ? "fixed inset-0 z-[100] flex justify-end bg-canvas/35"
+      : "fixed inset-0 z-[100] grid place-items-center bg-canvas/45 p-4 backdrop-blur-[2px]";
 
   return (
-    <div
-      className={
-        anchored
-          ? "pointer-events-none fixed inset-0 z-[100]"
-          : "fixed inset-0 z-[100] grid place-items-center bg-canvas/45 p-4 backdrop-blur-[2px]"
-      }
-      role="presentation"
-    >
+    <div className={backdropClass} role="presentation">
       {anchored && presentation.highlight && targetRect && (
         <Spotlight rect={targetRect} close={close} />
       )}
       <section
         ref={panel}
         tabIndex={-1}
-        className={`relative max-h-[min(680px,90vh)] w-full max-w-2xl overflow-auto rounded-xl border border-border-strong bg-surface-raised p-5 shadow-2xl ${anchored ? "pointer-events-auto" : ""}`}
+        className={`relative max-h-[min(680px,90vh)] w-full max-w-2xl overflow-auto rounded-xl border border-border-strong bg-surface-raised p-5 shadow-2xl ${anchored ? "pointer-events-auto" : ""} ${drawer ? "h-full max-h-none max-w-none rounded-none border-y-0 border-r-0 p-0" : ""}`}
         style={style}
         role="dialog"
-        aria-modal={!anchored}
+        aria-modal={!anchored && !drawer}
         aria-label={label}
       >
         <header className="mb-4 flex items-center justify-between">
@@ -373,6 +373,14 @@ export function PluginOverlayLayer() {
     window.addEventListener(openEvent, onOpen);
     return () => window.removeEventListener(openEvent, onOpen);
   }, [router]);
+  useEffect(() => {
+    const onClose = (event: Event) => {
+      const detail = (event as CustomEvent<{ pluginId?: string }>).detail;
+      if (!detail?.pluginId || detail.pluginId === active?.pluginId) close();
+    };
+    window.addEventListener("dsui:overlay-close", onClose);
+    return () => window.removeEventListener("dsui:overlay-close", onClose);
+  }, [active?.pluginId, close]);
   useEffect(() => {
     if (!active) return;
     const onKey = (event: KeyboardEvent) => {

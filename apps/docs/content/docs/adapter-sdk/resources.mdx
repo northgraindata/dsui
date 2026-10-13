@@ -48,6 +48,33 @@ schemas({ database: "ANALYTICS" }) // → ResourceBinding
 
 The `input` schema drives both runtime validation and TypeScript inference. The `query` function receives the parsed output, not the raw input.
 
+## Discovery metadata
+
+Resources can describe their purpose and access policy for generic consumers,
+including AI agents. The host publishes these fields alongside the input schema
+through Plugin SDK `context.services.resources(serviceId)`.
+
+```ts
+defineResource({
+  id: "sample-orders",
+  description: "Read up to 10 sample orders from the selected region.",
+  policy: "preview",
+  input: z.object({ region: z.string() }),
+  query: ({ region }, ctx: MyContext) => ctx.client.sampleOrders(region, 10),
+});
+```
+
+`policy` is optional and accepts `metadata`, `preview`, or `sql`. Consumers can
+disable preview or SQL reads without knowing adapter or resource IDs. Tag every
+sample-data/SQL resource, including lower-level aliases. Legacy untagged resources
+remain discoverable. These declarations do not enforce read-only execution:
+the adapter must enforce query safety, permissions, limits and timeouts itself.
+
+For deep links, a resource may return `navigation: [{ label, path, ...identity }]`
+alongside its data. `path` is adapter-relative, such as `/orders/encoded-id`;
+encode variable path segments. The AI plugin scopes it to the service route.
+Consumers must not guess paths from adapter identities.
+
 ## Refresh strategies
 
 Resources default to `manual()` — fetched on mount and on explicit invalidation only.

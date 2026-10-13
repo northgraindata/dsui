@@ -79,6 +79,11 @@ const sidebarHelp = defineSlot({
 });
 ```
 
+Use `presentation: { mode: "drawer", width: 560 }` for a right-side panel that
+fills the viewport height. The width defaults to 520 pixels and is limited to
+320–900 pixels; on narrow screens the drawer uses the available viewport width.
+The host still handles Escape and focus restoration.
+
 Use `presentation: { mode: "anchored", target: "service.workspace.header" }`
 to place a non-modal panel beside a stable host target. Add `path: "/services/example/data"` to navigate in the current tab before locating the target and `highlight: true` to dim the surrounding screen. The host waits for asynchronous pages, scrolls the target into view and keeps the panel inside the viewport. Targets are named by the
 host and exposed through `data-dsui-overlay-target`; plugins cannot pass CSS

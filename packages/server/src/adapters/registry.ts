@@ -54,6 +54,10 @@ export class AdapterRegistry {
     return adapter;
   }
 
+  has(id: string): boolean {
+    return this.adapters.has(id);
+  }
+
   list(): LoadedAdapter[] {
     return [...this.adapters.values()];
   }
