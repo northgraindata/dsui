@@ -1,6 +1,13 @@
 import { ApiError } from "../../api";
 
-export type ChartType = "metric" | "line" | "bar" | "table";
+export type ChartType =
+  | "metric"
+  | "kpi"
+  | "line"
+  | "area"
+  | "bar"
+  | "horizontal-bar"
+  | "table";
 export interface ModuleDefinition {
   name: string;
   subfolder?: string;
@@ -13,7 +20,14 @@ export interface ModuleDefinition {
     sqlFile?: string;
     rowsPath: string;
   };
-  chart: { type: ChartType; x: string; y: string; unit: string };
+  chart: {
+    type: ChartType;
+    x: string;
+    y: string;
+    unit: string;
+    compareTo?: string;
+    comparisonLabel?: string;
+  };
   styles: {
     accentColor: string;
     height: "compact" | "regular" | "tall";
