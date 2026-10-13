@@ -1,5 +1,9 @@
 import type { ReactNode, RefObject } from "react";
-import { type MentionService, serviceMentions } from "./mentions";
+import {
+  type MentionService,
+  matchingMentionServices,
+  serviceMentions,
+} from "./mentions";
 import { React } from "./react";
 
 export function HighlightedMentions({
@@ -59,13 +63,7 @@ export function MentionInput({
   const overlay = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const query = focused && !dismissed ? queryAt(value, caret) : undefined;
-  const matches = query
-    ? services.filter((service) =>
-        `${service.handle} ${service.name} ${service.id}`
-          .toLowerCase()
-          .includes(query.search),
-      )
-    : [];
+  const matches = query ? matchingMentionServices(services, query.search) : [];
   const index = Math.min(selected, Math.max(0, matches.length - 1));
   const querySearch = query?.search;
   useEffect(() => {
@@ -125,9 +123,17 @@ export function MentionInput({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => choose(service)}
               >
-                <span>
+                <span className="da-mention-service-icon" aria-hidden="true">
+                  {service.iconUrl ? <img src={service.iconUrl} alt="" /> : "@"}
+                </span>
+                <span className="da-mention-service-copy">
                   <strong>@{service.handle}</strong>
                   <small>{service.name}</small>
+                  {service.adapter && (
+                    <span className="da-mention-adapter">
+                      {service.adapter}
+                    </span>
+                  )}
                 </span>
               </button>
             ))}

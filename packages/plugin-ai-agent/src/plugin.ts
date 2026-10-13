@@ -8,20 +8,6 @@ import {
   z,
 } from "@northgraindata/dsui-plugin-sdk";
 import { type AgentRuntime, AiSdkRuntime } from "./agent/agent";
-import { validateAttachments } from "./attachments/validation";
-import {
-  attachmentUploadSchema,
-  MAX_ATTACHMENTS,
-  MAX_CONVERSATION_ATTACHMENT_BYTES,
-} from "./attachments/attachments";
-import {
-  history,
-  owner,
-  read,
-  readAttachmentData,
-  save,
-} from "./storage/database";
-import { mentionServices, serviceMentions } from "./chat/mentions";
 import {
   type Config,
   type Conversation,
@@ -34,8 +20,23 @@ import {
   modelSecrets,
   selectModel,
 } from "./agent/model-config";
-import { replyInputSchema, resolveReply } from "./chat/replies";
 import { boundOutput, executeTool, withAbortSignal } from "./agent/tools";
+import {
+  attachmentUploadSchema,
+  MAX_ATTACHMENTS,
+  MAX_CONVERSATION_ATTACHMENT_BYTES,
+} from "./attachments/attachments";
+import { validateAttachments } from "./attachments/validation";
+import { mentionServices, serviceMentions } from "./chat/mentions";
+import { replyInputSchema, resolveReply } from "./chat/replies";
+import { conversationTitle, generatedTitle } from "./chat/title";
+import {
+  history,
+  owner,
+  read,
+  readAttachmentData,
+  save,
+} from "./storage/database";
 
 const launcher = defineComponent({
   id: "ai-agent/launcher",
@@ -45,18 +46,6 @@ const drawer = defineComponent({
   id: "ai-agent/drawer",
   path: "./browser",
 });
-
-function generatedTitle(raw: string): string {
-  const firstLine = raw.split(/\r?\n/, 1)[0] ?? "";
-  return firstLine
-    .replace(/^\s*(?:title|tytuł)\s*:\s*/i, "")
-    .replace(/^\s*[#"'`]+|["'`]+\s*$/g, "")
-    .replace(/[\p{Cc}\p{Cf}]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 70)
-    .trim();
-}
 
 async function requirePluginInspect(
   context: PluginContext<Config>,
@@ -75,6 +64,20 @@ export function createAiAgentPlugin(
   >();
   const load = (context: PluginContext<Config>, id: string) => {
     const conversation = read(context, id);
+    if (conversation.title === "New chat") {
+      const firstMessage = conversation.messages.find(
+        (message) => message.role === "user",
+      );
+      const title = conversationTitle(
+        firstMessage?.text ?? "",
+        firstMessage?.attachments.map(({ name }) => name) ?? [],
+      );
+      if (title !== conversation.title) {
+        conversation.title = title;
+        save(context, conversation);
+      }
+    }
+
     if (conversation.status === "running" && !active.has(id)) {
       conversation.status = "error";
       conversation.error =
@@ -246,7 +249,10 @@ export function createAiAgentPlugin(
             : {
                 id: crypto.randomUUID(),
                 ownerId: owner(context),
-                title: "New chat",
+                title: conversationTitle(
+                  input.message,
+                  attachments.map(({ name }) => name),
+                ),
                 serviceIds: input.serviceIds ?? [],
                 accessedServiceIds: [],
                 accessedPluginIds: [],

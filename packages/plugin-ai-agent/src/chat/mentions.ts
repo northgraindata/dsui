@@ -2,6 +2,8 @@ export type MentionService = {
   id: string;
   name: string;
   handle: string;
+  adapter?: string;
+  iconUrl?: string;
 };
 
 /** Friendly names when unambiguous; stable IDs remain accepted as aliases. */
@@ -55,5 +57,17 @@ export function serviceMentions(
         service: aliases.get(handle),
       };
     },
+  );
+}
+
+export function matchingMentionServices(
+  services: readonly MentionService[],
+  search: string,
+) {
+  const query = search.toLowerCase();
+  return services.filter((service) =>
+    `${service.handle} ${service.name} ${service.id} ${service.adapter ?? ""}`
+      .toLowerCase()
+      .includes(query),
   );
 }

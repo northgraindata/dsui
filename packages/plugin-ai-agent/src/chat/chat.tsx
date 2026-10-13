@@ -1,4 +1,5 @@
 import { type ComponentProps, z } from "@northgraindata/dsui-plugin-sdk";
+import { conversationSchema } from "../agent/model";
 import { activityMessage } from "./activity";
 import {
   AttachmentPicker,
@@ -17,16 +18,8 @@ import {
 } from "./chat-tabs";
 import { HighlightedMentions, MentionInput } from "./mention-input";
 import { mentionServices } from "./mentions";
-import { conversationSchema } from "../agent/model";
 import { ModelPicker } from "./model-picker";
-import { PromptNavigator } from "./prompt-navigator";
 import { React } from "./react";
-import { type MessageReply, resolveReply } from "./replies";
-import {
-  ReplyQuote,
-  ReplySelectionAction,
-  useReplySelection,
-} from "./reply-ui";
 import { styles } from "./styles";
 
 const stateSchema = z.object({
@@ -48,6 +41,7 @@ const stateSchema = z.object({
         id: z.string(),
         name: z.string(),
         iconUrl: z.string().optional(),
+        adapter: z.string(),
       }),
     )
     .default([]),
@@ -295,11 +289,8 @@ function ChatSession({
   const [conversationId, setConversationId] = useState(tab.conversationId);
   const [modelKey, setModelKey] = useState<string>();
   const [draft, setDraft] = useState("");
-  const [reply, setReply] = useState<MessageReply>();
   const [sending, setSending] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
-  const bottom = useRef<HTMLDivElement>(null);
-  const messages = useRef<HTMLDivElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const followLatest = useRef(true);
   const scrollPosition = useRef(0);
@@ -420,34 +411,6 @@ function ChatSession({
   const selectedModelKey = state?.models.some((model) => model.key === modelKey)
     ? modelKey
     : state?.models[0]?.key;
-  const replySelection = useReplySelection(
-    messages,
-    visible && !running,
-    conversation?.id,
-  );
-  const startReply = (messageId: string, selection?: string) => {
-    if (running) return;
-    setReply(
-      resolveReply(conversation?.messages ?? [], { messageId, selection }),
-    );
-    window.getSelection()?.removeAllRanges();
-    input.current?.focus();
-  };
-  const jumpToMessage = (id: string) => {
-    const target = messages.current?.querySelector(
-      `[data-message-id="${CSS.escape(id)}"]`,
-    );
-    if (target && scroll.current) {
-      followLatest.current = false;
-      const top =
-        scroll.current.scrollTop +
-        target.getBoundingClientRect().top -
-        scroll.current.getBoundingClientRect().top -
-        12;
-      scroll.current.scrollTo({ top, behavior: "instant" });
-    }
-    if (target instanceof HTMLElement) target.focus({ preventScroll: true });
-  };
   const lastText = conversation?.messages.at(-1)?.text;
   const activeMessageId =
     conversation?.status === "running"
@@ -456,8 +419,8 @@ function ChatSession({
   useEffect(() => {
     void lastText;
     void conversation?.id;
-    if (visible && followLatest.current)
-      bottom.current?.scrollIntoView({ block: "nearest" });
+    if (visible && followLatest.current && scroll.current)
+      scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [lastText, conversation?.id, visible]);
   const send = async (text: string) => {
     if (
@@ -476,14 +439,6 @@ function ChatSession({
           conversationId,
           modelKey: selectedModelKey,
           message: text,
-          replyTo: reply
-            ? {
-                messageId: reply.messageId,
-                ...(reply.kind === "selection"
-                  ? { selection: reply.text }
-                  : {}),
-              }
-            : undefined,
           serviceIds: [],
           attachments: attachmentDraft.attachments.map(
             ({ name, mediaType, size, data }) => ({
@@ -504,7 +459,6 @@ function ChatSession({
         status: "running",
       });
       setDraft("");
-      setReply(undefined);
       attachmentDraft.clear();
       await load();
     } catch (cause) {
@@ -542,18 +496,14 @@ function ChatSession({
       {conversation && (
         <div className="da-chat-title">
           <span title={conversation.title}>{conversation.title}</span>
-          {visible && (
-            <PromptNavigator
-              key={conversation.id}
-              messages={conversation.messages}
-              jump={jumpToMessage}
-            />
-          )}
         </div>
       )}
       <div
         className="da-scroll"
         ref={scroll}
+        onWheel={(event) => {
+          if (event.deltaY < 0) followLatest.current = false;
+        }}
         onScroll={() => {
           if (!visible) return;
           const element = scroll.current;
@@ -561,7 +511,7 @@ function ChatSession({
             scrollPosition.current = element.scrollTop;
             followLatest.current =
               element.scrollHeight - element.clientHeight - element.scrollTop <
-              80;
+              4;
           }
         }}
       >
@@ -612,7 +562,6 @@ function ChatSession({
           </section>
         )}
         <div
-          ref={messages}
           className="da-messages"
           role="log"
           aria-label="Conversation messages"
@@ -626,14 +575,6 @@ function ChatSession({
                 tabIndex={-1}
               >
                 <div className="da-user-message">
-                  {message.replyTo && (
-                    <ReplyQuote
-                      reply={message.replyTo}
-                      onJump={() =>
-                        jumpToMessage(message.replyTo?.messageId ?? "")
-                      }
-                    />
-                  )}
                   {message.attachments.length > 0 && (
                     <div className="da-attachments">
                       {message.attachments.map((attachment) => (
@@ -658,15 +599,6 @@ function ChatSession({
                       minute: "2-digit",
                     })}
                   </time>
-                  <button
-                    type="button"
-                    className="da-message-reply"
-                    disabled={running}
-                    aria-label="Reply to your message"
-                    onClick={() => startReply(message.id)}
-                  >
-                    <Glyph name="reply" size={14} /> Reply
-                  </button>
                 </div>
                 <span className="da-avatar">You</span>
               </div>
@@ -675,7 +607,6 @@ function ChatSession({
                 className="da-assistant-row"
                 key={message.id}
                 data-message-id={message.id}
-                data-reply-message-id={message.id}
                 tabIndex={-1}
               >
                 <AgentMark />
@@ -722,17 +653,6 @@ function ChatSession({
                     tools={conversation.tools}
                     messageId={message.id}
                   />
-                  {message.text && message.id !== activeMessageId && (
-                    <button
-                      type="button"
-                      className="da-message-reply"
-                      disabled={running}
-                      aria-label="Reply to agent message"
-                      onClick={() => startReply(message.id)}
-                    >
-                      <Glyph name="reply" size={14} /> Reply
-                    </button>
-                  )}
                   {message.model && (
                     <small
                       className="da-response-model"
@@ -752,7 +672,6 @@ function ChatSession({
             <p>{error ?? loadError ?? conversation?.error}</p>
           </div>
         )}
-        <div ref={bottom} />
       </div>
       <footer className="da-footer">
         <form
@@ -770,15 +689,6 @@ function ChatSession({
             void send(draft);
           }}
         >
-          {reply && (
-            <ReplyQuote
-              reply={reply}
-              onRemove={() => {
-                setReply(undefined);
-                input.current?.focus();
-              }}
-            />
-          )}
           {attachmentDraft.attachments.length > 0 && (
             <DraftAttachments
               attachments={attachmentDraft.attachments}
@@ -852,9 +762,6 @@ function ChatSession({
         </form>
         <small>Agent can make mistakes. Always verify important results.</small>
       </footer>
-      {visible && (
-        <ReplySelectionAction selection={replySelection} onReply={startReply} />
-      )}
     </section>
   );
 }
