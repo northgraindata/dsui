@@ -632,7 +632,7 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
       if (input.endpoint)
         parts.push(`ENDPOINT '${escapeString(input.endpoint)}'`);
       if (input.scope) parts.push(`SCOPE '${escapeString(input.scope)}'`);
-      await run(`CREATE SECRET (${parts.join(" ")})`);
+      await run(`CREATE SECRET (${parts.join(", ")})`);
     },
     async dropSecret(name) {
       await run(`DROP SECRET ${quote(name)}`).catch((error) => {
@@ -673,8 +673,15 @@ export function createDuckDbClient(config: DuckDbConfig): DuckDbClient {
     },
     async version() {
       const result = await read(`SELECT version()`);
+      const row = result.rows[0] ?? {};
       return String(
-        result.rows[0]?.["version()"] ?? result.rows[0]?.version ?? "",
+        row["version()"] ??
+          row['"version()"'] ??
+          Object.entries(row).find(([key]) =>
+            key.toLowerCase().includes("version"),
+          )?.[1] ??
+          row.version ??
+          "",
       );
     },
   };

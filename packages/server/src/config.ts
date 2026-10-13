@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -116,7 +117,23 @@ export function toAdapterSourceLocation(
   cwd: string,
 ): AdapterSourceLocation {
   if ("source" in source && source.source === "local") {
-    return { kind: "local", path: resolve(cwd, source.path) };
+    const direct = resolve(cwd, source.path);
+    if (isAbsolute(source.path) || existsSync(direct))
+      return { kind: "local", path: direct };
+
+    // Turbo runs each task from its package directory, while a relative
+    // DSUI_CONFIG may be located in a repository ancestor. Try those
+    // ancestors so local adapter paths stay relative to the config's
+    // invocation directory.
+    let directory = cwd;
+    for (;;) {
+      const candidate = resolve(directory, source.path);
+      if (existsSync(candidate)) return { kind: "local", path: candidate };
+      const parent = dirname(directory);
+      if (parent === directory) break;
+      directory = parent;
+    }
+    return { kind: "local", path: direct };
   }
   if ("source" in source && source.source === "git") {
     const repository = source.repository

@@ -84,6 +84,9 @@ const MAX_UNPACKED_BYTES = 64 * 1024 * 1024;
 export const _SHA = /^[a-f0-9]{40}$/;
 export const repository = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const safeSegment = /^[A-Za-z0-9._-]+$/;
+const ADAPTER_SDK = "@northgraindata/dsui-adapter-sdk";
+const PLUGIN_SDK = "@northgraindata/dsui-plugin-sdk";
+const UI_SDK = "@northgraindata/dsui-ui";
 
 /**
  * Rejects any path that could escape the extraction root. Segments are
@@ -424,7 +427,8 @@ export function rewriteWorkspaceDependencies(
   manifest: AdapterManifest,
   preparedRoot: string,
 ): AdapterManifest {
-  const rewritten: AdapterManifest = { ...manifest };
+  const { devDependencies: _devDependencies, ...runtimeManifest } = manifest;
+  const rewritten: AdapterManifest = runtimeManifest;
   const rewrite = (deps?: Record<string, string>) => {
     if (!deps) return undefined;
     const next: Record<string, string> = {};
@@ -444,10 +448,29 @@ export function rewriteWorkspaceDependencies(
   for (const field of [
     "dependencies",
     "optionalDependencies",
-    "devDependencies",
   ] as const) {
     const next = rewrite(manifest[field]);
     if (next) rewritten[field] = next;
+  }
+  const dependencies = (rewritten.dependencies ??= {});
+  if (dependencies[ADAPTER_SDK]) {
+    dependencies[UI_SDK] = `file:${join(
+      preparedRoot,
+      "node_modules",
+      ...UI_SDK.split("/"),
+    )}`;
+  }
+  if (dependencies[PLUGIN_SDK]) {
+    dependencies[ADAPTER_SDK] = `file:${join(
+      preparedRoot,
+      "node_modules",
+      ...ADAPTER_SDK.split("/"),
+    )}`;
+    dependencies[UI_SDK] = `file:${join(
+      preparedRoot,
+      "node_modules",
+      ...UI_SDK.split("/"),
+    )}`;
   }
   return rewritten;
 }

@@ -142,7 +142,21 @@ export async function prepareSdk(
     await cp(join(source, "src"), join(destination, "src"), {
       recursive: true,
     });
-    const prepared = selfContained(manifest, version);
+    const selfContainedManifest = selfContained(manifest, version);
+    const prepared =
+      name === ADAPTER_SDK
+        ? {
+            ...selfContainedManifest,
+            dependencies: Object.fromEntries(
+              Object.entries(
+                (selfContainedManifest.dependencies ?? {}) as Record<
+                  string,
+                  string
+                >,
+              ).filter(([dep]) => dep !== UI),
+            ),
+          }
+        : selfContainedManifest;
     const dependencies = (prepared.dependencies ?? {}) as Record<
       string,
       string
@@ -161,12 +175,39 @@ export async function prepareSdk(
     // Dependencies sit beside the sources because a plugin install links these
     // packages rather than copying them, so their own imports resolve here.
     if (install) {
-      const child = Bun.spawn(
-        ["bun", "install", "--ignore-scripts", "--no-save"],
-        { cwd: destination, stdout: "inherit", stderr: "inherit" },
-      );
-      if ((await child.exited) !== 0)
-        throw new Error(`Failed to install dependencies for ${name}`);
+      const manifestPath = join(destination, "package.json");
+      const installManifest =
+        name === PLUGIN_SDK
+          ? {
+              ...prepared,
+              dependencies: Object.fromEntries(
+                Object.entries(dependencies).filter(
+                  ([dep]) => dep !== ADAPTER_SDK,
+                ),
+              ),
+            }
+          : prepared;
+      if (installManifest !== prepared)
+        await writeFile(
+          manifestPath,
+          `${JSON.stringify(installManifest, null, 2)}\n`,
+          "utf8",
+        );
+      try {
+        const child = Bun.spawn(
+          ["bun", "install", "--ignore-scripts", "--no-save"],
+          { cwd: destination, stdout: "inherit", stderr: "inherit" },
+        );
+        if ((await child.exited) !== 0)
+          throw new Error(`Failed to install dependencies for ${name}`);
+      } finally {
+        if (installManifest !== prepared)
+          await writeFile(
+            manifestPath,
+            `${JSON.stringify(prepared, null, 2)}\n`,
+            "utf8",
+          );
+      }
     }
   }
 }
