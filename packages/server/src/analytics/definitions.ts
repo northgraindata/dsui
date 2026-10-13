@@ -16,6 +16,15 @@ const sqlFile = z
     /^([a-z0-9][a-z0-9_-]*\/)*[a-z0-9][a-z0-9_-]*\.sql$/,
     "Use a .sql file under analytics/queries, with lowercase folder and file names",
   );
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    return (
+      !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value)
+    );
+  }, "Use a valid date");
 
 export const moduleSchema = z
   .object({
@@ -29,6 +38,10 @@ export const moduleSchema = z
         resourceId: z.string().min(1),
         input: z.record(z.unknown()).default({}),
         sqlFile: sqlFile.optional(),
+        parameters: z
+          .array(z.string().regex(/^[a-z0-9-]+(?:\.(?:start|end))?$/))
+          .max(20)
+          .default([]),
         rowsPath: z
           .string()
           .regex(/^[A-Za-z0-9_.]*$/)
@@ -62,11 +75,33 @@ export const moduleSchema = z
         unit: z.string().max(30).default(""),
         compareTo: z.string().optional(),
         comparisonLabel: z.string().max(80).optional(),
+        drilldown: z
+          .object({
+            module: slug,
+            subfolder,
+            parameter: z.string().regex(/^[a-z0-9-]+(?:\.(?:start|end))?$/),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.chart.drilldown) {
+      if (!["line", "area", "bar", "horizontal-bar"].includes(value.chart.type))
+        context.addIssue({
+          code: "custom",
+          path: ["chart", "drilldown"],
+          message: "Click-through needs a line, area, or bar chart",
+        });
+      if (!value.chart.x.trim())
+        context.addIssue({
+          code: "custom",
+          path: ["chart", "x"],
+          message: "Click-through needs an X field",
+        });
+    }
     if (value.chart.type === "kpi") {
       if (!value.chart.y.trim())
         context.addIssue({
@@ -86,6 +121,15 @@ export const moduleSchema = z
         code: "custom",
         path: ["source", "sqlFile"],
         message: "SQL files require the report-query resource",
+      });
+    if (
+      value.source.parameters.length &&
+      value.source.resourceId !== "report-query"
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["source", "parameters"],
+        message: "SQL parameters require the report-query resource",
       });
     if (value.source.sqlFile && value.source.input.sql !== undefined)
       context.addIssue({
@@ -114,12 +158,34 @@ const dashboardModuleSchema = z
   })
   .strict();
 
+const dashboardFilterSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      name: slug,
+      label: z.string().trim().min(1).max(80),
+      type: z.literal("date-range"),
+      defaultStart: isoDate.optional(),
+      defaultEnd: isoDate.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      name: slug,
+      label: z.string().trim().min(1).max(80),
+      type: z.literal("select"),
+      options: z.array(z.string().trim().min(1).max(100)).min(1).max(50),
+      defaultValue: z.string().optional(),
+    })
+    .strict(),
+]);
+
 export const dashboardSchema = z
   .object({
     name: slug,
     title: z.string().trim().min(1).max(120),
     description: z.string().max(500).default(""),
     tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
+    filters: z.array(dashboardFilterSchema).max(8).default([]),
     ownerId: z.string().min(1).optional(),
     visibility: z.enum(["private", "shared"]).optional(),
     styles: z
@@ -152,6 +218,45 @@ export const dashboardSchema = z
         path: ["tags"],
         message: "Tags must be unique",
       });
+    const filterNames = value.filters.map((filter) => filter.name);
+    if (new Set(filterNames).size !== filterNames.length)
+      context.addIssue({
+        code: "custom",
+        path: ["filters"],
+        message: "Filter names must be unique",
+      });
+    for (const [index, filter] of value.filters.entries()) {
+      if (
+        filter.type === "date-range" &&
+        filter.defaultStart &&
+        filter.defaultEnd &&
+        filter.defaultStart > filter.defaultEnd
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["filters", index],
+          message: "Start date must be before end date",
+        });
+      if (
+        filter.type === "select" &&
+        new Set(filter.options).size !== filter.options.length
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["filters", index, "options"],
+          message: "Options must be unique",
+        });
+      if (
+        filter.type === "select" &&
+        filter.defaultValue &&
+        !filter.options.includes(filter.defaultValue)
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["filters", index, "defaultValue"],
+          message: "Default must be one of the options",
+        });
+    }
     if (!value.views.length) return;
     if (value.modules.length)
       context.addIssue({

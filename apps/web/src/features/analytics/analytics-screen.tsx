@@ -1,8 +1,10 @@
+import { DatePicker, OptionSelect } from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { executeResource, getServices, type Service } from "../../api";
 import { Icon } from "../../components/icon";
 import {
   type DashboardDefinition,
+  type DashboardFilter,
   type DashboardItem,
   type DashboardModule,
   type DashboardView,
@@ -32,6 +34,7 @@ const blankDashboard: DashboardDefinition = {
   title: "",
   description: "",
   tags: [],
+  filters: [],
   styles: { columns: 2, spacing: "regular" },
   modules: [],
   views: [{ name: "overview", title: "Overview", modules: [] }],
@@ -49,6 +52,7 @@ function layoutDefinition(dashboard: DashboardDefinition): DashboardDefinition {
     title: dashboard.title,
     description: dashboard.description,
     tags: [...dashboard.tags],
+    filters: dashboard.filters.map((filter) => ({ ...filter })),
     ownerId: dashboard.ownerId,
     visibility: dashboard.visibility,
     styles: { ...dashboard.styles },
@@ -80,24 +84,73 @@ function nextView(views: DashboardView[]) {
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
 }
+function detailValue(value: unknown): string | null {
+  if (value instanceof Date)
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "bigint" ||
+    typeof value === "boolean"
+  )
+    return String(value);
+  return null;
+}
 const galleryTabs = ["all", "favorites"] as const;
+const emptyFilterValues: Record<string, string> = {};
+
+function defaultFilterValues(
+  filters: DashboardFilter[],
+): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const filter of filters) {
+    if (filter.type === "date-range") {
+      values[`${filter.name}.start`] = filter.defaultStart ?? "";
+      values[`${filter.name}.end`] = filter.defaultEnd ?? "";
+    } else values[filter.name] = filter.defaultValue ?? "";
+  }
+  return values;
+}
+
+function nextFilterName(filters: DashboardFilter[], prefix: string) {
+  const names = new Set(filters.map((filter) => filter.name));
+  let index = 1;
+  while (names.has(`${prefix}-${index}`)) index += 1;
+  return `${prefix}-${index}`;
+}
 
 function ModuleCard({
   module,
   order = 0,
   refreshEpoch = 0,
   onRefreshComplete,
+  filterValues = emptyFilterValues,
+  parameterOverride,
+  onDrilldown,
 }: {
   module: Saved<ModuleDefinition>;
   order?: number;
   refreshEpoch?: number;
   onRefreshComplete?: (epoch: number) => void;
+  filterValues?: Record<string, string>;
+  parameterOverride?: { name: string; value: string };
+  onDrilldown?: (value: unknown) => void;
 }) {
   const [data, setData] = useState<unknown>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [renderVersion, setRenderVersion] = useState(0);
   const requestId = useRef(0);
+  const parameterKey = JSON.stringify(
+    module.source.parameters?.length
+      ? module.source.parameters.map(
+          (name) =>
+            (parameterOverride?.name === name
+              ? parameterOverride.value
+              : filterValues[name]) || null,
+        )
+      : null,
+  );
   const refresh = useCallback(
     async (notifyParent = false) => {
       const currentRequest = ++requestId.current;
@@ -105,10 +158,13 @@ function ModuleCard({
       setLoading(true);
       setError("");
       try {
+        const parameters: unknown = JSON.parse(parameterKey);
         const result = await executeResource(
           module.source.serviceId,
           module.source.resourceId,
-          module.source.input,
+          parameters !== null
+            ? { ...module.source.input, parameters }
+            : module.source.input,
         );
         if (requestId.current === currentRequest) {
           setData(result.data);
@@ -130,6 +186,7 @@ function ModuleCard({
       module.source.serviceId,
       module.source.resourceId,
       module.source.input,
+      parameterKey,
       onRefreshComplete,
       refreshEpoch,
     ],
@@ -170,11 +227,16 @@ function ModuleCard({
         ) : error ? (
           <div className="analytics-error">{error}</div>
         ) : (
-          <Visualization definition={module} data={data} />
+          <Visualization
+            definition={module}
+            data={data}
+            onSelect={onDrilldown}
+          />
         )}
       </div>
       <footer>
         {module.source.serviceId} · {module.source.resourceId}
+        {onDrilldown && <span> · Click a chart value for details</span>}
       </footer>
     </article>
   );
@@ -191,6 +253,19 @@ export function AnalyticsScreen({
   const [favoriteBusy, setFavoriteBusy] = useState<string | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState("");
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [drilldown, setDrilldown] = useState<{
+    moduleKey: string;
+    name: string;
+    value: string;
+    source: string;
+  } | null>(null);
+  const drilldownCloseRef = useRef<HTMLButtonElement>(null);
+  const drilldownReturnFocus = useRef<HTMLElement>(null);
+  const closeDrilldown = useCallback(() => {
+    setDrilldown(null);
+    requestAnimationFrame(() => drilldownReturnFocus.current?.focus());
+  }, []);
   const [dashboardRefresh, setDashboardRefresh] = useState({
     epoch: 0,
     pending: 0,
@@ -215,6 +290,7 @@ export function AnalyticsScreen({
   const [moduleRevision, setModuleRevision] = useState<string | null>(null);
   const [inputJson, setInputJson] = useState("{}");
   const [sqlText, setSqlText] = useState("");
+  const [parameterNamesInput, setParameterNamesInput] = useState("");
   const [resources, setResources] = useState<ResourceOption[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -261,6 +337,31 @@ export function AnalyticsScreen({
   }, [moduleDraft?.source.serviceId]);
 
   const dashboard = dashboards.find((item) => item.name === selected);
+  const drilldownModule = drilldown
+    ? modules.find((item) => keyOf(item) === drilldown.moduleKey)
+    : undefined;
+  const drilldownTargets = modules.filter(
+    (item) => item.source.parameters?.length,
+  );
+  const draftDrilldownKey = moduleDraft?.chart.drilldown
+    ? keyOf(moduleDraft.chart.drilldown)
+    : undefined;
+  const draftDrilldownTarget = draftDrilldownKey
+    ? drilldownTargets.find((item) => keyOf(item) === draftDrilldownKey)
+    : undefined;
+  useEffect(() => {
+    setFilterValues(defaultFilterValues(dashboard?.filters ?? []));
+    setDrilldown(null);
+  }, [dashboard?.filters]);
+  useEffect(() => {
+    if (!drilldown) return;
+    drilldownCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeDrilldown();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [drilldown, closeDrilldown]);
   const displayDashboard = layoutDraft ?? dashboard;
   const views = displayDashboard ? dashboardViews(displayDashboard) : [];
   const activeView =
@@ -285,6 +386,7 @@ export function AnalyticsScreen({
             title: value.title,
             description: value.description,
             tags: [...value.tags],
+            filters: value.filters.map((filter) => ({ ...filter })),
             ownerId: value.ownerId,
             visibility: value.visibility,
             styles: { ...value.styles },
@@ -296,6 +398,7 @@ export function AnalyticsScreen({
           }
         : {
             ...blankDashboard,
+            filters: [],
             modules: [],
             views: [{ name: "overview", title: "Overview", modules: [] }],
           },
@@ -335,6 +438,7 @@ export function AnalyticsScreen({
     setSqlText(
       typeof draft.source.input.sql === "string" ? draft.source.input.sql : "",
     );
+    setParameterNamesInput(draft.source.parameters?.join(", ") ?? "");
     setError("");
   };
   const submitModule = async () => {
@@ -355,6 +459,10 @@ export function AnalyticsScreen({
           source: {
             ...moduleDraft.source,
             input: parsed as Record<string, unknown>,
+            parameters: parameterNamesInput
+              .split(",")
+              .map((name) => name.trim())
+              .filter(Boolean),
           },
         },
         moduleRevision,
@@ -485,6 +593,7 @@ export function AnalyticsScreen({
   }, []);
   const selectView = (name: string) => {
     setSelectedView(name);
+    setDrilldown(null);
     setDashboardRefresh((current) =>
       current.pending ? { ...current, pending: 0 } : current,
     );
@@ -610,6 +719,9 @@ export function AnalyticsScreen({
                   }
                 >
                   <Icon name="refresh" size={15} /> Refresh
+                </button>
+                <button type="button" onClick={() => window.print()}>
+                  Export PDF
                 </button>
                 <button
                   type="button"
@@ -840,6 +952,78 @@ export function AnalyticsScreen({
               </button>
             ))}
           </div>
+          {dashboard.filters.length > 0 && (
+            <section
+              className="analytics-dashboard-filters"
+              aria-label="Dashboard filters"
+            >
+              {dashboard.filters.map((filter) =>
+                filter.type === "date-range" ? (
+                  <fieldset key={filter.name}>
+                    <legend>{filter.label}</legend>
+                    <DatePicker
+                      ariaLabel={`${filter.label} from`}
+                      value={filterValues[`${filter.name}.start`] ?? ""}
+                      max={filterValues[`${filter.name}.end`] || undefined}
+                      onValueChange={(value) =>
+                        setFilterValues((current) => ({
+                          ...current,
+                          [`${filter.name}.start`]: value,
+                        }))
+                      }
+                    />
+                    <span>to</span>
+                    <DatePicker
+                      ariaLabel={`${filter.label} to`}
+                      value={filterValues[`${filter.name}.end`] ?? ""}
+                      min={filterValues[`${filter.name}.start`] || undefined}
+                      onValueChange={(value) =>
+                        setFilterValues((current) => ({
+                          ...current,
+                          [`${filter.name}.end`]: value,
+                        }))
+                      }
+                    />
+                  </fieldset>
+                ) : (
+                  <label
+                    key={filter.name}
+                    htmlFor={`analytics-filter-${filter.name}`}
+                  >
+                    {filter.label}
+                    <OptionSelect
+                      id={`analytics-filter-${filter.name}`}
+                      ariaLabel={filter.label}
+                      value={filterValues[filter.name] ?? ""}
+                      onValueChange={(value) =>
+                        setFilterValues((current) => ({
+                          ...current,
+                          [filter.name]: value,
+                        }))
+                      }
+                      options={[
+                        { value: "", label: "All" },
+                        ...filter.options.map((option) => ({
+                          value: option,
+                          label: option,
+                        })),
+                      ]}
+                    />
+                  </label>
+                ),
+              )}
+              <button
+                type="button"
+                className="analytics-filter-reset"
+                onClick={() =>
+                  setFilterValues(defaultFilterValues(dashboard.filters))
+                }
+              >
+                <Icon name="refresh" size={14} />
+                Reset filters
+              </button>
+            </section>
+          )}
           <div className={editMode ? "analytics-builder-layout" : undefined}>
             <div
               className="analytics-grid"
@@ -969,6 +1153,27 @@ export function AnalyticsScreen({
                         order={index}
                         refreshEpoch={dashboardRefresh.epoch}
                         onRefreshComplete={handleModuleRefreshComplete}
+                        filterValues={filterValues}
+                        onDrilldown={
+                          module.chart.drilldown
+                            ? (value) => {
+                                const selectedValue = detailValue(value);
+                                if (selectedValue === null) return;
+                                const target = module.chart.drilldown;
+                                if (!target) return;
+                                drilldownReturnFocus.current =
+                                  document.activeElement instanceof HTMLElement
+                                    ? document.activeElement
+                                    : null;
+                                setDrilldown({
+                                  moduleKey: keyOf(target),
+                                  name: target.parameter,
+                                  value: selectedValue,
+                                  source: module.title,
+                                });
+                              }
+                            : undefined
+                        }
                       />
                     ) : (
                       <div className="analytics-card analytics-missing">
@@ -1034,6 +1239,66 @@ export function AnalyticsScreen({
               </aside>
             )}
           </div>
+        </div>
+      )}
+
+      {drilldown && (
+        <div className="analytics-overlay">
+          <button
+            type="button"
+            className="analytics-overlay-dismiss"
+            aria-label="Close details"
+            onClick={closeDrilldown}
+          />
+          <aside
+            className="analytics-drilldown-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Details for ${drilldown.value}`}
+            onKeyDown={(event) => {
+              if (event.key !== "Tab") return;
+              const controls =
+                event.currentTarget.querySelectorAll<HTMLElement>(
+                  "button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled)",
+                );
+              const first = controls[0];
+              const last = controls[controls.length - 1];
+              if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last?.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first?.focus();
+              }
+            }}
+          >
+            <header>
+              <div>
+                <span className="analytics-eyebrow">{drilldown.source}</span>
+                <h2>Details: {drilldown.value}</h2>
+              </div>
+              <button
+                type="button"
+                ref={drilldownCloseRef}
+                aria-label="Close details"
+                onClick={closeDrilldown}
+              >
+                <Icon name="close" />
+              </button>
+            </header>
+            {drilldownModule ? (
+              <ModuleCard
+                key={`${drilldown.moduleKey}-${drilldown.value}`}
+                module={drilldownModule}
+                filterValues={filterValues}
+                parameterOverride={drilldown}
+              />
+            ) : (
+              <p className="analytics-error">
+                The detail module is unavailable.
+              </p>
+            )}
+          </aside>
         </div>
       )}
 
@@ -1121,72 +1386,74 @@ export function AnalyticsScreen({
                   />
                 </label>
                 <div className="analytics-form-divider">DATA SOURCE</div>
-                <label>
+                <label htmlFor="analytics-module-service">
                   Service
-                  <select
+                  <OptionSelect
+                    id="analytics-module-service"
+                    ariaLabel="Service"
                     value={moduleDraft.source.serviceId}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       updateModule({
                         source: {
                           ...moduleDraft.source,
-                          serviceId: event.target.value,
+                          serviceId: value,
                           resourceId: "",
                         },
                       })
                     }
-                  >
-                    <option value="">Choose service</option>
-                    {services.map((service) => (
-                      <option key={service.id} value={service.id}>
-                        {service.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Choose service"
+                    options={services.map((service) => ({
+                      value: service.id,
+                      label: service.name,
+                    }))}
+                  />
                 </label>
-                <label>
+                <label htmlFor="analytics-module-resource">
                   Resource query
-                  <select
+                  <OptionSelect
+                    id="analytics-module-resource"
+                    ariaLabel="Resource query"
                     value={moduleDraft.source.resourceId}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       updateModule({
                         source: {
                           ...moduleDraft.source,
-                          resourceId: event.target.value,
+                          resourceId: value,
                         },
                       })
                     }
-                  >
-                    <option value="">Choose resource</option>
-                    {resources.map((resource) => (
-                      <option key={resource.id} value={resource.id}>
-                        {resource.id}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Choose resource"
+                    options={resources.map((resource) => ({
+                      value: resource.id,
+                      label: resource.id,
+                    }))}
+                  />
                 </label>
                 {moduleDraft.source.resourceId === "report-query" ? (
                   <>
-                    <label>
+                    <label htmlFor="analytics-module-sql-source">
                       SQL source
-                      <select
+                      <OptionSelect
+                        id="analytics-module-sql-source"
+                        ariaLabel="SQL source"
                         value={
                           moduleDraft.source.sqlFile !== undefined
                             ? "file"
                             : "inline"
                         }
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           updateModule({
                             source: {
                               ...moduleDraft.source,
-                              sqlFile:
-                                event.target.value === "file" ? "" : undefined,
+                              sqlFile: value === "file" ? "" : undefined,
                             },
                           })
                         }
-                      >
-                        <option value="inline">Write SQL here</option>
-                        <option value="file">Use a .sql file</option>
-                      </select>
+                        options={[
+                          { value: "inline", label: "Write SQL here" },
+                          { value: "file", label: "Use a .sql file" },
+                        ]}
+                      />
                     </label>
                     {moduleDraft.source.sqlFile !== undefined ? (
                       <label>
@@ -1216,6 +1483,20 @@ export function AnalyticsScreen({
                         />
                       </label>
                     )}
+                    <label>
+                      SQL parameter bindings
+                      <input
+                        value={parameterNamesInput}
+                        onChange={(event) =>
+                          setParameterNamesInput(event.target.value)
+                        }
+                        placeholder="period.start, period.end, region"
+                      />
+                      <small>
+                        In $1, $2 order. Use filter names or
+                        date-filter.start/end; empty values become NULL.
+                      </small>
+                    </label>
                   </>
                 ) : (
                   <label>
@@ -1244,36 +1525,41 @@ export function AnalyticsScreen({
                   />
                 </label>
                 <div className="analytics-form-divider">VISUALIZATION</div>
-                <label>
+                <label htmlFor="analytics-module-chart-type">
                   Chart type
-                  <select
+                  <OptionSelect
+                    id="analytics-module-chart-type"
+                    ariaLabel="Chart type"
                     value={moduleDraft.chart.type}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       updateModule({
                         chart: {
                           ...moduleDraft.chart,
-                          type: event.target
-                            .value as ModuleDefinition["chart"]["type"],
+                          type: value as ModuleDefinition["chart"]["type"],
                           compareTo:
-                            event.target.value === "kpi"
+                            value === "kpi"
                               ? moduleDraft.chart.compareTo
                               : undefined,
                           comparisonLabel:
-                            event.target.value === "kpi"
+                            value === "kpi"
                               ? moduleDraft.chart.comparisonLabel
                               : undefined,
                         },
                       })
                     }
-                  >
-                    <option value="metric">Metric</option>
-                    <option value="kpi">KPI comparison</option>
-                    <option value="line">Line chart</option>
-                    <option value="area">Area chart</option>
-                    <option value="bar">Bar chart</option>
-                    <option value="horizontal-bar">Horizontal bar chart</option>
-                    <option value="table">Table</option>
-                  </select>
+                    options={[
+                      { value: "metric", label: "Metric" },
+                      { value: "kpi", label: "KPI comparison" },
+                      { value: "line", label: "Line chart" },
+                      { value: "area", label: "Area chart" },
+                      { value: "bar", label: "Bar chart" },
+                      {
+                        value: "horizontal-bar",
+                        label: "Horizontal bar chart",
+                      },
+                      { value: "table", label: "Table" },
+                    ]}
+                  />
                 </label>
                 <div className="analytics-form-row">
                   {moduleDraft.chart.type !== "kpi" && (
@@ -1311,6 +1597,86 @@ export function AnalyticsScreen({
                     />
                   </label>
                 </div>
+                {(moduleDraft.chart.type === "line" ||
+                  moduleDraft.chart.type === "area" ||
+                  moduleDraft.chart.type === "bar" ||
+                  moduleDraft.chart.type === "horizontal-bar") && (
+                  <>
+                    <label htmlFor="analytics-module-drilldown">
+                      Open details on click
+                      <OptionSelect
+                        id="analytics-module-drilldown"
+                        ariaLabel="Open details on click"
+                        value={
+                          moduleDraft.chart.drilldown
+                            ? keyOf(moduleDraft.chart.drilldown)
+                            : ""
+                        }
+                        onValueChange={(value) => {
+                          const target = drilldownTargets.find(
+                            (item) => keyOf(item) === value,
+                          );
+                          updateModule({
+                            chart: {
+                              ...moduleDraft.chart,
+                              drilldown: target
+                                ? {
+                                    module: target.name,
+                                    subfolder: target.subfolder,
+                                    parameter:
+                                      target.source.parameters?.find(
+                                        (name) => name === moduleDraft.chart.x,
+                                      ) ??
+                                      target.source.parameters?.[0] ??
+                                      "",
+                                  }
+                                : undefined,
+                            },
+                          });
+                        }}
+                        options={[
+                          { value: "", label: "No detail module" },
+                          ...drilldownTargets
+                            .filter(
+                              (item) => keyOf(item) !== keyOf(moduleDraft),
+                            )
+                            .map((item) => ({
+                              value: keyOf(item),
+                              label: item.title,
+                            })),
+                        ]}
+                      />
+                    </label>
+                    {draftDrilldownTarget && (
+                      <label htmlFor="analytics-module-detail-parameter">
+                        Detail parameter for clicked X value
+                        <OptionSelect
+                          id="analytics-module-detail-parameter"
+                          ariaLabel="Detail parameter for clicked X value"
+                          value={moduleDraft.chart.drilldown?.parameter ?? ""}
+                          onValueChange={(value) =>
+                            updateModule({
+                              chart: {
+                                ...moduleDraft.chart,
+                                drilldown: moduleDraft.chart.drilldown
+                                  ? {
+                                      ...moduleDraft.chart.drilldown,
+                                      parameter: value,
+                                    }
+                                  : undefined,
+                              },
+                            })
+                          }
+                          options={
+                            draftDrilldownTarget.source.parameters?.map(
+                              (name) => ({ value: name, label: name }),
+                            ) ?? []
+                          }
+                        />
+                      </label>
+                    )}
+                  </>
+                )}
                 {moduleDraft.chart.type === "kpi" && (
                   <div className="analytics-form-row">
                     <label>
@@ -1377,24 +1743,27 @@ export function AnalyticsScreen({
                       }
                     />
                   </label>
-                  <label>
+                  <label htmlFor="analytics-module-card-height">
                     Card height
-                    <select
+                    <OptionSelect
+                      id="analytics-module-card-height"
+                      ariaLabel="Card height"
                       value={moduleDraft.styles.height}
-                      onChange={(event) =>
+                      onValueChange={(value) =>
                         updateModule({
                           styles: {
                             ...moduleDraft.styles,
-                            height: event.target
-                              .value as ModuleDefinition["styles"]["height"],
+                            height:
+                              value as ModuleDefinition["styles"]["height"],
                           },
                         })
                       }
-                    >
-                      <option value="compact">Compact</option>
-                      <option value="regular">Regular</option>
-                      <option value="tall">Tall</option>
-                    </select>
+                      options={[
+                        { value: "compact", label: "Compact" },
+                        { value: "regular", label: "Regular" },
+                        { value: "tall", label: "Tall" },
+                      ]}
+                    />
                   </label>
                 </div>
                 {(moduleDraft.chart.type === "line" ||
@@ -1459,43 +1828,255 @@ export function AnalyticsScreen({
                     />
                     <small>Separate tags with commas (up to 8).</small>
                   </label>
+                  <div className="analytics-form-divider">
+                    DASHBOARD FILTERS
+                  </div>
+                  <p className="analytics-hint">
+                    Filters are optional and belong to this dashboard. Use names
+                    that match the module SQL parameter bindings.
+                  </p>
+                  {dashboardDraft.filters.map((filter, index) => (
+                    <div className="analytics-filter-editor" key={filter.name}>
+                      <div className="analytics-form-row">
+                        <label>
+                          Filter name
+                          <input
+                            defaultValue={filter.name}
+                            onBlur={(event) =>
+                              updateDashboard({
+                                filters: dashboardDraft.filters.map(
+                                  (item, at) =>
+                                    at === index
+                                      ? {
+                                          ...item,
+                                          name: slug(event.target.value),
+                                        }
+                                      : item,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Label
+                          <input
+                            value={filter.label}
+                            onChange={(event) =>
+                              updateDashboard({
+                                filters: dashboardDraft.filters.map(
+                                  (item, at) =>
+                                    at === index
+                                      ? { ...item, label: event.target.value }
+                                      : item,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+                      {filter.type === "date-range" ? (
+                        <div className="analytics-form-row">
+                          <label htmlFor={`analytics-filter-start-${index}`}>
+                            Default start
+                            <DatePicker
+                              id={`analytics-filter-start-${index}`}
+                              ariaLabel="Default start"
+                              value={filter.defaultStart ?? ""}
+                              max={filter.defaultEnd}
+                              onValueChange={(value) =>
+                                updateDashboard({
+                                  filters: dashboardDraft.filters.map(
+                                    (item, at) =>
+                                      at === index && item.type === "date-range"
+                                        ? {
+                                            ...item,
+                                            defaultStart: value || undefined,
+                                          }
+                                        : item,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                          <label htmlFor={`analytics-filter-end-${index}`}>
+                            Default end
+                            <DatePicker
+                              id={`analytics-filter-end-${index}`}
+                              ariaLabel="Default end"
+                              value={filter.defaultEnd ?? ""}
+                              min={filter.defaultStart}
+                              onValueChange={(value) =>
+                                updateDashboard({
+                                  filters: dashboardDraft.filters.map(
+                                    (item, at) =>
+                                      at === index && item.type === "date-range"
+                                        ? {
+                                            ...item,
+                                            defaultEnd: value || undefined,
+                                          }
+                                        : item,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <>
+                          <label>
+                            Options (comma separated)
+                            <input
+                              defaultValue={filter.options.join(", ")}
+                              onBlur={(event) =>
+                                updateDashboard({
+                                  filters: dashboardDraft.filters.map(
+                                    (item, at) =>
+                                      at === index && item.type === "select"
+                                        ? {
+                                            ...item,
+                                            options: event.target.value
+                                              .split(",")
+                                              .map((option) => option.trim())
+                                              .filter(Boolean),
+                                          }
+                                        : item,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                          <label htmlFor={`analytics-default-option-${index}`}>
+                            Default option
+                            <OptionSelect
+                              id={`analytics-default-option-${index}`}
+                              ariaLabel="Default option"
+                              value={filter.defaultValue ?? ""}
+                              onValueChange={(value) =>
+                                updateDashboard({
+                                  filters: dashboardDraft.filters.map(
+                                    (item, at) =>
+                                      at === index && item.type === "select"
+                                        ? {
+                                            ...item,
+                                            defaultValue: value || undefined,
+                                          }
+                                        : item,
+                                  ),
+                                })
+                              }
+                              options={[
+                                { value: "", label: "All" },
+                                ...filter.options.map((option) => ({
+                                  value: option,
+                                  label: option,
+                                })),
+                              ]}
+                            />
+                          </label>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateDashboard({
+                            filters: dashboardDraft.filters.filter(
+                              (_, at) => at !== index,
+                            ),
+                          })
+                        }
+                      >
+                        Remove filter
+                      </button>
+                    </div>
+                  ))}
+                  <div className="analytics-form-row">
+                    <button
+                      type="button"
+                      disabled={dashboardDraft.filters.length >= 8}
+                      onClick={() =>
+                        updateDashboard({
+                          filters: [
+                            ...dashboardDraft.filters,
+                            {
+                              name: nextFilterName(
+                                dashboardDraft.filters,
+                                "period",
+                              ),
+                              label: "Date range",
+                              type: "date-range",
+                            },
+                          ],
+                        })
+                      }
+                    >
+                      + Date range
+                    </button>
+                    <button
+                      type="button"
+                      disabled={dashboardDraft.filters.length >= 8}
+                      onClick={() =>
+                        updateDashboard({
+                          filters: [
+                            ...dashboardDraft.filters,
+                            {
+                              name: nextFilterName(
+                                dashboardDraft.filters,
+                                "selection",
+                              ),
+                              label: "Selection",
+                              type: "select",
+                              options: ["Option 1"],
+                            },
+                          ],
+                        })
+                      }
+                    >
+                      + Dropdown filter
+                    </button>
+                  </div>
                   <div className="analytics-form-divider">STYLES</div>
                   <div className="analytics-form-row">
-                    <label>
+                    <label htmlFor="analytics-dashboard-columns">
                       Columns
-                      <select
-                        value={dashboardDraft.styles.columns}
-                        onChange={(event) =>
+                      <OptionSelect
+                        id="analytics-dashboard-columns"
+                        ariaLabel="Columns"
+                        value={String(dashboardDraft.styles.columns)}
+                        onValueChange={(value) =>
                           updateDashboard({
                             styles: {
                               ...dashboardDraft.styles,
-                              columns: event.target.value === "1" ? 1 : 2,
+                              columns: value === "1" ? 1 : 2,
                             },
                           })
                         }
-                      >
-                        <option value="1">One</option>
-                        <option value="2">Two</option>
-                      </select>
+                        options={[
+                          { value: "1", label: "One" },
+                          { value: "2", label: "Two" },
+                        ]}
+                      />
                     </label>
-                    <label>
+                    <label htmlFor="analytics-dashboard-spacing">
                       Spacing
-                      <select
+                      <OptionSelect
+                        id="analytics-dashboard-spacing"
+                        ariaLabel="Spacing"
                         value={dashboardDraft.styles.spacing}
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           updateDashboard({
                             styles: {
                               ...dashboardDraft.styles,
-                              spacing: event.target
-                                .value as DashboardDefinition["styles"]["spacing"],
+                              spacing:
+                                value as DashboardDefinition["styles"]["spacing"],
                             },
                           })
                         }
-                      >
-                        <option value="compact">Compact</option>
-                        <option value="regular">Regular</option>
-                        <option value="relaxed">Relaxed</option>
-                      </select>
+                        options={[
+                          { value: "compact", label: "Compact" },
+                          { value: "regular", label: "Regular" },
+                          { value: "relaxed", label: "Relaxed" },
+                        ]}
+                      />
                     </label>
                   </div>
                   <div className="analytics-form-divider">VIEWS</div>

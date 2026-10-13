@@ -66,6 +66,7 @@ function Graph({
   accentColor,
   showGrid,
   height,
+  onSelect,
 }: {
   rows: Row[];
   type: Extract<ChartType, "line" | "bar" | "area">;
@@ -75,6 +76,7 @@ function Graph({
   accentColor: string;
   showGrid: boolean;
   height: ModuleDefinition["styles"]["height"];
+  onSelect?: (value: unknown) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [chartWidth, setChartWidth] = useState(580);
@@ -97,9 +99,13 @@ function Graph({
     return () => observer.disconnect();
   }, []);
   const points = rows
-    .map((row) => ({ label: display(row[x]), value: numeric(row[y]) }))
+    .map((row) => ({
+      label: display(row[x]),
+      raw: row[x],
+      value: numeric(row[y]),
+    }))
     .filter(
-      (point): point is { label: string; value: number } =>
+      (point): point is { label: string; raw: unknown; value: number } =>
         point.value !== null,
     );
   if (!points.length)
@@ -266,14 +272,14 @@ function Graph({
             // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share X values; hit targets have no local state.
             key={`${point.label}-${index}`}
             type="button"
-            className="analytics-point-hit"
-            aria-label={`${point.label}: ${display(point.value)} ${unit || y}`}
+            className={`analytics-point-hit ${onSelect ? "analytics-drilldown-trigger" : ""}`}
+            aria-label={`${point.label}: ${display(point.value)} ${unit || y}${onSelect ? ", open details" : ""}`}
             style={{ left: xAt(index), top: 14 + yAt(point.value) }}
             onMouseEnter={() => showPoint(index)}
             onMouseLeave={() => setActivePoint(null)}
             onFocus={() => showPoint(index)}
             onBlur={() => setActivePoint(null)}
-            onClick={() => showPoint(index)}
+            onClick={() => (onSelect ? onSelect(point.raw) : showPoint(index))}
           />
         ))}
       {type === "bar" &&
@@ -282,8 +288,8 @@ function Graph({
             // biome-ignore lint/suspicious/noArrayIndexKey: Query rows can share X values; hit targets have no local state.
             key={`${point.label}-${index}`}
             type="button"
-            className="analytics-bar-hit"
-            aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}`}
+            className={`analytics-bar-hit ${onSelect ? "analytics-drilldown-trigger" : ""}`}
+            aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}${onSelect ? ", open details" : ""}`}
             style={{
               left: xAt(index) - barWidth / 2,
               top: 14 + Math.min(yAt(point.value), baseline),
@@ -294,7 +300,7 @@ function Graph({
             onMouseLeave={() => setActivePoint(null)}
             onFocus={() => showPoint(index)}
             onBlur={() => setActivePoint(null)}
-            onClick={() => showPoint(index)}
+            onClick={() => (onSelect ? onSelect(point.raw) : showPoint(index))}
           />
         ))}
       {unit && <span className="analytics-unit">{unit}</span>}
@@ -329,18 +335,24 @@ function HorizontalBars({
   y,
   unit,
   accentColor,
+  onSelect,
 }: {
   rows: Row[];
   x: string;
   y: string;
   unit: string;
   accentColor: string;
+  onSelect?: (value: unknown) => void;
 }) {
   const [activeBar, setActiveBar] = useState<number | null>(null);
   const points = rows
-    .map((row) => ({ label: display(row[x]), value: numeric(row[y]) }))
+    .map((row) => ({
+      label: display(row[x]),
+      raw: row[x],
+      value: numeric(row[y]),
+    }))
     .filter(
-      (point): point is { label: string; value: number } =>
+      (point): point is { label: string; raw: unknown; value: number } =>
         point.value !== null,
     )
     .slice(0, 12);
@@ -384,8 +396,8 @@ function HorizontalBars({
               <div className="analytics-horizontal-track">
                 <button
                   type="button"
-                  className="analytics-horizontal-bar"
-                  aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}`}
+                  className={`analytics-horizontal-bar ${onSelect ? "analytics-drilldown-trigger" : ""}`}
+                  aria-label={`${x}: ${point.label}, ${y}: ${display(point.value)}${unit ? ` ${unit}` : ""}${onSelect ? ", open details" : ""}`}
                   style={{
                     left: `${Math.min(zero, value)}%`,
                     width: `${Math.max(1, Math.abs(value - zero))}%`,
@@ -397,7 +409,9 @@ function HorizontalBars({
                   onMouseLeave={() => setActiveBar(null)}
                   onFocus={() => setActiveBar(index)}
                   onBlur={() => setActiveBar(null)}
-                  onClick={() => setActiveBar(index)}
+                  onClick={() =>
+                    onSelect ? onSelect(point.raw) : setActiveBar(index)
+                  }
                 />
               </div>
               {activeBar === index && (
@@ -435,15 +449,17 @@ function HorizontalBars({
 export function Visualization({
   definition,
   data,
+  onSelect,
 }: {
   definition: ModuleDefinition;
   data: unknown;
+  onSelect?: (value: unknown) => void;
 }) {
   const rows = rowsFromResource(data, definition.source.rowsPath);
   if (!rows.length)
     return (
       <div className="analytics-empty-visual">
-        No rows to display. Set a rows path if the resource returns an object.
+        No rows returned. Adjust the filters or check the module's rows path.
       </div>
     );
   const { type, x, y, unit } = definition.chart;
@@ -514,6 +530,7 @@ export function Visualization({
         y={y}
         unit={unit}
         accentColor={definition.styles.accentColor}
+        onSelect={onSelect}
       />
     );
   if (type === "line" || type === "area" || type === "bar")
@@ -527,6 +544,7 @@ export function Visualization({
         accentColor={definition.styles.accentColor}
         showGrid={definition.styles.showGrid}
         height={definition.styles.height}
+        onSelect={onSelect}
       />
     );
   const columns = Object.keys(rows[0] ?? {}).slice(0, 8);

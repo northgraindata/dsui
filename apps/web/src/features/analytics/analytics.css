@@ -844,6 +844,9 @@
   outline: 2px solid #eaf3ff;
   outline-offset: 2px;
 }
+.analytics-page .analytics-drilldown-trigger {
+  cursor: pointer;
+}
 .analytics-horizontal-tooltip {
   position: absolute;
   right: 0;
@@ -890,6 +893,175 @@
 }
 .analytics-horizontal-axis-values span:last-child {
   transform: translateX(-100%);
+}
+.analytics-dashboard-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+.analytics-dashboard-filters > fieldset,
+.analytics-dashboard-filters > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #a9c1e0;
+  font-size: 12px;
+}
+.analytics-dashboard-filters > fieldset {
+  border: 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+.analytics-dashboard-filters legend {
+  padding: 0 0 5px;
+}
+.analytics-dashboard-filters input {
+  color-scheme: dark;
+  min-width: 0;
+  max-width: 170px;
+  padding: 7px 9px;
+  border: 1px solid #25446e;
+  border-radius: 7px;
+  color: #eaf3ff;
+  background: #0a1b33;
+}
+.analytics-dashboard-filters .dsui-option-select {
+  width: min(170px, 100%);
+  min-width: 130px;
+}
+.analytics-dashboard-filters .dsui-date-picker {
+  width: 156px;
+  max-width: 100%;
+}
+.analytics-dashboard-filters .dsui-option-select-trigger {
+  background: #0a1b33;
+}
+.analytics-dashboard-filters .dsui-date-picker-trigger {
+  background: #0a1b33;
+}
+.analytics-page .analytics-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid #31567f;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #122d4d, #0b1d35);
+  color: #c9dfff;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 #ffffff12;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+.analytics-page .analytics-filter-reset:hover {
+  border-color: #5a9cfa;
+  background: #173c68;
+  color: #fff;
+}
+.analytics-filter-reset svg {
+  color: #7eb9ff;
+}
+.analytics-filter-editor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #25446e;
+  border-radius: 9px;
+}
+.analytics-drilldown-panel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100vw);
+  height: 100dvh;
+  padding: 22px;
+  overflow: auto;
+  border-left: 1px solid #25446e;
+  background: #061326;
+  box-shadow: -22px 0 55px #0006;
+}
+.analytics-overlay-dismiss {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.analytics-drilldown-panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 24px;
+}
+.analytics-drilldown-panel h2 {
+  margin: 5px 0 0;
+}
+.analytics-drilldown-panel > header button {
+  border: 0;
+  background: transparent;
+  color: #aac4e7;
+  cursor: pointer;
+}
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+  .app-chrome {
+    background: #061326 !important;
+    print-color-adjust: exact;
+  }
+  .app-topbar,
+  .app-sidebar,
+  .analytics-breadcrumb,
+  .analytics-back,
+  .analytics-toolbar,
+  .analytics-view-tabs,
+  .analytics-card-actions,
+  .analytics-card footer,
+  .analytics-dashboard-filters .analytics-filter-reset,
+  .analytics-overlay {
+    display: none !important;
+  }
+  .app-body,
+  .app-content {
+    display: block !important;
+    min-height: 0 !important;
+  }
+  .analytics-page {
+    padding: 0;
+  }
+  .analytics-grid {
+    gap: 10px !important;
+  }
+  .analytics-card {
+    break-inside: avoid;
+    animation: none;
+    print-color-adjust: exact;
+  }
+  .analytics-card-visual,
+  .analytics-line-path,
+  .analytics-area-fill,
+  .analytics-chart-bar,
+  .analytics-horizontal-bar {
+    animation: none !important;
+  }
+  .analytics-line-path {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+  .analytics-line-point {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 .analytics-table-wrap {
   max-height: 213px;
@@ -1011,6 +1183,15 @@
   color: white;
   padding: 10px 11px;
   outline: none;
+  font-size: 13px;
+}
+.analytics-form .dsui-option-select-trigger,
+.analytics-form .dsui-date-picker-trigger {
+  min-height: 39px;
+  padding: 9px 11px;
+  border-color: #274365;
+  background: #0b1d36;
+  color: white;
   font-size: 13px;
 }
 .analytics-form input:focus,

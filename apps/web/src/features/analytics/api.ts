@@ -18,6 +18,7 @@ export interface ModuleDefinition {
     resourceId: string;
     input: Record<string, unknown>;
     sqlFile?: string;
+    parameters?: string[];
     rowsPath: string;
   };
   chart: {
@@ -27,6 +28,7 @@ export interface ModuleDefinition {
     unit: string;
     compareTo?: string;
     comparisonLabel?: string;
+    drilldown?: { module: string; subfolder?: string; parameter: string };
   };
   styles: {
     accentColor: string;
@@ -49,12 +51,28 @@ export interface DashboardDefinition {
   title: string;
   description: string;
   tags: string[];
+  filters: DashboardFilter[];
   ownerId?: string;
   visibility?: "private" | "shared";
   styles: { columns: 1 | 2; spacing: "compact" | "regular" | "relaxed" };
   modules: DashboardModule[];
   views: DashboardView[];
 }
+export type DashboardFilter =
+  | {
+      name: string;
+      label: string;
+      type: "date-range";
+      defaultStart?: string;
+      defaultEnd?: string;
+    }
+  | {
+      name: string;
+      label: string;
+      type: "select";
+      options: string[];
+      defaultValue?: string;
+    };
 export type Saved<T> = T & { revision: string };
 export type DashboardItem = Saved<DashboardDefinition> & { favorite: boolean };
 export type ResourceOption = {

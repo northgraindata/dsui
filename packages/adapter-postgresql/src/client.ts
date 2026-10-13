@@ -125,7 +125,11 @@ export interface PostgreSQLClient {
   }): Promise<PostgreSQLActivityEntry[]>;
   cancelQuery(pid: number): Promise<boolean>;
   execute(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
-  executeReadOnly(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
+  executeReadOnly(
+    sql: string,
+    maxRows: number,
+    parameters?: Array<string | number | boolean | null>,
+  ): Promise<PostgreSQLQueryResult>;
   dispose(): Promise<void>;
 }
 
@@ -457,11 +461,13 @@ export function createPostgreSQLClient(
       return formatQueryResult(result, maxRows);
     },
 
-    async executeReadOnly(query, maxRows) {
+    async executeReadOnly(query, maxRows, parameters = []) {
       const bounded = boundedReportSql(query, maxRows);
       const result = await sql.begin("read only", async (transaction) => {
-        const rows =
-          await transaction.unsafe<Record<string, unknown>[]>(bounded);
+        const rows = await transaction.unsafe<Record<string, unknown>[]>(
+          bounded,
+          parameters,
+        );
         return rows;
       });
       return formatQueryResult(result, maxRows);
