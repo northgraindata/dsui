@@ -92,7 +92,9 @@ async function locateConfig(path: string): Promise<string | null> {
     try {
       await access(candidate);
       return candidate;
-    } catch {}
+    } catch {
+      // This candidate may not exist; try the remaining supported locations.
+    }
   }
   return null;
 }

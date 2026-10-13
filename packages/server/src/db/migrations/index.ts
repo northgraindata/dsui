@@ -13,7 +13,6 @@ import { migration_0011_event_type } from "./0011_event_type.js";
 
 import { migration_0012_event_sequence } from "./0012_event_sequence.js";
 
-
 /** All migrations in version order. Add new files here, never reorder. */
 export const migrations: Migration[] = [
   migration_0001_init,

@@ -3,7 +3,6 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import zodToJsonSchema from "zod-to-json-schema";
 import {
   matchRoute,
   type PageDocument,
@@ -11,8 +10,9 @@ import {
   type PluginAuthenticationProvider,
   type PluginAuthorizationProvider,
   type PluginCapabilities,
-  type PluginCatalog,
   type PluginCapabilityCatalog,
+  type PluginCapabilitySummary,
+  type PluginCatalog,
   type PluginNavigationItem,
   type PluginPermission,
   type PluginPrincipal,
@@ -31,6 +31,7 @@ import {
   type RuntimePluginSlot,
   resolvePluginPage,
 } from "@northgraindata/dsui-plugin-sdk";
+import zodToJsonSchema from "zod-to-json-schema";
 import { resolveSdkRoot } from "../adapters/sdk.js";
 import { allowed } from "../auth.js";
 import type { PluginSource } from "../config.js";
@@ -1164,7 +1165,7 @@ export class PluginRuntime {
   pluginCapabilities(): PluginCapabilityCatalog {
     return {
       list: async () => {
-        const visible = [];
+        const visible: PluginCapabilitySummary[] = [];
         for (const plugin of this.catalog().plugins)
           if (await this.canAccessPlugin(plugin.id))
             visible.push({

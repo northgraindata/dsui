@@ -32,9 +32,7 @@ const MONTHS = [
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 const MONTH_NAMES = new Map(MONTHS.map((name, index) => [name, index + 1]));
-const WEEKDAY_NAMES = new Map(
-  WEEKDAYS.map((name, index) => [name, index]),
-);
+const WEEKDAY_NAMES = new Map(WEEKDAYS.map((name, index) => [name, index]));
 
 export interface CronSchedule {
   /**
@@ -78,11 +76,13 @@ function parseField(
         const lowered = value.toLowerCase();
         if (names?.has(lowered)) return names.get(lowered)!;
         const numeric = Number(value);
-        if (!Number.isInteger(numeric)) throw new CronError(`Invalid "${value}"`);
+        if (!Number.isInteger(numeric))
+          throw new CronError(`Invalid "${value}"`);
         return numeric;
       };
       low = parse(from);
-      high = to === undefined ? (range.includes("-") ? parse(to) : low) : parse(to);
+      high =
+        to === undefined ? (range.includes("-") ? parse(to) : low) : parse(to);
       if (high < low) throw new CronError(`Range "${range}" is inverted`);
     }
     if (low < min || high > max)

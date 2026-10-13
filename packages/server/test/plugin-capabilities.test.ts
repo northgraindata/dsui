@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { PluginPrincipal } from "@northgraindata/dsui-plugin-sdk";
 import {
   defineAction,
   definePlugin,
@@ -9,7 +10,6 @@ import {
   manual,
   z,
 } from "@northgraindata/dsui-plugin-sdk";
-import type { PluginPrincipal } from "@northgraindata/dsui-plugin-sdk";
 import { createRuntime } from "../src/app";
 
 test("plugins can discover and invoke other plugin capabilities with host permissions", async () => {
