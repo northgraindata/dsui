@@ -13,9 +13,9 @@ import {
   type UserContent,
 } from "ai";
 import { isTextAttachment } from "../attachments/attachments";
+import { replyContext } from "../chat/replies";
 import { readAttachmentData } from "../storage/database";
 import { type Config, type Conversation, toolDescriptions } from "./model";
-import { replyContext } from "../chat/replies";
 import { responseFormatInstructions } from "./skills";
 import { toolInputSchemas } from "./tools";
 
@@ -254,11 +254,15 @@ export class AiSdkRuntime implements AgentRuntime {
           inputSchema: toolInputSchemas.read_skill,
           execute: (input) => execute("read_skill", input),
         }),
-        execute_action: tool({
-          description: toolDescriptions.execute_action,
-          inputSchema: toolInputSchemas.execute_action,
-          execute: (input) => execute("execute_action", input),
-        }),
+        ...(context.config.allowActionExecution
+          ? {
+              execute_action: tool({
+                description: toolDescriptions.execute_action,
+                inputSchema: toolInputSchemas.execute_action,
+                execute: (input) => execute("execute_action", input),
+              }),
+            }
+          : {}),
         list_plugin_resources: tool({
           description: toolDescriptions.list_plugin_resources,
           inputSchema: toolInputSchemas.list_plugin_resources,
@@ -274,11 +278,15 @@ export class AiSdkRuntime implements AgentRuntime {
           inputSchema: toolInputSchemas.list_plugin_actions,
           execute: (input) => execute("list_plugin_actions", input),
         }),
-        execute_plugin_action: tool({
-          description: toolDescriptions.execute_plugin_action,
-          inputSchema: toolInputSchemas.execute_plugin_action,
-          execute: (input) => execute("execute_plugin_action", input),
-        }),
+        ...(context.config.allowActionExecution
+          ? {
+              execute_plugin_action: tool({
+                description: toolDescriptions.execute_plugin_action,
+                inputSchema: toolInputSchemas.execute_plugin_action,
+                execute: (input) => execute("execute_plugin_action", input),
+              }),
+            }
+          : {}),
         list_actions: tool({
           description: toolDescriptions.list_actions,
           inputSchema: toolInputSchemas.list_actions,

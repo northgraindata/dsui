@@ -1,11 +1,11 @@
 import type { PluginContext } from "@northgraindata/dsui-plugin-sdk";
 import { PluginRequestError } from "@northgraindata/dsui-plugin-sdk";
-import type { DraftAttachment } from "../attachments/attachments";
 import {
   type Config,
   type Conversation,
   conversationSchema,
 } from "../agent/model";
+import type { DraftAttachment } from "../attachments/attachments";
 
 export function owner(context: PluginContext<Config>): string {
   const principal = context.access.principal?.();

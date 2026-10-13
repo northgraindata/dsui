@@ -4,6 +4,7 @@ import type {
 } from "@northgraindata/dsui-plugin-sdk";
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import { useRouter, useRouterState } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
 import {
   useCallback,
   useEffect,
@@ -11,7 +12,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { CSSProperties } from "react";
 import { getPluginSlots } from "../../api";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";

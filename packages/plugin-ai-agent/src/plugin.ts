@@ -9,11 +9,11 @@ import {
 } from "@northgraindata/dsui-plugin-sdk";
 import { type AgentRuntime, AiSdkRuntime } from "./agent/agent";
 import {
+  availableToolNames,
   type Config,
   type Conversation,
   configSchema,
   toolDescriptions,
-  toolNames,
 } from "./agent/model";
 import {
   configuredModels,
@@ -60,8 +60,12 @@ export function createAiAgentPlugin(
 ) {
   const active = new Map<
     string,
-    { controller: AbortController; done: Promise<void> }
+    { controller: AbortController; done: Promise<void>; ownerId: string }
   >();
+  const requests = new Map<string, number[]>();
+  let globalRequests: number[] = [];
+  const maxRequestsPerMinuteGlobal = 30;
+  const maxConcurrentTurns = 8;
   const load = (context: PluginContext<Config>, id: string) => {
     const conversation = read(context, id);
     if (conversation.title === "New chat") {
@@ -157,10 +161,12 @@ export function createAiAgentPlugin(
             services,
             conversations: input.includeHistory ? await history(context) : [],
             conversation,
-            tools: toolNames.map((name) => ({
-              name,
-              description: toolDescriptions[name],
-            })),
+            tools: availableToolNames(context.config.allowActionExecution).map(
+              (name) => ({
+                name,
+                description: toolDescriptions[name],
+              }),
+            ),
           };
         },
       });
@@ -243,6 +249,45 @@ export function createAiAgentPlugin(
             "Add a message or attachment",
           ),
         handler: async (context, input) => {
+          const ownerId = owner(context);
+          const nowMs = Date.now();
+          const recent = (requests.get(ownerId) ?? []).filter(
+            (timestamp) => nowMs - timestamp < 60_000,
+          );
+          globalRequests = globalRequests.filter(
+            (timestamp) => nowMs - timestamp < 60_000,
+          );
+          if (recent.length >= context.config.requestsPerMinute)
+            throw new PluginRequestError(
+              "Too many agent requests. Please wait a minute and try again.",
+              429,
+            );
+          if (globalRequests.length >= maxRequestsPerMinuteGlobal)
+            throw new PluginRequestError(
+              "The agent has reached its request limit. Please try again later.",
+              429,
+            );
+          if (
+            [...active.values()].filter((run) => run.ownerId === ownerId)
+              .length >= 1
+          )
+            throw new PluginRequestError(
+              "An agent response is already running for this account",
+              429,
+            );
+          if (active.size >= maxConcurrentTurns)
+            throw new PluginRequestError(
+              "The agent is busy. Please try again shortly.",
+              429,
+            );
+          recent.push(nowMs);
+          globalRequests.push(nowMs);
+          while (requests.size >= 10_000) {
+            const oldest = requests.keys().next().value;
+            if (!oldest) break;
+            requests.delete(oldest);
+          }
+          requests.set(ownerId, recent);
           const attachments = input.attachments ?? [];
           const conversation: Conversation = input.conversationId
             ? load(context, input.conversationId)
@@ -414,6 +459,15 @@ export function createAiAgentPlugin(
               execute: (name, raw) => {
                 const pending = (async () => {
                   controller.signal.throwIfAborted();
+                  if (
+                    !context.config.allowActionExecution &&
+                    (name === "execute_action" ||
+                      name === "execute_plugin_action")
+                  )
+                    throw new PluginRequestError(
+                      "Agent action execution is disabled",
+                      403,
+                    );
                   if (++calls > context.config.maxToolCalls) {
                     controller.abort(
                       new Error("Agent tool call limit reached"),
@@ -548,7 +602,7 @@ export function createAiAgentPlugin(
               active.delete(conversation.id);
               save(context, conversation);
             });
-          active.set(conversation.id, { controller, done });
+          active.set(conversation.id, { controller, done, ownerId });
           return { conversationId: conversation.id };
         },
       });

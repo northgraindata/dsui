@@ -1,7 +1,7 @@
 import { z } from "@northgraindata/dsui-plugin-sdk";
 import { attachmentSchema, MAX_ATTACHMENTS } from "../attachments/attachments";
-import { modelConnectionSchema, namedModelSchema } from "./model-config";
 import { messageReplySchema } from "../chat/replies";
+import { modelConnectionSchema, namedModelSchema } from "./model-config";
 
 export const configSchema = z.object({
   model: modelConnectionSchema.default({}),
@@ -16,6 +16,8 @@ export const configSchema = z.object({
     ),
   maxToolCalls: z.number().int().min(1).max(100).default(20),
   timeoutSeconds: z.number().int().min(10).max(600).default(120),
+  allowActionExecution: z.boolean().default(true),
+  requestsPerMinute: z.number().int().min(1).max(60).default(5),
   sensitiveColumns: z
     .array(z.string().min(1))
     .default([
@@ -50,6 +52,13 @@ export const toolNames = [
   "list_plugin_actions",
   "execute_plugin_action",
 ] as const;
+export function availableToolNames(allowActionExecution: boolean) {
+  return toolNames.filter(
+    (name) =>
+      allowActionExecution ||
+      (name !== "execute_action" && name !== "execute_plugin_action"),
+  );
+}
 export const toolDescriptions = {
   list_skills: "List plugin-provided task guides and when to use them.",
   read_skill: "Read one plugin-provided Markdown task guide by its exact ID.",
