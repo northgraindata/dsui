@@ -43,8 +43,8 @@ styles:
 ```
 
 `styles` controls the module accent color, card height (`compact`, `regular`, or
-`tall`), and the optional line chart grid. Bar charts always show horizontal
-value guides. `styles` is optional; existing modules receive defaults. These
+`tall`), and the optional line or area chart grid. Bar charts always show value
+guides. `styles` is optional; existing modules receive defaults. These
 options are also available in the module editor.
 
 For longer queries, save a `.sql` file under `analytics/queries/` and refer to it
@@ -73,8 +73,55 @@ at most 1,000 rows. Connect a database account with only the access the report
 needs. Other adapter resources can also supply rows; set `rowsPath` when the
 resource returns an object containing an array, such as `rows` or `data.items`.
 
-The first visualization types are `metric`, `line`, `bar`, and `table`. Line and
-bar charts use the `x` and `y` fields. Metric uses the first row's `y` field.
+The visualization types are `metric`, `kpi`, `line`, `area`, `bar`,
+`horizontal-bar`, and `table`. Line, area, and both bar charts use `x` for the
+category or date and `y` for a numeric value. Queries should return rows in the
+intended display order; charts show at most 50 line/area points or 12 bars.
+Area charts use the line chart grid setting. Metric uses the first row's `y`
+field.
+
+To show a trend as an area or compare categories with horizontal bars, use the
+same source and fields as a line or bar module and change the chart type:
+
+```yaml
+chart:
+  type: area
+  x: day
+  y: plays
+  unit: plays
+```
+
+```yaml
+chart:
+  type: horizontal-bar
+  x: artist
+  y: plays
+  unit: plays
+```
+
+For a KPI comparison, return the current and previous period values in the
+same query row. `compareTo` names the previous value field; `comparisonLabel`
+names that period. The card shows both values, the absolute change, and the
+percentage change when the previous value is nonzero:
+
+```yaml
+chart:
+  type: kpi
+  y: current_plays
+  compareTo: previous_plays
+  comparisonLabel: Previous day
+  unit: plays
+```
+
+For example, this PostgreSQL query supplies those fields from daily totals:
+
+```sql
+SELECT plays AS current_plays,
+       LAG(plays) OVER (ORDER BY listening_date) AS previous_plays
+FROM daily_listening
+ORDER BY listening_date DESC
+LIMIT 1;
+```
 
 ## Dashboard
 
