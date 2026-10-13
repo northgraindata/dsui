@@ -27,15 +27,20 @@ function toolActivity(tool: ToolRun, services: readonly Service[]) {
   switch (tool.name) {
     case "list_actions":
       return `Discovering available actions${scope}`;
+    case "execute_action": {
+      const action =
+        textField(args, "actionId")?.replace(/[-_]/g, " ") ?? "action";
+      return `Running ${action}${scope}`;
+    }
     case "list_services":
       return "Finding connected services";
     case "get_service_health":
       return `Checking service health${scope}`;
     case "list_events":
       return `Reading recent events${scope}`;
-    case "discover_resources":
+    case "list_resources":
       return `Discovering available resources${scope}`;
-    case "read_resource": {
+    case "query_resource": {
       const resourceId = textField(args, "resourceId");
       const resource = resourceId?.replace(/[-_]/g, " ") ?? "resource";
       const input = record(args.input);

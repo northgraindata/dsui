@@ -58,23 +58,19 @@ for a relevant task. Both tools read packaged plugin content only. A skill
 describes a workflow, while live claims still require adapter and DSUI tool
 evidence. Skill reads count toward `maxToolCalls`.
 
-## Read-only investigation
+## Service resources and actions
 
-`search_workspace_resources` searches resource IDs and descriptions across a
-bounded page of visible services, with optional service IDs. Follow `nextOffset`
-for more matches on that page, then `nextCursor` for the next service page.
-`discover_resources` supplies the selected resource's input schema and policy.
-`read_resources_batch` reads up to five independent resources in one tool call;
-each item reports success or an error separately. The same permission and
-resource-policy checks apply as for `read_resource`. Batch outputs are bounded
-and sensitive columns are redacted.
+The agent uses the host's generic service catalog. It lists the resources and
+actions declared by any service visible to the current user, then calls them
+through `queryResource` or `executeAction`. Adapter authors do not need to add
+agent-specific resources or dependencies. The host keeps credentials private,
+checks `inspect` for reads and `execute` for actions, and validates inputs using
+the adapter's declared schemas.
 
-Airflow exposes `latest-failed-dag-runs`: at most one failed run from each DAG's
-latest 100 runs in a page of up to 25 DAGs. Follow `nextDagOffset` to inspect
-more DAGs.
-dbt exposes `recent-failures`: it covers the latest 100 Cloud runs or the latest
-local `run_results.json` artifact, not full history. Both resources are read-only
-and state when their results are partial.
+Resource search and batch reads are plugin-side conveniences over that same
+catalog and query operation. They do not add adapter endpoints. Outputs are
+bounded and sensitive fields are redacted before tool results are stored or sent
+to the model.
 
 ## Development
 
@@ -106,13 +102,17 @@ plugins:
         apiKey: "${DSUI_AGENT_API_KEY}"
 ```
 
-`provider` supports `openai`, `anthropic`, or `gateway`; use a model ID available
+`provider` supports `openai`, `anthropic`, `gateway`, or `openrouter`; use a model ID available
 to your provider (Gateway IDs include the provider prefix). OpenAI and Anthropic
 use their direct provider APIs; Gateway is used only when explicitly selected.
 You can put your key directly in YAML, but environment interpolation avoids
 committing it. Restart DSUI after changing configuration. The browser receives
 only whether a key is configured, never the key itself. Treat YAML and plugin
 storage as secrets. Without a key, the drawer still opens for setup.
+
+For OpenRouter, set `provider: openrouter`, use its model ID (for example
+`~openai/gpt-sol-latest`), and set `apiKey: "${OPENROUTER_API_KEY}"`. Requests use
+OpenRouter's Chat Completions endpoint at `https://openrouter.ai/api/v1`.
 
 Optional configuration: `maxToolCalls` defaults to `20`; `timeoutSeconds` defaults
 to `120`. The tool-call count is enforced separately from the model-step limit.
@@ -210,137 +210,22 @@ contents separately. Reopening a conversation restores its attachments.
 
 ## Tools and boundaries
 
-| Tool | Plugin SDK capability |
-| --- | --- |
-| `list_services` | Visible service summaries and pagination |
-| `get_service_health` | Explicit adapter health probe |
-| `list_events` | Previously recorded events, not live monitoring |
-| `discover_resources` | Declared resource IDs, descriptions, schemas, policies and availability |
-| `read_resource` | One declared adapter resource, validated by the adapter |
-| `list_actions` | Declared action IDs, descriptions and schemas; discovery only |
+The agent can discover services, resources, and actions; inspect service health
+and recorded events; query declared resources; and execute declared actions
+when the user requests them and their account has execute permission. The host
+validates each input against the service catalog and enforces permissions on
+every operation. Discovery alone does not grant action execution.
 
-The plugin has no adapter-specific tools, resource-ID mappings, SQL dialects or
-table routes. The workflow is `list_services` → `discover_resources` and/or
-`list_actions` for relevant services → `read_resource` with discovered arguments.
-Resource and action discovery use `cursor`, `limit` (default 20, maximum 50),
-and `nextCursor`. New adapters require no agent-plugin changes to expose their
-declared resources/actions. Existing adapters without descriptions still work
-through their resource IDs and input schemas.
+Resource and action IDs are always discovered from the connected service. The
+plugin has no adapter-specific branches, connection credentials, or calls to
+other plugins. To expose a capability to the agent, declare it through the
+Adapter SDK's ordinary resource or action contract.
 
-The former five data tools are now adapter-owned resources, not model tools:
-
-| Resource | Available implementations |
-| --- | --- |
-| `search-catalog` | PostgreSQL, DuckDB |
-| `inspect-table` | PostgreSQL, DuckDB |
-| `find-tables` | PostgreSQL, DuckDB |
-| `preview-table` | PostgreSQL, DuckDB |
-| `query-readonly` | PostgreSQL, opt-in |
-
-These implementations are not a universal requirement on adapters. The agent
-selects operations using the descriptions and schemas returned by each service.
-Actions can be described but not executed by the agent. There is no action-run
-SDK capability or `perform_action` model tool here; execution needs a separate
-permission/confirmation workflow before it can be enabled.
-
-The provided catalog resources operate on one service/database per call, with an optional schema.
-For workspace-wide searches the agent lists services/databases and repeats the
-search in each relevant context. Results are sorted by schema/name and paginated
-with `offset`, `limit` (maximum 50), and `nextOffset`. Column bounds are inclusive:
-"more than 10 columns" uses `minColumns: 11`. Catalog filtering runs inside the
-adapter in one metadata query, not one agent tool call per table. Counts may
-include views; `kind` identifies the relation type. Row counts are estimates,
-and views may not have an estimate. Table names remain the only clickable link.
-
-Schema summaries use one heading per table followed by a Markdown table with
-`Column name` and `Type`, plus `Constraints` when available. Verified table links
-are placed on the heading's table name. JSON or SQL DDL is used only when requested.
-
-Previews use Markdown tables by default, with column headers and one row per
-record. JSON is used only when explicitly requested; other explicit format
-requests are honored too. Previews default to 10 rows, with a maximum of 50.
-Set `allowTablePreview: false`
-in the plugin config to disable previews (including the generic preview resource
-path). Adapter resources declare `policy: "metadata" | "preview" | "sql"`;
-the plugin enforces preview/SQL flags against the discovered policy, never a
-hardcoded resource ID. Policies are trusted adapter declarations, not a sandbox.
-Untagged legacy resources remain available for compatibility; authors must tag
-sample-data and SQL resources accurately for these switches to cover them.
-`sensitiveColumns` configures case-insensitive field-name redaction before
-tool results are saved or sent to the model. Defaults include email, phone,
-address, SSN, birth date, card number, and first/last name; known credential
-fields are always redacted. This is not a comprehensive privacy filter: aliases,
-free text, schema comments, nested arrays or unrecognized names may still expose
-sensitive data. Share only data authorized for the selected model provider.
-
-### Read-only SQL setup
-
-SQL is disabled by default. To enable PostgreSQL SQL, set both flags in your
-existing `dsui.yaml` entries (merge these into your configuration):
-
-```yaml
-plugins:
-  ai-agent:
-    config:
-      allowReadOnlySql: true
-services:
-  - id: postgres-spotify
-    connection:
-      allowAgentSql: true
-```
-
-Use a dedicated least-privileged PostgreSQL role with SELECT access only to the
-intended tables, not a superuser. Elevated roles and server-file/program roles
-are rejected. Use trusted schemas/views and do not grant access to dangerous
-SECURITY DEFINER functions. This is not a sandbox for an untrusted database.
-Connections scoped to one selected database cannot target other databases.
-
-The PostgreSQL `query-readonly` resource accepts one SELECT/WITH query, runs it inside a PostgreSQL
-`READ ONLY` transaction on a dedicated short-lived connection, and uses
-`pg_catalog` as the search path: table names must be schema-qualified. Only
-allowlisted built-in functions are accepted; comments, semicolons, dollar
-quoting, backslashes and quoted function calls are rejected conservatively.
-The default statement timeout is 5 seconds (maximum 10 seconds, never above the
-service's `statementTimeout` setting); lock timeout is 1 second. At most 200 rows are
-returned (default 50), with explicit truncation and a 1 MB serialized result
-limit. These are output limits, not a database memory quota. Stop/disconnect
-cannot forcibly cancel a resource read; the database statement timeout remains
-the execution bound. SQL uses the same service/context permissions as other
-tools. DuckDB SQL is unsupported because its general-purpose query runner can
-access files, extensions and external systems.
-
-[PostgreSQL's read-only mode](https://www.postgresql.org/docs/current/sql-set-transaction.html)
-blocks database mutations but does not prevent every disk or external side
-effect; role privileges and trusted database objects remain important.
-
-No mutation actions, shell, filesystem, web-search or model-generated code
-execution tools are enabled. Adapter resource authors
-remain responsible for their queries having no destructive side effects. Tool
-results can contain real business data and are sent to the configured model;
-only select services whose data you are authorized to share with that provider.
-Outputs are bounded and truncation is explicit. Known structured secret fields
-and occurrences of the configured model key are redacted from tool evidence.
-This does not guarantee arbitrary logs or business data contain no sensitive data.
-
-Conversations are owned by the authenticated principal and persisted in
-plugin-scoped SQLite. Every mentioned or previously accessed service is checked
-before returning or continuing a conversation. The model receives previous
-messages and paired tool calls/results reconstructed from saved evidence.
-Old conversations remain readable; external session IDs/cursors are no longer used.
-Tools run in the original DSUI request's permission context, and connection
-credentials are resolved by the host, not exposed to the plugin.
-
-The plugin consumes the AI SDK text stream and saves a projection that the UI
-polls. Closing the drawer does not stop a turn; use Stop to cancel it.
-Cancellation discards late tool results; an adapter's already-started read may
-still finish because the resource SDK does not expose forced cancellation.
-Restarting DSUI interrupts active responses; saved conversations can be reopened.
-Active turns and locks are local to one DSUI process. Horizontal scaling still
-requires shared conversation storage and distributed ownership/locking; AI SDK
-does not provide those automatically.
-
-The implementation follows AI SDK's
-[agent guide](https://ai-sdk.dev/docs/agents/building-agents).
+Tool results are bounded before persistence and model delivery. Sensitive field
+names are redacted using the `sensitiveColumns` setting; known credential fields
+are always redacted. This does not identify every sensitive value in arbitrary
+text, nested payloads, or schema comments, so use a model provider authorized to
+receive the queried data.
 
 ## Manual verification
 

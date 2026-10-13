@@ -255,7 +255,6 @@ export type PluginServiceProbe = {
 export type PluginServiceResource = {
   readonly id: string;
   readonly description?: string;
-  readonly policy?: "metadata" | "preview" | "sql";
   readonly inputSchema?: Record<string, unknown>;
 };
 export type PluginServiceAction = {
@@ -267,30 +266,15 @@ export type PluginInvocationOptions = {
   signal?: AbortSignal;
   origin?: { pluginId: string; runId?: string };
 };
-export type PluginServiceDescription = {
-  resources: readonly PluginServiceResource[];
-  actions: readonly PluginServiceAction[];
-};
-export interface PluginIntegrationCatalog {
-  available(pluginId: string): boolean;
-  query(pluginId: string, resourceId: string, input: unknown): Promise<unknown>;
-  call(pluginId: string, procedureId: string, input: unknown): Promise<unknown>;
-}
-
 export interface PluginServiceCatalog {
-  /** Discover action schemas only; this grants no execution capability. */
-  actions?(id: string): Promise<readonly PluginServiceAction[] | null>;
-  /** Read-only adapter resource descriptors, scoped to service visibility. */
-  resources?(id: string): Promise<readonly PluginServiceResource[] | null>;
-  /** Execute a declared adapter resource without exposing connection credentials. */
-  readResource?(
+  listActions(id: string): Promise<readonly PluginServiceAction[] | null>;
+  listResources(id: string): Promise<readonly PluginServiceResource[] | null>;
+  queryResource(
     id: string,
     resourceId: string,
     input: unknown,
   ): Promise<unknown>;
-  describe?(id: string): Promise<PluginServiceDescription | null>;
-  query?(id: string, resourceId: string, input: unknown): Promise<unknown>;
-  execute?(
+  executeAction(
     id: string,
     actionId: string,
     input: unknown,
@@ -539,7 +523,6 @@ export interface PluginRegistry<TConfig = unknown> {
 }
 
 export interface PluginCapabilities {
-  readonly plugins?: PluginIntegrationCatalog;
   readonly access: {
     /** Identity of the authenticated request; absent in background work. */
     principal?(): PluginPrincipal | null;
@@ -676,28 +659,22 @@ export function definePlugin<TConfig>(
     prepare(rawConfig, host) {
       const config = definition.configSchema.parse(rawConfig);
       const signals = new Map<string, PluginSignalDefinition>();
-      const executeService = host.services.execute;
       const context: PluginContext<TConfig> = {
         pluginId: definition.metadata.id,
         config,
         services: {
           ...host.services,
-          ...(executeService
-            ? {
-                execute: (id, actionId, input, options) =>
-                  executeService(id, actionId, input, {
-                    ...options,
-                    origin: {
-                      pluginId: definition.metadata.id,
-                      ...(options?.origin?.runId
-                        ? { runId: options.origin.runId }
-                        : {}),
-                    },
-                  }),
-              }
-            : {}),
+          executeAction: (id, actionId, input, options) =>
+            host.services.executeAction(id, actionId, input, {
+              ...options,
+              origin: {
+                pluginId: definition.metadata.id,
+                ...(options?.origin?.runId
+                  ? { runId: options.origin.runId }
+                  : {}),
+              },
+            }),
         },
-        plugins: host.plugins,
         storage: host.storage,
         stores: {
           // `get` must go through the host's own `get`: the host caches one
@@ -823,7 +800,6 @@ export function definePlugin<TConfig>(
                       access: context.access,
                       jobs: context.jobs,
                       events: context.events,
-                      plugins: context.plugins,
                       signal: runContext.signal,
                       logger: {
                         info: runContext.logger.info,

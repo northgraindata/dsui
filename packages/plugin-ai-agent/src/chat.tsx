@@ -19,9 +19,8 @@ import { HighlightedMentions, MentionInput } from "./mention-input";
 import { mentionServices } from "./mentions";
 import { conversationSchema } from "./model";
 import { ModelPicker } from "./model-picker";
-import { usePanelResize } from "./panel-resize";
 import { PromptNavigator } from "./prompt-navigator";
-import { React, ReactDOM } from "./react";
+import { React } from "./react";
 import { type MessageReply, resolveReply } from "./replies";
 import {
   ReplyQuote,
@@ -43,18 +42,20 @@ const stateSchema = z.object({
       }),
     )
     .default([]),
-  services: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      adapter: z.string(),
-      adapterName: z.string().optional(),
-      iconUrl: z.string().optional(),
-    }),
-  ),
-  conversations: z.array(
-    z.object({ id: z.string(), title: z.string(), status: z.string() }),
-  ),
+  services: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        adapter: z.string(),
+        adapterName: z.string().optional(),
+        iconUrl: z.string().optional(),
+      }),
+    )
+    .default([]),
+  conversations: z
+    .array(z.object({ id: z.string(), title: z.string(), status: z.string() }))
+    .default([]),
   conversation: conversationSchema.optional(),
 });
 type State = z.infer<typeof stateSchema>;
@@ -146,70 +147,47 @@ const suggestions = [
 ];
 
 export function AgentLauncher({ client }: ComponentProps) {
-  const { useState, useEffect, useRef, useCallback } = React;
-  const [mounted, setMounted] = useState(false);
-  const [open, setOpen] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const show = useCallback(() => {
-    setMounted(true);
-    requestAnimationFrame(() => requestAnimationFrame(() => setOpen(true)));
-  }, []);
-  const close = useCallback(() => {
-    setOpen(false);
-    trigger.current?.focus();
-  }, []);
+  const { useEffect } = React;
+  const open = () => client.openOverlay?.("chat-drawer");
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
         event.preventDefault();
-        if (open) close();
-        else show();
-      }
-      if (event.key === "Escape" && open) {
-        event.preventDefault();
-        close();
+        open();
       }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [open, close, show]);
+  }, [client]);
   return (
     <>
       <style>{styles}</style>
       <button
         type="button"
-        ref={trigger}
         className="da-trigger"
         title="Open agent · ⌘ J"
         aria-label="Open DSUI Agent"
-        aria-expanded={open}
         aria-controls="dsui-agent-panel"
-        onClick={() => (open ? close() : show())}
+        onClick={open}
       >
         <Glyph name="sparkle" size={21} />
       </button>
-      {mounted &&
-        ReactDOM.createPortal(
-          <>
-            <style>{styles}</style>
-            <AgentPanel client={client} open={open} close={close} />
-          </>,
-          document.body,
-        )}
     </>
   );
 }
 
-function AgentPanel({
-  client,
-  open,
-  close,
-}: {
-  client: ComponentProps["client"];
-  open: boolean;
-  close(): void;
-}) {
-  const { width, resizing, resizeHandle } = usePanelResize(open);
+export function AgentDrawer({ client }: ComponentProps) {
+  return (
+    <>
+      <style>{styles}</style>
+      <AgentPanel client={client} />
+    </>
+  );
+}
+
+function AgentPanel({ client }: { client: ComponentProps["client"] }) {
+  const open = true;
+  const close = () => client.closeOverlay?.();
   const [workspace, dispatch] = React.useReducer(
     chatTabsReducer,
     undefined,
@@ -227,19 +205,12 @@ function AgentPanel({
     dispatch({ type: "update", id, update });
   }, []);
   return (
-    <aside
+    <section
       id="dsui-agent-panel"
       className="da-panel"
       data-open={open}
-      data-workspace-panel={open ? "open" : "closed"}
-      data-resizing={resizing}
-      style={{ width }}
-      inert={!open}
-      role="dialog"
-      aria-modal="false"
       aria-label="DSUI Agent"
     >
-      {resizeHandle}
       <header className="da-header">
         <span className="da-outline-mark">
           <Glyph name="sparkle" size={20} />
@@ -294,7 +265,7 @@ function AgentPanel({
           updateTab={updateTab}
         />
       ))}
-    </aside>
+    </section>
   );
 }
 
@@ -336,6 +307,7 @@ function ChatSession({
   const followLatest = useRef(true);
   const scrollPosition = useRef(0);
   const active = useRef(true);
+  const bootstrapped = useRef(false);
   const modelConversation = useRef<string | undefined>(undefined);
   const conversationRef = useRef(conversationId);
   conversationRef.current = conversationId;
@@ -356,35 +328,48 @@ function ChatSession({
     },
     [call],
   );
-  const load = useCallback(async () => {
-    try {
-      const requestedId = conversationRef.current;
-      const result = stateSchema.parse(
-        await call("state", { conversationId: requestedId }),
-      );
-      if (!active.current || requestedId !== conversationRef.current) return;
-      setState(result);
-      if (result.conversation)
-        updateTab(tab.id, {
-          conversationId: result.conversation.id,
-          title: result.conversation.title,
-          status: result.conversation.status,
-        });
-      setLoadError(undefined);
-      if (
-        result.conversation &&
-        modelConversation.current !== result.conversation.id
-      ) {
-        modelConversation.current = result.conversation.id;
-        setModelKey(result.conversation.modelKey);
-      }
-    } catch (cause) {
-      if (active.current)
-        setLoadError(
-          cause instanceof Error ? cause.message : "Could not load agent",
+  const load = useCallback(
+    async (full = false) => {
+      try {
+        const requestedId = conversationRef.current;
+        const result = stateSchema.parse(
+          await call("state", {
+            conversationId: requestedId,
+            includeServices: full,
+            includeHistory: full,
+          }),
         );
-    }
-  }, [call, tab.id, updateTab]);
+        if (!active.current || requestedId !== conversationRef.current) return;
+        setState((previous) => ({
+          ...result,
+          services: full ? result.services : (previous?.services ?? []),
+          conversations: full
+            ? result.conversations
+            : (previous?.conversations ?? []),
+        }));
+        if (result.conversation)
+          updateTab(tab.id, {
+            conversationId: result.conversation.id,
+            title: result.conversation.title,
+            status: result.conversation.status,
+          });
+        setLoadError(undefined);
+        if (
+          result.conversation &&
+          modelConversation.current !== result.conversation.id
+        ) {
+          modelConversation.current = result.conversation.id;
+          setModelKey(result.conversation.modelKey);
+        }
+      } catch (cause) {
+        if (active.current)
+          setLoadError(
+            cause instanceof Error ? cause.message : "Could not load agent",
+          );
+      }
+    },
+    [call, tab.id, updateTab],
+  );
   useEffect(() => {
     active.current = true;
     return () => {
@@ -392,23 +377,37 @@ function ChatSession({
     };
   }, []);
   useEffect(() => {
-    if (!open) return;
+    if (!open || !visible) {
+      bootstrapped.current = false;
+      return;
+    }
     let busy = false;
-    const refresh = async () => {
+    const refresh = async (full = false) => {
       if (busy) return;
       busy = true;
       try {
-        await load();
+        await load(full);
       } finally {
         busy = false;
       }
     };
-    void refresh();
-    const interval = setInterval(() => void refresh(), visible ? 700 : 2500);
+    if (!bootstrapped.current) {
+      bootstrapped.current = true;
+      void refresh(true);
+    } else if (sending || state?.conversation?.status === "running") {
+      void refresh();
+    }
+    const interval =
+      visible && (sending || state?.conversation?.status === "running")
+        ? setInterval(() => void refresh(), 1200)
+        : undefined;
     return () => {
-      clearInterval(interval);
+      if (interval !== undefined) clearInterval(interval);
     };
-  }, [load, open, visible]);
+  }, [load, open, visible, sending, state?.conversation?.status]);
+  useEffect(() => {
+    if (open && visible && historyOpen) void load(true);
+  }, [open, visible, historyOpen, load]);
   useEffect(() => {
     if (!visible) return;
     if (!document.activeElement?.closest('[role="tablist"]'))

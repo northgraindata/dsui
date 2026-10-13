@@ -8,6 +8,7 @@
     "./browser": "./dist/browser.mjs"
   },
   "scripts": {
+    "test": "bun test",
     "typecheck": "tsc --noEmit",
     "build": "bun build src/browser.tsx --bundle --target browser --format esm --outfile dist/browser.mjs",
     "prepare:dev": "bun run build"

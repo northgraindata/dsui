@@ -16,8 +16,6 @@ export const configSchema = z.object({
     ),
   maxToolCalls: z.number().int().min(1).max(100).default(20),
   timeoutSeconds: z.number().int().min(10).max(600).default(120),
-  allowReadOnlySql: z.boolean().default(false),
-  allowTablePreview: z.boolean().default(true),
   sensitiveColumns: z
     .array(z.string().min(1))
     .default([
@@ -41,10 +39,11 @@ export const toolNames = [
   "search_workspace_resources",
   "get_service_health",
   "list_events",
-  "discover_resources",
-  "read_resource",
+  "list_resources",
+  "query_resource",
   "read_resources_batch",
   "list_actions",
+  "execute_action",
 ] as const;
 export const toolDescriptions = {
   list_skills: "List plugin-provided task guides and when to use them.",
@@ -55,13 +54,15 @@ export const toolDescriptions = {
     "Search resource IDs and descriptions across a bounded page of visible services. Use nextOffset within the page, then nextCursor for the next service page. Discover the selected resource to get its input schema.",
   get_service_health: "Check a service's reachability and health checks.",
   list_events: "Read recorded DSUI events. This does not start monitoring.",
-  discover_resources:
-    "Discover a service's readable resources, adapter-provided descriptions, input schemas, policies and availability. Follow nextCursor to discover all resources before claiming an operation is unsupported.",
-  read_resource: "Read one declared adapter resource with validated arguments.",
+  list_resources:
+    "List a service's declared resources and input schemas. Follow nextCursor to discover all resources.",
+  query_resource: "Query one declared adapter resource with its input.",
   read_resources_batch:
-    "Read up to five independent adapter resources concurrently, with individual permissions, policy checks and bounded results. Use for comparisons, not dependent reads.",
+    "Query up to five independent adapter resources concurrently. Use for comparisons, not dependent reads.",
   list_actions:
-    "Discover a service's declared actions, descriptions and input schemas. Follow nextCursor for more. Discovery only: action execution is not enabled. Do not claim to have performed any action.",
+    "List a service's declared actions and input schemas. Follow nextCursor for more.",
+  execute_action:
+    "Execute a declared service action with its input. Requires execute permission.",
 };
 export const messageSchema = z.object({
   id: z.string(),

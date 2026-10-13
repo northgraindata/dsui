@@ -31,6 +31,10 @@ const launcher = defineComponent({
   id: "ai-agent/launcher",
   path: "./browser",
 });
+const drawer = defineComponent({
+  id: "ai-agent/drawer",
+  path: "./browser",
+});
 
 function generatedTitle(raw: string): string {
   const firstLine = raw.split(/\r?\n/, 1)[0] ?? "";
@@ -77,10 +81,22 @@ export function createAiAgentPlugin(
           render: () => launcher(),
         }),
       );
+      registry.slot(
+        defineSlot({
+          id: "chat-drawer",
+          slot: "overlay",
+          presentation: { mode: "drawer", label: "DSUI Agent", width: 560 },
+          render: () => drawer(),
+        }),
+      );
       registry.procedure({
         id: "state",
         permission: "inspect",
-        input: z.object({ conversationId: z.string().optional() }),
+        input: z.object({
+          conversationId: z.string().optional(),
+          includeServices: z.boolean().default(true),
+          includeHistory: z.boolean().default(true),
+        }),
         handler: async (context, input) => {
           const conversation = input.conversationId
             ? load(context, input.conversationId)
@@ -89,12 +105,14 @@ export function createAiAgentPlugin(
             for (const id of new Set(conversation.accessedServiceIds))
               await context.access.require(id, "inspect");
           const services: PluginServiceSummary[] = [];
-          let cursor: string | undefined;
-          do {
-            const page = await context.services.list({ cursor, limit: 100 });
-            services.push(...page.items);
-            cursor = page.nextCursor;
-          } while (cursor);
+          if (input.includeServices) {
+            let cursor: string | undefined;
+            do {
+              const page = await context.services.list({ cursor, limit: 100 });
+              services.push(...page.items);
+              cursor = page.nextCursor;
+            } while (cursor);
+          }
           const models = configuredModels(context.config);
           const currentModel =
             models.find((model) => model.key === conversation?.modelKey) ??
@@ -113,7 +131,7 @@ export function createAiAgentPlugin(
               id,
             })),
             services,
-            conversations: await history(context),
+            conversations: input.includeHistory ? await history(context) : [],
             conversation,
             tools: toolNames.map((name) => ({
               name,
@@ -344,6 +362,14 @@ export function createAiAgentPlugin(
                   })
               : Promise.resolve();
           let calls = 0;
+          let streamSaveTimer: ReturnType<typeof setTimeout> | undefined;
+          const scheduleStreamSave = () => {
+            if (streamSaveTimer !== undefined) return;
+            streamSaveTimer = setTimeout(() => {
+              streamSaveTimer = undefined;
+              save(context, conversation);
+            }, 300);
+          };
           const pendingTools = new Set<Promise<unknown>>();
           const done = runtime
             .turn({
@@ -372,7 +398,7 @@ export function createAiAgentPlugin(
                   try {
                     const output = await withAbortSignal(
                       controller.signal,
-                      executeTool(context, [], name, raw),
+                      executeTool(context, [], name, raw, controller.signal),
                     );
                     if (
                       raw &&
@@ -440,7 +466,7 @@ export function createAiAgentPlugin(
                   controller.abort(
                     new Error("Agent response exceeds size limit"),
                   );
-                save(context, conversation);
+                scheduleStreamSave();
               },
             })
             .then(() => {
@@ -457,6 +483,8 @@ export function createAiAgentPlugin(
             .then(async () => {
               // Drain already-authorized callbacks before another turn can mutate this conversation.
               await Promise.allSettled([...pendingTools, titleTask]);
+              if (streamSaveTimer !== undefined) clearTimeout(streamSaveTimer);
+              streamSaveTimer = undefined;
               clearTimeout(timeout);
               active.delete(conversation.id);
               save(context, conversation);

@@ -340,11 +340,6 @@ export function getPluginSlots(
     { method: "POST", body: JSON.stringify({ serviceIds, ...options }) },
   );
 }
-export function getPluginShellActions() {
-  return request<{
-    items: Array<Pick<PluginSlotResult, "pluginId" | "slotId" | "nodes">>;
-  }>("/plugins/shell/actions");
-}
 export async function executePluginProcedure(
   pluginId: string,
   procedureId: string,

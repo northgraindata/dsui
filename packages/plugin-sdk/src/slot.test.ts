@@ -29,6 +29,22 @@ describe("plugin overlay slots", () => {
         render: () => [],
       }).presentation?.mode,
     ).toBe("anchored");
+    expect(
+      defineSlot({
+        id: "chat",
+        slot: "overlay",
+        presentation: { mode: "drawer", label: "Agent", width: 560 },
+        render: () => [],
+      }).presentation,
+    ).toEqual({ mode: "drawer", label: "Agent", width: 560 });
+    expect(() =>
+      defineSlot({
+        id: "chat",
+        slot: "overlay",
+        presentation: { mode: "drawer", width: 240 },
+        render: () => [],
+      }),
+    ).toThrow("Drawer width must be between 320 and 900 pixels");
   });
 
   test("rejects external and malformed navigation paths", () => {

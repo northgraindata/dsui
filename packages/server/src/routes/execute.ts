@@ -2,7 +2,11 @@ import type { Hono } from "hono";
 import { AdapterExecutionError } from "../adapters/types.js";
 import { allowed } from "../auth.js";
 import { errorMessage, httpStatus } from "./errors.js";
-import { connectionFor, type ServiceDeps, serviceSource } from "./services.js";
+import {
+  executeServiceAction,
+  queryServiceResource,
+  type ServiceDeps,
+} from "./services.js";
 
 /** Long-action budget; client disconnect aborts earlier via any(). */
 const ACTION_TIMEOUT_MS = 600_000;
@@ -40,22 +44,14 @@ export function registerExecuteRoutes(
     )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
-      await deps.refreshConfig();
-      const source = serviceSource(
-        deps.getConfig(),
-        deps.database,
-        context.req.param("id"),
-      );
-      if (!source) throw new Error("Service not found");
-      const adapter = deps.registry.get(source.service.adapter);
       const body = (await context.req.json().catch(() => ({}))) as {
         input?: unknown;
       };
-      const result = await adapter.backend.executeResource(
+      const result = await queryServiceResource(
+        deps,
+        context.req.param("id"),
         context.req.param("resourceId"),
-        connectionFor(deps.cipher, source),
         body.input,
-        { persistenceNamespace: source.service.id },
       );
       return context.json(result);
     } catch (error) {
@@ -77,47 +73,17 @@ export function registerExecuteRoutes(
     )
       return context.json({ message: "Insufficient permission" }, 403);
     try {
-      await deps.refreshConfig();
-      const source = serviceSource(
-        deps.getConfig(),
-        deps.database,
-        context.req.param("id"),
-      );
-      if (!source) throw new Error("Service not found");
-      const adapter = deps.registry.get(source.service.adapter);
       const body = (await context.req.json().catch(() => ({}))) as {
         input?: unknown;
       };
-      const result = await adapter.backend.executeAction(
+      const result = await executeServiceAction(
+        deps,
+        context.req.param("id"),
         context.req.param("actionId"),
-        connectionFor(deps.cipher, source),
         body.input,
         actionSignal(context.req.raw.signal),
-        { persistenceNamespace: source.service.id },
+        principal.id,
       );
-      for (const emission of result.emissions) {
-        const declared = adapter.catalog.signals.find(
-          (signal) => signal.id === emission.signalId,
-        );
-        if (!declared)
-          throw new Error(
-            `Adapter action emitted undeclared signal "${emission.signalId}"`,
-          );
-        deps.signalBus.publish({
-          signalId: `${adapter.id}.${emission.signalId}`,
-          type: declared.type,
-          sourceType: "adapter",
-          sourceId: source.service.id,
-          serviceId: source.service.id,
-          payload: emission.payload,
-          ...(emission.idempotencyKey
-            ? { idempotencyKey: emission.idempotencyKey }
-            : {}),
-        });
-      }
-      deps.audit(principal.id, "action.execute", source.service.id, {
-        action: context.req.param("actionId"),
-      });
       return context.json(result.result);
     } catch (error) {
       if (error instanceof AdapterExecutionError)

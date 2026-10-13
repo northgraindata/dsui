@@ -85,7 +85,6 @@ export function defineResource(
     ...(options.description !== undefined
       ? { description: options.description }
       : {}),
-    ...(options.policy !== undefined ? { policy: options.policy } : {}),
     inputSchema: options.input,
     query: options.query as (
       input: unknown,
@@ -111,7 +110,6 @@ export function defineResource(
     ...(definition.description !== undefined
       ? { description: definition.description }
       : {}),
-    ...(definition.policy !== undefined ? { policy: definition.policy } : {}),
     refresh: definition.refresh,
     definition,
   });

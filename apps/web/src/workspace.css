@@ -55,33 +55,17 @@
 .app-topbar > * {
   position: relative;
 }
-.app-topbar-search {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  padding: 0 24px;
-}
 .app-shell-actions {
   display: flex;
   align-items: center;
   flex: none;
   gap: 8px;
 }
-.app-chrome {
-  transition: padding-right 0.28s cubic-bezier(0.22, 0.8, 0.25, 1);
-}
-@media (min-width: 1101px) {
-  body:has([data-workspace-panel="open"]) .app-chrome {
-    padding-right: var(--dsui-workspace-panel-width, min(510px, 38vw));
-  }
-}
-body:has([data-workspace-panel="open"][data-resizing="true"]) .app-chrome {
-  transition: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .app-chrome {
-    transition: none;
-  }
+.app-topbar-search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 24px;
 }
 .app-search {
   width: 480px;
@@ -549,7 +533,6 @@ body:has([data-workspace-panel="open"][data-resizing="true"]) .app-chrome {
 }
 .home-dashboard {
   padding: var(--app-page-padding);
-  container-type: inline-size;
 }
 .home-heading {
   display: flex;
@@ -1023,7 +1006,7 @@ body:has([data-workspace-panel="open"][data-resizing="true"]) .app-chrome {
 .activity-page-empty p {
   color: var(--color-muted);
 }
-@container (max-width: 1100px) {
+@media (max-width: 1350px) {
   .home-panels {
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 16px;
@@ -1043,8 +1026,6 @@ body:has([data-workspace-panel="open"][data-resizing="true"]) .app-chrome {
     --app-page-padding: 24px 20px;
     --app-page-title-size: 24px;
   }
-}
-@container (max-width: 860px) {
   .home-panels {
     grid-template-columns: 1fr;
   }
@@ -1067,8 +1048,6 @@ body:has([data-workspace-panel="open"][data-resizing="true"]) .app-chrome {
     --app-page-padding: 20px 12px;
     --app-page-title-size: 22px;
   }
-}
-@container (max-width: 640px) {
   .home-greeting {
     gap: 10px;
   }
@@ -1096,10 +1075,5 @@ body:has([data-workspace-panel="open"][data-resizing="true"]) .app-chrome {
   }
   .stack-panel > header {
     flex-wrap: wrap;
-  }
-}
-@container (max-width: 480px) {
-  .home-stats {
-    grid-template-columns: 1fr;
   }
 }

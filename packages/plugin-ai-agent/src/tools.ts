@@ -15,7 +15,7 @@ const discoveryInput = serviceInput.extend({
 });
 const resourceReadInput = serviceInput.extend({
   resourceId: z.string().min(1),
-  input: z.record(z.unknown()).default({}),
+  input: z.unknown().default({}),
 });
 export const toolInputSchemas = {
   list_skills: z.object({}),
@@ -32,9 +32,13 @@ export const toolInputSchemas = {
     limit: z.number().int().min(1).max(50).default(20),
   }),
   get_service_health: serviceInput,
-  discover_resources: discoveryInput,
+  list_resources: discoveryInput,
   list_actions: discoveryInput,
-  read_resource: resourceReadInput,
+  query_resource: resourceReadInput,
+  execute_action: serviceInput.extend({
+    actionId: z.string().min(1),
+    input: z.unknown().default({}),
+  }),
   read_resources_batch: z.object({
     requests: z.array(resourceReadInput).min(1).max(5),
   }),
@@ -72,13 +76,9 @@ export async function executeTool(
   serviceIds: readonly string[],
   name: string,
   raw: unknown,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const requireService = async (id: string) => {
-    if (serviceIds.length && !serviceIds.includes(id))
-      throw new PluginRequestError(
-        "Service is outside this conversation's context",
-        403,
-      );
     await context.access.require(id, "inspect");
     const service = await context.services.get(id);
     if (!service) throw new PluginRequestError("Service not found", 404);
@@ -97,20 +97,10 @@ export async function executeTool(
     case "list_services": {
       const input = toolInputSchemas.list_services.parse(raw);
       const page = await context.services.list(input);
-      return {
-        ...page,
-        items: page.items.filter(
-          (service) => !serviceIds.length || serviceIds.includes(service.id),
-        ),
-      };
+      return page;
     }
     case "search_workspace_resources": {
       const input = toolInputSchemas.search_workspace_resources.parse(raw);
-      if (!context.services.resources)
-        throw new PluginRequestError(
-          "Host does not support resource discovery",
-          422,
-        );
       const page = input.serviceIds
         ? {
             items: await Promise.all(input.serviceIds.map(requireService)),
@@ -118,13 +108,11 @@ export async function executeTool(
           }
         : await context.services.list({ cursor: input.cursor, limit: 25 });
       const query = input.query.toLowerCase();
-      const visibleServices = page.items.filter(
-        (service) => !serviceIds.length || serviceIds.includes(service.id),
-      );
+      const visibleServices = page.items.filter(() => true);
       const discovered = await Promise.all(
         visibleServices.map(async (service) => {
           const resources =
-            (await context.services.resources?.(service.id)) ?? [];
+            (await context.services.listResources(service.id)) ?? [];
           return resources
             .filter((resource) =>
               [
@@ -144,8 +132,6 @@ export async function executeTool(
               adapter: service.adapter,
               resourceId: resource.id,
               description: resource.description,
-              policy: resource.policy,
-              available: resourceAllowed(resource, context.config),
             }));
         }),
       );
@@ -169,49 +155,49 @@ export async function executeTool(
       await requireService(serviceId);
       return context.services.probe(serviceId, { timeoutMs: 5000 });
     }
-    case "discover_resources": {
+    case "list_resources": {
       const { serviceId, cursor, limit } = discoveryInput.parse(raw);
       await requireService(serviceId);
-      if (!context.services.resources)
-        throw new Error("Host does not support adapter resource discovery");
       const page = discoveryPage(
-        (await context.services.resources(serviceId)) ?? [],
+        (await context.services.listResources(serviceId)) ?? [],
         cursor,
         limit,
       );
       return {
         serviceId,
         nextCursor: page.nextCursor,
-        resources: page.items.map((resource) => ({
-          ...resource,
-          available: resourceAllowed(resource, context.config),
-        })),
+        resources: page.items,
       };
     }
     case "list_actions": {
       const { serviceId, cursor, limit } = discoveryInput.parse(raw);
       await requireService(serviceId);
-      if (!context.services.actions)
-        throw new PluginRequestError(
-          "Host does not support action discovery",
-          422,
-        );
       const page = discoveryPage(
-        (await context.services.actions(serviceId)) ?? [],
+        (await context.services.listActions(serviceId)) ?? [],
         cursor,
         limit,
       );
       return {
         serviceId,
         nextCursor: page.nextCursor,
-        executionEnabled: false,
         actions: page.items,
       };
     }
-    case "read_resource": {
-      const input = toolInputSchemas.read_resource.parse(raw);
+    case "query_resource": {
+      const input = toolInputSchemas.query_resource.parse(raw);
       await requireService(input.serviceId);
       return readResource(context, input);
+    }
+    case "execute_action": {
+      const input = toolInputSchemas.execute_action.parse(raw);
+      await context.access.require(input.serviceId, "execute");
+      const result = await context.services.executeAction(
+        input.serviceId,
+        input.actionId,
+        input.input,
+        signal ? { signal } : undefined,
+      );
+      return { serviceId: input.serviceId, actionId: input.actionId, result };
     }
     case "read_resources_batch": {
       const { requests } = toolInputSchemas.read_resources_batch.parse(raw);
@@ -273,26 +259,14 @@ export async function executeTool(
 
 async function readResource(
   context: PluginContext<Config>,
-  input: z.output<typeof toolInputSchemas.read_resource>,
+  input: z.output<typeof toolInputSchemas.query_resource>,
 ) {
-  if (!context.services.resources)
-    throw new PluginRequestError(
-      "Host does not support resource discovery",
-      422,
-    );
-  const resource = (await context.services.resources(input.serviceId))?.find(
-    (item) => item.id === input.resourceId,
-  );
+  const resource = (
+    await context.services.listResources(input.serviceId)
+  )?.find((item) => item.id === input.resourceId);
   if (!resource)
     throw new PluginRequestError("Unknown resource for this service", 422);
-  if (!resourceAllowed(resource, context.config))
-    throw new PluginRequestError(
-      `Resources with policy ${resource.policy} are disabled in the AI agent configuration`,
-      422,
-    );
-  if (!context.services.readResource)
-    throw new Error("Host does not support adapter resource reads");
-  const data = await context.services.readResource(
+  const data = await context.services.queryResource(
     input.serviceId,
     input.resourceId,
     input.input,
@@ -304,12 +278,6 @@ async function readResource(
     ...(navigation.length ? { navigation } : {}),
     data,
   };
-}
-
-function resourceAllowed(resource: PluginServiceResource, config: Config) {
-  if (resource.policy === "sql") return config.allowReadOnlySql;
-  if (resource.policy === "preview") return config.allowTablePreview;
-  return true;
 }
 
 function discoveryPage<T extends { readonly id: string }>(

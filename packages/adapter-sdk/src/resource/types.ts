@@ -2,10 +2,9 @@ import type { z } from "zod";
 import type { StoreActionAccessor } from "../action/types";
 import type { RefreshStrategy } from "../refresh/types";
 
-/** Discovery metadata. Policies describe trusted adapter behavior, not a SQL sandbox. */
+/** Optional generic discovery metadata for a declared resource. */
 export interface ResourceMetadata {
   readonly description?: string;
-  readonly policy?: "metadata" | "preview" | "sql";
 }
 
 /** Runtime helpers available to resource queries. */
