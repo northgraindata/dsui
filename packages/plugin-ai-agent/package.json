@@ -10,8 +10,7 @@
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "build": "bun build src/browser.tsx --bundle --target browser --format esm --outfile dist/browser.mjs",
-    "prepare:dev": "bun run build"
+    "build": "bun build src/browser.tsx --bundle --target browser --format esm --outfile dist/browser.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.49",
