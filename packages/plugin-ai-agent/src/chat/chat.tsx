@@ -760,7 +760,11 @@ function ChatSession({
             )}
           </div>
         </form>
-        <small>Agent can make mistakes. Always verify important results.</small>
+        <small>
+          Messages, attachments, and retrieved service data are sent to the
+          configured model provider to generate replies. Agent responses can be
+          wrong; verify important results.
+        </small>
       </footer>
     </section>
   );
