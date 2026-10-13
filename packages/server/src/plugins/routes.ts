@@ -146,7 +146,9 @@ export function registerPluginRoutes(
     const result: PluginSlotResult[] = [];
     // Global slots carry request identity without requiring visibility of a service.
     const serviceIds =
-      slot === "sidebar.profile" || slot === "overlay"
+      slot === "sidebar.profile" ||
+      slot === "app.shell.actions" ||
+      slot === "overlay"
         ? [""]
         : parsed.data.serviceIds;
     for (const id of new Set(serviceIds)) {

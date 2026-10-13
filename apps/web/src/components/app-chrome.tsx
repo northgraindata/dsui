@@ -3,6 +3,7 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getPluginCatalog } from "../api";
 import {
+  PluginShellActions,
   PluginSlot,
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
@@ -100,6 +101,7 @@ export function AppChrome({
             <kbd>⌘ K</kbd>
           </button>
         </div>
+        <PluginShellActions />
       </header>
       <div className="app-body">
         {!inAdapter && (
