@@ -25,7 +25,7 @@ const skills = [
   {
     id: "compare-services",
     title: "Compare services",
-    description: "Compare evidence across multiple adapters and services.",
+    description: "Compare evidence across multiple services and plugins.",
     instructions: compareServices,
   },
 ] as const;

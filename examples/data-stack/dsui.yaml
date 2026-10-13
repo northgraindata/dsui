@@ -7,12 +7,10 @@ adapters:
 
 plugins:
   ai-agent:
-    package: "@northgraindata/dsui-plugin-ai-agent"
-    browserBundle: "@northgraindata/dsui-plugin-ai-agent/browser"
+    source: local
+    path: packages/plugin-ai-agent
     enabled: true
     config:
-      allowReadOnlySql: false # Opt-in PostgreSQL only; also requires connection.allowAgentSql.
-      allowTablePreview: true # Set false to disable sample-row reads.
       model:
         provider: openai
         id: gpt-6-sol

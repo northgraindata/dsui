@@ -48,6 +48,14 @@ function generatedTitle(raw: string): string {
     .trim();
 }
 
+async function requirePluginInspect(
+  context: PluginContext<Config>,
+  pluginId: string,
+) {
+  if (!(await context.plugins.get(pluginId)))
+    throw new PluginRequestError("Plugin access is unavailable", 403);
+}
+
 export function createAiAgentPlugin(
   runtime: AgentRuntime = new AiSdkRuntime(),
 ) {
@@ -104,6 +112,9 @@ export function createAiAgentPlugin(
           if (conversation)
             for (const id of new Set(conversation.accessedServiceIds))
               await context.access.require(id, "inspect");
+          if (conversation)
+            for (const id of new Set(conversation.accessedPluginIds))
+              await requirePluginInspect(context, id);
           const services: PluginServiceSummary[] = [];
           if (input.includeServices) {
             let cursor: string | undefined;
@@ -156,6 +167,8 @@ export function createAiAgentPlugin(
           const conversation = load(context, input.conversationId);
           for (const id of new Set(conversation.accessedServiceIds))
             await context.access.require(id, "inspect");
+          for (const id of new Set(conversation.accessedPluginIds))
+            await requirePluginInspect(context, id);
           // A running turn holds its own snapshot and would overwrite the rename.
           if (active.has(conversation.id))
             throw new PluginRequestError(
@@ -178,6 +191,8 @@ export function createAiAgentPlugin(
           const conversation = load(context, input.conversationId);
           for (const id of new Set(conversation.accessedServiceIds))
             await context.access.require(id, "inspect");
+          for (const id of new Set(conversation.accessedPluginIds))
+            await requirePluginInspect(context, id);
           if (
             !conversation.messages.some((message) =>
               message.attachments.some(
@@ -224,6 +239,7 @@ export function createAiAgentPlugin(
                 title: "New chat",
                 serviceIds: input.serviceIds ?? [],
                 accessedServiceIds: [],
+                accessedPluginIds: [],
                 status: "idle",
                 messages: [],
                 tools: [],
@@ -291,6 +307,8 @@ export function createAiAgentPlugin(
             ...mentionedIds,
           ]))
             await context.access.require(id, "inspect");
+          for (const id of new Set(conversation.accessedPluginIds))
+            await requirePluginInspect(context, id);
           if (active.has(conversation.id))
             throw new PluginRequestError("A response is already running", 409);
           conversation.accessedServiceIds = [
@@ -408,6 +426,13 @@ export function createAiAgentPlugin(
                     )
                       conversation.accessedServiceIds.push(raw.serviceId);
                     if (
+                      raw &&
+                      typeof raw === "object" &&
+                      "pluginId" in raw &&
+                      typeof raw.pluginId === "string"
+                    )
+                      conversation.accessedPluginIds.push(raw.pluginId);
+                    if (
                       output &&
                       typeof output === "object" &&
                       "items" in output &&
@@ -429,6 +454,24 @@ export function createAiAgentPlugin(
                     }
                     conversation.accessedServiceIds = [
                       ...new Set(conversation.accessedServiceIds),
+                    ];
+                    if (
+                      name === "list_plugins" &&
+                      output &&
+                      typeof output === "object" &&
+                      "plugins" in output &&
+                      Array.isArray(output.plugins)
+                    )
+                      for (const plugin of output.plugins)
+                        if (
+                          plugin &&
+                          typeof plugin === "object" &&
+                          "id" in plugin &&
+                          typeof plugin.id === "string"
+                        )
+                          conversation.accessedPluginIds.push(plugin.id);
+                    conversation.accessedPluginIds = [
+                      ...new Set(conversation.accessedPluginIds),
                     ];
                     tool.output = boundOutput(
                       output,

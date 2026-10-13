@@ -36,6 +36,7 @@ export const toolNames = [
   "list_skills",
   "read_skill",
   "list_services",
+  "list_plugins",
   "search_workspace_resources",
   "get_service_health",
   "list_events",
@@ -44,25 +45,38 @@ export const toolNames = [
   "read_resources_batch",
   "list_actions",
   "execute_action",
+  "list_plugin_resources",
+  "query_plugin_resource",
+  "list_plugin_actions",
+  "execute_plugin_action",
 ] as const;
 export const toolDescriptions = {
   list_skills: "List plugin-provided task guides and when to use them.",
   read_skill: "Read one plugin-provided Markdown task guide by its exact ID.",
   list_services:
     "List services available to the current user in this workspace.",
+  list_plugins: "List plugins visible to the current user in this workspace.",
   search_workspace_resources:
     "Search resource IDs and descriptions across a bounded page of visible services. Use nextOffset within the page, then nextCursor for the next service page. Discover the selected resource to get its input schema.",
   get_service_health: "Check a service's reachability and health checks.",
   list_events: "Read recorded DSUI events. This does not start monitoring.",
   list_resources:
     "List a service's declared resources and input schemas. Follow nextCursor to discover all resources.",
-  query_resource: "Query one declared adapter resource with its input.",
+  query_resource: "Query one declared service resource with its input.",
   read_resources_batch:
-    "Query up to five independent adapter resources concurrently. Use for comparisons, not dependent reads.",
+    "Query up to five independent service resources concurrently. Use for comparisons, not dependent reads.",
   list_actions:
     "List a service's declared actions and input schemas. Follow nextCursor for more.",
   execute_action:
     "Execute a declared service action with its input. Requires execute permission.",
+  list_plugin_resources:
+    "List a plugin's declared resources and input schemas.",
+  query_plugin_resource:
+    "Query a declared plugin resource with its input. Requires inspect permission.",
+  list_plugin_actions:
+    "List a plugin's declared actions, input schemas, and permissions.",
+  execute_plugin_action:
+    "Execute a declared plugin action with its input. The host checks its declared permission.",
 };
 export const messageSchema = z.object({
   id: z.string(),
@@ -88,6 +102,7 @@ export const conversationSchema = z.object({
   modelKey: z.string().optional(),
   serviceIds: z.array(z.string()),
   accessedServiceIds: z.array(z.string()).default([]),
+  accessedPluginIds: z.array(z.string()).default([]),
   status: z.enum(["idle", "running", "error"]),
   error: z.string().optional(),
   messages: z.array(messageSchema),

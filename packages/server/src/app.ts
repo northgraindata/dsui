@@ -337,6 +337,8 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     {
       storage: (pluginId) => createPluginStorage(dataDir, pluginId),
       stores: (pluginId) => createPluginStores(database, pluginId),
+      plugins: () => pluginRuntime.pluginCapabilities(),
+      audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
         jobs: {
           enqueue: async (jobId, input) => ({

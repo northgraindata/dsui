@@ -2,7 +2,8 @@
 
 User-initiated chat for investigating a DSUI workspace. The launcher, drawer,
 conversations, instructions and tools belong to this plugin. The host contributes
-only a generic `app.shell.actions` slot and permission-checked Plugin SDK capabilities.
+only generic `app.shell.actions` and overlay slots plus permission-checked SDK
+capabilities.
 No jobs, subscriptions, signal monitoring or autonomous background investigations
 are registered.
 
@@ -55,22 +56,20 @@ The agent's always-on Markdown response format lives in
 `diagnose-health.md`, `inspect-catalog.md`, and `compare-services.md`.
 `list_skills` returns their IDs and descriptions; `read_skill` loads one guide
 for a relevant task. Both tools read packaged plugin content only. A skill
-describes a workflow, while live claims still require adapter and DSUI tool
+describes a workflow, while live claims still require capability and DSUI tool
 evidence. Skill reads count toward `maxToolCalls`.
 
 ## Service resources and actions
 
-The agent uses the host's generic service catalog. It lists the resources and
-actions declared by any service visible to the current user, then calls them
-through `queryResource` or `executeAction`. Adapter authors do not need to add
-agent-specific resources or dependencies. The host keeps credentials private,
-checks `inspect` for reads and `execute` for actions, and validates inputs using
-the adapter's declared schemas.
+The agent uses generic host catalogs for services and plugins. It discovers
+their resources and actions, then calls them through the Plugin SDK. Plugin
+authors do not need agent-specific resources or dependencies. The host keeps
+credentials private, checks the caller's permission, and validates every input
+against the declared schema.
 
-Resource search and batch reads are plugin-side conveniences over that same
-catalog and query operation. They do not add adapter endpoints. Outputs are
-bounded and sensitive fields are redacted before tool results are stored or sent
-to the model.
+Resource search and batch reads are agent-side conveniences over those generic
+catalogs and query operations. Outputs are bounded and sensitive fields are
+redacted before tool results are stored or sent to the model.
 
 ## Development
 
@@ -81,19 +80,17 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-Development automatically builds the browser bundle before starting the server.
-Restart development after editing this plugin to rebuild it. AI SDK's
-`ToolLoopAgent` runs directly inside the plugin on Bun; there is no separate
-process, loopback bridge, runtime build, or Node 24 requirement.
+The server builds this plugin from its configured local source on startup, using
+the same plugin build pipeline as other source plugins. Restart DSUI after
+editing it. AI SDK's `ToolLoopAgent` runs directly inside the plugin on Bun.
 
-The npm release and Docker image bundle the agent and its AI SDK dependencies.
 Add this to your `dsui.yaml` (also present in `examples/data-stack/dsui.yaml`):
 
 ```yaml
 plugins:
   ai-agent:
-    package: "@northgraindata/dsui-plugin-ai-agent"
-    browserBundle: "@northgraindata/dsui-plugin-ai-agent/browser"
+    source: local
+    path: packages/plugin-ai-agent
     enabled: true
     config:
       model:
@@ -127,8 +124,8 @@ provider model `id`, and server-side `apiKey`:
 ```yaml
 plugins:
   ai-agent:
-    package: "@northgraindata/dsui-plugin-ai-agent"
-    browserBundle: "@northgraindata/dsui-plugin-ai-agent/browser"
+    source: local
+    path: packages/plugin-ai-agent
     enabled: true
     config:
       models:
@@ -159,11 +156,12 @@ after changing the model list.
 ## Service mentions
 
 The drawer is chat-only, without Chat, Tools or Insights tabs. Type `@` in the
-composer to search accessible configured services by name, ID or adapter.
+composer to search accessible configured services by name or ID.
 Select with the mouse, Arrow keys and Enter/Tab; Escape dismisses suggestions.
 Mentions are highlighted while typing and in conversation messages.
 
-Friendly handles use service names, e.g. `Airflow Prod` becomes `@airflow-prod`.
+Friendly handles use service names, such as `Analytics Prod` becoming
+`@analytics-prod`.
 Duplicate names fall back to service IDs; `@<service-id>` is always accepted.
 The backend resolves mentions independently against the caller's visible services.
 Unknown or inaccessible mentions are rejected. A mention tells the agent where
@@ -176,16 +174,12 @@ The agent receives navigation links alongside resource reads and is instructed t
 Markdown answers. Only the table name is linked, directly in its existing cell;
 there is no separate link column or "Open table" action.
 Clicking a link opens that service's table page in the same
-tab, including the exact database and schema when the adapter provides them.
+tab, including identifiers provided in the navigation metadata.
 
-Adapters own their routes and return optional `navigation` entries containing
-`label`, an adapter-relative `path`, and identifying fields such as database,
-schema and name. After permission checks, the plugin prefixes paths with the
-service URL and rejects paths that escape it. It never maps adapter names to
-routes. Adapters should URL-encode each variable path segment; parentheses are
-escaped for Markdown compatibility. PostgreSQL/DuckDB exploration resources
-provide these entries. Resources without navigation fall back to service links,
-not guessed deep links.
+Providers may return optional `navigation` entries containing `label`, a
+provider-relative `path`, and identifying fields. After permission checks, the
+plugin prefixes paths with the service URL and rejects paths that escape it.
+Resources without verified navigation fall back to service links.
 Existing saved answers are unchanged; ask again to receive linked results.
 
 ## Attachments
@@ -210,16 +204,16 @@ contents separately. Reopening a conversation restores its attachments.
 
 ## Tools and boundaries
 
-The agent can discover services, resources, and actions; inspect service health
-and recorded events; query declared resources; and execute declared actions
-when the user requests them and their account has execute permission. The host
-validates each input against the service catalog and enforces permissions on
-every operation. Discovery alone does not grant action execution.
+The agent can discover services and plugins, inspect both catalogs' resources
+and actions, query declared resources, and execute declared actions when the
+user requests them and has permission. The host validates each input and
+enforces permissions on every operation. Discovery alone does not grant action
+execution.
 
-Resource and action IDs are always discovered from the connected service. The
-plugin has no adapter-specific branches, connection credentials, or calls to
-other plugins. To expose a capability to the agent, declare it through the
-Adapter SDK's ordinary resource or action contract.
+Resource and action IDs are always discovered from the host catalogs. The agent
+has no provider-specific branches or connection credentials. To expose a
+capability to the agent, declare it through the ordinary resource or action
+contract.
 
 Tool results are bounded before persistence and model delivery. Sensitive field
 names are redacted using the `sensitiveColumns` setting; known credential fields

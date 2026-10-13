@@ -9,7 +9,6 @@ function harness() {
   const service = {
     id: "svc-1",
     name: "Example",
-    adapter: "synthetic",
   };
   const context = {
     config: configSchema.parse({}),
@@ -37,13 +36,41 @@ function harness() {
       },
       probe: async () => null,
     },
+    plugins: {
+      list: async () => [
+        {
+          id: "capability-plugin",
+          name: "Capability plugin",
+          version: "1.0.0",
+          status: "ready",
+        },
+      ],
+      listResources: async () => [
+        { id: "plugin-resource", inputSchema: { type: "object" } },
+      ],
+      listActions: async () => [
+        {
+          id: "plugin-action",
+          permission: "execute",
+          inputSchema: { type: "object" },
+        },
+      ],
+      queryResource: async (...args: unknown[]) => {
+        calls.push(args);
+        return { plugin: true };
+      },
+      executeAction: async (...args: unknown[]) => {
+        calls.push(args);
+        return { changed: true };
+      },
+    },
     events: { read: async () => ({ items: [], cursor: "", hasMore: false }) },
   } as unknown as PluginContext<Config>;
   return { context, calls, permissions };
 }
 
-describe("generic adapter service tools", () => {
-  it("discovers declared resources and actions without adapter-specific knowledge", async () => {
+describe("generic service tools", () => {
+  it("discovers declared resources and actions without provider-specific knowledge", async () => {
     const { context } = harness();
     const resources = await executeTool(context, [], "list_resources", {
       serviceId: "svc-1",
@@ -88,6 +115,50 @@ describe("generic adapter service tools", () => {
     expect(permissions).toContain("svc-1:execute");
     expect(calls).toEqual([
       ["svc-1", "arbitrary-action", "confirm", { signal: controller.signal }],
+    ]);
+  });
+});
+
+describe("generic plugin tools", () => {
+  it("discovers plugins and their declared resources and actions", async () => {
+    const { context } = harness();
+    expect(await executeTool(context, [], "list_plugins", {})).toMatchObject({
+      plugins: [{ id: "capability-plugin" }],
+    });
+    expect(
+      await executeTool(context, [], "list_plugin_resources", {
+        pluginId: "capability-plugin",
+      }),
+    ).toMatchObject({ resources: [{ id: "plugin-resource" }] });
+    expect(
+      await executeTool(context, [], "list_plugin_actions", {
+        pluginId: "capability-plugin",
+      }),
+    ).toMatchObject({
+      actions: [{ id: "plugin-action", permission: "execute" }],
+    });
+  });
+
+  it("dispatches plugin resources and actions through host operations", async () => {
+    const { context, calls } = harness();
+    await executeTool(context, [], "query_plugin_resource", {
+      pluginId: "capability-plugin",
+      resourceId: "plugin-resource",
+      input: { arbitrary: [1, "x"] },
+    });
+    await executeTool(context, [], "execute_plugin_action", {
+      pluginId: "capability-plugin",
+      actionId: "plugin-action",
+      input: { arbitrary: { nested: true } },
+    });
+    expect(calls).toEqual([
+      ["capability-plugin", "plugin-resource", { arbitrary: [1, "x"] }],
+      [
+        "capability-plugin",
+        "plugin-action",
+        { arbitrary: { nested: true } },
+        undefined,
+      ],
     ]);
   });
 });

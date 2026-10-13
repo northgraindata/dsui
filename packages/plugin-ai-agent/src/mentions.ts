@@ -1,7 +1,6 @@
 export type MentionService = {
   id: string;
   name: string;
-  adapter: string;
   handle: string;
 };
 

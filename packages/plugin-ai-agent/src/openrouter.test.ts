@@ -42,7 +42,7 @@ test("OpenRouter uses Chat Completions with its endpoint, model ID and credentia
           choices: [
             {
               index: 0,
-              message: { role: "assistant", content: "Inspect dbt" },
+              message: { role: "assistant", content: "Inspect a service" },
               finish_reason: "stop",
             },
           ],
@@ -59,11 +59,11 @@ test("OpenRouter uses Chat Completions with its endpoint, model ID and credentia
         id: "~openai/gpt-sol-latest",
         apiKey: "test-key",
       },
-      message: "Inspect dbt",
+      message: "Inspect a service",
       attachmentNames: [],
       signal: new AbortController().signal,
     });
-    expect(title).toBe("Inspect dbt");
+    expect(title).toBe("Inspect a service");
     expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
     expect(authorization).toBe("Bearer test-key");
     expect(requestedModel).toBe("~openai/gpt-sol-latest");

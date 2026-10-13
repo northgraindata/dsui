@@ -80,6 +80,9 @@ export async function history(context: PluginContext<Config>) {
     try {
       for (const id of new Set(conversation.accessedServiceIds))
         await context.access.require(id, "inspect");
+      for (const id of new Set(conversation.accessedPluginIds))
+        if (!(await context.plugins.get(id)))
+          throw new PluginRequestError("Plugin access is unavailable", 403);
       visible.push({
         id: conversation.id,
         title: conversation.title,

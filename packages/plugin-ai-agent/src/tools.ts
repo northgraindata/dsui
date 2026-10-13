@@ -20,6 +20,7 @@ const resourceReadInput = serviceInput.extend({
 export const toolInputSchemas = {
   list_skills: z.object({}),
   read_skill: z.object({ id: z.string().min(1) }),
+  list_plugins: z.object({}),
   list_services: z.object({
     cursor: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(50),
@@ -39,6 +40,18 @@ export const toolInputSchemas = {
     actionId: z.string().min(1),
     input: z.unknown().default({}),
   }),
+  list_plugin_resources: z.object({ pluginId: z.string().min(1) }),
+  query_plugin_resource: z.object({
+    pluginId: z.string().min(1),
+    resourceId: z.string().min(1),
+    input: z.unknown().default({}),
+  }),
+  list_plugin_actions: z.object({ pluginId: z.string().min(1) }),
+  execute_plugin_action: z.object({
+    pluginId: z.string().min(1),
+    actionId: z.string().min(1),
+    input: z.unknown().default({}),
+  }),
   read_resources_batch: z.object({
     requests: z.array(resourceReadInput).min(1).max(5),
   }),
@@ -49,7 +62,7 @@ export const toolInputSchemas = {
     limit: z.number().int().min(1).max(100).default(50),
   }),
 };
-/** Cancel delivery without pretending the SDK can forcibly terminate an adapter read. */
+/** Cancel delivery without pretending the SDK can forcibly terminate a provider read. */
 export function withAbortSignal<T>(
   signal: AbortSignal,
   operation: Promise<T>,
@@ -99,6 +112,9 @@ export async function executeTool(
       const page = await context.services.list(input);
       return page;
     }
+    case "list_plugins":
+      toolInputSchemas.list_plugins.parse(raw);
+      return { plugins: await context.plugins.list() };
     case "search_workspace_resources": {
       const input = toolInputSchemas.search_workspace_resources.parse(raw);
       const page = input.serviceIds
@@ -115,12 +131,7 @@ export async function executeTool(
             (await context.services.listResources(service.id)) ?? [];
           return resources
             .filter((resource) =>
-              [
-                resource.id,
-                resource.description ?? "",
-                service.name,
-                service.adapter,
-              ]
+              [resource.id, resource.description ?? "", service.name]
                 .join(" ")
                 .toLowerCase()
                 .includes(query),
@@ -129,7 +140,6 @@ export async function executeTool(
             .map((resource) => ({
               serviceId: service.id,
               serviceName: service.name,
-              adapter: service.adapter,
               resourceId: resource.id,
               description: resource.description,
             }));
@@ -198,6 +208,45 @@ export async function executeTool(
         signal ? { signal } : undefined,
       );
       return { serviceId: input.serviceId, actionId: input.actionId, result };
+    }
+    case "list_plugin_resources": {
+      const { pluginId } = toolInputSchemas.list_plugin_resources.parse(raw);
+      const resources = await context.plugins.listResources(pluginId);
+      if (!resources)
+        throw new PluginRequestError("Plugin not found or access denied", 404);
+      return { pluginId, resources };
+    }
+    case "query_plugin_resource": {
+      const input = toolInputSchemas.query_plugin_resource.parse(raw);
+      return {
+        pluginId: input.pluginId,
+        resourceId: input.resourceId,
+        data: await context.plugins.queryResource(
+          input.pluginId,
+          input.resourceId,
+          input.input,
+        ),
+      };
+    }
+    case "list_plugin_actions": {
+      const { pluginId } = toolInputSchemas.list_plugin_actions.parse(raw);
+      const actions = await context.plugins.listActions(pluginId);
+      if (!actions)
+        throw new PluginRequestError("Plugin not found or access denied", 404);
+      return { pluginId, actions };
+    }
+    case "execute_plugin_action": {
+      const input = toolInputSchemas.execute_plugin_action.parse(raw);
+      return {
+        pluginId: input.pluginId,
+        actionId: input.actionId,
+        result: await context.plugins.executeAction(
+          input.pluginId,
+          input.actionId,
+          input.input,
+          signal ? { signal } : undefined,
+        ),
+      };
     }
     case "read_resources_batch": {
       const { requests } = toolInputSchemas.read_resources_batch.parse(raw);

@@ -47,8 +47,6 @@ const stateSchema = z.object({
       z.object({
         id: z.string(),
         name: z.string(),
-        adapter: z.string(),
-        adapterName: z.string().optional(),
         iconUrl: z.string().optional(),
       }),
     )
@@ -132,17 +130,16 @@ const suggestions = [
   },
   {
     icon: "code",
-    title: "Explain an adapter",
+    title: "Explore a service",
     detail: "Discover what it can read",
     message:
-      "Explain an adapter available in my workspace and the resources it can inspect.",
+      "Explain a service available in my workspace and the resources it can inspect.",
   },
   {
     icon: "database",
-    title: "Explore dbt models",
+    title: "Compare workspace resources",
     detail: "Inspect models and run results",
-    message:
-      "Discover my dbt models and summarize the latest available run results.",
+    message: "Discover available resources and summarize their latest results.",
   },
 ];
 
@@ -915,8 +912,8 @@ function HealthCard({
         </div>
         {service && (
           <div>
-            <dt>Adapter</dt>
-            <dd>{service.adapter}</dd>
+            <dt>Service</dt>
+            <dd>{service.id}</dd>
           </div>
         )}
         {health.latencyMs !== undefined && (
@@ -947,7 +944,7 @@ function HealthCard({
         </button>
         <a href={`/services/${encodeURIComponent(health.id)}`}>
           <Glyph name="database" size={13} />
-          Open adapter
+          Open service
         </a>
         <a href="/settings">
           <Glyph name="code" size={13} />

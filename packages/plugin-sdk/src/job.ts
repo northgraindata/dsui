@@ -13,6 +13,7 @@
  */
 import type { z } from "zod";
 import type {
+  PluginCapabilityCatalog,
   PluginCapabilities,
   PluginServiceCatalog,
   PluginStorage,
@@ -41,6 +42,7 @@ export interface JobContext extends PluginCapabilities {
   readonly pluginId: string;
   readonly config: Readonly<unknown>;
   readonly services: PluginServiceCatalog;
+  readonly plugins: PluginCapabilityCatalog;
   readonly storage: PluginStorage;
   readonly stores: PluginStores;
   /** Scoped logger; output is recorded against the run and never global. */

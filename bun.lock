@@ -159,7 +159,7 @@
     },
     "packages/adapter-sdk": {
       "name": "@northgraindata/dsui-adapter-sdk",
-      "version": "0.0.0",
+      "version": "0.3.0",
       "dependencies": {
         "@northgraindata/dsui-ui": "workspace:*",
         "@number-flow/react": "^0.6.2",
@@ -234,7 +234,7 @@
     },
     "packages/plugin-sdk": {
       "name": "@northgraindata/dsui-plugin-sdk",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "zod": "^3.24.2",
@@ -256,7 +256,6 @@
       },
       "devDependencies": {
         "@types/react": "^19.2.0",
-        "@types/react-dom": "^19.1.0",
         "typescript": "^5.9.2",
       },
       "peerDependencies": {
@@ -282,7 +281,6 @@
         "zod-to-json-schema": "3.25.2",
       },
       "devDependencies": {
-        "@northgraindata/dsui-plugin-ai-agent": "workspace:*",
         "@northgraindata/dsui-plugin-code-repository": "workspace:*",
         "@northgraindata/dsui-plugin-example": "workspace:*",
         "@northgraindata/dsui-plugin-health": "workspace:*",
@@ -293,7 +291,7 @@
     },
     "packages/ui": {
       "name": "@northgraindata/dsui-ui",
-      "version": "0.0.0",
+      "version": "0.3.0",
       "dependencies": {
         "@radix-ui/react-dialog": "^1.1.15",
         "@radix-ui/react-slot": "^1.2.3",

@@ -9,7 +9,7 @@ const navigationSchema = z.array(
     .passthrough(),
 );
 
-/** Adapters own their routes; the plugin only scopes their paths to a service. */
+/** The provider supplies verified navigation paths scoped to its service. */
 export function resourceNavigation(serviceId: string, output: unknown) {
   if (!output || typeof output !== "object" || !("navigation" in output))
     return [];

@@ -304,6 +304,39 @@ export interface PluginServiceCatalog {
   ): Promise<PluginServiceProbe | null>;
 }
 
+export type PluginCapabilitySummary = {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly status: PluginReadinessStatus;
+};
+export type PluginActionSummary = {
+  readonly id: string;
+  readonly permission: PluginPermission;
+  readonly inputSchema?: unknown;
+};
+export type PluginResourceSummary = {
+  readonly id: string;
+  readonly inputSchema?: unknown;
+};
+export interface PluginCapabilityCatalog {
+  list(): Promise<readonly PluginCapabilitySummary[]>;
+  get(id: string): Promise<PluginCapabilitySummary | null>;
+  listActions(id: string): Promise<readonly PluginActionSummary[] | null>;
+  listResources(id: string): Promise<readonly PluginResourceSummary[] | null>;
+  queryResource(
+    id: string,
+    resourceId: string,
+    input: unknown,
+  ): Promise<unknown>;
+  executeAction(
+    id: string,
+    actionId: string,
+    input: unknown,
+    options?: PluginInvocationOptions,
+  ): Promise<unknown>;
+}
+
 export type PluginReadinessStatus = "ready" | "disabled" | "unavailable";
 
 export type PluginCatalog = {
@@ -507,7 +540,9 @@ export interface PluginRegistry<TConfig = unknown> {
     procedure: PluginProcedure<PluginContext<TConfig>, TInput, TOutput>,
   ): void;
   /** Binds a `defineAction` declaration. */
-  action(action: PluginActionDefinition<PluginContext<TConfig>>): void;
+  action<TInput = undefined, TOutput = unknown>(
+    action: PluginActionDefinition<PluginContext<TConfig>, TInput, TOutput>,
+  ): void;
   /** Binds a `defineResource` declaration and its freshness policy. */
   resource(resource: AnyPluginResource): void;
   /**
@@ -558,6 +593,7 @@ export interface PluginContext<TConfig = unknown> extends PluginCapabilities {
   readonly pluginId: string;
   readonly config: Readonly<TConfig>;
   readonly services: PluginServiceCatalog;
+  readonly plugins: PluginCapabilityCatalog;
   /**
    * Relational storage in this plugin's own directory.
    *
@@ -643,7 +679,7 @@ export interface RuntimePluginDefinition {
     config: unknown,
     host: Pick<
       PluginContext<unknown>,
-      "services" | "storage" | "stores" | "logger"
+      "services" | "plugins" | "storage" | "stores" | "logger"
     > &
       Partial<PluginCapabilities>,
   ) => PreparedPlugin;
@@ -666,6 +702,19 @@ export function definePlugin<TConfig>(
           ...host.services,
           executeAction: (id, actionId, input, options) =>
             host.services.executeAction(id, actionId, input, {
+              ...options,
+              origin: {
+                pluginId: definition.metadata.id,
+                ...(options?.origin?.runId
+                  ? { runId: options.origin.runId }
+                  : {}),
+              },
+            }),
+        },
+        plugins: {
+          ...host.plugins,
+          executeAction: (id, actionId, input, options) =>
+            host.plugins.executeAction(id, actionId, input, {
               ...options,
               origin: {
                 pluginId: definition.metadata.id,
@@ -795,6 +844,7 @@ export function definePlugin<TConfig>(
                       pluginId: definition.metadata.id,
                       config: context.config,
                       services: context.services,
+                      plugins: context.plugins,
                       storage: context.storage,
                       stores: context.stores,
                       access: context.access,

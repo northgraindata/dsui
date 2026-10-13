@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import zodToJsonSchema from "zod-to-json-schema";
 import {
   matchRoute,
   type PageDocument,
@@ -11,6 +12,7 @@ import {
   type PluginAuthorizationProvider,
   type PluginCapabilities,
   type PluginCatalog,
+  type PluginCapabilityCatalog,
   type PluginNavigationItem,
   type PluginPermission,
   type PluginPrincipal,
@@ -151,6 +153,9 @@ export type PluginHostCapabilities = {
   storage(pluginId: string): PluginStorageHandle;
   /** Typed JSON state, namespaced to the plugin. */
   stores(pluginId: string): PluginStores;
+  plugins(): PluginCapabilityCatalog;
+  /** Writes the same audit record as a user-invoked plugin action route. */
+  audit?(actor: string, action: string, target: string): void;
   capabilities?(pluginId: string): Pick<PluginCapabilities, "jobs" | "events">;
 };
 
@@ -387,6 +392,7 @@ export class PluginRuntime {
     this.host = host ?? {
       storage: (pluginId) => createPluginStorage(dataDir, pluginId),
       stores: () => createMemoryPluginStores(),
+      plugins: () => this.pluginCapabilities(),
     };
   }
 
@@ -484,6 +490,7 @@ export class PluginRuntime {
         this.pluginStorage.set(id, storage);
         const prepared = definition.prepare(source.config, {
           services: this.services,
+          plugins: this.host.plugins(),
           storage,
           stores: this.host.stores(id),
           logger: pluginLogger(id),
@@ -602,7 +609,6 @@ export class PluginRuntime {
             throw new Error(
               `Plugin "${request.id}" action "${action.id}" has invalid permission "${String(action.permission)}"`,
             );
-          seenActions.push(action);
         },
         resource: (resource: RuntimePluginResource) => {
           uniqueId(seenResources, resource, "resource", request.id);
@@ -1153,6 +1159,141 @@ export class PluginRuntime {
       return true;
     }
     return this.authorize(principal, "inspect", { type: "service", id });
+  }
+
+  pluginCapabilities(): PluginCapabilityCatalog {
+    return {
+      list: async () => {
+        const visible = [];
+        for (const plugin of this.catalog().plugins)
+          if (await this.canAccessPlugin(plugin.id))
+            visible.push({
+              id: plugin.id,
+              name: plugin.name,
+              version: plugin.version,
+              status: plugin.status,
+            });
+        return visible;
+      },
+      get: async (pluginId) => {
+        if (!(await this.canAccessPlugin(pluginId))) return null;
+        const plugin = this.catalog().plugins.find(
+          (item) => item.id === pluginId,
+        );
+        return plugin
+          ? {
+              id: plugin.id,
+              name: plugin.name,
+              version: plugin.version,
+              status: plugin.status,
+            }
+          : null;
+      },
+      listActions: async (pluginId) => {
+        if (!(await this.canAccessPlugin(pluginId))) return null;
+        return (
+          this.active.has(pluginId)
+            ? (this.contributions.get(pluginId)?.actions ?? [])
+            : []
+        ).map((action) => ({
+          id: action.id,
+          permission: action.permission,
+          ...(action.input
+            ? { inputSchema: zodToJsonSchema(action.input) }
+            : {}),
+        }));
+      },
+      listResources: async (pluginId) => {
+        if (!(await this.canAccessPlugin(pluginId))) return null;
+        return this.resources(pluginId).map((resource) => ({
+          id: resource.id,
+          ...(resource.input
+            ? { inputSchema: zodToJsonSchema(resource.input) }
+            : {}),
+        }));
+      },
+      queryResource: async (pluginId, resourceId, input) => {
+        await this.requirePluginAccess(pluginId, "inspect");
+        const resource = this.resources(pluginId).find(
+          (item) => item.id === resourceId,
+        );
+        if (!resource)
+          throw new PluginRequestError("Plugin resource not found", 404);
+        const principal = this.principalContext.getStore();
+        const result = await resource.invoke(input);
+        if (
+          principal &&
+          !(await this.authorize(principal, "inspect", {
+            type: "plugin",
+            id: pluginId,
+          }))
+        )
+          throw new PluginRequestError(
+            "Plugin permission was revoked during the resource read",
+            403,
+          );
+        return result;
+      },
+      executeAction: async (pluginId, actionId, input) => {
+        const action = this.active.has(pluginId)
+          ? this.contributions
+              .get(pluginId)
+              ?.actions.find((item) => item.id === actionId)
+          : undefined;
+        if (!action)
+          throw new PluginRequestError("Plugin action not found", 404);
+        await this.requirePluginAccess(pluginId, action.permission);
+        const principal = this.principalContext.getStore();
+        const result = await action.invoke(input);
+        if (
+          principal &&
+          !(await this.authorize(principal, action.permission, {
+            type: "plugin",
+            id: pluginId,
+          }))
+        )
+          throw new PluginRequestError(
+            "Plugin permission was revoked during the action",
+            403,
+          );
+        if (principal)
+          this.host.audit?.(
+            principal.id,
+            "plugin.action.execute",
+            `${pluginId}.${actionId}`,
+          );
+        return result;
+      },
+    };
+  }
+
+  private async canAccessPlugin(pluginId: string): Promise<boolean> {
+    if (!this.active.has(pluginId) && !this.readiness.has(pluginId))
+      return false;
+    if (this.backgroundContext.getStore()) return true;
+    const principal = this.principalContext.getStore();
+    if (!principal) return !this.authorizationProvider;
+    return this.authorize(principal, "inspect", {
+      type: "plugin",
+      id: pluginId,
+    });
+  }
+
+  private async requirePluginAccess(
+    pluginId: string,
+    permission: PluginPermission,
+  ): Promise<void> {
+    if (this.backgroundContext.getStore()) return;
+    const principal = this.principalContext.getStore();
+    if (
+      (principal &&
+        !(await this.authorize(principal, permission, {
+          type: "plugin",
+          id: pluginId,
+        }))) ||
+      (!principal && this.authorizationProvider)
+    )
+      throw new PluginRequestError("Insufficient plugin permission", 403);
   }
 
   /**

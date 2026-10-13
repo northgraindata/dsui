@@ -61,7 +61,7 @@ export function MentionInput({
   const query = focused && !dismissed ? queryAt(value, caret) : undefined;
   const matches = query
     ? services.filter((service) =>
-        `${service.handle} ${service.name} ${service.adapter} ${service.id}`
+        `${service.handle} ${service.name} ${service.id}`
           .toLowerCase()
           .includes(query.search),
       )
@@ -129,7 +129,6 @@ export function MentionInput({
                   <strong>@{service.handle}</strong>
                   <small>{service.name}</small>
                 </span>
-                <small>{service.adapter}</small>
               </button>
             ))}
           </div>
