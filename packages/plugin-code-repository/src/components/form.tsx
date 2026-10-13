@@ -1,9 +1,12 @@
+import { createOptionSelect } from "@northgraindata/dsui-ui/option-select-factory";
 import type * as ReactTypes from "react";
 import { z } from "zod";
 import type { Connection, ConnectionInput } from "../model";
 import { SourceIcon } from "./presentation";
 import { React } from "./react";
 import { action, type Client, type overviewSchema } from "./shared";
+
+const OptionSelect = createOptionSelect(() => React);
 export function RepositoryForm({
   client,
   serviceId,
@@ -184,21 +187,20 @@ export function RepositoryForm({
         </div>
         <div className="cr-fields">
           {value.provider === "gitlab" && (
-            <label>
+            <label htmlFor={`${fieldId}-gitlab-instance`}>
               GitLab instance
-              <select
+              <OptionSelect
+                id={`${fieldId}-gitlab-instance`}
                 value={value.instance}
-                onChange={(event) => {
-                  change("instance", event.target.value);
+                onValueChange={(next) => {
+                  change("instance", next);
                   setBranchNames([]);
                 }}
-              >
-                {providers.gitlab.map((instance) => (
-                  <option key={instance.id} value={instance.id}>
-                    {instance.url}
-                  </option>
-                ))}
-              </select>
+                options={providers.gitlab.map((instance) => ({
+                  value: instance.id,
+                  label: instance.url,
+                }))}
+              />
             </label>
           )}
           <label>
