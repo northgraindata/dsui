@@ -48,15 +48,39 @@ export const moduleSchema = z
       .default({}),
     chart: z
       .object({
-        type: z.enum(["metric", "line", "bar", "table"]),
+        type: z.enum([
+          "metric",
+          "kpi",
+          "line",
+          "area",
+          "bar",
+          "horizontal-bar",
+          "table",
+        ]),
         x: z.string().default(""),
         y: z.string().default(""),
         unit: z.string().max(30).default(""),
+        compareTo: z.string().optional(),
+        comparisonLabel: z.string().max(80).optional(),
       })
       .strict(),
   })
   .strict()
   .superRefine((value, context) => {
+    if (value.chart.type === "kpi") {
+      if (!value.chart.y.trim())
+        context.addIssue({
+          code: "custom",
+          path: ["chart", "y"],
+          message: "KPI needs a current value field",
+        });
+      if (!value.chart.compareTo?.trim())
+        context.addIssue({
+          code: "custom",
+          path: ["chart", "compareTo"],
+          message: "KPI needs a previous period value field",
+        });
+    }
     if (value.source.sqlFile && value.source.resourceId !== "report-query")
       context.addIssue({
         code: "custom",
