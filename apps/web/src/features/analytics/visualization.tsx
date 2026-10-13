@@ -429,6 +429,9 @@ export function Visualization({
         </div>
       );
     const change = current - previous;
+    let trend = "flat";
+    if (change > 0) trend = "up";
+    else if (change < 0) trend = "down";
     const changeText = `${change > 0 ? "+" : ""}${display(change)}`;
     const percentage =
       previous === 0
@@ -438,9 +441,15 @@ export function Visualization({
             maximumFractionDigits: 1,
           }).format(change / Math.abs(previous));
     return (
-      <div className="analytics-kpi">
+      <div className={`analytics-kpi analytics-kpi--${trend}`}>
         <div className="analytics-kpi-value">
-          <strong style={{ color: definition.styles.accentColor }}>
+          <strong
+            style={
+              trend === "flat"
+                ? { color: definition.styles.accentColor }
+                : undefined
+            }
+          >
             {display(current)}
           </strong>
           {unit && <span>{unit}</span>}
