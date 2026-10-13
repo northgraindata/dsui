@@ -744,6 +744,16 @@
   font-size: clamp(36px, 4vw, 58px);
   letter-spacing: -0.06em;
 }
+.analytics-kpi--up .analytics-kpi-value strong,
+.analytics-kpi--up .analytics-kpi-comparison strong,
+.analytics-kpi--up .analytics-kpi-comparison span:not(:last-child) {
+  color: #34d399;
+}
+.analytics-kpi--down .analytics-kpi-value strong,
+.analytics-kpi--down .analytics-kpi-comparison strong,
+.analytics-kpi--down .analytics-kpi-comparison span:not(:last-child) {
+  color: #fb7185;
+}
 .analytics-kpi-value span,
 .analytics-kpi p {
   color: #9bb5d6;
