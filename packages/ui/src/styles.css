@@ -78,6 +78,300 @@
   }
 }
 
+/* Keep picker rules unlayered so plugin styles cannot override its menu. */
+.dsui-option-select {
+  position: relative;
+  min-width: 0;
+}
+.dsui-option-select .dsui-option-select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 9px;
+  border: 1px solid #29496e;
+  border-radius: 8px;
+  background: #101e34;
+  color: #dceaff;
+  font-size: 12px;
+  text-align: left;
+}
+.dsui-option-select .dsui-option-select-trigger:hover:not(:disabled),
+.dsui-option-select .dsui-option-select-trigger[aria-expanded="true"] {
+  border-color: #428af0;
+  background: #15305a;
+}
+.dsui-option-select-trigger:disabled {
+  opacity: 0.5;
+}
+.dsui-option-select-trigger-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsui-option-select-trigger > svg:last-child {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: #8fafda;
+}
+.dsui-option-select-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #17345b;
+  color: #d9ebff;
+}
+.dsui-option-select-icon img,
+.dsui-option-select-icon svg {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+.dsui-option-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.dsui-option-select-menu:popover-open {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  inset: auto;
+  margin: 0;
+  overflow-y: auto;
+  padding: 7px;
+  border: 1px solid #2c496e;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #101f36, #081321);
+  color: #dceaff;
+  box-shadow: 0 16px 48px #000b;
+  scrollbar-width: thin;
+}
+.dsui-option-select-menu .dsui-option-select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #e8f2ff;
+  text-align: left;
+}
+.dsui-option-select-option + .dsui-option-select-option {
+  margin-top: 3px;
+}
+.dsui-option-select-menu .dsui-option-select-option:hover:not(:disabled),
+.dsui-option-select-menu .dsui-option-select-option:focus-visible {
+  border-color: #315f9b;
+  background: #142b4b;
+}
+.dsui-option-select-menu .dsui-option-select-option[aria-selected="true"] {
+  border-color: #2c71d1;
+  background: linear-gradient(115deg, #173d78, #102b52);
+}
+.dsui-option-select-option:disabled {
+  opacity: 0.45;
+}
+.dsui-option-select-copy {
+  min-width: 0;
+  flex: 1;
+}
+.dsui-option-select-copy strong,
+.dsui-option-select-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsui-option-select-copy strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.dsui-option-select-copy small {
+  margin-top: 2px;
+  color: #92a9c8;
+  font-size: 10px;
+}
+.dsui-option-select-check {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: #83beff;
+}
+
+.dsui-date-picker {
+  position: relative;
+  min-width: 0;
+}
+.dsui-date-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid #29496e;
+  border-radius: 8px;
+  background: #101e34;
+  color: #e3efff;
+  font-size: 12px;
+  text-align: left;
+}
+.dsui-date-picker-trigger:hover:not(:disabled),
+.dsui-date-picker-trigger[aria-expanded="true"] {
+  border-color: #428af0;
+  background: #15305a;
+}
+.dsui-date-picker-trigger:disabled {
+  opacity: 0.5;
+}
+.dsui-date-picker-trigger span {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+.dsui-date-picker-placeholder {
+  color: #8da7c9;
+}
+.dsui-date-picker-trigger svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: #8fafda;
+}
+.dsui-date-picker-trigger svg:last-child {
+  width: 14px;
+  height: 14px;
+}
+.dsui-date-picker-menu:popover-open {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  inset: auto;
+  margin: 0;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid #2c496e;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #101f36, #081321);
+  color: #dceaff;
+  box-shadow: 0 16px 48px #000b;
+}
+.dsui-date-picker-heading,
+.dsui-date-picker-heading > div,
+.dsui-date-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dsui-date-picker-heading {
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.dsui-date-picker-heading > div {
+  gap: 4px;
+}
+.dsui-date-picker-heading button,
+.dsui-date-picker-footer button {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #a9c5e8;
+}
+.dsui-date-picker-heading button {
+  width: 29px;
+  height: 29px;
+  font-size: 22px;
+  line-height: 1;
+}
+.dsui-date-picker-heading button:hover:not(:disabled),
+.dsui-date-picker-footer button:hover:not(:disabled) {
+  border-color: #315f9b;
+  background: #142b4b;
+  color: #fff;
+}
+.dsui-date-picker-heading button:disabled,
+.dsui-date-picker-footer button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.dsui-date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.dsui-date-picker-weekday {
+  padding: 5px 0 8px;
+  color: #7e9fc7;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+.dsui-date-picker-grid button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #dceaff;
+  font-size: 12px;
+}
+.dsui-date-picker-grid button:hover:not(:disabled),
+.dsui-date-picker-grid button:focus-visible {
+  border-color: #4385dc;
+  background: #17385e;
+}
+.dsui-date-picker-grid button[aria-pressed="true"] {
+  border-color: #569dff;
+  background: #2168d8;
+  color: #fff;
+  font-weight: 700;
+}
+.dsui-date-picker-grid button[aria-current="date"]:not([aria-pressed="true"]) {
+  border-color: #2f659f;
+}
+.dsui-date-picker-grid button:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+.dsui-date-picker-grid .dsui-date-picker-outside {
+  color: #7894b7;
+}
+.dsui-date-picker-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #203b5d;
+}
+.dsui-date-picker-footer button {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
 @layer components {
   .command-palette__backdrop {
     opacity: 0;
