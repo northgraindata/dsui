@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import { getPluginSlots } from "../../api";
+import { sameOverlayLocation } from "./overlay-navigation";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
@@ -171,11 +172,13 @@ function OverlayDialog({
   contribution,
   close,
   targetRect,
+  missingTarget,
 }: {
   active: ActiveOverlay;
   contribution?: PluginSlotResult;
   close: () => void;
   targetRect?: TargetRect;
+  missingTarget?: boolean;
 }) {
   const panel = useRef<HTMLElement>(null);
   const previousFocus = useRef<Element | null>(null);
@@ -270,6 +273,13 @@ function OverlayDialog({
   if (drawer) style = { width: `min(${presentation.width ?? 520}px, 100vw)` };
   else if (targetRect && presentation)
     style = anchoredStyle(presentation, targetRect, height);
+  else if (anchored)
+    style = {
+      position: "fixed",
+      right: 16,
+      bottom: 16,
+      width: "min(360px, calc(100vw - 32px))",
+    };
   const backdropClass = anchored
     ? "pointer-events-none fixed inset-0 z-[100]"
     : drawer
@@ -302,6 +312,12 @@ function OverlayDialog({
             Close · Esc
           </button>
         </header>
+        {missingTarget && (
+          <p role="status" className="mb-4 text-sm text-secondary">
+            This page element is unavailable. Check the page for errors. Use the
+            guide controls below or close it to inspect the page.
+          </p>
+        )}
         {contribution ? (
           <PluginErrorBoundary key={`${active.pluginId}/${active.overlayId}`}>
             <DeclarativePageRenderer
@@ -359,8 +375,10 @@ export function PluginOverlayLayer() {
             contribution.presentation.path
           ) {
             if (
-              `${window.location.pathname}${window.location.search}` !==
-              contribution.presentation.path
+              !sameOverlayLocation(
+                `${window.location.pathname}${window.location.search}${window.location.hash}`,
+                contribution.presentation.path,
+              )
             )
               router.history.push(contribution.presentation.path);
           }
@@ -425,6 +443,18 @@ export function PluginOverlayLayer() {
   const targetId =
     presentation?.mode === "anchored" ? presentation.target : undefined;
   const targetRect = useOverlayTargetRect(Boolean(active), targetId);
+  const [expiredTarget, setExpiredTarget] = useState<PluginSlotResult>();
+  useEffect(() => {
+    if (!contribution || !targetId || targetRect) return;
+    const timeout = window.setTimeout(
+      () => setExpiredTarget(contribution),
+      8000,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [contribution, targetId, targetRect]);
+  const missingTarget = Boolean(
+    contribution && targetId && !targetRect && expiredTarget === contribution,
+  );
   if (
     !active ||
     contribution?.error ||
@@ -437,7 +467,10 @@ export function PluginOverlayLayer() {
     pathname !== new URL(presentation.path, window.location.origin).pathname
   )
     return null;
-  if (!contribution || (presentation?.mode === "anchored" && !targetRect))
+  if (
+    !contribution ||
+    (presentation?.mode === "anchored" && !targetRect && !missingTarget)
+  )
     return (
       <div className="fixed bottom-4 right-4 z-[100] rounded-lg border border-border-strong bg-surface-raised p-4 shadow-xl">
         <p role="status" className="text-sm text-secondary">
@@ -455,6 +488,7 @@ export function PluginOverlayLayer() {
       contribution={contribution}
       close={close}
       targetRect={targetRect}
+      missingTarget={missingTarget}
     />
   );
 }
