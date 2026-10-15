@@ -13,7 +13,11 @@ import {
   useState,
 } from "react";
 import { getPluginSlots } from "../../api";
-import { overlayHref, sameOverlayLocation } from "./overlay-navigation";
+import {
+  overlayHref,
+  overlayMatchesRoute,
+  sameOverlayLocation,
+} from "./overlay-navigation";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
@@ -475,11 +479,7 @@ export function PluginOverlayLayer() {
   if (
     presentation?.mode === "anchored" &&
     presentation.path &&
-    pathname !==
-      new URL(
-        overlayHref(presentation.path, import.meta.env.BASE_URL),
-        window.location.origin,
-      ).pathname
+    !overlayMatchesRoute(pathname, presentation.path)
   )
     return null;
   if (
