@@ -3,6 +3,7 @@ import {
   PageHeader,
   Table,
   Tabs,
+  Target,
 } from "@northgraindata/dsui-adapter-sdk";
 import { DependencyGraph } from "../components/dependency-graph.js";
 import { models } from "../resources/artifacts.js";
@@ -18,22 +19,25 @@ export const modelsPage = definePage({
       items: [
         {
           label: "List",
-          content: Table({
-            source: models(),
-            columns: [
-              { id: "uniqueId", label: "ID" },
-              { id: "name", label: "Model" },
-              { id: "package", label: "Package" },
-              { id: "database", label: "Database" },
-              { id: "schema", label: "Schema" },
-              { id: "materialized", label: "Materialized" },
-              { id: "dependsOn", label: "Upstream models" },
-            ],
-            rowLink: {
-              path: "/models/:modelId",
-              params: { modelId: "uniqueId" },
-            },
-            searchable: true,
+          content: Target({
+            id: "dbt.models.table",
+            content: Table({
+              source: models(),
+              columns: [
+                { id: "uniqueId", label: "ID" },
+                { id: "name", label: "Model" },
+                { id: "package", label: "Package" },
+                { id: "database", label: "Database" },
+                { id: "schema", label: "Schema" },
+                { id: "materialized", label: "Materialized" },
+                { id: "dependsOn", label: "Upstream models" },
+              ],
+              rowLink: {
+                path: "/models/:modelId",
+                params: { modelId: "uniqueId" },
+              },
+              searchable: true,
+            }),
           }),
         },
         {

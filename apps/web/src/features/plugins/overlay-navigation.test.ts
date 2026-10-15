@@ -1,5 +1,23 @@
 import { expect, test } from "bun:test";
-import { sameOverlayLocation } from "./overlay-navigation";
+import { overlayHref, sameOverlayLocation } from "./overlay-navigation";
+
+test("tour navigation keeps every destination inside the application mount", () => {
+  for (const path of [
+    "/",
+    "/services/transformations/models",
+    "/plugins/health/overview",
+    "/services/snapshot/query?sql=SELECT%201",
+  ]) {
+    expect(overlayHref(path, "/demo/")).toBe(`/demo${path}`);
+    expect(overlayHref(path, "/")).toBe(path);
+  }
+  expect(
+    sameOverlayLocation(
+      "/demo/services/snapshot/query?sql=SELECT+1",
+      overlayHref("/services/snapshot/query?sql=SELECT%201", "/demo/"),
+    ),
+  ).toBe(true);
+});
 
 test("advancing a tour preserves query results despite equivalent URL encoding", () => {
   const path = "/services/snapshot/query";

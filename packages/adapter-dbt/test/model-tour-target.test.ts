@@ -1,5 +1,22 @@
 import { expect, test } from "bun:test";
 import { modelDetailPage } from "../src/pages/model-detail";
+import { modelsPage } from "../src/pages/models";
+
+test("models list publishes the anchor used by the demo tour", () => {
+  const rendered = modelsPage.render({
+    params: {},
+    query: new URLSearchParams(),
+    stores: {
+      use: () => {
+        throw new Error("Unexpected store");
+      },
+      get: () => {
+        throw new Error("Unexpected store");
+      },
+    },
+  });
+  expect(JSON.stringify(rendered)).toContain('"id":"dbt.models.table"');
+});
 
 test("model source tour target exists independently of resource loading", () => {
   const rendered = modelDetailPage.render({

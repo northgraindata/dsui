@@ -13,7 +13,7 @@ import {
   useState,
 } from "react";
 import { getPluginSlots } from "../../api";
-import { sameOverlayLocation } from "./overlay-navigation";
+import { overlayHref, sameOverlayLocation } from "./overlay-navigation";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
@@ -324,7 +324,10 @@ function OverlayDialog({
               nodes={contribution.nodes}
               client={pluginRendererClient(active.pluginId, (path) =>
                 window.location.assign(
-                  `/plugins/${encodeURIComponent(active.pluginId)}/${path.replace(/^\/+/, "")}`,
+                  overlayHref(
+                    `/plugins/${encodeURIComponent(active.pluginId)}/${path.replace(/^\/+/, "")}`,
+                    import.meta.env.BASE_URL,
+                  ),
                 ),
               )}
             />
@@ -377,10 +380,18 @@ export function PluginOverlayLayer() {
             if (
               !sameOverlayLocation(
                 `${window.location.pathname}${window.location.search}${window.location.hash}`,
-                contribution.presentation.path,
+                overlayHref(
+                  contribution.presentation.path,
+                  import.meta.env.BASE_URL,
+                ),
               )
             )
-              router.history.push(contribution.presentation.path);
+              router.history.push(
+                overlayHref(
+                  contribution.presentation.path,
+                  import.meta.env.BASE_URL,
+                ),
+              );
           }
           setActive(contribution ? { ...detail, contribution } : undefined);
         })
@@ -464,7 +475,11 @@ export function PluginOverlayLayer() {
   if (
     presentation?.mode === "anchored" &&
     presentation.path &&
-    pathname !== new URL(presentation.path, window.location.origin).pathname
+    pathname !==
+      new URL(
+        overlayHref(presentation.path, import.meta.env.BASE_URL),
+        window.location.origin,
+      ).pathname
   )
     return null;
   if (

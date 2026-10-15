@@ -11,3 +11,8 @@ export function sameOverlayLocation(current: string, destination: string) {
     left.hash === right.hash
   );
 }
+/** Plugin routes are app-relative; history and browser navigation need the mount path. */
+export function overlayHref(path: string, base: string) {
+  const prefix = base.replace(/\/$/, "");
+  return `${prefix}${path}`;
+}
