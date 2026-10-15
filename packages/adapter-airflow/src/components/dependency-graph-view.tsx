@@ -897,7 +897,13 @@ export function DependencyGraphView({
   const graphNode = node as DependencyGraphNode;
   const sourceKey = JSON.stringify(graphNode.props.props?.source ?? null);
   return (
-    <DependencyGraphContent key={sourceKey} client={client} node={graphNode} />
+    <div data-dsui-overlay-target="airflow.dag.graph">
+      <DependencyGraphContent
+        key={sourceKey}
+        client={client}
+        node={graphNode}
+      />
+    </div>
   );
 }
 
@@ -1030,7 +1036,7 @@ function DependencyGraphContent({
       </Surface>
     );
   return (
-    <div className="grid gap-2" data-dsui-overlay-target="airflow.dag.graph">
+    <div className="grid gap-2">
       {error ? (
         <p className="m-0 text-[11px] text-unavailable" role="alert">
           Live refresh failed: {error}
