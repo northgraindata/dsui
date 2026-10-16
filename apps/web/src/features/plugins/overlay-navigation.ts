@@ -16,3 +16,7 @@ export function overlayHref(path: string, base: string) {
   const prefix = base.replace(/\/$/, "");
   return `${prefix}${path}`;
 }
+/** Router locations have already had the mount path removed by TanStack. */
+export function overlayMatchesRoute(pathname: string, destination: string) {
+  return pathname === new URL(destination, "http://dsui.local").pathname;
+}

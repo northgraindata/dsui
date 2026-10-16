@@ -1,5 +1,40 @@
 import { expect, test } from "bun:test";
-import { overlayHref, sameOverlayLocation } from "./overlay-navigation";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import {
+  overlayHref,
+  overlayMatchesRoute,
+  sameOverlayLocation,
+} from "./overlay-navigation";
+
+test("mounted router paths match tour destinations without the browser prefix", async () => {
+  const root = createRootRoute();
+  const home = createRoute({ getParentRoute: () => root, path: "/" });
+  const models = createRoute({
+    getParentRoute: () => root,
+    path: "/services/transformations/models",
+  });
+  for (const destination of ["/", "/services/transformations/models"]) {
+    const router = createRouter({
+      routeTree: root.addChildren([home, models]),
+      basepath: "/demo",
+      history: createMemoryHistory({
+        initialEntries: [overlayHref(destination, "/demo/")],
+      }),
+    });
+    await router.load();
+    expect(
+      overlayMatchesRoute(router.state.location.pathname, destination),
+    ).toBe(true);
+    expect(overlayMatchesRoute(router.state.location.pathname, "/other")).toBe(
+      false,
+    );
+  }
+});
 
 test("tour navigation keeps every destination inside the application mount", () => {
   for (const path of [
