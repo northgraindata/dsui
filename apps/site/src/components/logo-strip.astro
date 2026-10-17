@@ -1,0 +1,31 @@
+---
+// Abstract marks reserve space for approved customer logos.
+const marks = [
+  "M8 4h8v8h8v8h-8v8H8v-8H0v-8h8Z",
+  "M16 2 30 10v16l-14 8L2 26V10Zm0 7-8 5v8l8 5 8-5v-8Z",
+  "M2 26 10 6h7L9 26Zm13 0L23 6h7l-8 20Z",
+  "M16 1 20 11 31 16 20 21 16 31 11 21 1 16 11 11Z",
+  "M1 4h8v24H1Zm11 6h8v18h-8Zm11 7h8v11h-8Z",
+  "M16 2a14 14 0 1 0 14 14H16Zm0 8v6h6a6 6 0 1 1-6-6Z",
+];
+---
+
+<div class="mx-auto max-w-6xl">
+  <p class="text-center font-mono text-[11px] tracking-[0.16em] text-copy-subtle">TRUSTED BY</p>
+  <div class="logo-strip" role="img" aria-label="Placeholder company logos">
+  <div class="logo-track" aria-hidden="true">
+    {[0, 1].map(() => <div class="logo-group">
+      {marks.map((mark) => <div class="logo-mark"><svg width="38" height="38" viewBox="0 0 34 36" fill="currentColor" focusable="false"><path fill-rule="evenodd" d={mark} /></svg></div>)}
+    </div>)}
+  </div>
+  </div>
+</div>
+
+<style>
+  .logo-strip { overflow: hidden; padding-block: 24px; color: var(--ds-color-copy-muted); mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent); }
+  .logo-track { display: flex; width: max-content; animation: logo-scroll 36s linear infinite; }
+  .logo-group { display: flex; flex-shrink: 0; gap: 48px; padding-right: 48px; }
+  .logo-mark { display: grid; place-items: center; width: 144px; height: 56px; opacity: .65; }
+  @keyframes logo-scroll { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .logo-track { animation: none; } .logo-group { flex-wrap: wrap; justify-content: center; gap: 24px; padding: 0; } .logo-group + .logo-group { display: none; } .logo-track { width: 100%; } .logo-mark { width: 100px; } }
+</style>
