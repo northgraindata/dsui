@@ -1,0 +1,107 @@
+---
+import { Code } from "astro:components";
+
+const docsBaseUrl = import.meta.env.DEV
+  ? "http://localhost:4322/docs"
+  : "/docs";
+const example = `import { definePage, PageHeader, Card }
+  from "@northgraindata/dsui-plugin-sdk";
+
+export const overview = definePage({
+  path: "/",
+  render: () => [
+    PageHeader({
+      title: "Deployment overview",
+      description: "Your releases, at a glance.",
+    }),
+    Card({
+      title: "Production",
+      description: "v2.8.0 · Deployed 12 minutes ago",
+      badge: "Healthy",
+      badgeTone: "healthy",
+    }),
+    Card({
+      title: "Staging",
+      description: "v2.9.0-rc.1 · Ready for review",
+      badge: "Preview",
+      badgeTone: "info",
+    }),
+  ],
+});`;
+---
+
+<section id="build-your-own" class="bg-canvas px-6 py-24 text-foreground sm:py-32" aria-labelledby="build-title">
+  <div class="mx-auto max-w-6xl">
+    <div class="max-w-2xl">
+      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">BUILD YOUR OWN</p>
+      <h2 id="build-title" class="mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">Your team has specific needs.<br />Build for them.</h2>
+      <p class="mt-6 text-pretty text-base leading-7 text-copy sm:text-lg">Give your engineers a head start. Use DSUI’s SDKs to connect internal tools and build custom workflows, with a workspace and UI components already in place.</p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a class="hero-action inline-flex h-12 items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas" href={`${docsBaseUrl}/plugin-sdk/overview`}>Build a plugin <span class="hero-action-icon ml-2 text-brand-softest" aria-hidden="true">↗</span></a>
+        <a class="hero-action inline-flex h-12 items-center justify-center rounded-xl border border-brand-muted/15 bg-action-secondary px-6 text-sm font-semibold text-copy shadow-action-secondary hover:border-brand-muted/35 hover:shadow-action-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas" href={`${docsBaseUrl}/adapter-sdk/overview`}>Create an adapter <span class="hero-action-icon ml-2 text-brand-muted" aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+
+    <div class="build-panel mt-14 sm:mt-16">
+      <div class="code-pane">
+        <div class="panel-label"><span>01 / YOUR CAPABILITY</span><span>overview.ts</span></div>
+        <div class="code-content"><Code code={example} lang="ts" theme="github-dark" /></div>
+      </div>
+      <div class="result-pane">
+        <div class="panel-label panel-label-preview"><span>Preview</span></div>
+        <div class="sdk-preview">
+          <div class="preview-window" aria-label="Rendered SDK example">
+            <div class="preview-toolbar"><img src="/branding/logo-icon.svg" width="18" height="18" alt="DSUI" /><span>Workspace <span aria-hidden="true">/</span> Deployment overview</span></div>
+            <div class="preview-page">
+              <header class="preview-page-header"><div><h3>Deployment overview</h3><p>Your releases, at a glance.</p></div></header>
+              <section class="preview-card">
+                <header><div class="preview-card-heading"><h4>Production</h4><span class="preview-badge" data-tone="healthy"><span aria-hidden="true"></span>Healthy</span></div><p><code>v2.8.0</code> · Deployed 12 minutes ago</p></header>
+                <div class="preview-card-content"></div>
+              </section>
+              <section class="preview-card">
+                <header><div class="preview-card-heading"><h4>Staging</h4><span class="preview-badge" data-tone="info"><span aria-hidden="true"></span>Preview</span></div><p><code>v2.9.0-rc.1</code> · Ready for review</p></header>
+                <div class="preview-card-content"></div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Scoped equivalents of packages/ui tokens and renderer PageHeader/Card styles. */
+  .sdk-preview { display: flex; align-items: center; min-height: 380px; flex: 1; padding: 32px; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--ds-color-brand) 8%, transparent), transparent 75%); }
+  .preview-window { width: 100%; overflow: hidden; border: 1px solid #172134; border-radius: 12px; background: #040813; box-shadow: 0 16px 40px #0004; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .preview-toolbar { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 12px 18px; border-bottom: 1px solid #172134; background: #080e1b; color: #b0c1df; font-size: 10px; }
+  .preview-toolbar > span { display: flex; flex-wrap: wrap; gap: 9px; }
+  .preview-toolbar > span > span { color: #8399bd; }
+  .preview-page { min-height: 224px; padding: 24px; }
+  .preview-page-header { display: flex; align-items: center; gap: 12px; min-width: 0; margin-bottom: 12px; }
+  .preview-page-header h3 { margin: 0; font-size: 17px; font-weight: 600; color: #f0f3fc; }
+  .preview-card { min-width: 0; border: 1px solid #172134; border-radius: 10px; padding: 14px; background: linear-gradient(135deg, #080e1b, #040813); }
+  .preview-card header { display: grid; gap: 4px; padding: 16px 18px 0; }
+  .preview-card h4 { margin: 0; color: #f0f3fc; font-size: 14px; font-weight: 600; }
+  .preview-card p { margin: 0; color: #8399bd; font-size: 12px; }
+  .preview-card-content { padding: 8px 18px; }
+  .preview-page-header p { margin-top: 4px; color: #b0c1df; font-size: 12px; }
+  .preview-card + .preview-card { margin-top: 12px; }
+  .preview-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .preview-card header { padding: 8px 8px 0; gap: 12px; }
+  .preview-card p code { color: #b0c1df; font: 11px ui-monospace, monospace; }
+  .preview-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid #2870ff44; border-radius: 999px; background: #2870ff14; color: #93c5fd; font-size: 10px; white-space: nowrap; }
+  .preview-badge[data-tone="healthy"] { border-color: #50c87866; background: #50c8781f; color: #50c878; }
+  .preview-badge > span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+  @media (max-width: 540px) { .sdk-preview { padding: 20px; min-height: 300px; } .preview-page { padding: 20px; } }
+  .build-panel { display: grid; grid-template-columns: 1fr 1.15fr; min-width: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); border-radius: 12px; }
+  .code-pane, .result-pane { min-width: 0; }
+  .result-pane { display: flex; flex-direction: column; }
+  .code-pane { display: flex; flex-direction: column; background: color-mix(in srgb, var(--ds-color-brand) 3%, var(--ds-color-canvas)); border-right: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); }
+  .panel-label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 12px 22px; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); font: 10px/1.5 ui-monospace, monospace; letter-spacing: .08em; color: var(--ds-color-copy-subtle); }
+  .panel-label-preview { justify-content: flex-end; }
+  .panel-label span:last-child { color: var(--ds-color-copy-muted); }
+  .code-content { display: flex; flex: 1; align-items: center; overflow-x: auto; padding: 32px 24px; }
+  .code-content :global(pre) { margin: 0; background: transparent !important; font-size: 12px; line-height: 1.9; }
+  @media (max-width: 760px) { .build-panel { grid-template-columns: 1fr; } .code-pane { border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); } .code-content { padding: 24px 20px; } }
+</style>
