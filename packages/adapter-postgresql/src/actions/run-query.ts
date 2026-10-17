@@ -33,10 +33,10 @@ export const runQuery = defineAction({
     const started = Date.now();
     let result: PostgreSQLQueryResult;
     try {
-      result = await (database
-        ? ctx.getClient(database)
-        : ctx.client
-      ).execute(normalizedSql, maxRows);
+      result = await (database ? ctx.getClient(database) : ctx.client).execute(
+        normalizedSql,
+        maxRows,
+      );
     } catch (error) {
       ctx.emit(queryFailed, {
         operation: sqlOperation(normalizedSql),

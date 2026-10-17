@@ -24,7 +24,7 @@ export function DataTable({
     overscan: 10,
   });
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    if (rows.length > 0) scrollRef.current?.scrollTo({ top: 0 });
   }, [rows]);
   const virtualRows = virtualizer.getVirtualItems();
   const paddingTop = virtualRows[0]?.start ?? 0;

@@ -346,7 +346,9 @@ const client: RendererClient = {
   async executeAction() {
     return { status: "success", data: [] };
   },
-  navigate() {},
+  navigate() {
+    // Component previews do not navigate away from the documentation.
+  },
 };
 
 export default function PrimitivePreview({ id }: { id: string }) {

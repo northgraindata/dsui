@@ -1,6 +1,7 @@
 import { access, stat } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  type AdapterHealthCheck,
   healthReport,
   reachabilityCheck,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -116,7 +117,7 @@ async function localHealth(ctx: DbtContext, started: number) {
       weights: { reachability: 1 },
     });
 
-  const checks = [];
+  const checks: AdapterHealthCheck[] = [];
 
   let version: string;
   try {

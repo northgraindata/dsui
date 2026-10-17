@@ -1,5 +1,8 @@
-import type { ActionBinding, ActionResult } from "../action/index";
-import type { ActionExecutionWithSignals } from "../action/index";
+import type {
+  ActionBinding,
+  ActionExecutionWithSignals,
+  ActionResult,
+} from "../action/index";
 import type { AdapterDefinition } from "../adapter/index";
 import type { PageNode } from "../components/index";
 import type { SignalEmission } from "../job";
