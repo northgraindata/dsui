@@ -9,6 +9,11 @@ description: Run DSUI locally with npx, open a DuckDB workspace, and see your fi
 > shortest way to try the workspace on a local machine. Docker is available
 > below when you need an isolated deployment.
 
+Adapters must be declared explicitly in `adapters:`; a service references one by ID.
+The examples below download and build the official DuckDB adapter from GitHub,
+so first startup requires network access. `ref: main` follows development; use a
+reviewed commit SHA for a reproducible deployment.
+
 ## 1. Run DSUI with npx
 
 Create an empty directory for the example, then add a local configuration file:
@@ -21,6 +26,13 @@ cd dsui-quickstart
 Create `dsui.yaml`:
 
 ```yaml
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-duckdb
+
 services:
   - id: local-duckdb
     adapter: duckdb
@@ -51,7 +63,7 @@ select 42 as answer;
 ```
 
 The result should contain one row with `42`. This confirms that the CLI,
-configuration loader, bundled DuckDB adapter, server, and browser workspace are
+configuration loader, configured DuckDB adapter, server, and browser workspace are
 all working together.
 
 Stop DSUI with `Ctrl+C`. Run the same `npx` command again from the directory to
@@ -70,6 +82,13 @@ The Docker example uses a file-backed DuckDB database in a persistent volume.
 Create `dsui.yaml`:
 
 ```yaml
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-duckdb
+
 services:
   - id: warehouse
     adapter: duckdb

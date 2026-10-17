@@ -6,6 +6,13 @@ description: Declare services in dsui.yaml and keep secrets outside the file.
 `dsui.yaml` describes the services DSUI should load at startup.
 
 ```yaml
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-duckdb
+
 services:
   - id: local-duckdb
     adapter: duckdb
@@ -16,6 +23,11 @@ services:
 ```
 
 `id` must be kebab-case. `adapter` selects a loaded adapter. `connection` is validated by that adapter before DSUI connects.
+
+Adapters must be declared explicitly in `adapters:`; a service references one by ID.
+The examples below download and build the official DuckDB adapter from GitHub,
+so first startup requires network access. `ref: main` follows development; use a
+reviewed commit SHA for a reproducible deployment.
 
 ## Complete local example
 
@@ -33,6 +45,13 @@ Project layout:
 Create `dsui.yaml`:
 
 ```yaml
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-duckdb
+
 services:
   - id: warehouse
     adapter: duckdb
@@ -95,11 +114,24 @@ host when DSUI and the service run in the same Compose project. Put credentials
 in the environment rather than committing them to `dsui.yaml`.
 
 ```yaml
+adapters:
+  postgresql:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-postgresql
+  airflow:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-airflow
+
 services:
   - id: postgres
     adapter: postgresql
     name: Application database
     connection:
+      method: postgresql
       host: postgres
       database: app
       username: ${POSTGRES_USER}
@@ -132,14 +164,13 @@ connection:
 
 Missing variables stop startup. Never commit credentials. Services declared in `dsui.yaml` are read-only in the DSUI service manager.
 
-## Add an adapter package
+## Add an adapter source
 
-Source checkouts include the preview adapters. A published community adapter must be exact and integrity-pinned.
+Adapters are loaded only from explicit sources in `adapters:`. A local checkout can use `source: local` with a package directory; the examples above use GitHub sources. The current startup loader builds local and GitHub sources. A bare `package:` entry is accepted by the configuration schema but is not supported by that source-building startup path.
 
 ```yaml
 adapters:
   example:
-    package: "@your-org/dsui-adapter-example"
-    version: "0.1.0"
-    integrity: "sha512-..."
+    source: local
+    path: ./my-adapter
 ```
