@@ -122,7 +122,7 @@ const examples: Record<string, readonly PageNode[]> = {
   flex: [
     Flex({
       content: [
-        Badge({ label: "Trino", tone: "info" }),
+        Badge({ label: "PostgreSQL", tone: "info" }),
         Badge({ label: "Connected", tone: "healthy", dot: true }),
       ],
       align: "center",
@@ -134,7 +134,11 @@ const examples: Record<string, readonly PageNode[]> = {
     Form({
       schema: previewSchema,
       fields: [
-        TextInput({ name: "endpoint", label: "Endpoint", value: "trino:8080" }),
+        TextInput({
+          name: "endpoint",
+          label: "Endpoint",
+          value: "postgres:5432",
+        }),
         Select({
           name: "mode",
           label: "Mode",
@@ -154,7 +158,11 @@ const examples: Record<string, readonly PageNode[]> = {
       columns: 2,
       gap: "sm",
       content: [
-        Card({ title: "Trino", description: "trino:8080", variant: "subtle" }),
+        Card({
+          title: "PostgreSQL",
+          description: "postgres:5432",
+          variant: "subtle",
+        }),
         Card({ title: "Kafka", description: "kafka:9092", variant: "subtle" }),
       ],
     }),
@@ -172,7 +180,7 @@ const examples: Record<string, readonly PageNode[]> = {
   "key-value": [
     KeyValue({
       title: "Connection",
-      data: { Status: "Healthy", Endpoint: "trino:8080", Catalogs: 4 },
+      data: { Status: "Healthy", Endpoint: "postgres:5432", Databases: 4 },
     }),
   ],
   link: [
@@ -195,11 +203,11 @@ const examples: Record<string, readonly PageNode[]> = {
   ],
   "page-header": [
     PageHeader({
-      title: "Production Trino",
+      title: "Production PostgreSQL",
       description: "Shared query engine",
       icon: "database",
       badge: { label: "Healthy", tone: "healthy" },
-      meta: "trino:8080",
+      meta: "postgres:5432",
       variant: "detail",
       actions: Button({ label: "Open", variant: "primary", link: "/open" }),
     }),
@@ -280,7 +288,7 @@ const examples: Record<string, readonly PageNode[]> = {
   table: [
     Table({
       data: [
-        { service: "Trino", endpoint: "trino:8080", status: "Healthy" },
+        { service: "PostgreSQL", endpoint: "postgres:5432", status: "Healthy" },
         { service: "Kafka", endpoint: "kafka:9092", status: "Healthy" },
       ],
       columns: [
@@ -299,7 +307,7 @@ const examples: Record<string, readonly PageNode[]> = {
         },
         {
           label: "Configuration",
-          content: CodeBlock({ label: "Endpoint", value: "trino:8080" }),
+          content: CodeBlock({ label: "Endpoint", value: "postgres:5432" }),
         },
       ],
     }),
@@ -308,7 +316,7 @@ const examples: Record<string, readonly PageNode[]> = {
     TextInput({
       name: "endpoint",
       label: "Endpoint",
-      value: "trino:8080",
+      value: "postgres:5432",
       placeholder: "host:port",
     }),
   ],
@@ -319,7 +327,7 @@ const client: RendererClient = {
   async executeResource(reference) {
     if (reference.resourceId === "service-list") {
       return [
-        { name: "Trino", endpoint: "trino:8080" },
+        { name: "PostgreSQL", endpoint: "postgres:5432" },
         { name: "Kafka", endpoint: "kafka:9092" },
       ];
     }
@@ -330,7 +338,7 @@ const client: RendererClient = {
       ];
     }
     return {
-      name: "Production Trino",
+      name: "Production PostgreSQL",
       status: "Healthy",
       size: 51_754_876_928,
     };
