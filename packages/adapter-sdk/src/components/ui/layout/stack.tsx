@@ -1,5 +1,6 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { ComponentProps as RegistryViewProps } from "../../runtime";
+import { keyedItems } from "../keyed-items";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -14,10 +15,8 @@ export function Stack({
   if (node.kind !== "stack") return null;
   return (
     <div className="layout-stack" data-gap={node.props.gap ?? "md"}>
-      {nodes(node.props.content).map((child, index) => (
-        <div key={`${child.kind}-${index}`}>
-          {renderNode(client, child, context)}
-        </div>
+      {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
+        <div key={key}>{renderNode(client, child, context)}</div>
       ))}
     </div>
   );
