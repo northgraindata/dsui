@@ -1,25 +1,104 @@
 ---
+import { Code } from "astro:components";
 import NeuralNoise from "@/components/ui/neural-noise.astro";
+import ScreenshotPlaceholder from "./screenshot-placeholder.astro";
 
-const services = [
-  {
-    name: "DuckDB",
-    detail: "analytics.duckdb",
-    src: "/assets/logos/duckdb.svg",
-  },
-  {
-    name: "PostgreSQL",
-    detail: "postgres:5432",
-    src: "/assets/logos/postgresql.svg",
-  },
-  { name: "MinIO", detail: "minio:9000", src: "/assets/logos/minio.svg" },
-] as const;
-
-const npxCommand = "npx @northgraindata/dsui";
 const docsBaseUrl = import.meta.env.DEV
   ? "http://localhost:4322/docs"
   : "/docs";
-const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
+const paths = [
+  {
+    id: "developers",
+    label: "For developers",
+    guide: `${docsBaseUrl}/getting-started/quickstart`,
+    steps: [
+      {
+        tag: "RUN",
+        title: "Start on your machine.",
+        description:
+          "Run DSUI with npx, then open localhost:4192. Your workspace runs locally, alongside your tools.",
+        code: "npx @northgraindata/dsui",
+        lang: "bash",
+        file: "Terminal",
+      },
+      {
+        tag: "CONNECT",
+        title: "Bring your first tool.",
+        description:
+          "Choose Add adapter in the dashboard, install an adapter, and add your connection details. Test the connection and save it.",
+        preview: true,
+      },
+      {
+        tag: "EXPLORE",
+        title: "Get to your first result.",
+        description:
+          "Open a connected service to browse resources and use its workflows. Add plugins when you need more capabilities.",
+        code: "http://localhost:4192",
+        lang: "text",
+        file: "Your workspace",
+      },
+    ],
+  },
+  {
+    id: "companies",
+    label: "For companies",
+    guide: `${docsBaseUrl}/getting-started/quickstart#docker-alternative`,
+    steps: [
+      {
+        tag: "CONFIGURE",
+        title: "Define your workspace.",
+        description:
+          "Declare adapters and services in dsui.yaml. Start with a local database, then connect the rest of your stack.",
+        code: `adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-duckdb
+
+services:
+  - id: warehouse
+    adapter: duckdb
+    name: Analytics warehouse
+    connection:
+      method: file
+      path: /data/warehouse.duckdb`,
+        lang: "yaml",
+        file: "dsui.yaml",
+      },
+      {
+        tag: "DEPLOY",
+        title: "Give it a place in your stack.",
+        description:
+          "Run the official Docker image with your configuration mounted and a persistent volume for workspace data.",
+        code: `services:
+  dsui:
+    image: ghcr.io/northgraindata/dsui:latest
+    ports:
+      - "4192:4192"
+    environment:
+      DSUI_CONFIG: /etc/dsui/dsui.yaml
+    volumes:
+      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
+      - dsui-data:/data
+
+volumes:
+  dsui-data:`,
+        lang: "yaml",
+        file: "compose.yaml",
+      },
+      {
+        tag: "OPEN",
+        title: "Bring your workspace online.",
+        description:
+          "Start the container and open localhost:4192. Your configured services are ready to explore, with workspace data kept across restarts.",
+        code: "docker compose up -d",
+        lang: "bash",
+        file: "Terminal",
+      },
+    ],
+  },
+] as const;
 ---
 
 <section
@@ -39,181 +118,138 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
   >
   </div>
 
-  <div
-    class="relative z-10 mx-auto grid max-w-6xl gap-16 px-6 lg:grid-cols-[0.72fr_1.28fr] lg:gap-24"
-  >
+  <div class="relative z-10 mx-auto grid max-w-6xl gap-16 px-6 lg:grid-cols-[0.72fr_1.28fr] lg:gap-24" data-setup-root>
     <div class="lg:sticky lg:top-28 lg:self-start">
-      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">
-        HOW IT WORKS
-      </p>
-      <h2
-        class="mt-5 max-w-lg text-balance text-4xl font-semibold tracking-tight sm:text-5xl"
-      >
-        Run it. Connect. Get to work.
-      </h2>
-      <p
-        class="mt-6 max-w-md text-pretty text-base leading-7 text-copy sm:text-lg"
-      >
-        Start one lightweight container, connect a service through the
-        dashboard, and open its workspace.
-      </p>
-      <a
-        class="mt-8 inline-flex min-h-11 items-center text-sm font-semibold text-copy transition-colors hover:text-foreground focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-4 focus-visible:ring-offset-canvas"
-        href={gettingStartedUrl}
-      >
-        Read the setup guide
-        <span class="ml-2 text-brand-muted" aria-hidden="true">→</span>
+      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">HOW IT WORKS</p>
+      <h2 class="mt-5 max-w-lg text-balance text-4xl font-semibold tracking-tight sm:text-5xl">Run it. Connect.<br />Get to work.</h2>
+      <p class="mt-6 max-w-md text-pretty text-base leading-7 text-copy sm:text-lg">Try it on your machine or give it a home in your infrastructure. Start with one tool and build from there.</p>
+      <div class="setup-tabs mt-8" role="tablist" aria-label="Choose your setup">
+        {paths.map((path, index) => (
+          <button type="button" role="tab" id={`setup-tab-${path.id}`} aria-controls={`setup-panel-${path.id}`} aria-selected={index === 0} tabindex={index === 0 ? 0 : -1} data-setup-tab={path.id}>{path.label}</button>
+        ))}
+      </div>
+      <a class="setup-guide mt-6" href={`${docsBaseUrl}/getting-started/quickstart`} data-setup-guide>
+        Read the setup guide <span class="ml-2 text-brand-muted" aria-hidden="true">→</span>
       </a>
     </div>
-
-    <ol class="border-t border-foreground/10">
-      <li
-        class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-b border-foreground/10 py-9 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-6 sm:py-12"
-      >
-        <span class="font-mono text-xs text-brand-muted">01</span>
-        <article>
-          <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">
-            RUN
-          </p>
-          <h3 class="mt-3 text-2xl font-semibold tracking-tight">
-            Start DSUI locally.
-          </h3>
-          <p
-            class="mt-3 max-w-xl text-sm leading-6 text-copy-subtle sm:text-base sm:leading-7"
-          >
-            Run DSUI with npx, then open it at
-            <span class="font-mono text-copy">localhost:4192</span>.
-          </p>
-
-          <div
-            class="mt-7 max-w-xl overflow-hidden rounded-lg border border-foreground/10 bg-surface font-mono text-xs"
-            aria-label="npx command"
-          >
-            <p
-              class="overflow-x-auto px-4 py-4 whitespace-nowrap text-foreground sm:px-5"
-            >
-              <span class="mr-2 text-brand-muted">$</span>{npxCommand}
-            </p>
-          </div>
-        </article>
-      </li>
-
-      <li
-        class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-b border-foreground/10 py-9 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-6 sm:py-12"
-      >
-        <span class="font-mono text-xs text-brand-muted">02</span>
-        <article>
-          <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">
-            CONNECT
-          </p>
-          <h3 class="mt-3 text-2xl font-semibold tracking-tight">
-            Add a service from the dashboard.
-          </h3>
-          <p
-            class="mt-3 max-w-xl text-sm leading-6 text-copy-subtle sm:text-base sm:leading-7"
-          >
-            Choose <span class="text-copy">Add adapter</span>, select an
-            adapter, enter its connection details, test the connection, and save
-            it.
-          </p>
-
-          <div
-            class="relative mt-7 aspect-video max-w-xl overflow-hidden rounded-lg border border-brand-muted/15 bg-surface"
-            aria-label="Add service dashboard walkthrough preview"
-          >
-            <div
-              aria-hidden="true"
-              class="pointer-events-none absolute inset-0 bg-action-secondary opacity-70"
-            >
-            </div>
-            <div
-              class="absolute inset-4 overflow-hidden rounded-md border border-foreground/10 bg-canvas/90 sm:inset-6"
-            >
-              <div
-                class="flex h-9 items-center border-b border-foreground/8 px-3"
-              >
-                <div class="flex items-center gap-2">
-                  <img src="/branding/logo-icon.svg" alt="" class="size-3.5" />
-                  <span class="text-[10px] font-semibold">Connect adapter</span>
-                </div>
-                <span class="ml-auto font-mono text-[8px] text-copy-faint">
-                  CONNECTION · TEST · FINISH
-                </span>
-              </div>
-              <div class="grid h-[calc(100%-2.25rem)] place-items-center p-4">
-                <div class="text-center">
-                  <span
-                    class="mx-auto grid size-10 place-items-center rounded-full border border-brand-muted/20 bg-brand/12 text-sm text-brand-muted sm:size-12"
-                    aria-hidden="true"
-                  >
-                    ▶
-                  </span>
-                  <p
-                    class="mt-3 font-mono text-[9px] tracking-[0.14em] text-copy-muted sm:text-[10px]"
-                  >
-                    ADD A SERVICE
-                  </p>
-                  <p class="mt-1 text-[10px] text-copy-faint sm:text-xs">
-                    Dashboard walkthrough · 16:9
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </article>
-      </li>
-
-      <li
-        class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-4 border-b border-foreground/10 py-9 sm:grid-cols-[4rem_minmax(0,1fr)] sm:gap-6 sm:py-12"
-      >
-        <span class="font-mono text-xs text-brand-muted">03</span>
-        <article>
-          <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">
-            OPEN
-          </p>
-          <h3 class="mt-3 text-2xl font-semibold tracking-tight">
-            Open the connection workspace.
-          </h3>
-          <p
-            class="mt-3 max-w-xl text-sm leading-6 text-copy-subtle sm:text-base sm:leading-7"
-          >
-            Browse resources and run service-specific workflows from the same
-            compact interface.
-          </p>
-
-          <div
-            class="mt-7 max-w-xl divide-y divide-foreground/8 overflow-hidden rounded-lg border border-foreground/10 bg-surface"
-            aria-label="Connected services"
-          >
-            {
-              services.map((service) => (
-                <div class="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3.5 sm:px-5">
-                  <div class="flex items-center gap-3">
-                    <span class="grid size-9 shrink-0 place-items-center rounded-lg border border-foreground/10 bg-canvas shadow-integration">
-                      <img
-                        src={service.src}
-                        alt=""
-                        class="size-5 object-contain"
-                        loading="lazy"
-                      />
-                    </span>
-                    <div>
-                      <p class="text-sm font-medium text-copy">{service.name}</p>
-                      <p class="mt-1 font-mono text-[10px] text-copy-muted">
-                        {service.detail}
-                      </p>
+    <div class="min-w-0">
+      <p class="copy-status sr-only" role="status" data-copy-status></p>
+      {paths.map((path, pathIndex) => (
+        <div id={`setup-panel-${path.id}`} role="tabpanel" aria-labelledby={`setup-tab-${path.id}`} tabindex="0" hidden={pathIndex !== 0} data-setup-panel={path.id} data-guide={path.guide}>
+          <ol class="border-t border-foreground/10">
+            {path.steps.map((step, index) => (
+              <li class="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 border-b border-foreground/10 py-8 sm:grid-cols-[3rem_minmax(0,1fr)] sm:gap-5 sm:py-10">
+                <span class="font-mono text-xs text-brand-muted">{String(index + 1).padStart(2, "0")}</span>
+                <article class="min-w-0">
+                  <p class="font-mono text-[10px] tracking-[0.14em] text-copy-faint">{step.tag}</p>
+                  <h3 class="mt-3 text-2xl font-semibold tracking-tight">{step.title}</h3>
+                  <p class="mt-3 max-w-xl text-sm leading-6 text-copy-subtle sm:text-base sm:leading-7">{step.description}</p>
+                  {"code" in step && <div class="setup-code mt-6">
+                    <div class="code-label">
+                      <span>{step.file}</span>
+                      <div class="code-actions">
+                        {step.lang === "text" && <a class="code-action" href={step.code} target="_blank" rel="noopener noreferrer" aria-label="Open DSUI workspace in a new tab" title="Open workspace">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>
+                        </a>}
+                        <button type="button" class="code-action" data-copy-code={step.code} aria-label={`Copy ${step.file === "Terminal" ? "command" : step.file}`} title="Copy">
+                          <svg class="copy-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" /></svg>
+                          <svg class="copied-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <p class="flex items-center gap-2 text-xs text-copy-subtle">
-                    <span class="size-1.5 rounded-full bg-emerald-400" />
-                    Connected
-                  </p>
-                </div>
-              ))
-            }
-          </div>
-        </article>
-      </li>
-    </ol>
+                    {step.lang === "text" ? <a class="workspace-address" href={step.code} target="_blank" rel="noopener noreferrer">{step.code}</a> : <Code code={step.code} lang={step.lang} theme="github-dark" />}
+                  </div>}
+                  {"preview" in step && <div class="mt-6 overflow-hidden rounded-lg border border-foreground/10"><ScreenshotPlaceholder label="Connect a tool" title="Your first connection." description="Screenshot: adding a service in the DSUI dashboard." /></div>}
+                </article>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </div>
   </div>
 </section>
+
+<style>
+  .setup-tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); border-radius: 9px; background: var(--ds-color-canvas); }
+  .setup-tabs button { min-height: 40px; padding: 8px 14px; border-radius: 5px; font-size: 12px; font-weight: 500; color: var(--ds-color-copy-subtle); cursor: pointer; }
+  .setup-tabs button[aria-selected="true"] { background: color-mix(in srgb, var(--ds-color-brand-muted) 12%, transparent); color: var(--ds-color-foreground); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-color-brand-muted) 15%, transparent); }
+  .setup-guide { display: inline-flex; min-height: 44px; align-items: center; font-size: 14px; font-weight: 600; color: var(--ds-color-copy); }
+  .setup-tabs button:focus-visible, .setup-guide:focus-visible, [role="tabpanel"]:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 4px; border-radius: 5px; }
+  [hidden] { display: none; }
+  .setup-code { overflow: hidden; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent); border-radius: 8px; background: var(--ds-color-canvas); }
+  .code-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 8%, transparent); font: 10px/1.5 ui-monospace, monospace; color: var(--ds-color-copy-subtle); }
+  .copy-status { font-size: 12px; color: var(--ds-color-copy-subtle); }
+  .copy-status:not(:empty) { margin-bottom: 12px; }
+  .code-actions { display: flex; align-items: center; gap: 4px; }
+  .code-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 5px; color: var(--ds-color-copy-subtle); cursor: pointer; }
+  .code-action:focus-visible, .workspace-address:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 2px; }
+  .copied-icon, [data-copied] .copy-icon { display: none; }
+  [data-copied] .copied-icon { display: block; color: var(--ds-color-brand-muted); }
+  .workspace-address { display: block; padding: 18px 16px; overflow-wrap: anywhere; font: 11px/1.8 ui-monospace, monospace; color: var(--ds-color-copy); }
+  @media (hover: hover) and (pointer: fine) { .code-action:hover { color: var(--ds-color-foreground); background: color-mix(in srgb, var(--ds-color-copy) 8%, transparent); } .workspace-address:hover { text-decoration: underline; } }
+  .setup-code :global(pre) { margin: 0; padding: 18px 16px; background: transparent !important; font-size: 11px; line-height: 1.8; overflow-x: auto; }
+  @media (hover: hover) and (pointer: fine) { .setup-tabs button:hover, .setup-guide:hover { color: var(--ds-color-brand-muted); } }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-setup-root]").forEach((root) => {
+    const status = root.querySelector<HTMLElement>("[data-copy-status]");
+    root.querySelectorAll<HTMLButtonElement>("[data-copy-code]").forEach((button) => {
+      let resetTimer: ReturnType<typeof setTimeout> | undefined;
+      const label = button.getAttribute("aria-label") ?? "Copy code";
+      button.addEventListener("click", async () => {
+        const code = button.dataset.copyCode;
+        if (code === undefined) return;
+        if (status) {
+          status.textContent = "";
+          status.classList.add("sr-only");
+        }
+        try {
+          await navigator.clipboard.writeText(code);
+          clearTimeout(resetTimer);
+          button.dataset.copied = "";
+          button.setAttribute("aria-label", "Copied");
+          if (status) status.textContent = "Copied to clipboard.";
+          resetTimer = setTimeout(() => {
+            delete button.dataset.copied;
+            button.setAttribute("aria-label", label);
+          }, 2000);
+        } catch {
+          if (status) {
+            status.classList.remove("sr-only");
+            status.textContent = "Could not copy. Select the code and copy it manually.";
+          }
+        }
+      });
+    });
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-setup-tab]"));
+    const panels = root.querySelectorAll<HTMLElement>("[data-setup-panel]");
+    const guide = root.querySelector<HTMLAnchorElement>("[data-setup-guide]");
+    const select = (tab: HTMLButtonElement) => {
+      tabs.forEach((item) => {
+        const active = item === tab;
+        item.setAttribute("aria-selected", String(active));
+        item.tabIndex = active ? 0 : -1;
+      });
+      panels.forEach((panel) => {
+        panel.hidden = panel.dataset.setupPanel !== tab.dataset.setupTab;
+        if (!panel.hidden && guide && panel.dataset.guide) guide.href = panel.dataset.guide;
+      });
+    };
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => select(tab));
+      tab.addEventListener("keydown", (event) => {
+        let next: HTMLButtonElement | undefined;
+        if (event.key === "ArrowRight") next = tabs[(index + 1) % tabs.length];
+        if (event.key === "ArrowLeft") next = tabs[(index - 1 + tabs.length) % tabs.length];
+        if (event.key === "Home") next = tabs[0];
+        if (event.key === "End") next = tabs[tabs.length - 1];
+        if (!next) return;
+        event.preventDefault();
+        select(next);
+        next.focus();
+      });
+    });
+  });
+</script>
