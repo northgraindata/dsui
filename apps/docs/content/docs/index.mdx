@@ -1,13 +1,13 @@
 ---
 title: DSUI Developer Preview
-description: One workspace for the data and infrastructure services you already run.
+description: The extensible platform for your data stack.
 ---
 
 > **Developer Preview**
 >
 > DSUI is under active development. Expect breaking changes, incomplete adapter coverage, and bugs.
 
-DSUI gives your data stack one workspace. Connect the databases, orchestration tools, transformation services, storage systems, and infrastructure you already run. Inspect what is happening and use the workflows that matter without adding a separate admin UI for every service.
+DSUI is an open-source, extensible platform for your data stack. Connect tools, install plugins, and build custom capabilities tailored to your infrastructure.
 
 ![DSUI workspace overview showing connected data and infrastructure services](https://dsui.northgraindata.com/assets/product.png)
 
@@ -19,73 +19,18 @@ already running the rest of your stack in Compose.
 
 ![DSUI infrastructure overview showing services converging on one workspace](/docs/assets/dsui-runtime-overview.png)
 
-## Why DSUI
+## Extend your data stack
 
-A data stack is often a stack of separate web consoles. Postgres wants pgAdmin, MinIO wants its console, DuckDB wants a SQL client, and Airflow runs its own webserver. Each one adds a container, a port, credentials, and another place for operators to learn.
+Connect databases, orchestration tools, transformation services, and storage
+through adapters. Install plugins to add capabilities across connected services.
 
-DSUI brings those workflows into one interface. You still run your services — Postgres, MinIO, Airflow, dbt, and others — but you do not need a separate admin UI for each one.
+- Declare adapter sources and service connections in `dsui.yaml`
+- Run service operations on the server and keep credentials there
+- Build custom integrations with the [Adapter SDK](/docs/adapter-sdk/overview)
+- Build pages, actions, jobs, and workflows with the [Plugin SDK](/docs/plugin-sdk/overview)
 
-Before, every service carries its own interface:
-
-```yaml
-services:
-  postgres:
-    image: postgres:16
-  pgadmin:
-    image: dpage/pgadmin4
-    ports: ["5050:80"]
-  minio:
-    image: minio/minio
-    ports: ["9000:9000", "9001:9001"]
-```
-
-After, one container and one file:
-
-```yaml
-services:
-  dsui:
-    image: ghcr.io/northgraindata/dsui:latest
-    ports: ["4192:4192"]
-    volumes:
-      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
-      - dsui-data:/data
-  postgres:
-    image: postgres:16
-  minio:
-    image: minio/minio
-```
-
-```yaml
-# dsui.yaml
-services:
-  - id: warehouse
-    adapter: postgresql
-    name: Postgres
-    connection:
-      host: postgres
-      database: app
-  - id: storage
-    adapter: s3
-    name: MinIO
-    connection:
-      endpoint: http://minio:9000
-      forcePathStyle: true
-```
-
-One port, one place to look. The configuration is declarative, runs the same way every time, and keeps credentials on the server.
-
-## What DSUI provides
-
-- One workspace for multiple services
-- Declarative connections from `dsui.yaml`
-- Server-side execution and credential handling
-- Consistent resources, actions, pages, and workflows
-- Built-in adapters for common data-stack services
-- An Adapter SDK for extending the workspace
-
-If a service is not supported yet, teams can build a private adapter around its
-API and use the same DSUI primitives. This is an extension path, not a
-requirement for using the built-in adapters.
+The [configuration guide](/docs/getting-started/configuration) includes complete
+examples for loading adapters and connecting services.
 
 ## Current status
 
