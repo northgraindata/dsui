@@ -1,0 +1,143 @@
+---
+import ScreenshotPlaceholder from "./screenshot-placeholder.astro";
+
+const plugins = [
+  {
+    id: "dsui-agent",
+    number: "01",
+    name: "DSUI Agent",
+    category: "INVESTIGATE",
+    title: "Ask your stack. Get context.",
+    description:
+      "Investigate connected services, explore schemas, and get help with queries from a conversation inside your workspace.",
+    features: ["Workspace context", "Schema exploration", "Query assistance"],
+    screenshot: "Screenshot: the DSUI Agent investigating a connected service.",
+    source: "plugin-ai-agent",
+    pro: false,
+    accent: "var(--ds-violet-200)",
+    symbol: "✳",
+  },
+  {
+    id: "notifications",
+    number: "02",
+    name: "Notifications",
+    category: "STAY INFORMED",
+    title: "The right signal. In the right channel.",
+    description:
+      "Send service warnings, errors, and successes to Slack or Discord. Choose which signals reach each channel and keep repeat alerts under control.",
+    features: ["Slack & Discord", "Service-based rules", "Delivery history"],
+    screenshot: "Screenshot: notification rules and delivery history in DSUI.",
+    source: null,
+    pro: true,
+    accent: "var(--ds-color-brand-muted)",
+    symbol: "↗",
+  },
+  {
+    id: "ai-diagnostics",
+    number: "03",
+    name: "AI diagnostics",
+    category: "DIAGNOSE",
+    title: "From a failed run to a proposed fix.",
+    description:
+      "Investigate service signals with AI that can inspect your stack and its code. Get a report with evidence, or a draft pull request for your team to review.",
+    features: [
+      "Signal-triggered investigations",
+      "Evidence-based reports",
+      "Draft PRs & MRs",
+    ],
+    screenshot:
+      "Screenshot: an AI investigation with evidence, a diagnosis, and a proposed code fix.",
+    source: null,
+    pro: true,
+    accent: "var(--ds-violet-200)",
+    symbol: "✧",
+  },
+  {
+    id: "team-access",
+    number: "04",
+    name: "Team access",
+    category: "COLLABORATE",
+    title: "One workspace. The right access.",
+    description:
+      "Bring your team into DSUI with email and password sign-in. Assign roles and give each team access to the services they work with.",
+    features: [
+      "Team-based access",
+      "Owner to viewer roles",
+      "Email & password sign-in",
+    ],
+    screenshot: "Screenshot: teams, roles, and service access in DSUI Auth.",
+    source: null,
+    pro: true,
+    accent: "var(--ds-teal-200)",
+    symbol: "◇",
+  },
+] as const;
+const docsBaseUrl = import.meta.env.DEV
+  ? "http://localhost:4322/docs"
+  : "/docs";
+---
+
+<section id="plugins" class="relative overflow-clip bg-canvas py-24 text-foreground sm:py-32" aria-labelledby="plugins-title">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="max-w-2xl">
+      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">PLUGIN ECOSYSTEM</p>
+      <h2 id="plugins-title" class="mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">More possibilities.<br />Same workspace.</h2>
+      <p class="mt-6 text-pretty text-base leading-7 text-copy sm:text-lg">Investigate problems, route notifications, and bring your team into the workspace. Add the capabilities your stack needs.</p>
+    </div>
+
+    <div class="plugin-stories">
+      {plugins.map((plugin, index) => (
+        <article id={plugin.id} class:list={["plugin-story", { "plugin-story-reverse": index % 2 !== 0 }]} style={`--plugin-accent: ${plugin.accent}`} aria-labelledby={`${plugin.id}-title`}>
+          <div class="plugin-visual">
+            <div class="plugin-visual-glow" aria-hidden="true"></div>
+            <div class="plugin-preview">
+              {plugin.id === "dsui-agent" ? <img src="/assets/dsui-agent-showcase-v2.png" alt="DSUI Agent querying a connected warehouse and showing customer data with query results" width="1448" height="1086" loading="lazy" class="agent-showcase" /> : plugin.id === "notifications" ? <img src="/assets/notifications-showcase.png" alt="DSUI Notifications showing channels, rules, and Slack and Discord delivery history" width="1448" height="1086" loading="lazy" class="agent-showcase" /> : <ScreenshotPlaceholder label={plugin.name} title={plugin.name} description={plugin.screenshot} />}
+            </div>
+          </div>
+          <div class="plugin-copy">
+            <div class="plugin-identity"><span class="plugin-app-icon" aria-hidden="true">{plugin.symbol}</span><div><p>{plugin.name}{plugin.pro && <span class="pro-badge">Pro</span>}</p></div></div>
+            <h3 id={`${plugin.id}-title`} class="mt-6 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">{plugin.title}</h3>
+            <p class="mt-5 text-pretty text-base leading-7 text-copy">{plugin.description}</p>
+            {plugin.source && <a class="plugin-link" href={`https://github.com/northgraindata/dsui/tree/main/packages/${plugin.source}#readme`}>Explore {plugin.name}<span aria-hidden="true">↗</span></a>}
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <div class="plugins-footer"><div><p>Have something specific in mind?</p><span>Build a plugin around the way your team works.</span></div><a class="plugin-link" href={`${docsBaseUrl}/plugin-sdk/overview`}>Explore the Plugin SDK <span aria-hidden="true">→</span></a></div>
+    <p class="plugin-plan-note">Plugin availability varies by plan.</p>
+  </div>
+</section>
+
+<style>
+  .plugin-stories { margin-top: 72px; }
+  .plugin-story { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .85fr); align-items: center; gap: 64px; padding: 64px 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); scroll-margin-top: 100px; }
+  .plugin-story:first-child { padding-top: 48px; }
+  .plugin-story-reverse { grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr); }
+  .plugin-story-reverse .plugin-visual { order: 2; }
+  .plugin-story-reverse .plugin-copy { order: 1; }
+  .plugin-visual { position: relative; min-width: 0; }
+  .plugin-visual-glow { position: absolute; pointer-events: none; inset: 5% -8%; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--plugin-accent) 8%, transparent), transparent 70%); }
+  .agent-showcase { display: block; width: 100%; height: auto; }
+  .plugin-preview { position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--plugin-accent) 18%, transparent); border-radius: 12px; box-shadow: 0 16px 48px color-mix(in srgb, var(--ds-color-canvas) 65%, transparent); }
+  .plugin-copy { min-width: 0; }
+  .plugin-identity { display: flex; align-items: center; gap: 12px; }
+  .plugin-app-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border: 1px solid color-mix(in srgb, var(--plugin-accent) 20%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--plugin-accent) 6%, transparent); color: var(--plugin-accent); font: 21px ui-monospace, monospace; }
+  .pro-badge { display: inline-block; margin-left: 8px; padding: 2px 6px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 25%, transparent); border-radius: 4px; color: var(--ds-color-brand-muted); font: 9px/1.4 ui-monospace, monospace; vertical-align: middle; }
+  .plugin-identity p { font-size: 18px; font-weight: 500; color: var(--ds-color-copy); }
+  .plugin-link { display: inline-flex; align-items: center; gap: 14px; min-height: 44px; color: var(--ds-color-brand-muted); font-size: 13px; font-weight: 500; }
+  .plugin-link:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 5px; border-radius: 3px; }
+  .plugins-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); padding-top: 28px; }
+  .plugins-footer p { font-size: 15px; font-weight: 500; color: var(--ds-color-copy); }
+  .plugins-footer div > span { display: block; margin-top: 6px; font-size: 13px; color: var(--ds-color-copy-subtle); }
+  .plugin-plan-note { margin-top: 24px; color: var(--ds-color-copy-muted); font-size: 11px; }
+  @media (hover: hover) and (pointer: fine) { .plugin-link:hover { color: var(--ds-color-foreground); } }
+  @media (max-width: 1000px) { .plugin-story, .plugin-story-reverse { gap: 36px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  @media (max-width: 760px) {
+    .plugin-stories { margin-top: 48px; }
+    .plugin-story, .plugin-story-reverse { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-block: 40px; }
+    .plugin-copy, .plugin-story-reverse .plugin-copy { order: 1; }
+    .plugin-visual, .plugin-story-reverse .plugin-visual { order: 2; }
+    .plugins-footer { flex-direction: column; align-items: flex-start; gap: 10px; }
+  }
+</style>
