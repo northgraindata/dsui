@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@northgraindata/dsui-adapter-airflow": "workspace:*",
+    "@northgraindata/dsui-adapter-clickhouse": "workspace:*",
     "@northgraindata/dsui-adapter-dbt": "workspace:*",
     "@northgraindata/dsui-adapter-duckdb": "workspace:*",
     "@northgraindata/dsui-adapter-postgresql": "workspace:*",

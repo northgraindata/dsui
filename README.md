@@ -84,11 +84,11 @@ Open [http://localhost:4192](http://localhost:4192). DSUI downloads and builds t
 
 ## Adapters
 
-Connect Apache Airflow, dbt, PostgreSQL, S3-compatible storage such as MinIO, and DuckDB through adapters that bring service-specific capabilities into DSUI.
+Connect Apache Airflow, dbt, PostgreSQL, ClickHouse, S3-compatible storage such as MinIO, and DuckDB through adapters that bring service-specific capabilities into DSUI.
 
-|                                                       |                                               |                                                             |                                                       |                                                   |                                                |
-| ----------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- |
-| <img src="./apps/site/public/assets/logos/airflow.svg" width="56" alt="Apache Airflow" /> | <img src="./apps/site/public/assets/logos/dbt.png" width="56" alt="dbt" /> | <img src="./apps/site/public/assets/logos/postgresql.svg" width="56" alt="PostgreSQL" /> | <img src="./apps/site/public/assets/logos/s3.svg" width="56" alt="Amazon S3" /> | <img src="./apps/site/public/assets/logos/minio.svg" width="56" alt="MinIO" /> | <img src="./apps/site/public/assets/logos/duckdb.svg" width="56" alt="DuckDB" /> |
+|                                                       |                                               |                                                             |                                                       |                                                   |                                                |                                                       |
+| ----------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------- |
+| <img src="./apps/site/public/assets/logos/airflow.svg" width="56" alt="Apache Airflow" /> | <img src="./apps/site/public/assets/logos/dbt.png" width="56" alt="dbt" /> | <img src="./apps/site/public/assets/logos/postgresql.svg" width="56" alt="PostgreSQL" /> | <img src="./apps/site/public/assets/logos/s3.svg" width="56" alt="Amazon S3" /> | <img src="./apps/site/public/assets/logos/minio.svg" width="56" alt="MinIO" /> | <img src="./apps/site/public/assets/logos/duckdb.svg" width="56" alt="DuckDB" /> | <img src="./apps/site/public/assets/logos/clickhouse.png" width="56" alt="ClickHouse" /> |
 
 
 

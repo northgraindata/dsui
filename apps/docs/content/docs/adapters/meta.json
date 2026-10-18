@@ -1,4 +1,12 @@
 {
   "title": "Adapters",
-  "pages": ["index", "airflow", "duckdb", "dbt", "postgresql", "s3"]
+  "pages": [
+    "index",
+    "airflow",
+    "clickhouse",
+    "duckdb",
+    "dbt",
+    "postgresql",
+    "s3"
+  ]
 }
