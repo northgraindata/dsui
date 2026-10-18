@@ -1,0 +1,74 @@
+---
+title: ClickHouse
+description: Browse ClickHouse, run SQL, and monitor active queries.
+---
+
+## Setup
+
+```yaml
+adapters:
+  clickhouse:
+    source: local
+    path: packages/adapter-clickhouse
+
+services:
+  - id: warehouse
+    adapter: clickhouse
+    name: ClickHouse
+    connection:
+      method: structured
+      host: example.clickhouse.cloud
+      protocol: https
+      port: 8443
+      database: default
+      databaseScope: all
+      username: default
+      password: ${CLICKHOUSE_PASSWORD}
+```
+
+Use HTTP/8123 for a local server without TLS. In Compose, use the service name as
+host. Endpoints, proxy connections and certificates belong to the DSUI server.
+URL mode uses `method: url` and an HTTP(S) `url`; its path is a reverse-proxy prefix,
+while `database` is configured separately. Native TCP ports are not supported.
+
+## Connections
+
+Supports basic/passwordless authentication, static bearer/JWT tokens, custom CA and
+client certificates, HTTP(S) proxies with CONNECT, reverse-proxy paths/headers,
+private network endpoints and externally managed tunnels. Server certificate
+verification remains enabled. JWTs replace basic credentials and are not refreshed
+automatically. `headersJson` and `settingsJson` configure advanced headers/settings.
+
+`databaseScope: selected` limits browsing to the configured database; it does not
+restrict SQL privileges. Use a restricted server role or `readOnly: true` for
+inspection. `showSystemDatabases` defaults to false.
+
+## Available
+
+This adapter is in preview. Its pages are Overview, Data, Query and Activity.
+
+- Overview dashboard with catalog metrics, database cards and largest tables.
+
+- Database/table/view explorer, column metadata, keys, engine details, DDL and previews.
+- Database-aware query editor, typed results, CSV export, active queries and cancellation.
+- Table-level parts, projections, skipping indexes and mutation inspection.
+
+Queries default to 1,000 rows, 16 MiB of output and a 60-second execution limit.
+Results fail explicitly when limits are exceeded. Requests do not share session
+state; run one statement at a time without an explicit output `FORMAT` clause.
+Cancellation requests server termination and cannot undo writes already applied.
+Inspection is endpoint-local and depends on system-table permissions and enabled logs.
+Some logs may arrive late. Missing inspection permissions do not block connection setup.
+
+## Signals
+
+`clickhouse.query-succeeded` and `clickhouse.query-failed` include operation,
+database, duration and row count where available. They do not include query text
+or credentials. They cover SQL submitted through the query action.
+
+## Remaining work
+
+Cluster-wide aggregation, dedicated access/backup management and streaming file
+transfer workflows remain planned. Large file imports and Parquet downloads do not
+have a dedicated UI yet; existing bounded query results support CSV export.
+See the repository's `packages/adapter-clickhouse/COVERAGE.md` for the detailed ledger.

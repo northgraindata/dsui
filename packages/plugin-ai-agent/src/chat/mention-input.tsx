@@ -80,7 +80,12 @@ export function MentionInput({
     }
   };
   useEffect(() => {
-    if (inputRef.current) sync(inputRef.current);
+    if (inputRef.current) {
+      const element = inputRef.current;
+      element.style.height = "auto";
+      element.style.height = `${Math.min(140, Math.max(44, element.scrollHeight))}px`;
+      sync(element);
+    }
     // Controlled resets also reset textarea scroll position.
     void value;
   }, [value, inputRef]);

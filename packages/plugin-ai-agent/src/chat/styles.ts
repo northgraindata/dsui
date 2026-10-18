@@ -54,4 +54,15 @@ export const styles = `
 @media(max-width:480px){.da-scroll{padding-left:14px;padding-right:14px}.da-welcome h3{font-size:21px}.da-suggestions{grid-template-columns:1fr}.da-suggestions button{min-height:62px}}
 .da-composer textarea{font-family:inherit;font-size:13px;line-height:1.6}
 .da-mention-menu button{justify-content:flex-start}.da-mention-service-icon{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid #ffffff0d;border-radius:8px;background:#ffffff04;color:#8eacd5}.da-mention-service-icon img{width:22px;height:22px;object-fit:contain}.da-mention-service-copy{min-width:0;flex:1}
+.da-panel[data-open=true]{overflow:hidden;min-height:0}
+.da-scroll{min-height:0}
+.da-composer .da-mention-editor textarea{height:44px;min-height:44px;max-height:140px}
+.da-health-results{margin-top:12px;border:1px solid #ffffff12;border-radius:8px;padding:9px 11px;font-size:12px}
+.da-health-results>summary{cursor:pointer;color:#9fb7d6}
+.da-health-results>summary:focus-visible,.da-data-notice>summary:focus-visible{outline:2px solid #6caeff;outline-offset:3px}
+.da-health-results .da-health{margin-top:10px;padding-top:10px}
+.da-data-notice{font-size:10px;color:#8390a5;margin-top:8px;text-align:center}
+.da-data-notice>summary{cursor:pointer}
+.da-data-notice p{padding:6px 8px;line-height:1.5}
+.da-jump-latest{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);border:1px solid #ffffff24;border-radius:20px;background:var(--color-canvas,#0b1018);padding:6px 12px;font-size:11px!important;box-shadow:0 3px 12px #0004;white-space:nowrap}
 `;
