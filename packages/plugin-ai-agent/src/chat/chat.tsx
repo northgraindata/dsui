@@ -1,6 +1,7 @@
 import { type ComponentProps, z } from "@northgraindata/dsui-plugin-sdk";
 import { conversationSchema } from "../agent/model";
 import { activityMessage } from "./activity";
+import dsuiLogo from "./assets/dsui-logo.b64" with { type: "text" };
 import {
   AttachmentPicker,
   clipboardFiles,
@@ -86,10 +87,20 @@ function Glyph({ name, size = 18 }: { name: string; size?: number }) {
     </svg>
   );
 }
+function AgentLogo({ size = 23 }: { size?: number }) {
+  return (
+    <img
+      src={`data:image/svg+xml;base64,${dsuiLogo}`}
+      width={size}
+      height={size}
+      alt=""
+    />
+  );
+}
 function AgentMark() {
   return (
     <span className="da-mark">
-      <Glyph name="sparkle" size={23} />
+      <AgentLogo />
     </span>
   );
 }
@@ -161,7 +172,7 @@ export function AgentLauncher({ client }: ComponentProps) {
         aria-controls="dsui-agent-panel"
         onClick={open}
       >
-        <Glyph name="sparkle" size={21} />
+        <AgentLogo size={21} />
       </button>
     </>
   );
@@ -204,7 +215,7 @@ function AgentPanel({ client }: { client: ComponentProps["client"] }) {
     >
       <header className="da-header">
         <span className="da-outline-mark">
-          <Glyph name="sparkle" size={20} />
+          <AgentLogo size={20} />
         </span>
         <h2>DSUI Agent</h2>
         <button
@@ -293,6 +304,7 @@ function ChatSession({
   const input = useRef<HTMLTextAreaElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const followLatest = useRef(true);
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
   const scrollPosition = useRef(0);
   const active = useRef(true);
   const bootstrapped = useRef(false);
@@ -422,6 +434,15 @@ function ChatSession({
     if (visible && followLatest.current && scroll.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [lastText, conversation?.id, visible]);
+  useEffect(() => {
+    const element = scroll.current;
+    if (!visible || !element) return;
+    const observer = new ResizeObserver(() => {
+      if (followLatest.current) element.scrollTop = element.scrollHeight;
+    });
+    for (const child of element.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [visible, conversation?.id, Boolean(state)]);
   const send = async (text: string) => {
     if (
       (!text.trim() && !attachmentDraft.attachments.length) ||
@@ -493,11 +514,6 @@ function ChatSession({
           }}
         />
       )}
-      {conversation && (
-        <div className="da-chat-title">
-          <span title={conversation.title}>{conversation.title}</span>
-        </div>
-      )}
       <div
         className="da-scroll"
         ref={scroll}
@@ -511,7 +527,8 @@ function ChatSession({
             scrollPosition.current = element.scrollTop;
             followLatest.current =
               element.scrollHeight - element.clientHeight - element.scrollTop <
-              4;
+              32;
+            setAwayFromLatest(!followLatest.current);
           }
         }}
       >
@@ -633,22 +650,17 @@ function ChatSession({
                   {!message.text && message.id !== activeMessageId && (
                     <span className="da-muted">No response was produced.</span>
                   )}
-                  {conversation.tools
-                    .filter(
+                  <HealthResults
+                    tools={conversation.tools.filter(
                       (tool) =>
                         tool.messageId === message.id &&
                         tool.name === "get_service_health" &&
                         tool.status === "completed",
-                    )
-                    .map((tool) => (
-                      <HealthCard
-                        key={tool.id}
-                        output={tool.output}
-                        services={state?.services ?? []}
-                        disabled={running}
-                        send={send}
-                      />
-                    ))}
+                    )}
+                    services={state?.services ?? []}
+                    disabled={running}
+                    send={send}
+                  />
                   <MessageTools
                     tools={conversation.tools}
                     messageId={message.id}
@@ -674,6 +686,20 @@ function ChatSession({
         )}
       </div>
       <footer className="da-footer">
+        {awayFromLatest && (
+          <button
+            type="button"
+            className="da-jump-latest"
+            onClick={() => {
+              followLatest.current = true;
+              setAwayFromLatest(false);
+              if (scroll.current)
+                scroll.current.scrollTop = scroll.current.scrollHeight;
+            }}
+          >
+            ↓ Latest message
+          </button>
+        )}
         <form
           className="da-composer"
           onPaste={(event) => {
@@ -760,11 +786,13 @@ function ChatSession({
             )}
           </div>
         </form>
-        <small>
-          Messages, attachments, and retrieved service data are sent to the
-          configured model provider to generate replies. Agent responses can be
-          wrong; verify important results.
-        </small>
+        <details className="da-data-notice">
+          <summary>AI can make mistakes · Data & privacy</summary>
+          <p>
+            Messages, attachments, and retrieved service data are sent to the
+            configured model provider. Verify important results.
+          </p>
+        </details>
       </footer>
     </section>
   );
@@ -786,6 +814,46 @@ const healthSchema = z.object({
     )
     .optional(),
 });
+function HealthResults({
+  tools,
+  services,
+  disabled,
+  send,
+}: {
+  tools: z.infer<typeof conversationSchema>["tools"];
+  services: State["services"];
+  disabled: boolean;
+  send(text: string): Promise<void>;
+}) {
+  // Keep the latest measurement for each service within this reply.
+  const results = new Map<string, z.infer<typeof healthSchema>>();
+  for (const tool of tools) {
+    const parsed = healthSchema.safeParse(tool.output);
+    if (parsed.success) results.set(parsed.data.id, parsed.data);
+  }
+  if (!results.size) return null;
+  const issues = Array.from(results.values()).filter(
+    (result) => result.health === "warning" || result.health === "unavailable",
+  ).length;
+  return (
+    <details className="da-health-results">
+      <summary>
+        Service health · {results.size}{" "}
+        {results.size === 1 ? "service" : "services"} checked
+        {issues > 0 && ` · ${issues} ${issues === 1 ? "issue" : "issues"}`}
+      </summary>
+      {Array.from(results, ([id, output]) => (
+        <HealthCard
+          key={id}
+          output={output}
+          services={services}
+          disabled={disabled}
+          send={send}
+        />
+      ))}
+    </details>
+  );
+}
 function HealthCard({
   output,
   services,
@@ -821,12 +889,6 @@ function HealthCard({
           <dt>Status</dt>
           <dd className="da-health-status">{health.health}</dd>
         </div>
-        {service && (
-          <div>
-            <dt>Service</dt>
-            <dd>{service.id}</dd>
-          </div>
-        )}
         {health.latencyMs !== undefined && (
           <div>
             <dt>Latency</dt>
@@ -851,7 +913,7 @@ function HealthCard({
           }
         >
           <Glyph name="send" size={13} />
-          Test connection
+          Recheck with agent
         </button>
         <a href={`/services/${encodeURIComponent(health.id)}`}>
           <Glyph name="database" size={13} />
