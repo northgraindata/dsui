@@ -20,13 +20,14 @@ export const overview = definePage({
       badge: "Healthy",
       badgeTone: "healthy",
     }),
-    Card({
+`;
+const addedCard = `    Card({
       title: "Staging",
       description: "v2.9.0-rc.1 · Ready for review",
       badge: "Preview",
       badgeTone: "info",
-    }),
-  ],
+    }),`;
+const exampleEnd = `  ],
 });`;
 ---
 
@@ -42,10 +43,16 @@ export const overview = definePage({
       </div>
     </div>
 
-    <div class="build-panel mt-14 sm:mt-16">
+    <div class="build-panel mt-14 sm:mt-16" data-build-demo>
       <div class="code-pane">
         <div class="panel-label"><span>01 / YOUR CAPABILITY</span><span>overview.ts</span></div>
-        <div class="code-content"><Code code={example} lang="ts" theme="github-dark" /></div>
+        <div class="code-content" aria-label="SDK example: adding a Staging card renders it in the preview; removing it removes the card.">
+          <div class="code-example">
+            <Code code={example.trimEnd()} lang="ts" theme="github-dark" />
+            <div class="code-addition"><Code code={addedCard} lang="ts" theme="github-dark" /></div>
+            <div class="code-end"><Code code={exampleEnd} lang="ts" theme="github-dark" /></div>
+          </div>
+        </div>
       </div>
       <div class="result-pane">
         <div class="panel-label panel-label-preview"><span>Preview</span></div>
@@ -58,7 +65,7 @@ export const overview = definePage({
                 <header><div class="preview-card-heading"><h4>Production</h4><span class="preview-badge" data-tone="healthy"><span aria-hidden="true"></span>Healthy</span></div><p><code>v2.8.0</code> · Deployed 12 minutes ago</p></header>
                 <div class="preview-card-content"></div>
               </section>
-              <section class="preview-card">
+              <section class="preview-card preview-card-added">
                 <header><div class="preview-card-heading"><h4>Staging</h4><span class="preview-badge" data-tone="info"><span aria-hidden="true"></span>Preview</span></div><p><code>v2.9.0-rc.1</code> · Ready for review</p></header>
                 <div class="preview-card-content"></div>
               </section>
@@ -99,9 +106,61 @@ export const overview = definePage({
   .result-pane { display: flex; flex-direction: column; }
   .code-pane { display: flex; flex-direction: column; background: color-mix(in srgb, var(--ds-color-brand) 3%, var(--ds-color-canvas)); border-right: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); }
   .panel-label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 12px 22px; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); font: 10px/1.5 ui-monospace, monospace; letter-spacing: .08em; color: var(--ds-color-copy-subtle); }
-  .panel-label-preview { justify-content: flex-end; }
+  .panel-label-preview { justify-content: space-between; }
   .panel-label span:last-child { color: var(--ds-color-copy-muted); }
   .code-content { display: flex; flex: 1; align-items: center; overflow-x: auto; padding: 32px 24px; }
   .code-content :global(pre) { margin: 0; background: transparent !important; font-size: 12px; line-height: 1.9; }
   @media (max-width: 760px) { .build-panel { grid-template-columns: 1fr; } .code-pane { border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); } .code-content { padding: 24px 20px; } }
+  /* Code changes lead their rendered result by 600ms in a ten-second cycle. */
+  .build-panel { --build-ease-out: cubic-bezier(0.23, 1, 0.32, 1); }
+  .code-example { width: 100%; font-size: 12px; line-height: 1.9; }
+  .code-addition { position: relative; }
+  .code-addition::before { content: ""; position: absolute; inset: 0 -10px; border-left: 2px solid #50c87866; background: #50c8780a; pointer-events: none; }
+  [data-animated] .code-addition { animation: build-code-card 10s var(--build-ease-out) infinite both; }
+  [data-animated] .code-end { animation: build-code-end 10s var(--build-ease-out) infinite both; }
+  [data-animated] .preview-card-added { animation: build-preview-card 10s var(--build-ease-out) infinite both; }
+  [data-playing="false"] .code-addition, [data-playing="false"] .code-end, [data-playing="false"] .preview-card-added { animation-play-state: paused; }
+  @keyframes build-code-card {
+    0%, 16% { opacity: 0; transform: translateY(4px); visibility: hidden; }
+    19%, 68% { opacity: 1; transform: translateY(0); visibility: visible; }
+    71%, 100% { opacity: 0; transform: translateY(4px); visibility: hidden; }
+  }
+  @keyframes build-code-end {
+    0%, 16% { transform: translateY(-6lh); }
+    19%, 68% { transform: translateY(0); }
+    71%, 100% { transform: translateY(-6lh); }
+  }
+  @keyframes build-preview-card {
+    0%, 22% { opacity: 0; transform: translateY(8px) scale(.97); visibility: hidden; }
+    25%, 74% { opacity: 1; transform: translateY(0) scale(1); visibility: visible; }
+    77%, 100% { opacity: 0; transform: translateY(8px) scale(.97); visibility: hidden; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-animated] .code-addition, [data-animated] .code-end, [data-animated] .preview-card-added { animation: none; }
+  }
 </style>
+
+<script>
+  const demo = document.querySelector<HTMLElement>("[data-build-demo]");
+  if (demo) {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let inView = false;
+    const update = () => {
+      demo.toggleAttribute("data-animated", !reducedMotion.matches);
+      demo.dataset.playing = String(inView && !document.hidden);
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      update();
+    }, { threshold: 0.2 });
+    observer.observe(demo);
+    document.addEventListener("visibilitychange", update);
+    reducedMotion.addEventListener("change", update);
+    update();
+    document.addEventListener("astro:before-swap", () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", update);
+      reducedMotion.removeEventListener("change", update);
+    }, { once: true });
+  }
+</script>
