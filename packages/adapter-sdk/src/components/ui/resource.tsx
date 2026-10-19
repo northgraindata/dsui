@@ -30,14 +30,23 @@ function ResourceContent({
   const [error, setError] = useState<string>();
   useEffect(() => {
     let active = true;
+    const receive = (result: unknown) => {
+      if (!active) return;
+      if (result && typeof result === "object" && !Array.isArray(result)) {
+        setData(result as Record<string, unknown>);
+        setError(undefined);
+      } else setError("Could not load resource");
+    };
+    if (node.props.source.refresh?.kind === "poll" && client.watchResource) {
+      const unsubscribe = client.watchResource(node.props.source, receive);
+      return () => {
+        active = false;
+        unsubscribe();
+      };
+    }
     client
       .executeResource(node.props.source)
-      .then((result) => {
-        if (!active) return;
-        if (result && typeof result === "object" && !Array.isArray(result))
-          setData(result as Record<string, unknown>);
-        else setError("Could not load resource");
-      })
+      .then(receive)
       .catch((cause) => {
         if (active)
           setError(

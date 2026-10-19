@@ -1,5 +1,10 @@
 import { homedir, tmpdir } from "node:os";
-import { defineJob, definePlugin } from "@northgraindata/dsui-plugin-sdk";
+import {
+  defineJob,
+  definePage,
+  definePlugin,
+  KeyValue,
+} from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
 import {
   sampleCpu,
@@ -9,7 +14,13 @@ import {
   sampleVolumes,
 } from "./context.js";
 import { overviewPage } from "./pages/overview.js";
-import { hostCpu, hostDisk, hostMemory } from "./resources/host.js";
+import {
+  hostCpu,
+  hostDisk,
+  hostMemory,
+  hostOverview,
+  hostRuntime,
+} from "./resources/host.js";
 import {
   hostCpuSeries,
   hostDiskSeries,
@@ -85,8 +96,10 @@ export function createMonitoringPlugin() {
 
       // Declared so the host can refresh them on their own intervals; the page
       // reads them through its render context.
+      registry.resource(hostOverview);
       registry.resource(hostCpu);
       registry.resource(hostMemory);
+      registry.resource(hostRuntime);
       registry.resource(hostDisk);
 
       // The historical series behind the charts, read independently of the
@@ -131,6 +144,36 @@ export function createMonitoringPlugin() {
         title: "Host resources",
         description: "CPU load, memory and disk for the machine running DSUI.",
       });
+
+      registry.page(
+        definePage({
+          path: "/settings",
+          render: () =>
+            KeyValue({
+              title: "Host monitoring configuration",
+              data: {
+                "Live readings": "Every 5 seconds while the page is open",
+                "Chart refresh": "Every 2 seconds while the page is open",
+                "Maximum volumes": config.maxVolumes,
+                "Monitored paths":
+                  volumes
+                    .map((volume) => `${volume.mount}: ${volume.path}`)
+                    .join("; ") || "None",
+                Configuration:
+                  "Edit plugins.monitoring.config in dsui.yaml, then restart DSUI",
+              },
+            }),
+        }),
+        {
+          id: "settings",
+          title: "Host monitoring settings",
+          settings: {
+            category: "Monitoring",
+            label: "Host monitoring",
+            permission: "manage",
+          },
+        },
+      );
 
       registry.navigation({
         id: "monitoring-overview",
