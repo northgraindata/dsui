@@ -134,7 +134,6 @@ export function Chart({ client, node }: ComponentProps) {
     asPoints(props?.points),
   );
   const [selected, setSelected] = useState(0);
-  const [paused, setPaused] = useState(false);
   const latest = useRef<ChartPoint | undefined>(props?.points?.at(-1));
   const windows = props?.windows ?? [];
 
@@ -173,7 +172,7 @@ export function Chart({ client, node }: ComponentProps) {
     client
       .executeResource(source)
       .then((result) => {
-        if (!active || paused) return;
+        if (!active) return;
         const next = asPoints(result);
         if (next.length) latest.current = next.at(-1);
         setPoints(next);
@@ -182,7 +181,7 @@ export function Chart({ client, node }: ComponentProps) {
     return () => {
       active = false;
     };
-  }, [client, source, paused]);
+  }, [client, source]);
 
   const spanMs = windowSpan(windows[selected] ? [windows[selected]] : windows);
 
@@ -207,16 +206,6 @@ export function Chart({ client, node }: ComponentProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1">
-        <Button
-          variant="ghost"
-          size="small"
-          onClick={() => setPaused((value) => !value)}
-        >
-          {paused ? "Resume" : "Pause"}
-        </Button>
-        {paused && <span className="text-[12px] text-muted">Paused</span>}
-      </div>
       <div
         style={{ height: 200 }}
         role="img"
@@ -244,7 +233,6 @@ export function Chart({ client, node }: ComponentProps) {
           // A wider margin is the difference between a trend and noise.
           exaggerate={props.exaggerate ?? false}
           lineWidth={props.lineWidth ?? 2}
-          paused={paused}
           formatValue={(value) =>
             `${formatValue(value)}${props.yRange?.unit ?? ""}`
           }
