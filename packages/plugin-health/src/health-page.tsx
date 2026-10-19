@@ -1,7 +1,9 @@
 import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
 import { createOptionSelect } from "@northgraindata/dsui-ui/option-select-factory";
+import { type HistoryPoint, historyPointSchema } from "./history-model";
+import { HistoryStrip } from "./history-strip";
 import { React } from "./react";
-import { styles } from "./styles";
+import { historyStyles, styles } from "./styles";
 
 const OptionSelect = createOptionSelect(() => React);
 
@@ -13,6 +15,7 @@ type HealthRow = {
   adapter: string;
   iconUrl?: string;
   health: HealthStatus;
+  history?: HistoryPoint[];
   detail?: string;
   latencyMs?: number;
 };
@@ -66,6 +69,10 @@ function readHealthRows(value: unknown): HealthRow[] {
       adapter: item.adapter,
       ...(typeof item.iconUrl === "string" ? { iconUrl: item.iconUrl } : {}),
       health: item.health,
+      history:
+        item.history === undefined
+          ? []
+          : historyPointSchema.array().parse(item.history),
       ...(item.detail !== undefined ? { detail: item.detail } : {}),
       ...(item.latencyMs !== undefined ? { latencyMs: item.latencyMs } : {}),
     };
@@ -175,12 +182,17 @@ export function HealthPage({ client }: ComponentProps) {
 
   return (
     <div className="health-page">
-      <style>{styles}</style>
-      <header className="health-page-heading">
-        <div>
-          <h1>Service health</h1>
-          <p>Status and response time for your connected services.</p>
-        </div>
+      <style>{styles + historyStyles}</style>
+
+      <div className="health-page-summary">
+        <strong>
+          {rows?.length ?? "—"} {rows?.length === 1 ? "service" : "services"}{" "}
+          checked
+        </strong>
+        <span data-health="healthy">{counts.healthy} healthy</span>
+        <span data-health="warning">{counts.warning} warning</span>
+        <span data-health="unavailable">{counts.unavailable} unavailable</span>
+        <span data-health="unknown">{counts.unknown} unknown</span>
         <div className="health-page-refresh">
           <span>
             {updatedAt
@@ -197,17 +209,6 @@ export function HealthPage({ client }: ComponentProps) {
             <span aria-hidden="true">↻</span>
           </button>
         </div>
-      </header>
-
-      <div className="health-page-summary">
-        <strong>
-          {rows?.length ?? "—"} {rows?.length === 1 ? "service" : "services"}{" "}
-          checked
-        </strong>
-        <span data-health="healthy">{counts.healthy} healthy</span>
-        <span data-health="warning">{counts.warning} warning</span>
-        <span data-health="unavailable">{counts.unavailable} unavailable</span>
-        <span data-health="unknown">{counts.unknown} unknown</span>
       </div>
 
       <section className="health-page-list" aria-busy={loading && !rows}>
@@ -219,51 +220,14 @@ export function HealthPage({ client }: ComponentProps) {
           <div className="health-page-controls">
             <label className="health-page-search">
               <span aria-hidden="true">⌕</span>
-              <span className="sr-only">Search services</span>
               <input
+                aria-label="Search services"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search services"
               />
             </label>
-            <OptionSelect
-              ariaLabel="Filter by health status"
-              value={filter}
-              onValueChange={(value) =>
-                setFilter(isHealthStatus(value) ? value : "all")
-              }
-              options={[
-                { value: "all", label: "All statuses", icon: <span>◉</span> },
-                {
-                  value: "healthy",
-                  label: "Healthy",
-                  icon: (
-                    <span style={{ color: "var(--color-healthy)" }}>●</span>
-                  ),
-                },
-                {
-                  value: "warning",
-                  label: "Warning",
-                  icon: (
-                    <span style={{ color: "var(--color-warning)" }}>●</span>
-                  ),
-                },
-                {
-                  value: "unavailable",
-                  label: "Unavailable",
-                  icon: (
-                    <span style={{ color: "var(--color-unavailable)" }}>●</span>
-                  ),
-                },
-                {
-                  value: "unknown",
-                  label: "Unknown",
-                  icon: (
-                    <span style={{ color: "var(--color-unknown)" }}>●</span>
-                  ),
-                },
-              ]}
-            />
+            <HealthFilter filter={filter} setFilter={setFilter} />
           </div>
         </div>
 
@@ -288,7 +252,13 @@ export function HealthPage({ client }: ComponentProps) {
                   <th scope="col">Service</th>
                   <th scope="col">Status</th>
                   <th scope="col" title="Time for the adapter health check">
-                    Ping
+                    Response
+                  </th>
+                  <th
+                    scope="col"
+                    title="One bar per hour; gaps mean no recorded checks"
+                  >
+                    Last week
                   </th>
                   <th scope="col">Details</th>
                 </tr>
@@ -330,6 +300,9 @@ export function HealthPage({ client }: ComponentProps) {
                         ? "—"
                         : `${row.latencyMs} ms`}
                     </td>
+                    <td>
+                      <HistoryStrip points={row.history ?? []} />
+                    </td>
                     <td className="health-page-detail" title={row.detail}>
                       {row.detail ?? "—"}
                     </td>
@@ -346,10 +319,53 @@ export function HealthPage({ client }: ComponentProps) {
         )}
         {rows && rows.length > 0 && (
           <p className="health-page-footer">
-            Showing {visible.length} of {rows.length} checked services
+            Showing {visible.length} of {rows.length} checked services. History
+            records adapter checks in the background; grey bars have no
+            measurement.
           </p>
         )}
       </section>
     </div>
+  );
+}
+
+function HealthFilter({
+  filter,
+  setFilter,
+}: {
+  filter: HealthStatus | "all";
+  setFilter: (value: HealthStatus | "all") => void;
+}) {
+  return (
+    <OptionSelect
+      ariaLabel="Filter by health status"
+      value={filter}
+      onValueChange={(value) =>
+        setFilter(isHealthStatus(value) ? value : "all")
+      }
+      options={[
+        { value: "all", label: "All statuses", icon: <span>◉</span> },
+        {
+          value: "healthy",
+          label: "Healthy",
+          icon: <span style={{ color: "var(--color-healthy)" }}>●</span>,
+        },
+        {
+          value: "warning",
+          label: "Warning",
+          icon: <span style={{ color: "var(--color-warning)" }}>●</span>,
+        },
+        {
+          value: "unavailable",
+          label: "Unavailable",
+          icon: <span style={{ color: "var(--color-unavailable)" }}>●</span>,
+        },
+        {
+          value: "unknown",
+          label: "Unknown",
+          icon: <span style={{ color: "var(--color-unknown)" }}>●</span>,
+        },
+      ]}
+    />
   );
 }
