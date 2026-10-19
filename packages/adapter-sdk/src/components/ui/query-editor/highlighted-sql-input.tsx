@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useDisplayPreferences } from "../preferences";
 import { sqlTokens } from "./sql-tokens";
 
 export function HighlightedSqlInput({
@@ -12,11 +13,19 @@ export function HighlightedSqlInput({
   onRun(): void;
   placeholder?: string;
 }) {
+  const preferences = useDisplayPreferences();
   const highlight = useRef<HTMLPreElement>(null);
   const numbers = useRef<HTMLDivElement>(null);
   let offset = 0;
   return (
-    <div className="highlighted-sql-input">
+    <div
+      className="highlighted-sql-input"
+      style={{
+        fontSize: preferences.editorFontSize,
+        tabSize: preferences.editorTabSize,
+      }}
+      data-wrap={preferences.editorWordWrap}
+    >
       <div className="sql-line-numbers" ref={numbers} aria-hidden="true">
         {Array.from({ length: value.split("\n").length }, (_, index) => (
           // Line numbers are positional by definition and have no component state.
@@ -47,7 +56,7 @@ export function HighlightedSqlInput({
         autoCapitalize="off"
         autoComplete="off"
         autoCorrect="off"
-        wrap="off"
+        wrap={preferences.editorWordWrap ? "soft" : "off"}
         onChange={(event) => onChange(event.target.value)}
         onScroll={(event) => {
           if (highlight.current) {

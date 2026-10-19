@@ -6,6 +6,7 @@ import { AppChrome } from "../components/app-chrome";
 import { Icon } from "../components/icon";
 import { ServiceMark } from "../components/service-mark";
 import { PluginOverlayLayer } from "../features/plugins/plugin-overlay-layer";
+import { SettingsProvider } from "../features/settings/settings-provider";
 
 function useShortcut(key: string, fn: () => void) {
   useEffect(() => {
@@ -21,6 +22,14 @@ function useShortcut(key: string, fn: () => void) {
 }
 
 export function AppShell() {
+  return (
+    <SettingsProvider>
+      <ShellContent />
+    </SettingsProvider>
+  );
+}
+
+function ShellContent() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [barePluginPage, setBarePluginPage] = useState<{
     pathname: string;

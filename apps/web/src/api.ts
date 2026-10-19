@@ -480,3 +480,27 @@ export function titleFor(id: string) {
     )[id] ?? id.replaceAll("-", " ")
   );
 }
+
+export function getSettings() {
+  return request<import("@northgraindata/dsui-core").SettingsSnapshot>(
+    "/settings",
+  );
+}
+export function saveSettings(
+  scope: "installation" | "preferences",
+  revision: number,
+  value: unknown,
+) {
+  return request<import("@northgraindata/dsui-core").SettingsSnapshot>(
+    `/settings/${scope}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ revision, value }),
+    },
+  );
+}
+export function getSettingsSystem() {
+  return request<import("@northgraindata/dsui-core").SettingsSystem>(
+    "/settings/system",
+  );
+}

@@ -5,6 +5,10 @@ import type {
   PageNode,
 } from "@northgraindata/dsui-adapter-sdk";
 import { componentProps } from "@northgraindata/dsui-adapter-sdk";
+import {
+  type DisplayPreferences,
+  useDisplayPreferences,
+} from "@northgraindata/dsui-adapter-sdk/components/ui/preferences";
 import { Button } from "@northgraindata/dsui-ui";
 import { Liveline } from "liveline";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -100,12 +104,22 @@ function formatValue(value: number): string {
   return value.toFixed(2);
 }
 
-function formatTime(ms: number, spanMs: number): string {
-  const date = new Date(ms);
-  const time = date.toISOString().slice(11, 16);
-  return spanMs > 86_400_000
-    ? `${date.toISOString().slice(5, 10)} ${time}`
-    : time;
+function formatTime(
+  ms: number,
+  spanMs: number,
+  preferences: DisplayPreferences,
+): string {
+  return new Intl.DateTimeFormat(undefined, {
+    ...(preferences.timeZone === "browser"
+      ? {}
+      : { timeZone: preferences.timeZone }),
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: preferences.clock === "12h",
+    ...(spanMs > 86_400_000
+      ? ({ month: "short", day: "numeric" } as const)
+      : {}),
+  }).format(new Date(ms));
 }
 
 function windowSpan(windows: readonly ChartWindow[] | undefined): number {
@@ -114,6 +128,7 @@ function windowSpan(windows: readonly ChartWindow[] | undefined): number {
 }
 
 export function Chart({ client, node }: ComponentProps) {
+  const preferences = useDisplayPreferences();
   const props = componentProps<ChartProps>(node as PageNode);
   const [points, setPoints] = useState<ChartPoint[]>(() =>
     asPoints(props?.points),
@@ -144,16 +159,11 @@ export function Chart({ client, node }: ComponentProps) {
     return { ...bound, input };
   }, [props?.source, windows, selected]);
 
-  // A bound chart re-reads on the resource's own refresh policy, the same way
-  // a table or a meter does. Pausing stops the subscription rather than only
-  // the drawing: keeping it would poll the host for readings nobody is looking
-  // at. The last readings stay on screen, and resuming refetches, so a pause
-  // never leaves a stale series frozen in place.
+  // Keep the visible series subscribed to its resource refresh policy.
   useEffect(() => {
     if (!source) return;
     if (source.refresh?.kind === "poll" && client.watchResource) {
       return client.watchResource(source, (result) => {
-        if (paused) return;
         const next = asPoints(result);
         if (next.length) latest.current = next.at(-1);
         setPoints(next);
@@ -163,7 +173,7 @@ export function Chart({ client, node }: ComponentProps) {
     client
       .executeResource(source)
       .then((result) => {
-        if (!active) return;
+        if (!active || paused) return;
         const next = asPoints(result);
         if (next.length) latest.current = next.at(-1);
         setPoints(next);
@@ -198,11 +208,6 @@ export function Chart({ client, node }: ComponentProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1">
-        {/* Only the transport control lives here. The window buttons are
-            rendered by Liveline under the chart, so a second row of them was
-            two independent controls for one setting: the copy in this row moved
-            a local index while Liveline kept its own, and only one of the two
-            changed what was drawn. */}
         <Button
           variant="ghost"
           size="small"
@@ -243,7 +248,9 @@ export function Chart({ client, node }: ComponentProps) {
           formatValue={(value) =>
             `${formatValue(value)}${props.yRange?.unit ?? ""}`
           }
-          formatTime={(seconds) => formatTime(seconds * 1000, spanMs)}
+          formatTime={(seconds) =>
+            formatTime(seconds * 1000, spanMs, preferences)
+          }
           {...(props.yRange
             ? {
                 yRange: {

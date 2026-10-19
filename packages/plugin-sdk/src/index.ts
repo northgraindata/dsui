@@ -140,7 +140,16 @@ export type PluginMetadata = {
   readonly security?: boolean;
 };
 
+/** Explicit opt-in to the host's dynamically composed Settings navigation. */
+export type PluginSettingsEntry = {
+  readonly label?: string;
+  readonly category?: string;
+  readonly order?: number;
+  readonly permission?: PluginPermission;
+};
+
 export type PluginPage = {
+  readonly settings?: PluginSettingsEntry;
   readonly id: string;
   readonly title: string;
   readonly description?: string;
@@ -535,6 +544,7 @@ export interface PluginRegistry<TConfig = unknown> {
       description?: string;
       public?: boolean;
       shell?: "app" | "bare";
+      settings?: PluginSettingsEntry;
     },
   ): void;
   navigation(item: PluginNavigationItem): void;
@@ -783,6 +793,9 @@ export function definePlugin<TConfig>(
                   ? { description: presentation.description }
                   : {}),
                 ...(presentation.public ? { public: presentation.public } : {}),
+                ...(presentation.settings
+                  ? { settings: presentation.settings }
+                  : {}),
                 ...(presentation.shell ? { shell: presentation.shell } : {}),
                 render: async (params) =>
                   serializeNodes(

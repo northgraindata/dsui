@@ -223,6 +223,11 @@ export function createCodeRepositoryPlugin() {
         {
           id: "overview",
           title: "Code repositories",
+          settings: {
+            category: "Integrations",
+            label: "Code repositories",
+            permission: "manage",
+          },
           description: "Connect code to your services.",
         },
       );

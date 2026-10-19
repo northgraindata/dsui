@@ -1,6 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useRef } from "react";
 import { WorkbenchIcon } from "./icons";
+import { formatDisplayDate, useDisplayPreferences } from "./preferences";
 
 export interface DataTableColumn {
   name: string;
@@ -16,11 +17,12 @@ export function DataTable({
   rows: readonly Record<string, unknown>[];
   className?: string;
 }) {
+  const preferences = useDisplayPreferences();
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 31,
+    estimateSize: () => (preferences.density === "compact" ? 25 : 31),
     overscan: 10,
   });
   useEffect(() => {
@@ -68,6 +70,9 @@ export function DataTable({
                   <td key={column.name}>
                     {row[column.name] === null ? (
                       <span className="data-table-null">NULL</span>
+                    ) : /TIMESTAMP|DATETIME/i.test(column.type ?? "") &&
+                      typeof row[column.name] === "string" ? (
+                      formatDisplayDate(String(row[column.name]), preferences)
                     ) : (
                       cellText(row[column.name])
                     )}
