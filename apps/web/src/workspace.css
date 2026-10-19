@@ -168,7 +168,7 @@
       rgba(8, 14, 27, 0.82) 52%,
       rgba(8, 14, 27, 0.2) 100%
     ),
-    url("./assets/sidebar-star-banner.png") center / cover;
+    url("./assets/platform-aurora-grain.jpg") center / cover;
   color: var(--color-primary);
   text-decoration: none;
   transition:
