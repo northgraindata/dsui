@@ -635,6 +635,7 @@ export function serializeNode(node: PageNode): PageNode {
       return {
         kind: node.kind,
         props: {
+          ...(node.props.field ? { field: node.props.field } : {}),
           ...(node.props.source ? { source: resource(node.props.source) } : {}),
           ...(node.props.format ? { format: node.props.format } : {}),
           ...(node.props.data

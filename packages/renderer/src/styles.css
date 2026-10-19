@@ -567,10 +567,9 @@
   background: var(--color-canvas);
 }
 .layout-card[data-variant="panel"] {
-  border-color: #14253b;
   border-radius: 9px;
   padding: 16px 17px 18px;
-  background: linear-gradient(120deg, #081323ad, #07101cbb);
+  background: var(--color-surface);
 }
 .layout-card-header {
   display: grid;

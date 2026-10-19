@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { KeyValueProps } from "../primitives/key-value";
 import { type ComponentProps, componentProps } from "../runtime";
 
-export function KeyValue({ client, node }: ComponentProps) {
+export function KeyValue({ client, node, context }: ComponentProps) {
   const props = componentProps<KeyValueProps>(node);
   const [data, setData] = useState<Record<string, unknown> | undefined>(
     props?.data ? { ...props.data } : undefined,
@@ -41,8 +41,13 @@ export function KeyValue({ client, node }: ComponentProps) {
         {error}
       </Surface>
     );
-  return data ? (
-    <KeyValueList title={props.title} values={data} />
+  const contextual = props.field ? context?.[props.field] : undefined;
+  const displayed =
+    contextual && typeof contextual === "object" && !Array.isArray(contextual)
+      ? (contextual as Record<string, unknown>)
+      : data;
+  return displayed ? (
+    <KeyValueList title={props.title} values={displayed} />
   ) : (
     <Surface className="p-4 text-[12px] text-secondary">
       Loading details…

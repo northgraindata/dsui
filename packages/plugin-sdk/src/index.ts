@@ -90,6 +90,7 @@ export {
   NotebookCatalog,
   PageHeader,
   QueryEditor,
+  Resource,
   ResourceTree,
   Section,
   Select,
