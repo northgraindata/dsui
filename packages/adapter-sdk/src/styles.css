@@ -654,3 +654,21 @@ textarea.notebook-description-input {
     transition: none;
   }
 }
+
+/* User preferences are shared across every adapter using these components. */
+html[data-density="compact"] .dsui-data-table td,
+html[data-density="compact"] .dsui-data-table th,
+html[data-density="compact"] .data-table td,
+html[data-density="compact"] .data-table th {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.highlighted-sql-input
+  :is(.sql-editor-fallback, .sql-highlight, .sql-line-numbers) {
+  font-size: inherit;
+  tab-size: inherit;
+}
+.highlighted-sql-input[data-wrap="true"] .sql-highlight {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,52 @@
+---
+title: Workspace settings
+description: Configure your installation, personal preferences and installed extensions.
+---
+
+Open **Settings** to manage the installation and your own display preferences.
+General, Extensions and System administration use the host's administrator permissions.
+Without an authentication plugin, preferences belong to the installation's local operator.
+With authentication, each account has its own persisted preferences.
+
+## General
+
+Administrators can change the workspace name, environment label and default time zone.
+Changes apply immediately and survive restarts.
+The workspace name appears in the sidebar and browser tab; non-local environments also display a banner throughout the workspace.
+
+You can manage individual values through `dsui.yaml`:
+
+```yaml
+settings:
+  name: Analytics production
+  environment: production
+  timeZone: UTC
+```
+
+Allowed environments are `local`, `development`, `staging` and `production`.
+Use `browser` for the device's time zone or an IANA time zone such as `Europe/Warsaw`.
+Configuration-managed fields are read-only in the UI.
+Removing a configured override restores the saved UI value or product default.
+Restart DSUI after changing deployment configuration.
+
+## Preferences
+
+Time zone and clock preferences apply to supported shared timestamp displays.
+`inherit` follows the installation's time zone; `browser` follows your device.
+Table density and SQL editor font size, wrapping and tab size apply to shared SDK components across adapters.
+Custom plugin interfaces may implement their own presentation.
+Save preferences to apply them; Reset defaults prepares the default values for review before saving.
+
+## Extensions
+
+The extension inventory shows loaded, disabled and unavailable plugins and adapters.
+A plugin can explicitly contribute configuration links to Settings through the Plugin SDK.
+The host only shows those links when the plugin is loaded and the current account has the required permission.
+Plugin-specific validation, secrets and configuration remain owned by that plugin.
+Extension sources and loading remain managed through `dsui.yaml`.
+
+## System
+
+Administrators can inspect the version, runtime, filesystem paths and connection encryption status.
+Download diagnostics exports versions and extension statuses, excluding credentials, configuration values and filesystem paths.
+It is not a backup of DSUI data.

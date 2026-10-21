@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useDisplayPreferences } from "../preferences";
 import { HighlightedSqlInput } from "./highlighted-sql-input";
 
 export function SqlEditor({
@@ -12,12 +13,20 @@ export function SqlEditor({
   onRun(): void;
   placeholder?: string;
 }) {
+  const preferences = useDisplayPreferences();
+  const display = useRef(preferences);
+  display.current = preferences;
   const element = useRef<HTMLDivElement>(null);
   const latest = useRef({ value, onChange, onRun });
   latest.current = { value, onChange, onRun };
   const instance = useRef<{
     getValue(): string;
     setValue(value: string): void;
+    updateOptions(options: {
+      fontSize: number;
+      wordWrap: "on" | "off";
+      tabSize: number;
+    }): void;
   } | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -64,7 +73,9 @@ export function SqlEditor({
           theme: "dsui",
           ariaLabel: "SQL query",
           fontFamily: "JetBrains Mono, ui-monospace, monospace",
-          fontSize: 13,
+          fontSize: display.current.editorFontSize,
+          wordWrap: display.current.editorWordWrap ? "on" : "off",
+          tabSize: display.current.editorTabSize,
           lineHeight: 20,
           lineNumbersMinChars: 3,
           minimap: { enabled: false },
@@ -102,6 +113,17 @@ export function SqlEditor({
     if (instance.current && instance.current.getValue() !== value)
       instance.current.setValue(value);
   }, [value]);
+  useEffect(() => {
+    instance.current?.updateOptions({
+      fontSize: preferences.editorFontSize,
+      wordWrap: preferences.editorWordWrap ? "on" : "off",
+      tabSize: preferences.editorTabSize,
+    });
+  }, [
+    preferences.editorFontSize,
+    preferences.editorWordWrap,
+    preferences.editorTabSize,
+  ]);
   if (failed)
     return (
       <HighlightedSqlInput

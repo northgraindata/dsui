@@ -36,6 +36,7 @@ import {
   registerServiceRoutes,
   serviceSource,
 } from "./routes/services.js";
+import { registerSettingsRoutes } from "./routes/settings";
 import { registerSystemRoutes } from "./routes/system.js";
 
 export type Runtime = ReturnType<typeof createRuntime>;
@@ -647,6 +648,15 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     webRoot: options.webRoot,
   });
   registerAuthRoutes(app, { pluginRuntime });
+  registerSettingsRoutes(app, {
+    database,
+    runtime: pluginRuntime,
+    getConfig,
+    registry,
+    readiness: () => readiness,
+    dataDir,
+    configPath,
+  });
   registerPluginRoutes(app, { runtime: pluginRuntime, audit });
   registerEventRoutes(app, { bus: signalBus, runtime: pluginRuntime });
   registerAdapterRoutes(app, {

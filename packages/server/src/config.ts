@@ -5,6 +5,8 @@ import { z } from "zod";
 import type { AdapterSourceLocation } from "./adapters/build.js";
 import type { AdapterPackageSource } from "./adapters/types.js";
 
+import { installationSettingsSchema } from "./settings";
+
 const installedPluginSourceSchema = z
   .object({
     package: z.string().min(1),
@@ -379,6 +381,7 @@ export function toAdapterPackageSource(
 export const configSchema = z
   .object({
     services: z.array(serviceSchema).default([]),
+    settings: installationSettingsSchema.partial().optional(),
     auth: z
       .object({ mode: z.enum(["none", "local", "enterprise"]).optional() })
       .optional(),

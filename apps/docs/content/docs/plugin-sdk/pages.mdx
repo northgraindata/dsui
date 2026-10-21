@@ -32,6 +32,30 @@ The catalog includes declared paths. The browser and host share
 A page render receives decoded route parameters. Use percent encoding for path
 segments and an optional URL fragment for client-side anchors.
 
+## Settings contributions
+
+A plugin explicitly opts a configuration page into the host Settings navigation.
+The host groups entries by category and does not hardcode plugin IDs.
+
+```ts
+registry.page(configurationPage, {
+  id: "configuration",
+  title: "My plugin settings",
+  settings: {
+    label: "My plugin",
+    category: "Integrations",
+    order: 10,
+    permission: "manage",
+  },
+});
+```
+
+Settings contributions must use private static routes without required parameters.
+The default permission is `manage`; the host enforces it on direct page requests as well as navigation discovery.
+Disabled, unavailable and removed plugins do not contribute settings links.
+The page keeps its existing plugin route, components, validation and storage.
+On older hosts, the optional metadata is ignored and the original plugin page remains usable.
+
 ## Slots
 
 Use `defineSlot` and `registry.slot(slot)` to contribute to a named host slot.

@@ -20,6 +20,9 @@ import {
   serviceSummarySchema,
 } from "../context.js";
 
+import { readHistory } from "../history.js";
+import { historyPointSchema } from "../history-model.js";
+
 /** The plugin's own config, as the resources read it. */
 type HealthConfig = { timeoutMs: number; maxServices: number };
 type HealthContext = PluginContext<HealthConfig>;
@@ -34,6 +37,7 @@ const healthRowSchema = serviceSummarySchema.extend({
   health: healthSchema,
   detail: z.string().optional(),
   latencyMs: z.number().optional(),
+  history: z.array(historyPointSchema).optional(),
 });
 
 export const summaryOutputSchema = z.object({
@@ -68,7 +72,17 @@ export const serviceHealth = defineResource({
       items,
     );
     const results = joinProbes(items, probes);
-    return { items: results, counts: countHealth(results) };
+    const history = readHistory(
+      context.storage,
+      items.map((item) => item.id),
+    );
+    return {
+      items: results.map((result) => ({
+        ...result,
+        history: history.get(result.id) ?? [],
+      })),
+      counts: countHealth(results),
+    };
   },
   refresh: poll("10s"),
 });

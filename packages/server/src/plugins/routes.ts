@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
-import type { PluginSlotResult } from "@northgraindata/dsui-plugin-sdk";
+import {
+  type PluginSlotResult,
+  resolvePluginPage,
+} from "@northgraindata/dsui-plugin-sdk";
 import type { Hono } from "hono";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
@@ -59,9 +62,25 @@ export function registerPluginRoutes(
         })
       )
         visible.add(plugin.id);
+    const pages: typeof catalog.pages = [];
+    for (const page of catalog.pages.filter((page) =>
+      visible.has(page.pluginId),
+    )) {
+      if (!page.settings) {
+        pages.push(page);
+        continue;
+      }
+      const { settings, ...rest } = page;
+      const permitted = await deps.runtime.authorize(
+        principal,
+        settings.permission ?? "manage",
+        { type: "plugin", id: page.pluginId },
+      );
+      pages.push(permitted ? page : rest);
+    }
     return context.json({
       plugins: catalog.plugins.filter((plugin) => visible.has(plugin.id)),
-      pages: catalog.pages.filter((page) => visible.has(page.pluginId)),
+      pages,
       navigation: catalog.navigation.filter((item) =>
         visible.has(item.pluginId),
       ),
@@ -221,9 +240,16 @@ export function registerPluginRoutes(
     // logged-out browser may reach, so it renders without a principal and
     // without an authorization check. Every other page is authorized as usual.
     const isPublic = deps.runtime.pageIsPublic(pluginId, pageId);
+    const definition = resolvePluginPage(
+      deps.runtime.catalog().pages.filter((page) => page.pluginId === pluginId),
+      pageId,
+    );
+    const permission = definition?.settings
+      ? (definition.settings.permission ?? "manage")
+      : "inspect";
     if (
       !isPublic &&
-      !(await deps.runtime.authorize(context.get("principal"), "inspect", {
+      !(await deps.runtime.authorize(context.get("principal"), permission, {
         type: "plugin",
         id: pluginId,
       }))
