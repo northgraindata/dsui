@@ -133,10 +133,16 @@ export type { SplitPaneNode, SplitPaneProps } from "./primitives/split-pane";
 export { SplitPane } from "./primitives/split-pane";
 export type { LayoutGap, StackNode, StackProps } from "./primitives/stack";
 export { Stack } from "./primitives/stack";
+export {
+  type ConditionSpec,
+  isRowActionDisabled,
+  matchesWhen,
+} from "./condition";
 export type {
   PageTableRowAction,
   PageTableRowLink,
   TableColumn,
+  TableCondition,
   TableFilter,
   TableNode,
   TableProps,
