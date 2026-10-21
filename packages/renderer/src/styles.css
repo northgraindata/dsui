@@ -802,13 +802,17 @@
   padding: 15px 10px 26px;
 }
 .query-table-scroll {
-  overflow: auto;
   min-width: 0;
   align-self: start;
+}
+.query-table-scroll:has(.query-empty) {
   border: 1px solid var(--color-border);
   border-top: 0;
   border-radius: 0 0 7px 7px;
-  max-height: 65dvh;
+}
+.query-table-scroll .data-table-scroll {
+  border-top: 0;
+  border-radius: 0 0 7px 7px;
 }
 .data-table-scroll {
   overflow: auto;
@@ -827,14 +831,11 @@
 .data-table th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 10;
   min-width: 140px;
   height: 58px;
-  background: linear-gradient(
-    135deg,
-    var(--color-surface),
-    var(--color-surface-raised)
-  );
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
   font-weight: 500;
 }
 .data-table th > div {
