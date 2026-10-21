@@ -3,34 +3,48 @@ title: Adapters
 description: Connect the services in your data stack through one workspace.
 ---
 
-| Adapter | Status |
-| --- | --- |
-| [Airflow](/docs/adapters/airflow) | Preview |
-| [DuckDB](/docs/adapters/duckdb) | Preview |
-| [dbt](/docs/adapters/dbt) | Preview |
-| [PostgreSQL](/docs/adapters/postgresql) | Preview |
-| [S3](/docs/adapters/s3) | Preview |
-
 An adapter is the integration layer between DSUI and one service. It provides
 the connection details, data resources, actions, and pages that make that
 service useful inside the shared workspace.
 
-DSUI is designed to bring several kinds of systems together:
+## Adapter Capability Matrix
 
-- Databases and query engines
-- Orchestration and scheduling
-- Transformation and modeling
-- Object storage and file services
-- Infrastructure and operational tools
-- Private services built with the Adapter SDK
+The table below summarizes verified capabilities and current operational constraints across bundled adapters as of DSUI 0.1.0+:
 
-Preview coverage is partial, not complete support. Each adapter page lists what is available and what is not.
+| Adapter | Category | Query Execution | Schema Discovery | DDL / Mutations | Health Checks & Signals | Container / Runtime Requirements | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **[DuckDB](/docs/adapters/duckdb)** | Embedded OLAP | ✅ Run & Cancel | ✅ Tables, Views, Macros, Indexes | ✅ Create / Drop Tables, Views, Schemas, Extensions | ✅ Reachability, `query-succeeded`, `query-failed` | Bundled `@duckdb/node-api`; requires mounted file path or `:memory:` | Verified Preview |
+| **[PostgreSQL](/docs/adapters/postgresql)** | Relational DB | ✅ Run & Cancel | ✅ Schemas, Tables, Views, Columns, FKs | ❌ Read-only query execution by default | ✅ Connection ping & reachability | Network access to Postgres port (5432) | Verified Preview |
+| **[ClickHouse](/docs/adapters/clickhouse)** | Columnar OLAP | ✅ Interactive SQL | ✅ Databases, Tables, System Views | ❌ Read-only exploration | ✅ Process activity & system health | Network access to ClickHouse HTTP/Native port | Verified Preview |
+| **[Trino](/docs/adapters/trino)** | Distributed SQL | ✅ Query Editor | ✅ Catalogs, Schemas, Tables | ❌ Read-only query execution | ✅ Server reachability | Network access to Trino coordinator (8080) | In Progress |
+| **[Apache Airflow](/docs/adapters/airflow)** | Orchestration | ❌ (Not applicable) | ✅ DAGs, Task Instances, Runs | ⚠️ Requires configured Airflow REST API | ✅ REST API `/health` endpoint | Network access to Airflow webserver/API | Verified Preview |
+| **[dbt](/docs/adapters/dbt)** | Transformation | ❌ (Model compile only) | ✅ Models, Sources, Seeds, Tests | ⚠️ Requires `dbt-core` CLI in environment | ✅ Manifest validation | `dbt-core>=1.8` and Python runtime installed | Verified Preview |
+| **[S3](/docs/adapters/s3)** | Object Storage | ❌ (Object preview only) | ✅ Buckets, Prefixes, Objects | ✅ Presigned URL downloads, folder browsing | ✅ Bucket reachability | S3 credentials (`accessKeyId`, `secretAccessKey`, `endpoint`) | Verified Preview |
+
+---
+
+## Detailed Capabilities & Operational Limitations
+
+### Databases and Query Engines
+
+* **DuckDB**: Fully embedded and zero-network overhead. Supports file-backed and memory-backed modes, extension installation, and notebook workflows. File paths are resolved on the DSUI host filesystem, so Docker deployments must mount host paths to `/data`.
+* **PostgreSQL**: Connects via pure JavaScript driver (`postgres`). Supports multiple database schemas and structured column type inspection.
+* **ClickHouse**: Connects to ClickHouse clusters for fast columnar queries, real-time query latency tracking, and `system.processes` monitoring.
+* **Trino**: Federation layer allowing cross-catalog inspection across enterprise data lakes.
+
+### Orchestration and Transformation
+
+* **Apache Airflow**: Surfaces active DAGs, execution schedules, latest run durations, and task states. Mutation actions (triggering DAG runs, clearing tasks) require API credentials with write permissions.
+* **dbt**: Parses `manifest.json` and `catalog.json` artifacts to display data lineage, model definitions, and test coverage without needing a persistent dbt server running.
+
+### Storage
+
+* **Amazon S3 & S3-Compatible**: Works with AWS S3, MinIO, Cloudflare R2, and local Ceph storage. Provides object browsing, prefix filtering, and pre-signed object URLs.
+
+---
+
+## Extending the Catalog
 
 Built-in adapters are only the starting point. Community and private adapters
 can extend the same workspace without requiring DSUI to know every service in
-advance. See the [Adapter SDK](/docs/adapter-sdk) if you need to connect a
-service that is not in this catalog.
-
-The catalog is intentionally a compact starting point. Adapter coverage is
-preview-level and varies by service; check each adapter page before relying on a
-workflow in a production environment.
+advance. See the [Adapter SDK](/docs/adapter-sdk) to create custom adapters.
