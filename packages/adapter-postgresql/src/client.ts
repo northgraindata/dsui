@@ -128,6 +128,7 @@ export interface PostgreSQLClient {
     sql: string,
     maxRows: number,
     parameters?: readonly (string | number | boolean | null)[],
+    expectedRows?: number,
   ): Promise<PostgreSQLQueryResult>;
   queryReadOnly(
     sql: string,
@@ -462,23 +463,35 @@ export function createPostgreSQLClient(
 
     async queryReadOnly(query, parameters, maxRows) {
       return sql.begin("read only", async (transaction) => {
-        const result = await transaction.unsafe<Record<string, unknown>[]>(
-          query,
-          [...parameters],
-          { prepare: true },
-        );
-        if (result.length > maxRows)
-          throw new Error(`Query returned more than ${maxRows} rows`);
-        const rows = result.map((row) =>
-          Object.fromEntries(
-            Object.entries(row).map(([key, value]) => [
-              key,
-              toSerializableValue(value),
-            ]),
-          ),
-        );
-        if (Buffer.byteLength(JSON.stringify(rows)) > MAX_RESULT_BYTES)
-          throw new Error("Query result exceeds the 16 MiB response limit");
+        const rows: Record<string, unknown>[] = [];
+        let bytes = 2;
+        const result = await transaction
+          .unsafe<Record<string, unknown>[]>(query, [...parameters], {
+            prepare: true,
+          })
+          .cursor(Math.min(maxRows + 1, 100), (batch) => {
+            for (const row of batch) {
+              if (rows.length >= maxRows)
+                throw new Error(`Query returned more than ${maxRows} rows`);
+              const value = Object.fromEntries(
+                Object.entries(row).map(([key, item]) => [
+                  key,
+                  toSerializableValue(item),
+                ]),
+              );
+              bytes += Buffer.byteLength(JSON.stringify(value)) + 1;
+              if (bytes > MAX_RESULT_BYTES)
+                throw new Error(
+                  "Query result exceeds the 16 MiB response limit",
+                );
+              rows.push(value);
+            }
+          });
+        if (
+          new Set(result.columns.map((column) => column.name)).size !==
+          result.columns.length
+        )
+          throw new Error("Query returned duplicate column names; use aliases");
         return {
           columns: result.columns.map((column) => column.name),
           columnTypes: result.columns.map((column) =>
@@ -489,37 +502,61 @@ export function createPostgreSQLClient(
         };
       });
     },
-    async execute(query, maxRows, parameters) {
+    async execute(query, maxRows, parameters, expectedRows) {
+      // Validate optimistic writes before commit, including result size failures.
+      if (expectedRows !== undefined) {
+        return sql.begin(async (transaction) => {
+          const result = await transaction.unsafe<Record<string, unknown>[]>(
+            query,
+            [...(parameters ?? [])],
+            { prepare: true },
+          );
+          if ((result.count ?? 0) !== expectedRows)
+            throw new Error(
+              "The record changed or is unavailable; reload before saving",
+            );
+          return serializeQueryResult(result, maxRows);
+        });
+      }
       const result = parameters
         ? await sql.unsafe<Record<string, unknown>[]>(query, [...parameters], {
             prepare: true,
           })
         : await sql.unsafe<Record<string, unknown>[]>(query);
-      if (result.length > maxRows)
-        throw new Error(
-          `Query returned more than ${maxRows} rows; narrow the query or raise the limit`,
-        );
-
-      const columns = result.columns.map((column) => column.name);
-      const columnTypes = result.columns.map((column) =>
-        postgresTypeName(column.type),
-      );
-      if (new Set(columns).size !== columns.length)
-        throw new Error("Query returned duplicate column names; use aliases");
-      const rows = result.map((row) =>
-        Object.fromEntries(
-          columns.map((column) => [column, toSerializableValue(row[column])]),
-        ),
-      );
-      const resultBytes = Buffer.byteLength(JSON.stringify(rows));
-      if (resultBytes > MAX_RESULT_BYTES)
-        throw new Error("Query result exceeds the 16 MiB response limit");
-      return { columns, columnTypes, rows, rowCount: rows.length };
+      return serializeQueryResult(result, maxRows);
     },
 
     async dispose() {
       await sql.end({ timeout: 5 });
     },
+  };
+}
+
+function serializeQueryResult(
+  result: postgres.RowList<Record<string, unknown>[]>,
+  maxRows: number,
+): PostgreSQLQueryResult {
+  if (result.length > maxRows)
+    throw new Error(
+      `Query returned more than ${maxRows} rows; narrow the query or raise the limit`,
+    );
+  // PostgreSQL command-only responses have no RowDescription metadata.
+  const columnMetadata = result.columns ?? [];
+  const columns = columnMetadata.map((column) => column.name);
+  if (new Set(columns).size !== columns.length)
+    throw new Error("Query returned duplicate column names; use aliases");
+  const rows = result.map((row) =>
+    Object.fromEntries(
+      columns.map((column) => [column, toSerializableValue(row[column])]),
+    ),
+  );
+  if (Buffer.byteLength(JSON.stringify(rows)) > MAX_RESULT_BYTES)
+    throw new Error("Query result exceeds the 16 MiB response limit");
+  return {
+    columns,
+    columnTypes: columnMetadata.map((column) => postgresTypeName(column.type)),
+    rows,
+    rowCount: result.count ?? result.length,
   };
 }
 

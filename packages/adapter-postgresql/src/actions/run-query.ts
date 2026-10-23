@@ -42,11 +42,8 @@ export const runQuery = defineAction({
         normalizedSql,
         maxRows,
         parameters,
+        expectedRows,
       );
-      if (expectedRows !== undefined && result.rowCount !== expectedRows)
-        throw new Error(
-          "The record changed or is unavailable; reload before saving",
-        );
     } catch (error) {
       ctx.emit(queryFailed, {
         operation: sqlOperation(normalizedSql),
