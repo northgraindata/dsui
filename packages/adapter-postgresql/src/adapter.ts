@@ -42,6 +42,7 @@ import {
   databaseRelationPreviewRows,
   relationPreview,
 } from "./resources/preview.js";
+import { queryRows } from "./resources/query.js";
 import { serverInfo } from "./resources/server.js";
 import { postgresqlSignals } from "./signals.js";
 import { activityFiltersStore } from "./stores/activity-filters.js";
@@ -83,6 +84,7 @@ export function createPostgreSQLAdapter() {
     signals: postgresqlSignals,
     stores: [queryEditorStore, activityFiltersStore],
     resources: [
+      queryRows,
       serverInfo,
       databases,
       schemas,

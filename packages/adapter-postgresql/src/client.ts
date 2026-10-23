@@ -124,7 +124,16 @@ export interface PostgreSQLClient {
     state?: string;
   }): Promise<PostgreSQLActivityEntry[]>;
   cancelQuery(pid: number): Promise<boolean>;
-  execute(sql: string, maxRows: number): Promise<PostgreSQLQueryResult>;
+  execute(
+    sql: string,
+    maxRows: number,
+    parameters?: readonly (string | number | boolean | null)[],
+  ): Promise<PostgreSQLQueryResult>;
+  queryReadOnly(
+    sql: string,
+    parameters: readonly (string | number | boolean | null)[],
+    maxRows: number,
+  ): Promise<PostgreSQLQueryResult>;
   dispose(): Promise<void>;
 }
 
@@ -451,8 +460,41 @@ export function createPostgreSQLClient(
       return row?.cancelled ?? false;
     },
 
-    async execute(query, maxRows) {
-      const result = await sql.unsafe<Record<string, unknown>[]>(query);
+    async queryReadOnly(query, parameters, maxRows) {
+      return sql.begin("read only", async (transaction) => {
+        const result = await transaction.unsafe<Record<string, unknown>[]>(
+          query,
+          [...parameters],
+          { prepare: true },
+        );
+        if (result.length > maxRows)
+          throw new Error(`Query returned more than ${maxRows} rows`);
+        const rows = result.map((row) =>
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [
+              key,
+              toSerializableValue(value),
+            ]),
+          ),
+        );
+        if (Buffer.byteLength(JSON.stringify(rows)) > MAX_RESULT_BYTES)
+          throw new Error("Query result exceeds the 16 MiB response limit");
+        return {
+          columns: result.columns.map((column) => column.name),
+          columnTypes: result.columns.map((column) =>
+            postgresTypeName(column.type),
+          ),
+          rows,
+          rowCount: rows.length,
+        };
+      });
+    },
+    async execute(query, maxRows, parameters) {
+      const result = parameters
+        ? await sql.unsafe<Record<string, unknown>[]>(query, [...parameters], {
+            prepare: true,
+          })
+        : await sql.unsafe<Record<string, unknown>[]>(query);
       if (result.length > maxRows)
         throw new Error(
           `Query returned more than ${maxRows} rows; narrow the query or raise the limit`,
