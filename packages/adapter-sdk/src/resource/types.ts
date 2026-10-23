@@ -4,6 +4,8 @@ import type { RefreshStrategy } from "../refresh/types";
 
 /** Optional generic discovery metadata for a declared resource. */
 export interface ResourceMetadata {
+  /** SQL-backed queries require execute permission on supporting hosts. */
+  readonly policy?: "metadata" | "preview" | "sql";
   readonly description?: string;
 }
 

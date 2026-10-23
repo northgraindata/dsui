@@ -247,7 +247,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ) ?? null)
           : null,
       executeAction: async (id, actionId, input, options) => {
-        await pluginRuntime.requireServiceAccess(id, "execute");
+        await pluginRuntime.requireServiceAccess(id, "execute", {
+          actionId,
+          actionInput: input,
+        });
         const result = await executeServiceAction(
           {
             registry,
@@ -265,8 +268,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           options?.signal
             ? AbortSignal.any([options.signal, AbortSignal.timeout(600000)])
             : AbortSignal.timeout(600000),
-          options?.origin?.pluginId ?? "plugin",
-          { origin: options?.origin },
+          pluginRuntime.auditActor(options?.origin?.pluginId),
+          {
+            origin: options?.origin,
+            beforeDispatch: () => pluginRuntime.checkExecution(),
+          },
         );
         if (result.result.status === "error")
           throw new PluginRequestError(result.result.message, 422);
@@ -289,11 +295,25 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         if (!source) return null;
         return registry
           .get(source.service.adapter)
-          .catalog.resources.map(({ id, inputSchema, description }) => ({
-            id,
-            ...(description !== undefined ? { description } : {}),
-            ...(inputSchema ? { inputSchema } : {}),
-          }));
+          .catalog.resources.map(
+            ({ id, inputSchema, description, refresh, policy }) => ({
+              ...(policy ? { policy } : {}),
+              id,
+              ...(description !== undefined ? { description } : {}),
+              ...(inputSchema ? { inputSchema } : {}),
+              ...(refresh?.kind === "manual"
+                ? { refresh: { kind: "manual" as const } }
+                : refresh?.kind === "poll" &&
+                    typeof refresh.intervalMs === "number"
+                  ? {
+                      refresh: {
+                        kind: "poll" as const,
+                        intervalMs: refresh.intervalMs,
+                      },
+                    }
+                  : {}),
+            }),
+          );
       },
       listActions: async (id) => {
         if (!(await pluginRuntime.canAccessService(id))) return null;
@@ -321,6 +341,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           id,
           resourceId,
           input,
+          async (permission) => {
+            await pluginRuntime.checkExecution();
+            await pluginRuntime.requireServiceAccess(id, permission);
+          },
         );
         if (!(await pluginRuntime.canAccessService(id)))
           throw new Error(
@@ -342,9 +366,15 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
         jobs: {
-          enqueue: async (jobId, input) => ({
-            runId: pluginJobs.enqueue(pluginId, jobId, input, undefined, true)
-              .run.runId,
+          cancel: async (runId) => pluginJobs.cancel(pluginId, runId),
+          enqueue: async (jobId, input, options) => ({
+            runId: pluginJobs.enqueue(
+              pluginId,
+              jobId,
+              input,
+              options?.idempotencyKey,
+              options?.coalesce ?? true,
+            ).run.runId,
           }),
         },
         events: {
@@ -451,7 +481,12 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     });
     return [...pluginJobs, ...adapterJobs];
   };
-  const pluginJobs = new PluginJobService(database, registeredJobs);
+  const pluginJobs = new PluginJobService(
+    database,
+    registeredJobs,
+    undefined,
+    () => config.jobs ?? { concurrency: 1 },
+  );
   const unsubscribeSignalJobs = signalBus.subscribe((event) => {
     for (const { pluginId, job } of pluginRuntime.jobs()) {
       if (!job.onSignals?.includes(event.signalId)) continue;
@@ -599,6 +634,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       );
     const previousConfig = config;
     config = loaded;
+    pluginRuntime.configureExecution(loaded.execution?.grants ?? {});
     await Promise.all(
       previousConfig.services.map(async (service) => {
         const next = loaded.services.find((entry) => entry.id === service.id);

@@ -5,6 +5,7 @@ import {
   resolvePluginPage,
 } from "@northgraindata/dsui-plugin-sdk";
 import type { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
 import type { PluginRuntime } from "./runtime.js";
@@ -40,6 +41,14 @@ export function registerPluginRoutes(
     audit(actor: string, action: string, target: string): void;
   },
 ): void {
+  app.use(
+    "/api/v1/plugins/:pluginId/procedures/:procedureId",
+    bodyLimit({ maxSize: 10 * 1024 * 1024 }),
+  );
+  app.use(
+    "/api/v1/plugins/:pluginId/resources/:resourceId",
+    bodyLimit({ maxSize: 10 * 1024 * 1024 }),
+  );
   app.get("/api/v1/plugins", async (context) => {
     const catalog = deps.runtime.catalog();
     const principal = context.get("principal");

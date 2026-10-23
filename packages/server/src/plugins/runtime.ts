@@ -38,6 +38,7 @@ import type { PluginSource } from "../config.js";
 import { withWebBasePath } from "../web-path.js";
 import { buildPlugin, type PluginFetch } from "./build.js";
 import { parseCron } from "./cron.js";
+import { ExecutionService } from "./execution.js";
 import {
   createMemoryPluginStores,
   createPluginStorage,
@@ -373,6 +374,12 @@ export class PluginRuntime {
   private securityFailure = false;
   private readonly backgroundContext = new AsyncLocalStorage<boolean>();
   private readonly principalContext = new AsyncLocalStorage<PluginPrincipal>();
+  private readonly scopedActor = new AsyncLocalStorage<string>();
+  private readonly dispatchCheck = new AsyncLocalStorage<
+    (() => Promise<void>) | undefined
+  >();
+  private readonly executionStorage: PluginStorageHandle;
+  private readonly executionService: ExecutionService;
   private authenticationProvider?: PluginAuthenticationProvider;
   private authorizationProvider?: PluginAuthorizationProvider;
   private authenticationPluginId_?: string;
@@ -395,6 +402,47 @@ export class PluginRuntime {
       stores: () => createMemoryPluginStores(),
       plugins: () => this.pluginCapabilities(),
     };
+    this.executionStorage = createPluginStorage(dataDir, "_execution");
+    this.executionService = new ExecutionService(
+      this.executionStorage.openDatabase("execution"),
+      {
+        principal: () => this.principalContext.getStore() ?? null,
+        authenticated: () => this.hasAuthentication(),
+        canResolve: () =>
+          Boolean(this.authenticationProvider?.resolvePrincipal),
+        canDelegate: () =>
+          Boolean(
+            this.authenticationProvider?.resolvePrincipal &&
+              this.authenticationProvider.resolveExecutionPrincipal,
+          ),
+        resolve: async (id, execution) => {
+          if (this.securityFailure) return null;
+          const value = execution
+            ? await this.authenticationProvider?.resolveExecutionPrincipal?.(id)
+            : await this.authenticationProvider?.resolvePrincipal?.(id);
+          return value &&
+            value.id === id &&
+            ["owner", "admin", "operator", "viewer"].includes(value.role)
+            ? value
+            : null;
+        },
+        authorize: (principal, permission, resource) =>
+          this.authorize(principal, permission, resource),
+        invoke: (principal, actor, work, check) =>
+          this.scopedActor.run(actor, () =>
+            this.dispatchCheck.run(check, () =>
+              this.withPrincipal(principal, work),
+            ),
+          ),
+        services: this.services,
+        audit: (actor, action, target) =>
+          this.host.audit?.(actor, action, target),
+      },
+    );
+  }
+
+  configureExecution(grants: Parameters<ExecutionService["configure"]>[0]) {
+    this.executionService.configure(grants);
   }
 
   async load(sources: Record<string, PluginSource>): Promise<void> {
@@ -496,10 +544,15 @@ export class PluginRuntime {
           stores: this.host.stores(id),
           logger: pluginLogger(id),
           ...this.host.capabilities?.(id),
+          execution: this.executionService.forPlugin(id),
           access: {
             principal: () => this.principalContext.getStore() ?? null,
             requireAdmin: async () => {
-              if (this.backgroundContext.getStore()) return;
+              if (
+                this.backgroundContext.getStore() &&
+                !this.scopedActor.getStore()
+              )
+                return;
               const principal = this.principalContext.getStore();
               if (
                 !principal ||
@@ -515,7 +568,11 @@ export class PluginRuntime {
                 );
             },
             require: async (serviceId, permission) => {
-              if (this.backgroundContext.getStore()) return;
+              if (
+                this.backgroundContext.getStore() &&
+                !this.scopedActor.getStore()
+              )
+                return;
               const principal = this.principalContext.getStore();
               if (
                 !principal ||
@@ -1149,18 +1206,37 @@ export class PluginRuntime {
   async requireServiceAccess(
     id: string,
     permission: PluginPermission,
+    action?: { actionId: string; actionInput: unknown },
   ): Promise<void> {
-    if (this.backgroundContext.getStore()) return;
+    if (this.backgroundContext.getStore() && !this.scopedActor.getStore())
+      return;
     const principal = this.principalContext.getStore();
     if (
       !principal ||
-      !(await this.authorize(principal, permission, { type: "service", id }))
+      !(await this.authorize(principal, permission, {
+        type: "service",
+        id,
+        ...action,
+      }))
     )
       throw new PluginRequestError("Insufficient service permission", 403);
   }
 
+  async checkExecution(): Promise<void> {
+    await this.dispatchCheck.getStore()?.();
+  }
+
+  auditActor(fallback = "plugin"): string {
+    return (
+      this.scopedActor.getStore() ??
+      this.principalContext.getStore()?.id ??
+      fallback
+    );
+  }
+
   async canAccessGlobalEvents(): Promise<boolean> {
-    if (this.backgroundContext.getStore()) return true;
+    if (this.backgroundContext.getStore() && !this.scopedActor.getStore())
+      return true;
     const principal = this.principalContext.getStore();
     return Boolean(
       principal &&
@@ -1172,7 +1248,8 @@ export class PluginRuntime {
   async canAccessService(id: string): Promise<boolean> {
     const principal = this.principalContext.getStore();
     if (!principal) {
-      if (this.backgroundContext.getStore()) return true;
+      if (this.backgroundContext.getStore() && !this.scopedActor.getStore())
+        return true;
       if (this.authorizationProvider)
         throw new Error("Plugin service access requires a principal");
       return true;
@@ -1289,7 +1366,8 @@ export class PluginRuntime {
   private async canAccessPlugin(pluginId: string): Promise<boolean> {
     if (!this.active.has(pluginId) && !this.readiness.has(pluginId))
       return false;
-    if (this.backgroundContext.getStore()) return true;
+    if (this.backgroundContext.getStore() && !this.scopedActor.getStore())
+      return true;
     const principal = this.principalContext.getStore();
     if (!principal) return !this.authorizationProvider;
     return this.authorize(principal, "inspect", {
@@ -1302,7 +1380,8 @@ export class PluginRuntime {
     pluginId: string,
     permission: PluginPermission,
   ): Promise<void> {
-    if (this.backgroundContext.getStore()) return;
+    if (this.backgroundContext.getStore() && !this.scopedActor.getStore())
+      return;
     const principal = this.principalContext.getStore();
     if (
       (principal &&
@@ -1355,6 +1434,7 @@ export class PluginRuntime {
   async close(): Promise<void> {
     this.stopped = true;
     await this.stopActive();
+    this.executionStorage.close();
     this.contributions.clear();
     this.authenticationProvider = undefined;
     this.authenticationPluginId_ = undefined;

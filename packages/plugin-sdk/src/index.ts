@@ -1,4 +1,5 @@
 import type { PluginEventPage, PluginEventReadOptions } from "./events";
+import type { PluginExecution } from "./execution";
 
 export {
   type PluginEventPage,
@@ -6,6 +7,14 @@ export {
   type PluginSignalEvent,
   signalEventSchema,
 } from "./events";
+export type {
+  ExecutionAudience,
+  ExecutionGrant,
+  ExecutionRequest,
+  ExecutionTarget,
+  PluginExecution,
+  PluginExecutionScope,
+} from "./execution";
 
 import type { PageNode, SignalType } from "@northgraindata/dsui-adapter-sdk";
 
@@ -263,9 +272,11 @@ export type PluginServiceProbe = {
 };
 
 export type PluginServiceResource = {
+  readonly policy?: "metadata" | "preview" | "sql";
   readonly id: string;
   readonly description?: string;
   readonly inputSchema?: Record<string, unknown>;
+  readonly refresh?: RefreshStrategy;
 };
 export type PluginServiceAction = {
   readonly id: string;
@@ -410,6 +421,13 @@ export type PluginResource = {
 };
 
 export interface PluginAuthenticationProvider {
+  /** Fresh identity resolution for durable, bounded execution; never a login. */
+  resolvePrincipal?(
+    id: string,
+  ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
+  resolveExecutionPrincipal?(
+    id: string,
+  ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
   authenticate(
     request: Request,
   ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
@@ -573,6 +591,8 @@ export interface PluginRegistry<TConfig = unknown> {
 }
 
 export interface PluginCapabilities {
+  /** Absent on older hosts. Consumers requiring bounded execution must fail closed. */
+  readonly execution?: PluginExecution;
   readonly access: {
     /** Identity of the authenticated request; absent in background work. */
     principal?(): PluginPrincipal | null;
@@ -580,7 +600,12 @@ export interface PluginCapabilities {
     require(serviceId: string, permission: PluginPermission): Promise<void>;
   };
   readonly jobs: {
-    enqueue(jobId: string, input: unknown): Promise<{ runId: string }>;
+    cancel?(runId: string): Promise<boolean>;
+    enqueue(
+      jobId: string,
+      input: unknown,
+      options?: { idempotencyKey?: string; coalesce?: boolean },
+    ): Promise<{ runId: string }>;
   };
   readonly events: {
     /** Read persisted signals in append order; cursor "latest" starts at the current tail. */
@@ -749,6 +774,7 @@ export function definePlugin<TConfig>(
         },
         logger: host.logger,
         access: host.access ?? { require: async () => unavailableCapability() },
+        execution: host.execution,
         jobs: host.jobs ?? { enqueue: async () => unavailableCapability() },
         events: {
           read: async (options) => {
@@ -866,6 +892,7 @@ export function definePlugin<TConfig>(
                       storage: context.storage,
                       stores: context.stores,
                       access: context.access,
+                      execution: context.execution,
                       jobs: context.jobs,
                       events: context.events,
                       signal: runContext.signal,

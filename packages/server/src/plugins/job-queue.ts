@@ -393,16 +393,23 @@ export class JobQueue {
    * payload. Both are enforced in the same transaction as the claim, which is
    * what stops two workers both deciding a job is free.
    */
-  claim(owner: string): JobRunRow | null {
+  claim(
+    owner: string,
+    excludedPluginIds: readonly string[] = [],
+  ): JobRunRow | null {
     const claim = this.db.transaction((): JobRunRow | null => {
       const candidates = this.db
         .query(
           `SELECT ${RUN_COLUMNS} FROM plugin_job_runs
             WHERE status = 'queued' AND cancel_requested = 0
               AND (scheduled_for IS NULL OR scheduled_for <= ?)
+              ${excludedPluginIds.length ? `AND plugin_id NOT IN (${excludedPluginIds.map(() => "?").join(",")})` : ""}
             ORDER BY enqueued_at ASC LIMIT 20`,
         )
-        .all(this.stamp()) as unknown as Record<string, unknown>[];
+        .all(this.stamp(), ...excludedPluginIds) as unknown as Record<
+        string,
+        unknown
+      >[];
       for (const candidate of candidates) {
         const run = toRun(candidate);
         if (!this.allowedByConcurrency(run)) continue;
