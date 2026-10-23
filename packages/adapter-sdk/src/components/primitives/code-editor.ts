@@ -1,7 +1,12 @@
+import type { ActionReference } from "../../action";
 import { defineComponent } from "../define";
 export interface CodeEditorProps {
   language: string;
   value: string;
+  path?: string;
+  readOnly?: boolean;
+  onChangeAction?: ActionReference;
+  /** Browser-only callback; use onChangeAction for serialized page documents. */
   onChange?: (value: string) => void;
 }
 

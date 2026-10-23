@@ -1,6 +1,7 @@
 export type { ComponentClient, ComponentProps } from "../runtime";
 export { Badge } from "./badge";
 export { CodeBlock } from "./code-block";
+export { default as CodeEditor } from "./code-editor";
 export { default as CodeExplorer } from "./code-explorer";
 export { default as Collection } from "./collection";
 export { default as Form } from "./form";
