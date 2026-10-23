@@ -21,7 +21,8 @@ function fixture() {
   ]);
   let permitted = true,
     mutations = 0,
-    authenticated = true;
+    authenticated = true,
+    managementPermitted = true;
   let beforeDispatch: (() => void) | undefined;
   const services: PluginServiceCatalog = {
     list: async () => ({ items: [] }),
@@ -51,7 +52,7 @@ function fixture() {
         ? permitted &&
           (who.id === "execution:app" || who.role === "admin") &&
           (permission !== "execute" || who.role !== "viewer")
-        : true,
+        : permission !== "manage" || managementPermitted,
     invoke: async (_executor, _actor, work, check) => {
       beforeDispatch?.();
       await check?.();
@@ -106,6 +107,9 @@ function fixture() {
     setAuthenticated: (value: boolean) => {
       authenticated = value;
     },
+    setManagementPermitted: (value: boolean) => {
+      managementPermitted = value;
+    },
     mutations: () => mutations,
     beforeDispatch: (work: () => void) => {
       beforeDispatch = work;
@@ -113,6 +117,61 @@ function fixture() {
   };
 }
 describe("bounded plugin execution", () => {
+  test("team-only audiences use provider claims without a host-role audience filter", async () => {
+    const f = fixture();
+    try {
+      f.grant.audience = { claims: { teamIds: ["custom-reviewers"] } };
+      f.people.set("viewer", {
+        id: "viewer",
+        role: "viewer",
+        attributes: { teamIds: ["custom-reviewers"] },
+      });
+      const api = f.service.forPlugin("apps");
+      await api.approve(f.grant);
+      f.setPrincipal(f.people.get("viewer") ?? null);
+      const scope = await api.open(f.request);
+      await scope.services.executeAction("data", "change", { allowed: true });
+      expect(f.mutations()).toBe(1);
+      f.people.set("viewer", {
+        id: "viewer",
+        role: "viewer",
+        attributes: { teamIds: [] },
+      });
+      await expect(scope.check()).rejects.toThrow("grant");
+      f.people.set("viewer", { id: "viewer", role: "viewer" });
+      await expect(api.open(f.request)).rejects.toThrow("grant");
+      expect(f.mutations()).toBe(1);
+    } finally {
+      f.db.close();
+    }
+  });
+  test("grant management follows host authorization and local owner is not authenticated", async () => {
+    const f = fixture();
+    try {
+      const api = f.service.forPlugin("apps");
+      f.setManagementPermitted(false);
+      await expect(api.approve(f.grant)).rejects.toThrow(
+        "management permission",
+      );
+      f.setManagementPermitted(true);
+      // This fixture explicitly permits manage; the execution layer must not duplicate host role policy.
+      f.setPrincipal({
+        id: "manager",
+        role: "operator",
+        attributes: { teamIds: ["platform-team"] },
+      });
+      await api.approve(f.grant);
+      await api.revoke(f.grant.id);
+      f.setPrincipal({ id: "local", role: "owner" });
+      f.setAuthenticated(false);
+      expect(api.identity().authenticated).toBe(false);
+      await expect(api.approve(f.grant)).rejects.toThrow(
+        "management permission",
+      );
+    } finally {
+      f.db.close();
+    }
+  });
   test("rechecks a grant after host configuration refresh immediately before dispatch", async () => {
     const f = fixture();
     try {
@@ -227,7 +286,7 @@ describe("bounded plugin execution", () => {
       ).rejects.toThrow("Unsupported");
       f.setAuthenticated(false);
       await expect(api.approve({ ...f.grant, id: "new" })).rejects.toThrow(
-        "Authenticated administrator",
+        "Authenticated grant management permission",
       );
     } finally {
       f.db.close();

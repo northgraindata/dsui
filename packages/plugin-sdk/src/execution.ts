@@ -7,9 +7,11 @@ export type ExecutionTarget = {
   id: string;
   inputSchema?: Record<string, unknown>;
 };
+/** Optional host-role filter plus provider-owned attributes; team-only claims need no role filter. */
 export type ExecutionAudience = {
   roles?: readonly PluginPrincipal["role"][];
   principalIds?: readonly string[];
+  /** Generic trusted attributes, e.g. teamIds. The host does not own team membership. */
   claims?: Readonly<Record<string, readonly string[]>>;
 };
 export type ExecutionGrant = {

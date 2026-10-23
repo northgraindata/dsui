@@ -29,7 +29,7 @@ export const LOCAL_PRINCIPAL_ID = "local";
 export type Principal = {
   id: string;
   role: Role;
-  /** Plugin-defined context; never interpreted by the host. */
+  /** Provider-defined context, opaque to host roles; explicit execution audiences may match values. */
   attributes?: Readonly<Record<string, unknown>>;
 };
 

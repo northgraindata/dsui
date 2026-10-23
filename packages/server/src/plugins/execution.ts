@@ -12,6 +12,7 @@ import {
 } from "@northgraindata/dsui-plugin-sdk";
 import Ajv, { type ValidateFunction } from "ajv";
 
+// Existing host permission tiers only; provider-owned teams belong in audience claims.
 const principalSchema = z.object({
   id: z.string(),
   role: z.enum(["owner", "admin", "operator", "viewer"]),
@@ -165,7 +166,7 @@ export class ExecutionService {
         delegation: this.hooks.canDelegate(),
       }),
       validateGrant: async (input) => {
-        await this.administrator(pluginId);
+        await this.requireGrantManagement(pluginId);
         const request = requestSchema.parse(input);
         const row = request.grantId
           ? this.db
@@ -210,7 +211,7 @@ export class ExecutionService {
             );
       },
       approve: async (input) => {
-        const admin = await this.administrator(pluginId);
+        const manager = await this.requireGrantManagement(pluginId);
         const grant = grantSchema.parse(input);
         if (this.configured.has(`${pluginId}/${grant.id}`))
           throw new PluginRequestError(
@@ -260,13 +261,13 @@ export class ExecutionService {
           )
           .run(pluginId, grant.id, JSON.stringify(grant));
         this.hooks.audit(
-          admin.id,
+          manager.id,
           "execution.grant.approve",
           `${pluginId}/${grant.id}/${grant.revision}`,
         );
       },
       revoke: async (id) => {
-        const admin = await this.administrator(pluginId);
+        const manager = await this.requireGrantManagement(pluginId);
         if (this.configured.has(`${pluginId}/${id}`))
           throw new PluginRequestError(
             "Grant is managed in configuration",
@@ -276,7 +277,7 @@ export class ExecutionService {
           .query("DELETE FROM grants WHERE plugin_id=? AND id=?")
           .run(pluginId, id);
         this.hooks.audit(
-          admin.id,
+          manager.id,
           "execution.grant.revoke",
           `${pluginId}/${id}`,
         );
@@ -663,18 +664,20 @@ export class ExecutionService {
     this.checks.set(key, validate);
     return validate;
   }
-  private async administrator(pluginId: string) {
+  private async requireGrantManagement(pluginId: string) {
     const principal = this.hooks.principal();
     if (
       !this.hooks.authenticated() ||
       !principal ||
-      !["owner", "admin"].includes(principal.role) ||
       !(await this.hooks.authorize(principal, "manage", {
         type: "plugin",
         id: pluginId,
       }))
     )
-      throw new PluginRequestError("Authenticated administrator required", 403);
+      throw new PluginRequestError(
+        "Authenticated grant management permission required",
+        403,
+      );
     return principal;
   }
 }

@@ -11,3 +11,7 @@ must explicitly reject hosts without that capability.
 
 Preserve resource access policy metadata. SQL-policy resources require execute
 permission on supporting hosts, independently of their read refresh strategy.
+
+Execution audiences support provider-owned claims without a host-role filter,
+including custom team membership. Grant management uses authenticated host
+authorization; the unauthenticated local core principal is not a plugin session.

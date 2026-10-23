@@ -401,7 +401,8 @@ export type PluginRole = "owner" | "admin" | "operator" | "viewer";
  * `role` is required so the host can apply a sane default permission set
  * without knowing anything about the plugin that authenticated the request.
  * `attributes` carries plugin-specific structure (team ids, scopes, tenancy)
- * and is never interpreted by the host.
+ * and is opaque to the host permission vocabulary. Explicit execution audiences
+ * may match trusted attribute values without assigning meaning to their keys.
  */
 export type PluginPrincipal = {
   id: string;
