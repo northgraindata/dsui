@@ -1,3 +1,4 @@
+import { PluginRequestError } from "@northgraindata/dsui-plugin-sdk";
 import type { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { AdapterExecutionError } from "../adapters/types.js";
@@ -17,11 +18,7 @@ function actionSignal(client: AbortSignal | undefined): AbortSignal {
   return client ? AbortSignal.any([client, timeout]) : timeout;
 }
 
-/**
- * Resources require inspect, actions require execute. The SDK carries
- * no per-capability authorization metadata, so this convention is the
- * contract: reads inspect, mutations execute.
- */
+/** Resources inspect by default; SQL policy requires execute even for a read. */
 export function registerExecuteRoutes(
   app: Hono,
   deps: ServiceDeps & {
@@ -57,9 +54,22 @@ export function registerExecuteRoutes(
         context.req.param("id"),
         context.req.param("resourceId"),
         body.input,
+        async (permission) => {
+          if (
+            !allowed(principal, permission) ||
+            (deps.pluginRuntime &&
+              !(await deps.pluginRuntime.authorize(principal, permission, {
+                type: "service",
+                id: context.req.param("id"),
+              })))
+          )
+            throw new PluginRequestError("Insufficient permission", 403);
+        },
       );
       return context.json(result);
     } catch (error) {
+      if (error instanceof PluginRequestError && error.status === 403)
+        return context.json({ message: error.message }, 403);
       if (error instanceof AdapterExecutionError)
         return context.json({ message: error.message }, 502);
       return context.json({ message: errorMessage(error) }, httpStatus(error));

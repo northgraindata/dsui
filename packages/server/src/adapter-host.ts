@@ -230,6 +230,7 @@ export async function runAdapterHost(): Promise<number> {
               : {}),
             resources: definition.resources.map((resource) => ({
               id: resource.id,
+              ...(resource.policy ? { policy: resource.policy } : {}),
               inputSchema: inputSchemaOf(resource, `resource "${resource.id}"`),
               refresh: { ...resource.refresh },
             })),

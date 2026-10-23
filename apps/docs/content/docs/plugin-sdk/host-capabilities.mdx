@@ -35,8 +35,8 @@ const actionResult = await context.services.executeAction(
 
 Discovery returns the adapter's declared IDs, descriptions, and input schemas
 without opening a connection. The host keeps credentials private, validates
-inputs against the adapter definition, and checks `inspect` for resources and
-`execute` for actions. Plugins do not need to import or name concrete adapters.
+inputs against the adapter definition, and checks `inspect` for ordinary resources
+and `execute` for actions and SQL-policy resources. Plugins do not need to import or name concrete adapters.
 
 Plugins can also discover resources and actions contributed by other visible
 plugins through `context.plugins`:
@@ -62,13 +62,96 @@ resource and action inputs against their declarations, and checks the permission
 declared on each action before invoking it. Plugin code never receives another
 plugin's context or storage handle.
 
+## Identity, permissions and custom teams
+
+Core owns the host permission vocabulary and execution checks. Authentication and
+provider-specific access policy remain separate capabilities:
+
+| Layer | Responsibility |
+| --- | --- |
+| Core host | Existing `inspect`, `execute`, `manage` permission levels and their host-role ceiling; local fallback when no authentication provider is installed. |
+| Authentication plugin | Login/session behavior and authenticated principals, including provider-owned attributes and fresh identity resolution. Auth Pro is one implementation of this SDK contract. |
+| Authorization plugin | Service/plugin access decisions, potentially based on custom teams, groups or resource grants, within the host permission ceiling. |
+| Consuming app/plugin | Its audience, operation and review policy, including team-only audiences. |
+
+The local core principal is not an authenticated user session. Its `owner` role
+preserves single-operator behavior when no authentication plugin is installed;
+it does not turn on authenticated delegation management. Core has no Auth Pro
+credential/session/team store and does not import Auth Pro.
+
+The SDK's existing `PluginRole` values describe host permission tiers, not custom
+teams or application business roles. Providers carry custom membership in trusted
+principal attributes. An execution grant audience can omit `roles` entirely:
+
+```yaml
+audience:
+  claims:
+    teamIds: [app-reviewers]
+```
+
+This matches a provider's `principal.attributes.teamIds` value. The host performs
+only the explicitly requested generic claim comparison; it does not know team
+names, create memberships or assume that a field came from Auth Pro. Other
+providers may use other claim keys. Different audience fields are intersected;
+values inside a field are alternatives. A missing claim denies access. Fresh
+membership resolution can revoke a continuation even if the caller's host role
+is unchanged.
+
+Internal Apps Pro accepts `teams` in its own application source and normalizes
+that shorthand into `claims.teamIds`. That application syntax and its per-operation
+and approval audiences belong to the Pro plugin, not the core grant schema.
+
 ## Installation administration
 
 `await context.access.requireAdmin()` requires an owner/admin request identity
 and plugin manage permission. Use it for installation-wide settings or secrets
 that service-level manage permission cannot authorize. Both additions are optional
 host capabilities for compatibility; plugins using them must require a host that
-implements them. Background jobs run as trusted installation operations.
+implements them. Ordinary background jobs run as trusted installation operations.
+Jobs using a bounded execution scope instead retain its actor/executor and fresh
+authority checks; they do not inherit that ambient bypass.
+
+## Delegation grant management
+
+`context.execution` is optional. Interactive grant approval, validation and
+revocation require an authenticated principal and the host's `manage` permission
+for the consuming plugin. The execution service consults the host authorization
+hook rather than implementing another `owner/admin` policy. The host's existing
+role ceiling and any authorization-provider restrictions still apply.
+
+Consuming a valid grant is separate: its audience may be team-only and does not
+require the caller to manage grants. Its executor is an explicitly resolved,
+noninteractive identity with bounded service targets; it is not the user's login
+session. A provider lacking the required fresh-resolution capabilities cannot
+satisfy an authenticated/delegated execution requirement.
+
+## Private database migrations
+
+Plugins own their database schema; the host does not add plugin tables to its
+installation database. Use the shared migration runner for a private database:
+
+```ts
+import { type Migration, runMigrations } from "@northgraindata/dsui-plugin-sdk";
+
+const migrations: readonly Migration[] = [{
+  version: 1,
+  name: "requests",
+  up(db) {
+    db.exec("CREATE TABLE requests (id TEXT PRIMARY KEY, status TEXT NOT NULL)");
+  },
+}];
+
+const database = context.storage.openDatabase("requests");
+runMigrations(database, migrations);
+```
+
+The runner is the same implementation used by core. It records applied versions
+in `schema_migrations` in that database and applies each pending migration in a
+transaction. Append new versions; never edit an already released migration.
+Run migrations at database initialization, before serving requests. Existing
+unversioned schemas need an explicit adoption migration that preserves their data.
+This helper manages SQLite schema, not external adapter databases or Better Auth's
+own migrations.
 
 ## Compatibility
 
@@ -79,4 +162,6 @@ receives an explicit unavailable-capability error.
 Declare the minimum host capabilities your plugin needs in its README and release
 notes. Matching `PLUGIN_API_VERSION` does not guarantee every optional capability
 exists on an older host. Request permissions are enforced by the host; background
-jobs run as trusted installation code, without request identity.
+jobs normally run as trusted installation code, without request identity. Bounded
+execution scopes are the explicit exception: the provider resolves their original
+actor and any configured execution identity afresh.

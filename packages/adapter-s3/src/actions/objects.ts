@@ -69,6 +69,46 @@ export const uploadObject = defineAction({
     return { key: input.key };
   },
 });
+export const uploadFile = defineAction({
+  id: "s3-upload-file",
+  input: z
+    .object({
+      bucket: z.string().min(1),
+      prefix: z.string().max(500).default("uploads"),
+      name: z.string().min(1).max(255),
+      base64: z.string().max(7000000),
+      contentType: z.string().max(200).default("application/octet-stream"),
+    })
+    .strict(),
+  run: async (input, ctx: Ctx) => {
+    const bytes = Buffer.from(input.base64, "base64");
+    if (bytes.length > 5 * 1048576 || bytes.toString("base64") !== input.base64)
+      throw new Error("Invalid upload or file exceeds 5 MiB");
+    const safeName = input.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const key = `${input.prefix.replace(/^\/+|\/+$/g, "")}/${crypto.randomUUID()}-${safeName}`;
+    await ctx.client.upload({
+      bucket: input.bucket,
+      key,
+      base64: input.base64,
+      contentType: input.contentType,
+    });
+    ctx.emit(objectUploaded, {
+      bucket: input.bucket,
+      key,
+      contentType: input.contentType,
+      sizeBytes: bytes.length,
+    });
+    record(ctx, "Uploaded", input.bucket, key);
+    ctx.invalidate(objects);
+    return {
+      bucket: input.bucket,
+      key,
+      name: input.name,
+      size: bytes.length,
+      status: "Stored",
+    };
+  },
+});
 
 function base64Size(value: string): number {
   if (!value) return 0;

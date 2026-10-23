@@ -18,6 +18,8 @@ export type PluginJobQueueBackend = Pick<
   | "enqueue"
   | "fail"
   | "isCancelRequested"
+  | "getRun"
+  | "requestCancel"
   | "markSideEffect"
   | "reclaimExpiredLeases"
   | "removeJob"
@@ -37,9 +39,10 @@ export class PluginJobService {
   private readonly queue: PluginJobQueueBackend;
   private timer: ReturnType<typeof setInterval> | undefined;
   private polling: Promise<void> | undefined;
-  private activeRun:
-    | { controller: AbortController; done: Promise<void> }
-    | undefined;
+  private readonly activeRuns = new Map<
+    string,
+    { pluginId: string; controller: AbortController; done: Promise<void> }
+  >();
   private stopped = false;
   private readonly owner = randomUUID();
   private readonly leaseMs = 30_000;
@@ -48,6 +51,10 @@ export class PluginJobService {
     database: DsuiDatabase,
     private readonly registeredJobs: () => RegisteredJob[],
     queue?: PluginJobQueueBackend,
+    private readonly limits: () => {
+      concurrency: number;
+      perPlugin?: Record<string, number>;
+    } = () => ({ concurrency: 1 }),
   ) {
     this.queue = queue ?? new JobQueue(database, this.leaseMs);
   }
@@ -76,6 +83,11 @@ export class PluginJobService {
       coalesce,
       ...(idempotencyKey ? { idempotencyKey } : {}),
     });
+  }
+
+  cancel(pluginId: string, runId: string): boolean {
+    const run = this.queue.getRun(runId);
+    return run?.pluginId === pluginId && this.queue.requestCancel(runId);
   }
 
   async start(): Promise<void> {
@@ -107,11 +119,12 @@ export class PluginJobService {
     this.stopped = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
-    this.activeRun?.controller.abort(
-      new Error("Background job service stopped"),
-    );
+    for (const run of this.activeRuns.values())
+      run.controller.abort(new Error("Background job service stopped"));
     await this.polling;
-    await this.activeRun?.done;
+    await Promise.allSettled(
+      [...this.activeRuns.values()].map((run) => run.done),
+    );
   }
 
   refreshDefinitions(): void {
@@ -180,15 +193,28 @@ export class PluginJobService {
         );
     }
 
-    if (this.activeRun) return;
-    const run = this.queue.claim(this.owner);
-    if (!run) return;
-    const controller = new AbortController();
-    const done = this.execute(run, controller).finally(() => {
-      if (this.activeRun?.done === done) this.activeRun = undefined;
-    });
-    this.activeRun = { controller, done };
-    await done;
+    const limits = this.limits();
+    while (!this.stopped && this.activeRuns.size < limits.concurrency) {
+      const excluded = Object.entries(limits.perPlugin ?? {})
+        .filter(
+          ([pluginId, maximum]) =>
+            [...this.activeRuns.values()].filter(
+              (item) => item.pluginId === pluginId,
+            ).length >= maximum,
+        )
+        .map(([pluginId]) => pluginId);
+      const run = this.queue.claim(this.owner, excluded);
+      if (!run) break;
+      const controller = new AbortController();
+      const done = this.execute(run, controller).finally(() => {
+        this.activeRuns.delete(run.runId);
+      });
+      this.activeRuns.set(run.runId, {
+        pluginId: run.pluginId,
+        controller,
+        done,
+      });
+    }
   }
 
   private async execute(

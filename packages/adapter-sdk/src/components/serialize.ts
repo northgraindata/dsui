@@ -508,9 +508,22 @@ export function serializeNode(node: PageNode): PageNode {
         },
       };
     case "code-editor":
-      throw new UnserializablePageError(
-        "Code editor nodes require a browser-state protocol",
-      );
+      if (node.props.onChange)
+        throw new UnserializablePageError(
+          "Use onChangeAction for serialized editor state",
+        );
+      return {
+        kind: node.kind,
+        props: {
+          language: node.props.language,
+          value: node.props.value,
+          ...(node.props.path ? { path: node.props.path } : {}),
+          ...(node.props.readOnly ? { readOnly: true } : {}),
+          ...(node.props.onChangeAction
+            ? { onChangeAction: node.props.onChangeAction }
+            : {}),
+        },
+      };
     case "custom":
       return {
         kind: node.kind,

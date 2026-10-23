@@ -30,6 +30,7 @@
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
     "@northgraindata/dsui-core": "workspace:*",
     "@northgraindata/dsui-plugin-sdk": "workspace:*",
+    "ajv": "8.17.1",
     "hono": "^4.11.7",
     "yaml": "^2.8.2",
     "zod": "^3.24.2",

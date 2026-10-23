@@ -82,6 +82,7 @@ export function defineResource(
   const definition: ResourceDefinition<unknown, unknown, unknown> = {
     kind: "resource",
     id: options.id,
+    ...(options.policy !== undefined ? { policy: options.policy } : {}),
     ...(options.description !== undefined
       ? { description: options.description }
       : {}),
@@ -107,6 +108,7 @@ export function defineResource(
   return Object.assign(callable, {
     kind: "resource" as const,
     id: definition.id,
+    ...(definition.policy !== undefined ? { policy: definition.policy } : {}),
     ...(definition.description !== undefined
       ? { description: definition.description }
       : {}),

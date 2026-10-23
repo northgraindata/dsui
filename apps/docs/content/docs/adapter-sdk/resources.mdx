@@ -5,6 +5,23 @@ description: Read-only data sources managed by the runtime.
 
 A resource is a parameterized data source. It describes *what* data is wanted — the runtime controls execution, refreshing, and cleanup.
 
+## Access policy
+
+Resources require `inspect` by default. Declare `policy: "sql"` for resources
+accepting SQL so the host requires `execute`, including direct HTTP requests,
+plugin service calls, and bounded execution scopes. `metadata` and `preview`
+retain `inspect`. Query refresh behavior remains independent of access policy.
+
+A read-only database transaction blocks ordinary writes, but does not make
+arbitrary SQL safe for a viewer: privileged database functions can have effects
+outside the transaction. Use a least-privileged database account as well. The
+PostgreSQL `query-rows` resource declares the SQL policy and uses one prepared
+statement in a read-only transaction.
+
+Deploy SQL-policy adapters together with a host that enforces this contract.
+Older hosts may ignore the metadata; the SDK property alone is not an access
+control boundary.
+
 ## Inputless resource
 
 No parameters. The query runs with `undefined` input.

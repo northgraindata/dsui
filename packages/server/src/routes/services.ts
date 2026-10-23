@@ -86,17 +86,26 @@ export async function queryServiceResource(
   serviceId: string,
   resourceId: string,
   input: unknown,
+  beforeQuery?: (permission: "inspect" | "execute") => Promise<void>,
 ) {
   await deps.refreshConfig();
   const source = serviceSource(deps.getConfig(), deps.database, serviceId);
   if (!source) throw new Error("Service not found");
   const adapter = deps.registry.get(source.service.adapter);
-  return adapter.backend.executeResource(
+  const resource = adapter.catalog.resources.find(
+    (item) => item.id === resourceId,
+  );
+  if (!resource) throw new Error("Resource not found");
+  const permission = resource.policy === "sql" ? "execute" : "inspect";
+  await beforeQuery?.(permission);
+  const result = await adapter.backend.executeResource(
     resourceId,
     connectionFor(deps.cipher, source),
     input,
     { persistenceNamespace: serviceId },
   );
+  await beforeQuery?.(permission);
+  return result;
 }
 
 export async function executeServiceAction(
@@ -121,9 +130,13 @@ export async function executeServiceAction(
   input: unknown,
   signal: AbortSignal,
   auditActor: string,
-  options: { origin?: { pluginId: string; runId?: string } } = {},
+  options: {
+    origin?: { pluginId: string; runId?: string };
+    beforeDispatch?: () => Promise<void>;
+  } = {},
 ) {
   await deps.refreshConfig();
+  await options.beforeDispatch?.();
   const source = serviceSource(deps.getConfig(), deps.database, serviceId);
   if (!source) throw new Error("Service not found");
   const adapter = deps.registry.get(source.service.adapter);

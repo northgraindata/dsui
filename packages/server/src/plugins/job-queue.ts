@@ -393,19 +393,38 @@ export class JobQueue {
    * payload. Both are enforced in the same transaction as the claim, which is
    * what stops two workers both deciding a job is free.
    */
-  claim(owner: string): JobRunRow | null {
+  claim(
+    owner: string,
+    excludedPluginIds: readonly string[] = [],
+  ): JobRunRow | null {
     const claim = this.db.transaction((): JobRunRow | null => {
       const candidates = this.db
         .query(
           `SELECT ${RUN_COLUMNS} FROM plugin_job_runs
             WHERE status = 'queued' AND cancel_requested = 0
               AND (scheduled_for IS NULL OR scheduled_for <= ?)
+              AND EXISTS (
+                SELECT 1 FROM plugin_job_definitions definition
+                WHERE definition.plugin_id = plugin_job_runs.plugin_id
+                  AND definition.job_id = plugin_job_runs.job_id
+                  AND NOT EXISTS (
+                    SELECT 1 FROM plugin_job_runs active
+                    WHERE active.plugin_id = plugin_job_runs.plugin_id
+                      AND active.job_id = plugin_job_runs.job_id
+                      AND active.status = 'running'
+                      AND (definition.concurrency = 'singleton'
+                        OR active.input_json = plugin_job_runs.input_json)
+                  )
+              )
+              ${excludedPluginIds.length ? `AND plugin_id NOT IN (${excludedPluginIds.map(() => "?").join(",")})` : ""}
             ORDER BY enqueued_at ASC LIMIT 20`,
         )
-        .all(this.stamp()) as unknown as Record<string, unknown>[];
+        .all(this.stamp(), ...excludedPluginIds) as unknown as Record<
+        string,
+        unknown
+      >[];
       for (const candidate of candidates) {
         const run = toRun(candidate);
-        if (!this.allowedByConcurrency(run)) continue;
         const expires = new Date(
           this.now().getTime() + this.leaseMs,
         ).toISOString();
@@ -431,31 +450,6 @@ export class JobQueue {
       return null;
     });
     return claim();
-  }
-
-  /** Only running jobs hold concurrency slots; queued siblings must remain claimable. */
-  private allowedByConcurrency(run: JobRunRow): boolean {
-    const definition = this.definition(run.jobId, run.pluginId);
-    if (!definition) return false;
-    if (definition.concurrency === "singleton") {
-      const active = this.db
-        .query(
-          `SELECT count(*) AS n FROM plugin_job_runs
-            WHERE job_id = ? AND plugin_id = ? AND status = 'running'
-              AND run_id <> ?`,
-        )
-        .get(run.jobId, run.pluginId, run.runId) as { n: number };
-      return Number(active?.n ?? 0) === 0;
-    }
-    // per-key: a different payload may run alongside this one.
-    const sameInput = this.db
-      .query(
-        `SELECT count(*) AS n FROM plugin_job_runs
-          WHERE job_id = ? AND plugin_id = ? AND status = 'running'
-            AND input_json = ? AND run_id <> ?`,
-      )
-      .get(run.jobId, run.pluginId, run.inputJson, run.runId) as { n: number };
-    return Number(sameInput?.n ?? 0) === 0;
   }
 
   definition(jobId: string, pluginId: string): JobDefinitionRow | null {

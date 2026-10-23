@@ -6,6 +6,7 @@ import {
   downloadFolderZip,
   presignGet,
   readActivity,
+  uploadFile,
   uploadObject,
 } from "./actions/objects.js";
 import { activityStore } from "./activity.js";
@@ -71,6 +72,7 @@ export function createS3Adapter(
       deleteObjects,
       presignGet,
       uploadObject,
+      uploadFile,
       createFolder,
       copyObject,
       readActivity,

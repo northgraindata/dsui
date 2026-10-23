@@ -11,13 +11,18 @@ export const runQueryInput = z.object({
   sql: z.string().trim().max(100_000).default(""),
   database: z.string().trim().min(1).optional(),
   maxRows: z.number().int().positive().max(10_000).default(1_000),
+  parameters: z
+    .array(z.union([z.string(), z.number().finite(), z.boolean(), z.null()]))
+    .max(100)
+    .optional(),
+  expectedRows: z.number().int().min(0).max(10000).optional(),
 });
 
 export const runQuery = defineAction({
   id: "run-query",
   input: runQueryInput,
   run: async (
-    { sql, database, maxRows },
+    { sql, database, maxRows, parameters, expectedRows },
     ctx: PostgreSQLContext & ActionRuntimeContext,
   ) => {
     ctx.signal?.throwIfAborted();
@@ -36,6 +41,8 @@ export const runQuery = defineAction({
       result = await (database ? ctx.getClient(database) : ctx.client).execute(
         normalizedSql,
         maxRows,
+        parameters,
+        expectedRows,
       );
     } catch (error) {
       ctx.emit(queryFailed, {
