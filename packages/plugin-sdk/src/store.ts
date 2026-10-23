@@ -133,6 +133,8 @@ export function defineStore<
  * so a plugin owns its tables and its migrations outright. This is what lets
  * an auth plugin hold users and sessions without the host schema knowing
  * anything about them.
+ * Use the SDK's `runMigrations` helper to apply versioned schema changes before
+ * serving requests against a private database.
  */
 export interface PluginStorage {
   /** Returns the private directory owned by this plugin. */

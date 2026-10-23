@@ -125,6 +125,34 @@ noninteractive identity with bounded service targets; it is not the user's login
 session. A provider lacking the required fresh-resolution capabilities cannot
 satisfy an authenticated/delegated execution requirement.
 
+## Private database migrations
+
+Plugins own their database schema; the host does not add plugin tables to its
+installation database. Use the shared migration runner for a private database:
+
+```ts
+import { type Migration, runMigrations } from "@northgraindata/dsui-plugin-sdk";
+
+const migrations: readonly Migration[] = [{
+  version: 1,
+  name: "requests",
+  up(db) {
+    db.exec("CREATE TABLE requests (id TEXT PRIMARY KEY, status TEXT NOT NULL)");
+  },
+}];
+
+const database = context.storage.openDatabase("requests");
+runMigrations(database, migrations);
+```
+
+The runner is the same implementation used by core. It records applied versions
+in `schema_migrations` in that database and applies each pending migration in a
+transaction. Append new versions; never edit an already released migration.
+Run migrations at database initialization, before serving requests. Existing
+unversioned schemas need an explicit adoption migration that preserves their data.
+This helper manages SQLite schema, not external adapter databases or Better Auth's
+own migrations.
+
 ## Compatibility
 
 The new host capabilities are additive. An older plugin can continue using its

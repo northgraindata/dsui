@@ -966,6 +966,7 @@ export {
   type PluginActionPermission,
   type PluginActionReference,
 } from "./action";
+export { type Migration, runMigrations } from "./migrations.js";
 export {
   manual,
   type PollInterval,

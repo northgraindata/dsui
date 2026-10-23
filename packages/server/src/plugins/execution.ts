@@ -11,6 +11,8 @@ import {
   z,
 } from "@northgraindata/dsui-plugin-sdk";
 import Ajv, { type ValidateFunction } from "ajv";
+import { runMigrations } from "../db/migrate.js";
+import { executionMigrations } from "./execution-migrations.js";
 
 // Existing host permission tiers only; provider-owned teams belong in audience claims.
 const principalSchema = z.object({
@@ -136,9 +138,7 @@ export class ExecutionService {
     private readonly db: Database,
     private readonly hooks: Hooks,
   ) {
-    db.exec(`CREATE TABLE IF NOT EXISTS grants(plugin_id TEXT NOT NULL,id TEXT NOT NULL,data TEXT NOT NULL,PRIMARY KEY(plugin_id,id));
-      CREATE TABLE IF NOT EXISTS continuations(id TEXT PRIMARY KEY,plugin_id TEXT NOT NULL,data TEXT NOT NULL,expires_at INTEGER NOT NULL);
-      CREATE INDEX IF NOT EXISTS continuations_authority ON continuations(plugin_id,json_extract(data,'$.authorityKey'),expires_at);`);
+    runMigrations(db, executionMigrations);
   }
   configure(grants: Record<string, readonly ExecutionGrant[]>) {
     this.configurationValid = false;
