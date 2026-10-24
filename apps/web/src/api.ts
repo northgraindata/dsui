@@ -98,7 +98,7 @@ function schemaFields(schema: JsonSchema | undefined): Field[] {
             ? "boolean"
             : type === "number" || type === "integer"
               ? "number"
-              : /token|password|secret|key/i.test(key)
+              : /token|password|secret|key/i.test(key) && !/path$/i.test(key)
                 ? "password"
                 : "text",
         ...(enumValues.length

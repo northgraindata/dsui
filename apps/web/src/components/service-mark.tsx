@@ -17,7 +17,7 @@ export function ServiceMark({
   size?: number;
   variant?: "contained" | "bare";
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedLogo, setFailedLogo] = useState<string>();
   const classes = cn(
     "service-mark relative flex shrink-0 items-center justify-center",
     variant === "contained"
@@ -28,7 +28,7 @@ export function ServiceMark({
     width: size,
     height: size,
   };
-  if (logo && !failed)
+  if (logo && logo !== failedLogo)
     return (
       <span className={classes} style={style}>
         <img
@@ -38,7 +38,7 @@ export function ServiceMark({
           height={size - 8}
           loading="lazy"
           className={cn("object-contain", variant === "contained" && "p-1")}
-          onError={() => setFailed(true)}
+          onError={() => setFailedLogo(logo)}
         />
       </span>
     );

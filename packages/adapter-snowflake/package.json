@@ -1,0 +1,17 @@
+{
+  "name": "@northgraindata/dsui-adapter-snowflake",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/adapter.ts"
+  },
+  "scripts": {
+    "test": "bun test src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "snowflake-sdk": "^3.4.0"
+  }
+}

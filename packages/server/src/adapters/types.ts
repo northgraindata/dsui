@@ -102,6 +102,12 @@ export interface AdapterExecutionContext {
   readonly persistenceNamespace: string;
 }
 
+export interface AdapterHealthContext {
+  readonly persistenceNamespace?: string;
+  readonly timeoutMs?: number;
+  readonly signal?: AbortSignal;
+}
+
 /**
  * Execution backend behind a loaded adapter. Local adapters run the SDK
  * in-process; verified community adapters run in an `adapter-host`
@@ -118,7 +124,7 @@ export interface AdapterBackend {
   /** Probe: instantiate (and dispose) against a connection. */
   checkHealth(
     connection: unknown,
-    context?: AdapterExecutionContext,
+    context?: AdapterHealthContext,
   ): Promise<HealthStatus>;
   /** Renders and validates an adapter page for a concrete path. */
   renderPage(

@@ -6,6 +6,7 @@ import {
   AdapterHostClient,
   type AdapterHostRequest,
 } from "../src/adapters/host";
+import { RemoteBackend } from "../src/adapters/loader";
 import { DsuiDatabase } from "../src/db/database";
 
 const hostPath = new URL("../src/adapter-host.ts", import.meta.url).pathname;
@@ -185,6 +186,18 @@ test("timeout and active abort retire the process without replaying requests", a
   controller.abort();
   expect(await outcome).toBeInstanceOf(Error);
   expect((await inspect(host)).data.pid).not.toBe(second.data.pid);
+});
+
+test("connection health honors its timeout and stops the adapter host", async () => {
+  const host = client();
+  const backend = new RemoteBackend(host, "retained-test", [
+    { id: "cached", requestConcurrency: "parallel", contextIdleTimeoutMs: 100 },
+  ]);
+  const connection = request().connection;
+  const health = await backend.checkHealth(connection, { timeoutMs: 10 });
+  expect(health.status).toBe("unavailable");
+  expect(health.detail).toBe("Adapter host timed out");
+  expect(await inspect(host)).toHaveProperty("data.pid");
 });
 
 test("crash fails the request and next call starts a fresh host", async () => {

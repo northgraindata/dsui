@@ -55,7 +55,9 @@ export function ConnectionDialog({
   const method = adapter.connectionMethods?.find(
     (candidate) => candidate.id === methodId,
   );
-  const fields = method?.fields ?? adapter.fields;
+  const fields = (method?.fields ?? adapter.fields).filter(
+    (field) => !(method && field.key === "method"),
+  );
   const [values, setValues] = useState<Record<string, string>>({
     name: `My ${adapter.name}`,
   });

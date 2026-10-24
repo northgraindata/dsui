@@ -28,6 +28,7 @@ function pageIcon(path: string) {
       "/extensions": "layers",
       "/files": "file",
       "/activity": "activity",
+      "/warehouses": "cpu",
     }[path] ?? "grid"
   );
 }
@@ -106,7 +107,11 @@ export function AdapterWorkspace({
             />
             <div>
               <h1>{service.name}</h1>
-              <p>Explore your data, browse schemas, tables and files.</p>
+              <p>
+                {service.adapter === "snowflake"
+                  ? "Explore databases, warehouses, and queries."
+                  : "Explore your data, browse schemas, tables and files."}
+              </p>
             </div>
           </div>
         </header>

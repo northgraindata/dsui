@@ -712,6 +712,7 @@
 .connection-brand img {
   border-radius: 50%;
 }
+
 .connection-footer > button {
   border: 1px solid var(--color-border-strong);
   background: linear-gradient(120deg, var(--color-surface-raised), #0a1427);
