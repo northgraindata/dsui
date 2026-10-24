@@ -30,6 +30,12 @@
 .app-topbar.is-hidden ~ .app-body .adapter-layout {
   min-height: 100dvh;
 }
+.app-topbar.is-hidden ~ .app-body .adapter-layout[data-embedded="true"] {
+  min-height: 0;
+}
+.app-topbar.is-hidden ~ .app-body .adapter-layout[data-split="true"] {
+  min-height: 0;
+}
 @media (min-width: 641px) {
   .app-topbar.is-hidden ~ .app-body .app-sidebar,
   .app-topbar.is-hidden ~ .app-body .adapter-sidebar {
@@ -220,6 +226,12 @@
   min-width: 0;
   flex: 1;
 }
+.app-content:has(.adapter-layout[data-split="true"]) {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 70px);
+  overflow: hidden;
+}
 .skip-link {
   position: fixed;
   left: 12px;
@@ -236,6 +248,45 @@
   display: grid;
   grid-template-columns: 294px minmax(0, 1fr);
   min-height: calc(100dvh - 70px);
+}
+.adapter-layout[data-split="true"] {
+  grid-template-columns: 62px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.adapter-layout[data-split="true"] .adapter-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.adapter-layout[data-split="true"] .adapter-sidebar {
+  height: 100%;
+  min-height: 0;
+}
+.adapter-layout[data-embedded="true"] {
+  display: block;
+  min-height: 0;
+}
+.adapter-layout[data-split="true"] .adapter-back {
+  margin: 22px auto 28px;
+  width: 30px;
+  height: 30px;
+  justify-content: center;
+  font-size: 0;
+}
+.adapter-layout[data-split="true"] .adapter-identity {
+  display: none;
+}
+.adapter-layout[data-split="true"] .adapter-pages {
+  margin: 0 7px;
+}
+.adapter-layout[data-split="true"] .adapter-pages a {
+  justify-content: center;
+  padding: 0;
+}
+.adapter-layout[data-split="true"] .adapter-pages a span {
+  display: none;
 }
 .adapter-sidebar {
   position: sticky;
@@ -322,9 +373,219 @@
 }
 .adapter-main {
   min-width: 0;
+}
+.adapter-pane-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.adapter-pane-grid > * {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.adapter-pane-grid > .adapter-main-content {
+  border-right: 1px solid var(--color-border);
+}
+.adapter-secondary-pane .adapter-main-content {
+  padding-inline: 24px;
+}
+.adapter-pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adapter-pane-actions select {
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  color: var(--color-secondary);
+}
+.adapter-pane-actions select {
+  max-width: 140px;
+  padding: 0 8px;
+}
+.adapter-main-content {
   padding: 32px 30px 28px;
 }
-.adapter-main > .grid {
+.adapter-tabs {
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  scrollbar-width: thin;
+}
+.adapter-tabs-list {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  padding: 16px 24px 0;
+}
+.adapter-tab,
+.adapter-tab-add {
+  height: 44px;
+  display: flex;
+  flex: none;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+  color: var(--color-secondary);
+  background: color-mix(in srgb, var(--color-surface) 75%, transparent);
+  text-decoration: none;
+}
+.adapter-tab {
+  width: 190px;
+  font-size: 12px;
+}
+.adapter-tab[data-paired="true"] {
+  width: 340px;
+}
+.adapter-tab > a {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding-left: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+.adapter-tab-close,
+.adapter-tab-separate {
+  display: grid;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin: 0 5px 0 2px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.adapter-tab-close:hover,
+.adapter-tab-separate:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.adapter-tab:first-child {
+  border-top-left-radius: 8px;
+}
+.adapter-tab + .adapter-tab,
+.adapter-tab-add {
+  margin-left: -1px;
+}
+.adapter-tab-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adapter-tab-pair-divider {
+  flex: none;
+  color: var(--color-muted);
+}
+.adapter-tab:hover,
+.adapter-tab-add:hover {
+  color: var(--color-primary);
+  background: var(--color-surface-raised);
+}
+.adapter-tab:focus-visible,
+.adapter-tab > a:focus-visible,
+.adapter-tab-close:focus-visible,
+.adapter-tab-separate:focus-visible,
+.adapter-tab-add:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -3px;
+}
+.adapter-tab[data-active="true"] {
+  position: relative;
+  z-index: 1;
+  border-color: var(--color-accent);
+  color: var(--color-primary);
+  background: var(--color-surface-raised);
+  box-shadow: inset 0 -2px var(--color-accent);
+}
+.adapter-tab[data-dragging="true"] {
+  opacity: 0.45;
+}
+.adapter-tab[data-drop-edge="before"] {
+  box-shadow: inset 3px 0 var(--color-accent);
+}
+.adapter-tab[data-drop-edge="after"] {
+  box-shadow: inset -3px 0 var(--color-accent);
+}
+.adapter-tab[data-drop-edge="split"] {
+  background: color-mix(in srgb, var(--color-accent) 20%, var(--color-surface));
+  outline: 1px solid var(--color-accent);
+}
+.adapter-tab-add {
+  width: 48px;
+  justify-content: center;
+  border-top-right-radius: 8px;
+  cursor: pointer;
+}
+.adapter-tabs-menu {
+  position: fixed;
+  z-index: 50;
+  width: min(280px, calc(100vw - 16px));
+  max-height: min(380px, calc(100dvh - 130px));
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 16px 40px #0008;
+}
+.adapter-tabs-menu-title {
+  padding: 8px 10px;
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.adapter-tabs-menu-message {
+  margin: 0;
+  padding: 12px 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.adapter-tabs-menu button,
+.adapter-tabs-menu-create {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.adapter-tabs-menu button:hover,
+.adapter-tabs-menu-create:hover,
+.adapter-tabs-menu button:focus-visible,
+.adapter-tabs-menu-create:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+.adapter-tabs-menu-create {
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-accent);
+}
+.adapter-main-content > .grid {
   display: grid;
   gap: 16px;
   min-width: 0;
@@ -385,7 +646,7 @@
   font-size: 13px;
   letter-spacing: 0.1px;
 }
-.adapter-main > .grid > header {
+.adapter-main-content > .grid > header {
   padding-bottom: 12px;
   border-bottom: 1px solid var(--color-border);
 }
@@ -437,7 +698,18 @@
   .adapter-layout {
     grid-template-columns: 200px minmax(0, 1fr);
   }
-  .adapter-main {
+  .adapter-layout[data-split="true"] {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+  .adapter-pane-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+  .adapter-pane-grid > .adapter-main-content {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .adapter-main-content {
     padding: 24px 16px;
   }
   .adapter-identity {
@@ -448,6 +720,9 @@
   }
 }
 @media (max-width: 640px) {
+  .app-content:has(.adapter-layout[data-split="true"]) {
+    height: calc(100dvh - 60px);
+  }
   .app-topbar {
     height: 60px;
     padding: 0 16px;
@@ -497,6 +772,9 @@
   .adapter-layout {
     display: block;
   }
+  .adapter-layout[data-split="true"] .adapter-sidebar {
+    display: none;
+  }
   .adapter-sidebar {
     position: static;
     height: auto;
@@ -521,8 +799,14 @@
     gap: 8px;
     font-size: 12px;
   }
-  .adapter-main {
+  .adapter-main-content {
     padding: 20px 12px;
+  }
+  .adapter-tabs-list {
+    padding: 10px 12px 0;
+  }
+  .adapter-tab {
+    width: 154px;
   }
   .adapter-heading h1 {
     font-size: 21px;
