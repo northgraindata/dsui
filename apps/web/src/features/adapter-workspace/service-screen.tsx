@@ -12,31 +12,41 @@ import {
 } from "../../api";
 import { AdapterWorkspace } from "../../components/adapter-workspace";
 import { EmptyState, pageClass, UnavailableState } from "../../components/page";
+import { useAdapterTabs } from "./adapter-tabs-context";
 
 /** Loads and renders the declarative page for an adapter workspace. */
 export function ServiceScreen({
   serviceId,
   viewId,
   pagePath,
+  embedded = false,
 }: {
   serviceId: string;
   viewId?: string;
   pagePath?: string;
+  embedded?: boolean;
 }) {
   const navigate = useNavigate();
+  const { state: tabs, dispatch } = useAdapterTabs();
   const search = useRouterState({
     select: (state) => state.location.searchStr,
   });
   const [service, setService] = useState<Service>();
+  const [services, setServices] = useState<Service[]>([]);
   const [paths, setPaths] = useState<string[]>([]);
   const [page, setPage] = useState<PageDocument>();
   const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    dispatch({ type: "open", id: serviceId });
+  }, [dispatch, serviceId]);
 
   useEffect(() => {
     let active = true;
     Promise.all([getServices(), getServicePages(serviceId)])
       .then(([all, response]) => {
         if (!active) return;
+        setServices(all);
         setService(all.find((candidate) => candidate.id === serviceId));
         setPaths(response.pages.map((item) => item.path));
       })
@@ -52,14 +62,36 @@ export function ServiceScreen({
     };
   }, [serviceId]);
 
+  const secondary =
+    embedded && tabs.split?.rightId === serviceId ? tabs.split : undefined;
   const path =
-    pagePath ?? (viewId ? `/${decodeURIComponent(viewId)}` : paths[0]);
+    secondary?.rightPath ??
+    pagePath ??
+    (viewId ? `/${decodeURIComponent(viewId)}` : paths[0]);
+  const pageSearch = embedded ? (secondary?.rightSearch ?? "") : search;
+  const split =
+    !embedded && tabs.split?.leftId === serviceId ? tabs.split : undefined;
+  const selectPage = (selectedPath: string) => {
+    if (embedded) {
+      dispatch({
+        type: "navigate-secondary",
+        id: serviceId,
+        path: selectedPath,
+        search: "",
+      });
+      return;
+    }
+    void navigate({
+      to: "/services/$serviceId/$",
+      params: { serviceId, _splat: selectedPath.slice(1) },
+    });
+  };
 
   useEffect(() => {
     if (!path) return;
     let active = true;
     setPage(undefined);
-    getPage(serviceId, `${path}${search}`)
+    getPage(serviceId, `${path}${pageSearch}`)
       .then((document) => active && setPage(document))
       .catch(
         (cause) =>
@@ -71,7 +103,7 @@ export function ServiceScreen({
     return () => {
       active = false;
     };
-  }, [serviceId, path, search]);
+  }, [serviceId, path, pageSearch]);
 
   if (error)
     return (
@@ -90,10 +122,26 @@ export function ServiceScreen({
     );
 
   return (
-    <AdapterWorkspace service={service} paths={paths} path={path}>
+    <AdapterWorkspace
+      service={service}
+      services={services}
+      paths={paths}
+      path={path}
+      embedded={embedded}
+      secondary={
+        split ? (
+          <ServiceScreen
+            key={split.rightId}
+            serviceId={split.rightId}
+            embedded
+          />
+        ) : undefined
+      }
+      onSelectPage={embedded || split ? selectPage : undefined}
+    >
       {page ? (
         <DeclarativePageRenderer
-          key={`${serviceId}/${path}${search}`}
+          key={`${serviceId}/${path}${pageSearch}`}
           nodes={page.nodes}
           client={{
             notifyInteraction: (interaction) =>
@@ -156,12 +204,24 @@ export function ServiceScreen({
                 : { status: "error" as const, message: result.message };
             },
             navigate: (destination) => {
-              const [path, query = ""] = destination.split("?", 2);
+              const [destinationPath = "/", query = ""] = destination.split(
+                "?",
+                2,
+              );
+              if (embedded) {
+                dispatch({
+                  type: "navigate-secondary",
+                  id: serviceId,
+                  path: destinationPath,
+                  search: query ? `?${query}` : "",
+                });
+                return Promise.resolve();
+              }
               return navigate({
                 to: "/services/$serviceId/$",
                 params: {
                   serviceId: service.id,
-                  _splat: decodeURIComponent(path.slice(1)),
+                  _splat: decodeURIComponent(destinationPath.slice(1)),
                 },
                 search: Object.fromEntries(new URLSearchParams(query)),
               });

@@ -64,6 +64,7 @@ function explorer(
   return {
     source: resource(value.source),
     ...(value.nameField ? { nameField: value.nameField } : {}),
+    ...(value.typeField ? { typeField: value.typeField } : {}),
     ...(value.children ? { children: explorer(value.children) } : {}),
   };
 }
