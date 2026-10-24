@@ -1373,3 +1373,68 @@
   color: var(--color-warning);
   background: color-mix(in srgb, var(--color-warning) 5%, transparent);
 }
+/* Docked plugin drawer (AI agent): the workspace shrinks beside it. */
+.app-chrome {
+  padding-right: var(--plugin-drawer-width, 0px);
+  transition: padding-right 0.22s ease;
+}
+.plugin-drawer-panel {
+  animation: plugin-drawer-in 0.22s ease-out;
+}
+.plugin-drawer-panel[data-closing] {
+  animation: plugin-drawer-out 0.22s ease-in forwards;
+  pointer-events: none;
+}
+@keyframes plugin-drawer-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes plugin-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+.plugin-drawer-resize {
+  position: absolute;
+  inset-block: 0;
+  left: -3px;
+  z-index: 10;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.plugin-drawer-resize::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 2px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+.plugin-drawer-resize:hover::after,
+.plugin-drawer-resize:focus-visible::after,
+.plugin-drawer-resize[data-dragging]::after {
+  background: var(--color-accent);
+}
+.plugin-drawer-resize:focus-visible {
+  outline: none;
+}
+@media (max-width: 640px) {
+  .app-chrome {
+    padding-right: 0;
+  }
+  .plugin-drawer-resize {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-chrome {
+    transition: none;
+  }
+  .plugin-drawer-panel,
+  .plugin-drawer-panel[data-closing] {
+    animation: none;
+  }
+}
