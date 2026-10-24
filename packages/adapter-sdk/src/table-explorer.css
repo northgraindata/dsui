@@ -1,0 +1,202 @@
+.table-explorer {
+  container-type: inline-size;
+  min-width: 0;
+}
+.table-insights {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) repeat(3, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+.table-insights-intro,
+.table-insights-card {
+  min-height: 108px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  padding: 14px;
+}
+.table-insights-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+}
+.table-insights-intro strong {
+  color: var(--color-primary);
+  font-size: 15px;
+}
+.table-insights-intro span,
+.table-insights-copy small,
+.table-insights-stats dt {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+.table-insights-card {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+.table-insights-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+}
+.table-insights-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.table-insights-copy > strong {
+  overflow: hidden;
+  color: var(--color-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-insights-histogram {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  height: 35px;
+  margin-top: auto;
+}
+.table-insights-histogram i {
+  flex: 1;
+  min-height: 2px;
+  background: var(--color-accent);
+}
+.table-insights-stats {
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  gap: 3px;
+  margin: 0;
+}
+.table-insights-stats div {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+.table-insights-stats dd {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.table-insights-top-values {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+.table-insights-top-values > div {
+  display: grid;
+  grid-template-columns: minmax(55px, 1fr) minmax(35px, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-secondary);
+  font-size: 10px;
+}
+.table-insights-top-values span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-insights-top-values i {
+  height: 7px;
+  border-radius: 3px;
+  background: var(--color-surface-raised);
+}
+.table-insights-top-values b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+}
+.table-insights-top-values em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+.table-insights-distinct .table-insights-copy > div {
+  display: flex;
+  gap: 16px;
+  margin-top: auto;
+}
+.table-insights-distinct .table-insights-copy > div > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.table-insights-distinct b {
+  color: var(--color-accent);
+  font-size: 22px;
+  font-weight: 500;
+}
+.table-insights-distinct small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table-explorer-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 8px;
+}
+.table-explorer-clear {
+  min-height: 28px;
+  padding: 0 4px;
+  color: var(--color-accent);
+  font-size: 12px;
+}
+.table-explorer-clear:hover {
+  color: var(--color-accent-hover);
+}
+.table-explorer-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.table-explorer-header > span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table-explorer-header button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--color-muted);
+}
+.table-explorer-header button:hover,
+.table-explorer-header button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+}
+.table-explorer-empty,
+.table-explorer-count {
+  margin: 9px 2px;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+@container (max-width: 1000px) {
+  .table-insights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 640px) {
+  .table-insights {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

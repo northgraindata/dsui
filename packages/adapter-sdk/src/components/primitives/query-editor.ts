@@ -12,11 +12,14 @@ export interface QueryEditorProps {
     label?: string;
   };
   explorer?: QueryEditorExplorerProps;
+  /** PostgreSQL SQL names use schema.table within the selected database. */
+  omitDatabaseFromSql?: boolean;
 }
 
 export interface QueryEditorExplorerProps {
   source: DataSource;
   nameField?: string;
+  typeField?: string;
   children?: QueryEditorExplorerProps;
 }
 
@@ -28,6 +31,7 @@ export interface QueryEditorNode {
 export interface QueryExplorerDocument {
   source: ResourceReference;
   nameField?: string;
+  typeField?: string;
   children?: QueryExplorerDocument;
 }
 

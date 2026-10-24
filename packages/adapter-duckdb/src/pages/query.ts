@@ -27,6 +27,7 @@ export const queryPage = definePage({
               schema: "$name",
               type: "all",
             }),
+            typeField: "type",
           },
         },
       },

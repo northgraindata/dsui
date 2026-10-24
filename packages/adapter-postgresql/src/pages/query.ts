@@ -22,6 +22,7 @@ export const queryPage = definePage({
       language: "sql",
       value: query.get("sql") ?? undefined,
       action: runQuery,
+      omitDatabaseFromSql: true,
       database: { source: databases() },
       explorer: {
         source: databases(),
@@ -32,6 +33,7 @@ export const queryPage = definePage({
               database: "$database",
               schema: "$name",
             }),
+            typeField: "kind",
           },
         },
       },
@@ -50,6 +52,7 @@ export const databaseQueryPage = definePage({
       language: "sql",
       value: query.get("sql") ?? undefined,
       action: runQuery({ database: params.database }),
+      omitDatabaseFromSql: true,
       database: {
         source: databases(),
         initialValue: params.database,
@@ -63,6 +66,7 @@ export const databaseQueryPage = definePage({
               database: "$database",
               schema: "$name",
             }),
+            typeField: "kind",
           },
         },
       },

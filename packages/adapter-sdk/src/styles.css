@@ -1,3 +1,8 @@
+@import "./table-explorer.css";
+@import "./table-filter.css";
+@import "./query-profile.css";
+@import "./query-explorer.css";
+
 .notebook-workspace {
   display: grid;
   grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);

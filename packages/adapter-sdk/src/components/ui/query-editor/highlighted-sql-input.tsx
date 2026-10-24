@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type Ref, useRef } from "react";
 import { useDisplayPreferences } from "../preferences";
 import { sqlTokens } from "./sql-tokens";
 
@@ -7,11 +7,13 @@ export function HighlightedSqlInput({
   onChange,
   onRun,
   placeholder,
+  inputRef,
 }: {
   value: string;
   onChange(value: string): void;
   onRun(): void;
   placeholder?: string;
+  inputRef?: Ref<HTMLTextAreaElement>;
 }) {
   const preferences = useDisplayPreferences();
   const highlight = useRef<HTMLPreElement>(null);
@@ -48,6 +50,7 @@ export function HighlightedSqlInput({
         </code>
       </pre>
       <textarea
+        ref={inputRef}
         className="sql-editor-fallback"
         aria-label="SQL query"
         value={value}
