@@ -247,7 +247,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ) ?? null)
           : null,
       executeAction: async (id, actionId, input, options) => {
-        await pluginRuntime.requireServiceAccess(id, "execute");
+        await pluginRuntime.requireServiceAccess(id, "execute", {
+          actionId,
+          actionInput: input,
+        });
         const result = await executeServiceAction(
           {
             registry,

@@ -410,6 +410,10 @@ export type PluginResource = {
 };
 
 export interface PluginAuthenticationProvider {
+  /** Resolve current identity/teams for delegated background authorization; never reuse a session snapshot. */
+  resolvePrincipal?(
+    id: string,
+  ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
   authenticate(
     request: Request,
   ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
@@ -577,7 +581,18 @@ export interface PluginCapabilities {
     /** Identity of the authenticated request; absent in background work. */
     principal?(): PluginPrincipal | null;
     requireAdmin?(): Promise<void>;
-    require(serviceId: string, permission: PluginPermission): Promise<void>;
+    /** Rechecks the current identity's permission without changing the job's execution identity. */
+    requirePrincipal?(
+      principalId: string,
+      serviceId: string,
+      permission: PluginPermission,
+      action?: Pick<PluginResource, "actionId" | "actionInput">,
+    ): Promise<void>;
+    require(
+      serviceId: string,
+      permission: PluginPermission,
+      action?: Pick<PluginResource, "actionId" | "actionInput">,
+    ): Promise<void>;
   };
   readonly jobs: {
     enqueue(jobId: string, input: unknown): Promise<{ runId: string }>;

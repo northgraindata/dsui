@@ -11,6 +11,7 @@ import {
   type PluginStores,
 } from "@northgraindata/dsui-plugin-sdk";
 import type { DsuiDatabase } from "../db/database.js";
+import { runMigrations } from "../db/migrate.js";
 
 export type PluginStorageHandle = PluginStorage & {
   /** Closes every database this plugin opened. */
@@ -57,6 +58,11 @@ export function createPluginStorage(
         "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;",
       );
       opened.set(name, database);
+      return database;
+    },
+    migrate(name, migrations) {
+      const database = this.openDatabase(name);
+      runMigrations(database, migrations);
       return database;
     },
     close() {
