@@ -188,7 +188,7 @@ function queryEditor(database?: string, sql?: string) {
     database: { source: databases(), initialValue: database },
     explorer: {
       source: databases(),
-      children: { source: relations({ database: "$name" }) },
+      children: { source: relations({ database: "$name" }), typeField: "kind" },
     },
   });
 }
