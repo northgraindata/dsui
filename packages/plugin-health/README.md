@@ -20,7 +20,7 @@ This is currently a private workspace package.
 - **Around this time**, on each incident and service page: signals from other parts of DSUI that fired shortly before or after, such as a failed dbt run or a repository update.
 - **Reliability** on the overview: the last 7 or 30 days against the period before, with uptime, incidents and mean time to resolve.
 - **Signals** that other plugins and the host can react to when a service changes state, plus a weekly summary.
-- **Dashboard and workspace summaries** through the service card and workspace slots.
+- **Dashboard score** on each service card.
 
 ## Configure
 

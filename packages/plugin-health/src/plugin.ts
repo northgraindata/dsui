@@ -15,7 +15,7 @@ import {
   resolve,
   setSlo,
 } from "./actions.js";
-import { serviceCardSlot, workspaceSlot } from "./components/slots.js";
+import { serviceCardSlot } from "./components/slots.js";
 import { configSchema, SCHEDULER_TICK_MS } from "./config.js";
 import type { ServiceSummary } from "./context.js";
 import { fleetSchema } from "./contract.js";
@@ -194,7 +194,6 @@ export function createHealthPlugin() {
       });
 
       registry.slot(serviceCardSlot);
-      registry.slot(workspaceSlot);
     },
   });
 }
