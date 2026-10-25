@@ -16,12 +16,9 @@ import {
   type PluginServiceSummary,
 } from "@northgraindata/dsui-plugin-sdk";
 import type { HealthConfig } from "../config.js";
-import { badgeTone, type ProbeResult } from "../context.js";
+import type { ProbeResult } from "../context.js";
 import { openHealthDb } from "../db.js";
-import { activeIncident } from "../incidents.js";
 import { readState } from "../repo.js";
-import { rangeStats } from "../slo.js";
-import { duration, percent } from "../ui/format.js";
 import { serviceCardStatus } from "./status.js";
 
 type HealthContext = PluginContext<HealthConfig>;
