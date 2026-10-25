@@ -15,11 +15,11 @@ export function KeyValueList({
           {title}
         </h2>
       ) : null}
-      <dl className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-5 gap-y-2 text-[12px]">
+      <dl className="grid min-w-0 grid-cols-[minmax(8rem,auto)_minmax(0,1fr)] gap-x-5 gap-y-2 text-[12px]">
         {Object.entries(values).map(([key, value]) => (
           <Fragment key={key}>
-            <dt className="text-secondary">{key}</dt>
-            <dd className="m-0 break-words text-primary">
+            <dt className="min-w-0 [overflow-wrap:anywhere] text-secondary">{key}</dt>
+            <dd className="m-0 min-w-0 [overflow-wrap:anywhere] text-primary">
               {formatValue(value)}
             </dd>
           </Fragment>
