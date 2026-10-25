@@ -21,7 +21,7 @@ import { openHealthDb } from "../db.js";
 import { activeIncident } from "../incidents.js";
 import { readState } from "../repo.js";
 import { rangeStats } from "../slo.js";
-import { ago, duration, percent } from "../ui/format.js";
+import { duration, percent } from "../ui/format.js";
 import { serviceCardStatus } from "./status.js";
 
 type HealthContext = PluginContext<HealthConfig>;
@@ -73,17 +73,24 @@ export const workspaceSlot = defineSlot<HealthContext, PluginServiceSummary>({
     const now = Date.now();
     const week = rangeStats(db, service.id, 7, now);
     const incident = activeIncident(db, service.id);
-    const parts = [
+    // Static text goes stale on a page that is not refreshed, so it states
+    // facts that stay true (how long, over what period) and not "3m ago".
+    const uptime =
       week.availability === null
         ? "No uptime data yet"
-        : `${percent(week.availability)} uptime over 7 days`,
-      `${STATUS_TITLE[state.health].toLowerCase()} for ${duration(now - state.since)}`,
-      `checked ${ago(state.lastCheckedAt, now)}`,
-    ];
-    if (incident) parts.push(`incident ${incident.status}`);
+        : `${percent(week.availability)} uptime over 7 days`;
+    // The badge already names the state, so the text adds only what it does
+    // not: how long a problem has lasted, or the period the uptime covers.
+    const description =
+      state.health === "healthy"
+        ? uptime
+        : [
+            `For ${duration(now - state.since)}`,
+            incident ? `incident ${incident.status}` : uptime,
+          ].join(" · ");
     return Card({
       title: "Service health",
-      description: parts.join(" · "),
+      description,
       badge: STATUS_TITLE[state.health],
       badgeTone: badgeTone({
         id: service.id,
