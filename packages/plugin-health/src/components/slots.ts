@@ -10,7 +10,6 @@
  * probe every service each time it renders.
  */
 import {
-  Card,
   defineSlot,
   type PluginContext,
   type PluginServiceSummary,
