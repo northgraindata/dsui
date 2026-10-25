@@ -7,6 +7,9 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import type { DbtContext } from "./context.js";
 
+/** How many of the newest runs the run-failure check looks at. */
+const RECENT_RUNS = 20;
+
 /**
  * Reports the health of a dbt service.
  *
@@ -53,14 +56,16 @@ async function cloudHealth(ctx: DbtContext, started: number) {
     ];
 
     try {
-      const runs = await cloud.listRuns();
-      const failed = runs.filter((run) => run.status === "error").length;
-      const recent = runs.slice(0, 20);
+      // One page of the newest runs. Walking the whole history on every
+      // check would cost far more than the signal is worth.
+      const recent = await cloud.listRuns(undefined, RECENT_RUNS);
+      const failed = recent.filter((run) => run.status === "error").length;
       checks.push({
         id: "runs",
         label: "Recent runs",
         ok: failed === 0,
         detail: `${failed} failed of ${recent.length} recent runs`,
+        href: "/runs",
       });
     } catch (error) {
       checks.push({
