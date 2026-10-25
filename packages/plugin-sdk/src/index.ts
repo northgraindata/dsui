@@ -245,6 +245,8 @@ export type PluginServiceHealthCheck = {
   readonly label: string;
   readonly ok: boolean;
   readonly detail?: string;
+  /** Path inside the service workspace where this signal can be investigated. */
+  readonly href?: string;
 };
 
 export type PluginServiceProbe = {
