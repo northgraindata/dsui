@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { z } from "@northgraindata/dsui-adapter-sdk";
 import type {
   AirflowClient,
+  AirflowComponentHealth,
   AirflowConnection,
   AirflowEventLog,
   AirflowHttpConfig,
@@ -22,6 +23,16 @@ import type {
 
 const versionResponseSchema = z.object({
   version: z.string().min(1),
+});
+const componentSchema = z
+  .object({ status: z.string().nullable().optional() })
+  .nullable()
+  .optional();
+const healthResponseSchema = z.object({
+  metadatabase: componentSchema,
+  scheduler: componentSchema,
+  triggerer: componentSchema,
+  dag_processor: componentSchema,
 });
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -672,6 +683,22 @@ export function createAirflowClient(
     dispose: () => lifetime.abort(),
     getVersion: async (signal): Promise<AirflowVersion> =>
       request("version", versionResponseSchema, signal),
+    getHealth: async (signal): Promise<AirflowComponentHealth[]> => {
+      const body = await request(
+        isAirflow2 ? "health" : "monitor/health",
+        healthResponseSchema,
+        signal,
+      );
+      const components: Array<[AirflowComponentHealth["id"], unknown]> = [
+        ["metadatabase", body.metadatabase?.status],
+        ["scheduler", body.scheduler?.status],
+        ["triggerer", body.triggerer?.status],
+        ["dag-processor", body.dag_processor?.status],
+      ];
+      return components.flatMap(([id, status]) =>
+        status === "healthy" || status === "unhealthy" ? [{ id, status }] : [],
+      );
+    },
     listDags: async (signal): Promise<DagSummary[]> => {
       const dags: DagSummary[] = [];
       let totalEntries = Number.POSITIVE_INFINITY;

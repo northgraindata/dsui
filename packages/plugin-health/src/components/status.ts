@@ -1,6 +1,6 @@
 import { Card, Gauge } from "@northgraindata/dsui-plugin-sdk";
 import type { ProbeResult } from "../context.js";
-import { badgeTone, gaugeTone } from "../context.js";
+import { gaugeTone } from "../context.js";
 
 /**
  * Service card contribution for `dashboard.service-card.trailing`.

@@ -105,6 +105,12 @@ export interface AdapterHealthCheck {
   readonly ok: boolean;
   /** Optional measured value or explanation. */
   readonly detail?: string;
+  /**
+   * Where to look when this signal fails, as a path inside the service's
+   * workspace such as `/dags`. A consumer may offer it as a link; it never
+   * runs anything. Must start with a single `/`.
+   */
+  readonly href?: string;
 }
 
 /**

@@ -1,8 +1,9 @@
 import {
+  type AdapterHealthCheck,
   healthReport,
   reachabilityCheck,
 } from "@northgraindata/dsui-adapter-sdk";
-import type { AirflowContext } from "./context.js";
+import type { AirflowComponentHealth, AirflowContext } from "./context.js";
 
 /**
  * Fraction of DAGs that may be paused before the scheduler is reported as
@@ -13,6 +14,55 @@ import type { AirflowContext } from "./context.js";
  * doing nothing.
  */
 const MAX_PAUSED_SHARE = 0.9;
+
+const COMPONENTS: Record<
+  AirflowComponentHealth["id"],
+  { id: string; label: string; href?: string }
+> = {
+  metadatabase: { id: "metadatabase", label: "Metadata database" },
+  // Not `scheduler`: that id already names the DAG availability check, and
+  // changing it would orphan its recorded history.
+  scheduler: {
+    id: "scheduler-heartbeat",
+    label: "Scheduler heartbeat",
+    href: "/dags",
+  },
+  triggerer: { id: "triggerer", label: "Triggerer" },
+  "dag-processor": {
+    id: "dag-processor",
+    label: "DAG processor",
+    href: "/dags",
+  },
+};
+
+/**
+ * Adds what Airflow reports about its own components.
+ *
+ * The REST API can answer while the scheduler is dead, so reachability says
+ * little about whether pipelines run. Airflow's health endpoint exposes the
+ * heartbeats that do. A deployment that does not expose it is simply not
+ * observed here.
+ */
+async function observeComponents(
+  ctx: AirflowContext,
+  checks: AdapterHealthCheck[],
+): Promise<void> {
+  try {
+    for (const component of await ctx.client.getHealth()) {
+      const described = COMPONENTS[component.id];
+      checks.push({
+        id: described.id,
+        label: described.label,
+        ok: component.status === "healthy",
+        detail:
+          component.status === "healthy" ? "Healthy" : "Reported unhealthy",
+        ...(described.href ? { href: described.href } : {}),
+      });
+    }
+  } catch {
+    // Not exposed on this deployment or role; leave the checks out.
+  }
+}
 
 /**
  * Reports the health of an Airflow deployment.
@@ -39,7 +89,7 @@ export async function airflowHealth(ctx: AirflowContext) {
     });
   }
 
-  const checks = [
+  const checks: AdapterHealthCheck[] = [
     reachabilityCheck(true, Date.now() - started),
     {
       id: "version",
@@ -73,12 +123,19 @@ export async function airflowHealth(ctx: AirflowContext) {
     });
   }
 
+  await observeComponents(ctx, checks);
+
   return healthReport({
     checks,
     weights: {
       reachability: 1,
       version: 0,
       scheduler: 0.25,
+      // A stalled scheduler means nothing runs, even though the API answers.
+      "scheduler-heartbeat": 0.5,
+      metadatabase: 0.5,
+      "dag-processor": 0.3,
+      triggerer: 0.15,
     },
     latencyMs: Date.now() - started,
   });

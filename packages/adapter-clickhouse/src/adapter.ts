@@ -7,6 +7,7 @@ import {
   urlSchema,
 } from "./config.js";
 import type { ClickHouseContext } from "./context.js";
+import { clickhouseHealth } from "./health.js";
 import { clickhouseIconUrl } from "./logo.js";
 import { pages } from "./pages.js";
 import { catalogResources } from "./resources.js";
@@ -56,34 +57,7 @@ export function createClickHouseAdapter(
     },
     disposeContext: (ctx) => ctx.client.dispose(),
     latencyBudgetMs: 1000,
-    health: async (ctx) => {
-      const started = Date.now();
-      try {
-        await ctx.client.execute("SELECT 1 AS reachable");
-        const latencyMs = Date.now() - started;
-        return {
-          status: latencyMs > 1000 ? "warning" : "healthy",
-          score: latencyMs > 1000 ? 75 : 100,
-          latencyMs,
-          checks: [
-            { id: "authenticated-query", label: "Authenticated SQL", ok: true },
-          ],
-        };
-      } catch {
-        return {
-          status: "unavailable",
-          score: 0,
-          checks: [
-            {
-              id: "authenticated-query",
-              label: "Authenticated SQL",
-              ok: false,
-              detail: "Connection or authenticated SQL probe failed.",
-            },
-          ],
-        };
-      }
-    },
+    health: clickhouseHealth,
     resources: catalogResources,
     actions,
     pages,
