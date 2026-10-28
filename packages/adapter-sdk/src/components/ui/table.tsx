@@ -1,6 +1,7 @@
 import { DataTable } from "@northgraindata/dsui-ui";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { isRowActionDisabled, matchesWhen } from "../condition";
 import type { PageNode } from "../nodes";
 import type {
   TableColumn,
@@ -315,23 +316,7 @@ function RowMenuAction({
   );
 }
 
-export function matchesWhen(
-  row: Record<string, unknown>,
-  when: TableRowAction["when"] | TableRowAction["disabledWhen"],
-): boolean {
-  if (!when) return true;
-  const value = row[when.field];
-  if (when.equals !== undefined && value !== when.equals) return false;
-  if (when.notEquals !== undefined && value === when.notEquals) return false;
-  return true;
-}
-
-export function isRowActionDisabled(
-  row: Record<string, unknown>,
-  when: TableRowAction["disabledWhen"],
-): boolean {
-  return when ? matchesWhen(row, when) : false;
-}
+export { isRowActionDisabled, matchesWhen } from "../condition";
 
 export function actionId(
   action: TableRowAction["action"] | TableRowMenuAction["action"],

@@ -1,7 +1,10 @@
 import type { AnyActionDefinition } from "../../action";
 import type { DataSource } from "../../resource";
+import type { ConditionSpec } from "../condition";
 import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
+
+export type TableCondition = ConditionSpec;
 
 export interface TableColumn {
   id: string;
@@ -28,16 +31,8 @@ export interface TableRowAction {
     description: string;
     confirmLabel?: string;
   };
-  when?: {
-    field: string;
-    equals?: string | number | boolean;
-    notEquals?: string | number | boolean;
-  };
-  disabledWhen?: {
-    field: string;
-    equals?: string | number | boolean;
-    notEquals?: string | number | boolean;
-  };
+  when?: TableCondition;
+  disabledWhen?: TableCondition;
 }
 
 export interface TableRowMenuAction {
@@ -51,11 +46,7 @@ export interface TableRowMenuAction {
     description: string;
     confirmLabel?: string;
   };
-  when?: {
-    field: string;
-    equals?: string | number | boolean;
-    notEquals?: string | number | boolean;
-  };
+  when?: TableCondition;
 }
 
 export interface TableFilter {
@@ -82,16 +73,8 @@ export type PageTableRowAction = {
     description: string;
     confirmLabel?: string;
   };
-  when?: {
-    field: string;
-    equals?: string | number | boolean;
-    notEquals?: string | number | boolean;
-  };
-  disabledWhen?: {
-    field: string;
-    equals?: string | number | boolean;
-    notEquals?: string | number | boolean;
-  };
+  when?: TableCondition;
+  disabledWhen?: TableCondition;
 };
 
 export interface TableProps {
