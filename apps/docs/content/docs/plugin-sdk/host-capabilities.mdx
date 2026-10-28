@@ -80,3 +80,32 @@ Declare the minimum host capabilities your plugin needs in its README and releas
 notes. Matching `PLUGIN_API_VERSION` does not guarantee every optional capability
 exists on an older host. Request permissions are enforced by the host; background
 jobs run as trusted installation code, without request identity.
+
+
+## Delegated background work
+
+Background jobs remain trusted installation operations. A plugin accepting work
+on behalf of a user can additionally call
+`context.access.requirePrincipal(principalId, serviceId, permission, action?)`
+before each operation and model turn. This re-resolves the identity through the
+authentication provider and evaluates its current role and team policy. It does
+not set an execution identity or issue credentials. Providers implementing
+`resolvePrincipal(id)` must return current membership and role, or `null` for a
+removed/disabled identity. A provider without this capability fails delegated
+checks safely. With no authentication plugin, only the host's local principal is
+resolvable; this is separate from authentication supplied by a plugin.
+
+`context.access.require(serviceId, permission, { actionId, actionInput })` also
+supports action-specific permission checks. The host forwards this resource
+context automatically for `context.services.executeAction` calls from requests.
+Input validation still belongs to the adapter definition.
+
+## Versioned plugin database migrations
+
+Use `context.storage.migrate(name, migrations)` to apply plugin-owned migrations
+through the host's existing migration service. Each entry has an increasing
+`version`, a `name`, and `up(database)`. The host records applied versions in that
+plugin database and applies pending migrations transactionally. It does not add
+plugin tables to the host database. Call migration initialization before querying
+plugin tables; keep ordinary reads free of schema setup. This optional method
+requires a supporting host; fail explicitly if your plugin depends on it.
