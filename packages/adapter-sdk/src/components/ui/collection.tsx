@@ -1,19 +1,32 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { Surface } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
+import type { CollectionNode } from "../primitives/collection";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
+import { keyedItems } from "./keyed-items";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
 }
 
-export default function Collection({
+export default function Collection(props: RegistryViewProps) {
+  if (props.node.kind !== "collection") return null;
+  return (
+    <CollectionContent
+      {...props}
+      node={{ kind: "collection", props: props.node.props }}
+    />
+  );
+}
+
+function CollectionContent({
   client,
   node,
   renderNode,
   context,
-}: RegistryViewProps) {
-  if (node.kind !== "collection") return null;
+}: RegistryViewProps & {
+  node: CollectionNode;
+}) {
   const [rows, setRows] = useState<readonly Record<string, unknown>[]>();
   const [error, setError] = useState<string>();
   useEffect(() => {
@@ -58,11 +71,11 @@ export default function Collection({
   if (!rows.length) return null;
   return (
     <div className="layout-collection">
-      {rows.map((row, rowIndex) =>
-        nodes(node.props.content).map((child, childIndex) => (
+      {keyedItems(rows).map(({ item: row, key: rowKey }) =>
+        keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
           <div
             className="layout-collection-item"
-            key={`${rowIndex}-${child.kind}-${childIndex}`}
+            key={JSON.stringify([rowKey, key])}
           >
             {renderNode(client, child, row)}
           </div>

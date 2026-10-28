@@ -123,9 +123,7 @@ export const Chart = defineComponent<ChartProps>({
         .object({ value: z.number(), label: z.string().optional() })
         .optional(),
       referenceLines: z
-        .array(
-          z.object({ value: z.number(), label: z.string().optional() }),
-        )
+        .array(z.object({ value: z.number(), label: z.string().optional() }))
         .optional(),
       yRange: z
         .object({

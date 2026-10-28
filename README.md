@@ -1,18 +1,18 @@
-![DSUI — One operational workspace for your stack.](./assets/readme/banner.png)
+![DSUI — The extensible platform for your data stack.](./assets/readme/banner.png)
 
-[Website](https://dsui.northgraindata.com) · [Docs](https://dsui.northgraindata.com/docs) · [GitHub](https://github.com/northgraindata/dsui)
+[Website](https://dsui.northgraindata.com) · [Live Demo](https://dsui.northgraindata.com/demo) · [Documentation](https://dsui.northgraindata.com/docs)
 
-# One operational workspace for your stack.
+# The extensible platform for your data stack.
 
-Connect, explore and operate the data and infrastructure tools you already run.
+Open-source, extensible platform for your data stack. Connect tools, install plugins, and build custom capabilities.
 
 ![CI](https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg)![Release](https://img.shields.io/github/v/release/northgraindata/dsui?include_prereleases)![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)![Container](https://img.shields.io/badge/ghcr.io-dsui-536edb)
 
 ![DSUI workspace overview showing connected data and infrastructure services](./assets/readme/product.png)
 
-## Spend less time setting up tooling
+## Connect tools, install plugins, and build custom capabilities
 
-A data stack can mean a separate interface, container, configuration, and port for every service. DSUI gives the tools you already run one consistent workspace.
+Your tools, your infrastructure, your capabilities. Extend DSUI to fit the way your team works.
 
 ## Get started
 
@@ -40,6 +40,13 @@ runtime, provide it in the image used to run DSUI.
 Configure a DuckDB database in `dsui.yaml`:
 
 ```yaml
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: main
+    path: packages/adapter-duckdb
+
 services:
   - id: warehouse
     adapter: duckdb
@@ -73,24 +80,28 @@ Start the workspace:
 docker compose up -d
 ```
 
-Open [http://localhost:4192](http://localhost:4192). DSUI loads its bundled DuckDB adapter and opens the database file in the persistent `/data` volume. Add your other services to the same `dsui.yaml` and Compose network.
+Open [http://localhost:4192](http://localhost:4192). DSUI downloads and builds the configured DuckDB adapter, then opens the database file in the persistent `/data` volume. Add your other services to the same `dsui.yaml` and Compose network.
 
 ## Adapters
 
-Connect Apache Airflow, dbt, PostgreSQL, Trino, S3-compatible storage such as MinIO, and DuckDB through one workspace.
+Connect Apache Airflow, dbt, PostgreSQL, ClickHouse, S3-compatible storage such as MinIO, and DuckDB through adapters that bring service-specific capabilities into DSUI.
 
-
-|                                                       |                                               |                                                             |                                                       |                                                   |                                                |                                                         |
-| ----------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------- |
-| <img src="./apps/site/public/assets/logos/airflow.svg" width="56" alt="Apache Airflow" /> | <img src="./apps/site/public/assets/logos/dbt.png" width="56" alt="dbt" /> | <img src="./apps/site/public/assets/logos/postgresql.svg" width="56" alt="PostgreSQL" /> | <img src="./apps/site/public/assets/logos/trino.png" width="56" alt="Trino" /> | <img src="./apps/site/public/assets/logos/s3.svg" width="56" alt="Amazon S3" /> | <img src="./apps/site/public/assets/logos/minio.svg" width="56" alt="MinIO" /> | <img src="./apps/site/public/assets/logos/duckdb.svg" width="56" alt="DuckDB" /> |
-
+|                                                       |                                               |                                                             |                                                       |                                                   |                                                |                                                       |
+| ----------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------- |
+| <img src="./apps/site/public/assets/logos/airflow.svg" width="56" alt="Apache Airflow" /> | <img src="./apps/site/public/assets/logos/dbt.png" width="56" alt="dbt" /> | <img src="./apps/site/public/assets/logos/postgresql.svg" width="56" alt="PostgreSQL" /> | <img src="./apps/site/public/assets/logos/s3.svg" width="56" alt="Amazon S3" /> | <img src="./apps/site/public/assets/logos/minio.svg" width="56" alt="MinIO" /> | <img src="./apps/site/public/assets/logos/duckdb.svg" width="56" alt="DuckDB" /> | <img src="./apps/site/public/assets/logos/clickhouse.png" width="56" alt="ClickHouse" /> |
 
 
 
 **Need another tool?**
-The TypeScript [Adapter SDK](https://dsui.northgraindata.com/docs/adapter-sdk) lets you bring internal services and community adapters into the same workspace.
+The TypeScript [Adapter SDK](https://dsui.northgraindata.com/docs/adapter-sdk/overview) lets you build custom integrations for internal services and other tools.
 
-DSUI runs in your environment and keeps its local state in `/data`. It does not need a separate database or control plane. The official container image is published through GitHub Container Registry:
+## Plugins and custom capabilities
+
+Install plugins to extend DSUI beyond connected services. Use the TypeScript [Plugin SDK](https://dsui.northgraindata.com/docs/plugin-sdk/overview) to build custom pages, actions, and workflows tailored to your infrastructure.
+
+## Self-hosted deployment
+
+The official container keeps its local state in `/data`. It does not need a separate database or control plane. The official container image is published through GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/northgraindata/dsui:latest

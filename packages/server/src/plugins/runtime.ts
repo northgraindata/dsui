@@ -586,6 +586,15 @@ export class PluginRuntime {
             throw new Error(
               `Plugin "${request.id}" has invalid page shell "${page.shell}"`,
             );
+          if (
+            page.settings &&
+            (page.public ||
+              page.path?.includes(":") ||
+              page.path?.includes("*"))
+          )
+            throw new Error(
+              `Plugin "${request.id}" settings pages must be private static routes`,
+            );
           uniqueId(seenPages, page, "page", request.id);
         },
         navigation: (item: PluginNavigationItem) =>
@@ -853,13 +862,22 @@ export class PluginRuntime {
     for (const [pluginId, items] of this.contributions) {
       pages.push(
         ...items.pages.map(
-          ({ id, path, title, description, public: isPublic, shell }) => ({
+          ({
+            id,
+            path,
+            title,
+            description,
+            public: isPublic,
+            shell,
+            settings,
+          }) => ({
             id,
             ...(path ? { path } : {}),
             title,
             ...(description ? { description } : {}),
             ...(isPublic ? { public: true } : {}),
             ...(shell && shell !== "app" ? { shell } : {}),
+            ...(settings ? { settings } : {}),
             pluginId,
           }),
         ),

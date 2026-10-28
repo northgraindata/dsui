@@ -1,149 +1,140 @@
 ---
-import AnimatedBeam from "@/components/ui/animated-beam.astro";
+import Workspace from "./why-dsui-workspace.astro";
 
-const tools = [
-  { name: "Airflow", src: "/assets/logos/airflow.svg" },
-  { name: "dbt", src: "/assets/logos/dbt.png" },
-  { name: "PostgreSQL", src: "/assets/logos/postgresql.svg" },
-  { name: "Trino", src: "/assets/logos/trino.png" },
-  { name: "S3", src: "/assets/logos/s3.svg" },
-  { name: "MinIO", src: "/assets/logos/minio.svg" },
-  { name: "DuckDB", src: "/assets/logos/duckdb.svg" },
+const chapters = [
+  {
+    id: "connect",
+    number: "01",
+    title: "Connect what you run.",
+    text: "Bring your databases, pipelines, and storage into one workspace.",
+  },
+  {
+    id: "extend",
+    number: "02",
+    title: "Add what you need.",
+    text: "Install plugins that give your workspace new capabilities.",
+  },
+  {
+    id: "build",
+    number: "03",
+    title: "Make it yours.",
+    text: "Build the capabilities that are specific to your team with our SDKs.",
+  },
 ] as const;
 ---
 
-<section
-  class="relative overflow-hidden bg-canvas pb-28 pt-16 text-foreground sm:pb-40 sm:pt-24"
->
-  <div
-    aria-hidden="true"
-    class="pointer-events-none absolute inset-0 bg-dots bg-[length:24px_24px] opacity-80"
-    style="-webkit-mask-image: var(--ds-dots-mask); mask-image: var(--ds-dots-mask);"
-  >
-  </div>
-
-  <div class="relative z-10 mx-auto max-w-6xl px-6">
-    <div class="mx-auto max-w-4xl text-center">
+<section id="why-dsui" class="why-section px-6 py-24 sm:py-32" aria-labelledby="why-title" data-why-root data-chapter="connect">
+  <div class="why-inner">
+    <div class="max-w-2xl">
       <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">
         WHY DSUI
       </p>
-      <h2
-        class="mt-6 text-balance text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl"
-      >
-        One interface for every service.
+      <h2 id="why-title" class="mt-6 text-balance text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
+        Your stack is only the beginning.
       </h2>
-      <p
-        class="mx-auto mt-7 max-w-2xl text-pretty text-base leading-7 text-copy sm:text-lg"
-      >
-        Replace the extra admin UI attached to every service with one compact,
-        consistent workspace.
+      <p class="mt-6 text-pretty text-base leading-7 text-copy sm:text-lg">
+        The tools you already use. The capabilities you wish you had.
+        One platform to bring them together.
       </p>
     </div>
 
-    <div data-beam-root class="relative my-8">
-      <AnimatedBeam />
-
-      <div
-        class="relative mx-auto grid max-w-5xl gap-10 lg:min-h-80 lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-24"
-      >
-        <div
-          class="mx-auto grid h-80 w-full grid-rows-3 items-center justify-items-start gap-6 lg:mx-0"
-        >
-          {
-            tools.slice(0, 3).map((tool) => (
-              <div
-                data-beam-from
-                class="why-tool relative z-10 flex w-fit items-center gap-4"
-              >
-                <p class="text-sm font-medium tracking-tight text-copy">
-                  {tool.name}
-                </p>
-                <span class="grid size-10 shrink-0 place-items-center rounded-xl border border-foreground/10 bg-surface shadow-integration sm:size-11">
-                  <img
-                    src={tool.src}
-                    alt=""
-                    class="size-5 object-contain sm:size-6"
-                  />
-                </span>
-              </div>
-            ))
-          }
-        </div>
-
-        <div class="flex flex-col items-center text-center">
-          <div
-            class="mb-10 flex items-center gap-3 text-copy-faint lg:hidden"
-            aria-hidden="true"
-          >
-            <span
-              class="h-px w-14 bg-gradient-to-r from-transparent to-brand/50"
-            ></span>
-            <span class="text-brand-muted">↓</span>
-            <span
-              class="h-px w-14 bg-gradient-to-l from-transparent to-brand/50"
-            ></span>
-          </div>
-          <div
-            data-beam-to
-            data-logo-card
-            class="why-dsui-mark group relative isolate z-10 grid size-28 place-items-center rounded-[2rem] bg-surface shadow-action-secondary transition-shadow duration-500 hover:shadow-action-primary sm:size-32"
-          >
-            <span
-              aria-hidden="true"
-              class="logo-border absolute inset-0 rounded-[2rem]"></span>
-            <div
-              aria-hidden="true"
-              class="pointer-events-none absolute -inset-6 -z-10 rounded-full bg-brand/18 opacity-50 blur-2xl"
-            >
-            </div>
-            <img
-              src="/branding/logo-icon.svg"
-              alt=""
-              class="relative size-12 sm:size-14"
-            />
-          </div>
-        </div>
-
-        <div
-          class="mx-auto grid h-80 w-full grid-rows-4 items-center justify-items-end gap-6 lg:mx-0"
-        >
-          {
-            tools.slice(3).map((tool) => (
-              <div
-                data-beam-from
-                class="why-tool relative z-10 flex w-fit items-center gap-4"
-              >
-                <span class="grid size-10 shrink-0 place-items-center rounded-xl border border-foreground/10 bg-surface shadow-integration sm:size-11">
-                  <img
-                    src={tool.src}
-                    alt=""
-                    class="size-5 object-contain sm:size-6"
-                  />
-                </span>
-                <p class="text-sm font-medium tracking-tight text-copy">
-                  {tool.name}
-                </p>
-              </div>
-            ))
-          }
-        </div>
+    <div class="why-story">
+      <div class="why-chapters" role="group" aria-label="Explore DSUI capabilities">
+        {chapters.map((chapter, index) => (
+          <button type="button" class="why-chapter" data-why-chapter={chapter.id} aria-pressed={index === 0 ? "true" : "false"} aria-controls="why-workspace" disabled>
+            <span class="why-chapter-number">{chapter.number}</span>
+            <span class="why-chapter-copy"><span class="why-chapter-title">{chapter.title}</span><span class="why-chapter-text">{chapter.text}</span></span>
+            <span class="why-chapter-arrow" aria-hidden="true">↗</span>
+          </button>
+        ))}
       </div>
+
+      <div class="why-stage"><Workspace /></div>
     </div>
   </div>
 </section>
 
 <script>
-  document.querySelectorAll<HTMLElement>("[data-logo-card]").forEach((card) => {
-    card.addEventListener("pointermove", (event) => {
-      const bounds = card.getBoundingClientRect();
-      card.style.setProperty(
-        "--logo-pointer-x",
-        `${event.clientX - bounds.left}px`,
-      );
-      card.style.setProperty(
-        "--logo-pointer-y",
-        `${event.clientY - bounds.top}px`,
-      );
+  document.querySelectorAll<HTMLElement>("[data-why-root]").forEach((root) => {
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>("[data-why-chapter]")];
+    const layers = [...root.querySelectorAll<HTMLElement>("[data-stack-layer]")];
+    const scene = root.querySelector<HTMLElement>("[data-stack-scene]");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const descriptions = [
+      "DSUI core connected to PostgreSQL, Airflow and S3",
+      "DSUI core with connected tools, DSUI Agent and Service health plugins",
+      "DSUI core with connected tools, plugins and your custom integration",
+    ];
+    let selected = 1;
+    let entered = false;
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    const reveal = (immediate = false) => {
+      timers.forEach(clearTimeout);
+      timers = [];
+      if (scene) {
+        scene.setAttribute("aria-label", descriptions[selected - 1] ?? descriptions[0]);
+        scene.dataset.instant = String(immediate || reducedMotion.matches);
+      }
+      layers.forEach((layer, index) => {
+        const active = index < selected;
+        if (!active || immediate || reducedMotion.matches) {
+          layer.dataset.visible = String(active);
+        } else if (layer.dataset.visible !== "true") {
+          timers.push(setTimeout(() => { layer.dataset.visible = "true"; }, 220 + index * 100));
+        }
+      });
+    };
+    if (!reducedMotion.matches) layers.forEach((layer) => { layer.dataset.visible = "false"; });
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      entered = true;
+      observer.disconnect();
+      reveal();
+    }, { threshold: 0.4 });
+    if (scene) observer.observe(scene);
+    buttons.forEach((button, index) => {
+      button.disabled = false;
+      button.addEventListener("click", (event) => {
+        if (selected === index + 1) return;
+        selected = index + 1;
+        buttons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        root.dataset.chapter = button.dataset.whyChapter;
+        if (entered) reveal(event.detail === 0);
+      });
     });
+    reducedMotion.addEventListener("change", () => { if (reducedMotion.matches) reveal(true); });
   });
 </script>
+
+<style>
+  .why-section { position: relative; overflow: clip; background: var(--ds-color-canvas); color: var(--ds-color-foreground); }
+  .why-inner { max-width: 1152px; margin-inline: auto; }
+  .why-story { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 48px; align-items: center; }
+  .why-chapters { min-width: 0; }
+  .why-chapter { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) 12px; gap: 12px; width: 100%; padding: 24px 0 24px 18px; text-align: left; border: 0; border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); background: transparent; color: var(--ds-color-copy-muted); cursor: pointer; }
+  .why-chapter::before { position: absolute; content: ""; top: 20px; bottom: 20px; left: -1px; width: 2px; background: var(--ds-color-brand-hover); opacity: 0; transition: opacity 180ms ease; }
+  .why-chapter[aria-pressed="true"]::before { opacity: 1; }
+  .why-chapter-number { padding-top: 3px; font: 10px/1.5 ui-monospace, monospace; }
+  .why-chapter-copy { display: grid; gap: 9px; }
+  .why-chapter-title { font-size: 16px; letter-spacing: -.025em; font-weight: 500; }
+  .why-chapter-text { font-size: 12px; line-height: 1.75; color: var(--ds-color-copy-muted); }
+  .why-chapter-arrow { opacity: 0; font-size: 15px; }
+  .why-chapter[aria-pressed="true"] .why-chapter-title { color: var(--ds-color-foreground); }
+  .why-chapter[aria-pressed="true"] .why-chapter-text { color: var(--ds-color-copy-subtle); }
+  .why-chapter[aria-pressed="true"] .why-chapter-number, .why-chapter[aria-pressed="true"] .why-chapter-arrow { opacity: 1; color: var(--ds-color-brand-muted); }
+  .why-chapter:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 4px; border-radius: 3px; }
+  .why-chapter:active .why-chapter-copy { transform: translateY(1px); }
+  .why-stage { position: relative; min-width: 0; }
+  @media (hover: hover) and (pointer: fine) { .why-chapter:hover .why-chapter-title { color: var(--ds-color-foreground); } }
+  @media (max-width: 1000px) { .why-story { grid-template-columns: 220px minmax(0, 1fr); gap: 28px; } }
+  @media (max-width: 760px) {
+    .why-story { display: flex; flex-direction: column; gap: 22px; align-items: stretch; }
+    .why-chapters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .why-chapter { display: flex; flex-direction: column; gap: 10px; padding: 16px 0 0; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 16%, transparent); }
+    .why-chapter::before { left: 0; right: 0; top: -1px; bottom: auto; height: 2px; width: auto; }
+    .why-chapter-title { font-size: 13px; line-height: 1.4; }
+    .why-chapter-text { display: none; }
+    .why-chapter-arrow { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .why-chapter::before { transition: none; } .why-chapter:active .why-chapter-copy { transform: none; } }
+</style>

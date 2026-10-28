@@ -64,6 +64,7 @@ function explorer(
   return {
     source: resource(value.source),
     ...(value.nameField ? { nameField: value.nameField } : {}),
+    ...(value.typeField ? { typeField: value.typeField } : {}),
     ...(value.children ? { children: explorer(value.children) } : {}),
   };
 }
@@ -635,6 +636,7 @@ export function serializeNode(node: PageNode): PageNode {
       return {
         kind: node.kind,
         props: {
+          ...(node.props.field ? { field: node.props.field } : {}),
           ...(node.props.source ? { source: resource(node.props.source) } : {}),
           ...(node.props.format ? { format: node.props.format } : {}),
           ...(node.props.data

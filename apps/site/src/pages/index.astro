@@ -1,6 +1,8 @@
 ---
+import BuildYourOwn from "@/components/build-your-own.astro";
 import Footer from "@/components/footer.astro";
 import HowItWorks from "@/components/how-it-works.astro";
+import PluginEcosystem from "@/components/plugin-ecosystem.astro";
 import StarOnGithub from "@/components/ui/button-github.astro";
 import IntegrationsSection from "@/components/ui/integrations-3.astro";
 import ShaderBackground from "@/components/ui/line-shader-homlu-ui.astro";
@@ -72,7 +74,7 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
           <a
             class="hero-action inline-flex min-h-10 items-center rounded-lg bg-action-primary px-3.5 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover"
             href={gettingStartedUrl}
-            >Get started <span class="ml-2 text-brand-softest" aria-hidden="true"
+            >Get Started <span class="ml-2 text-brand-softest" aria-hidden="true"
               >→</span
             ></a
           >
@@ -91,37 +93,32 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
       </div>
       <div class="relative z-10 w-full max-w-6xl py-32 text-center sm:py-40">
         <div class="mx-auto max-w-4xl">
-          <div class="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-brand-muted/20 bg-brand/8 px-3 py-1.5 text-left text-xs text-copy">
-            <span class="size-1.5 rounded-full bg-warning" aria-hidden="true"></span>
-            Developer Preview · breaking changes and incomplete adapters expected
-          </div>
           <div class="mb-7 flex justify-center"><StarOnGithub /></div>
           <h1
             class="text-balance text-6xl font-semibold tracking-tighter sm:text-8xl"
           >
-            One operational workspace for your stack.
+            The extensible platform for your data stack.
           </h1>
           <p
             class="mx-auto mt-6 max-w-xl text-pretty text-base leading-7 text-copy sm:text-lg"
           >
-            A lightweight, self-hosted interface for the data and infrastructure
-            tools you already run.
+            Connect your tools, install plugins, and build capabilities tailored to your infrastructure.
           </p>
           <div
             class="mx-auto mt-8 flex w-full max-w-md flex-col justify-center gap-3 sm:max-w-none sm:flex-row"
           >
             <a
               class="hero-action inline-flex h-12 w-full items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none sm:w-auto"
-              href={gettingStartedUrl}
-              >Get started <span
+              href="https://dsui.northgraindata.com/demo"
+              >Try Live Demo <span
                 class="hero-action-icon ml-2 text-brand-softest"
                 aria-hidden="true">→</span
               ></a
             >
             <a
               class="hero-action hero-action--external inline-flex h-12 w-full items-center justify-center rounded-xl border border-brand-muted/15 bg-action-secondary px-6 text-sm font-semibold text-copy shadow-action-secondary hover:border-brand-muted/35 hover:shadow-action-secondary-hover focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none sm:w-auto"
-              href={docsBaseUrl}
-              >Explore the docs <span
+              href={gettingStartedUrl}
+              >Get Started <span
                 class="hero-action-icon ml-2 text-brand-muted"
                 aria-hidden="true">↗</span
               ></a
@@ -145,9 +142,13 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
         </figure>
       </div>
     </section>
+    <!-- Trusted by: restore LogoStrip once customer logos are ready. -->
+    <!-- <LogoStrip /> -->
     <WhyDsui />
+    <PluginEcosystem />
     <HowItWorks />
     <IntegrationsSection />
+    <BuildYourOwn />
     <Footer />
   </main>
 </Base>

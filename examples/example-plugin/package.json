@@ -8,7 +8,7 @@
     "./browser": "./src/browser.mjs"
   },
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

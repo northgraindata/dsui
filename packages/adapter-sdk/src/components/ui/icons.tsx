@@ -1,5 +1,9 @@
 export const iconPaths: Record<string, string> = {
   search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
+  filter: "M3 5h18l-7 8v6l-4 2v-8L3 5Z",
+  sort: "m8 8 4-4 4 4m-8 8 4 4 4-4",
+  "sort-up": "M12 20V4m-6 6 6-6 6 6",
+  "sort-down": "M12 4v16m-6-6 6 6 6-6",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   copy: "M8 7H5v14h12v-3M9 3h11v14H9ZM12 3v3h5V3",
   reload: "M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5M4 16a8 8 0 0 0 14 3l3-3m0 5v-5h-5",
@@ -32,6 +36,7 @@ export const iconPaths: Record<string, string> = {
   calendar:
     "M7 3v4m10-4v4M3 10h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z",
   hash: "M10 3 6 21M18 3l-4 18M4 9h17M3 15h17",
+  text: "M4 6h16M4 12h12M4 18h9",
   file: "M5 3h9l5 5v13H5ZM14 3v6h5M9 13h6m-6 4h6",
   chevron: "m9 5 7 7-7 7",
   table:

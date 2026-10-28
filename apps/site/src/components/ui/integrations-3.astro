@@ -36,12 +36,18 @@ const integrations = [
     gradient: "from-adapter-postgres/70 via-brand/25 to-transparent",
     glow: "bg-adapter-postgres-glow/18",
   },
+  {
+    name: "ClickHouse",
+    src: "/assets/logos/clickhouse.png",
+    gradient: "from-brand/70 via-adapter-postgres/25 to-transparent",
+    glow: "bg-brand/18",
+  },
 ] as const;
 
 const rows = [
   integrations.slice(0, 2),
-  integrations.slice(2, 4),
-  integrations.slice(4, 6),
+  integrations.slice(2, 5),
+  integrations.slice(5, 7),
 ];
 
 const docsBaseUrl = import.meta.env.DEV
@@ -87,6 +93,12 @@ const docsBaseUrl = import.meta.env.DEV
       <p class="mt-5 text-pretty text-base leading-7 text-copy sm:text-lg">
         Work with the data services you already run. Each adapter brings service-specific workflows into the same focused DSUI workspace.
       </p>
+      <div class="mt-8 flex items-baseline justify-center gap-3 sm:justify-start" aria-label="9+ adapters">
+        <span class="adapter-count font-semibold tracking-tight text-foreground" aria-hidden="true">
+          <span class="adapter-count-window"><span class="adapter-count-reel" data-adapter-count>{Array.from({ length: 10 }, (_, digit) => <span>{digit}</span>)}</span></span><span>+</span>
+        </span>
+        <span class="text-sm text-copy" aria-hidden="true">adapters for your stack</span>
+      </div>
       <a
         class="hero-action mt-8 inline-flex h-12 items-center justify-center whitespace-nowrap rounded-xl border border-brand-muted/15 bg-action-secondary px-6 text-sm font-semibold text-copy shadow-action-secondary hover:border-brand-muted/35 hover:shadow-action-secondary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
         href={`${docsBaseUrl}/adapters`}
@@ -96,3 +108,31 @@ const docsBaseUrl = import.meta.env.DEV
     </div>
   </div>
 </section>
+
+<style>
+  .adapter-count { display: inline-flex; font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .adapter-count-window { display: inline-block; height: 1em; overflow: hidden; }
+  .adapter-count-reel { display: flex; flex-direction: column; transform: translateY(-90%); }
+  .adapter-count-reel > span { height: 1em; }
+</style>
+
+<script>
+  const counter = document.querySelector<HTMLElement>("[data-adapter-count]");
+  if (counter) {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let animation: Animation | undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      observer.disconnect();
+      if (reducedMotion.matches) return;
+      animation = counter.animate(
+        [{ transform: "translateY(0)" }, { transform: "translateY(-90%)" }],
+        { duration: 1200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
+      );
+    }, { threshold: 0.75 });
+    observer.observe(counter.parentElement ?? counter);
+    reducedMotion.addEventListener("change", () => {
+      if (reducedMotion.matches) animation?.cancel();
+    });
+  }
+</script>

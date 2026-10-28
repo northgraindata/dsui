@@ -1,9 +1,10 @@
 import { cn } from "@northgraindata/dsui-ui";
 import { useState } from "react";
+import { Icon } from "./icon";
 
 /**
  * Service mark: renders the adapter logo supplied by the API, falling
- * back to the adapter id's initials. No per-adapter maps live here —
+ * back to the adapter id's initials or a generic icon. No per-adapter maps live here —
  * branding comes from adapter metadata (`iconUrl`), never from the UI.
  */
 export function ServiceMark({
@@ -11,11 +12,13 @@ export function ServiceMark({
   logo,
   size = 26,
   variant = "contained",
+  fallback = "initials",
 }: {
   adapter: string;
   logo?: string;
   size?: number;
   variant?: "contained" | "bare";
+  fallback?: "initials" | "icon";
 }) {
   const [failedLogo, setFailedLogo] = useState<string>();
   const classes = cn(
@@ -47,7 +50,11 @@ export function ServiceMark({
       className={cn(classes, "font-mono text-[9.5px] font-semibold")}
       style={style}
     >
-      {adapter.slice(0, 2).toUpperCase()}
+      {fallback === "icon" ? (
+        <Icon name="plug" size={Math.max(14, size - 8)} />
+      ) : (
+        adapter.slice(0, 2).toUpperCase()
+      )}
     </span>
   );
 }

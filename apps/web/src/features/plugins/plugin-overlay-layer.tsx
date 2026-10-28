@@ -13,6 +13,11 @@ import {
   useState,
 } from "react";
 import { getPluginSlots } from "../../api";
+import {
+  overlayHref,
+  overlayMatchesRoute,
+  sameOverlayLocation,
+} from "./overlay-navigation";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
@@ -171,17 +176,30 @@ function OverlayDialog({
   contribution,
   close,
   targetRect,
+  missingTarget,
+  visible = true,
 }: {
   active: ActiveOverlay;
   contribution?: PluginSlotResult;
   close: () => void;
   targetRect?: TargetRect;
+  missingTarget?: boolean;
+  visible?: boolean;
 }) {
   const panel = useRef<HTMLElement>(null);
   const previousFocus = useRef<Element | null>(null);
+  useEffect(() => {
+    if (visible) {
+      const target = panel.current?.querySelector<HTMLTextAreaElement>(
+        "textarea:not(:disabled)",
+      );
+      (target ?? panel.current)?.focus({ preventScroll: true });
+    }
+  }, [visible]);
   const presentation = contribution?.presentation;
   const anchored = presentation?.mode === "anchored";
   const drawer = presentation?.mode === "drawer";
+  const agentDrawer = drawer && active.pluginId === "ai-agent";
   const [height, setHeight] = useState(240);
   useLayoutEffect(() => {
     if (!panel.current) return;
@@ -270,6 +288,13 @@ function OverlayDialog({
   if (drawer) style = { width: `min(${presentation.width ?? 520}px, 100vw)` };
   else if (targetRect && presentation)
     style = anchoredStyle(presentation, targetRect, height);
+  else if (anchored)
+    style = {
+      position: "fixed",
+      right: 16,
+      bottom: 16,
+      width: "min(360px, calc(100vw - 32px))",
+    };
   const backdropClass = anchored
     ? "pointer-events-none fixed inset-0 z-[100]"
     : drawer
@@ -284,31 +309,46 @@ function OverlayDialog({
       <section
         ref={panel}
         tabIndex={-1}
-        className={`relative max-h-[min(680px,90vh)] w-full max-w-2xl overflow-auto rounded-xl border border-border-strong bg-surface-raised p-5 shadow-2xl ${anchored ? "pointer-events-auto" : ""} ${drawer ? "h-full max-h-none max-w-none rounded-none border-y-0 border-r-0 p-0" : ""}`}
+        className={
+          drawer
+            ? "relative flex h-full min-h-0 flex-col overflow-hidden border-l border-border-strong bg-surface-raised shadow-2xl [&>div]:min-h-0 [&>div]:flex-1 [&>div]:grid-rows-[minmax(0,1fr)]"
+            : `relative max-h-[min(680px,90vh)] w-full max-w-2xl overflow-auto rounded-xl border border-border-strong bg-surface-raised p-5 shadow-2xl ${anchored ? "pointer-events-auto" : ""}`
+        }
         style={style}
         role="dialog"
         aria-modal={!anchored && !drawer}
         aria-label={label}
       >
-        <header className="mb-4 flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
-            {label}
-          </span>
-          <button
-            type="button"
-            className="text-xs text-secondary hover:text-primary"
-            onClick={close}
-          >
-            Close · Esc
-          </button>
-        </header>
+        {!agentDrawer && (
+          <header className="mb-4 flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
+              {label}
+            </span>
+            <button
+              type="button"
+              className="text-xs text-secondary hover:text-primary"
+              onClick={close}
+            >
+              Close · Esc
+            </button>
+          </header>
+        )}
+        {missingTarget && (
+          <p role="status" className="mb-4 text-sm text-secondary">
+            This page element is unavailable. Check the page for errors. Use the
+            guide controls below or close it to inspect the page.
+          </p>
+        )}
         {contribution ? (
           <PluginErrorBoundary key={`${active.pluginId}/${active.overlayId}`}>
             <DeclarativePageRenderer
               nodes={contribution.nodes}
               client={pluginRendererClient(active.pluginId, (path) =>
                 window.location.assign(
-                  `/plugins/${encodeURIComponent(active.pluginId)}/${path.replace(/^\/+/, "")}`,
+                  overlayHref(
+                    `/plugins/${encodeURIComponent(active.pluginId)}/${path.replace(/^\/+/, "")}`,
+                    import.meta.env.BASE_URL,
+                  ),
                 ),
               )}
             />
@@ -330,18 +370,32 @@ export function PluginOverlayLayer() {
   });
   const [active, setActive] = useState<ActiveOverlay>();
   const requestId = useRef(0);
+  const [closed, setClosed] = useState(false);
+  const opener = useRef<HTMLElement | null>(null);
   const close = useCallback(() => {
     requestId.current += 1;
-    setActive(undefined);
-  }, []);
+    if (active?.contribution?.presentation?.mode === "drawer") {
+      setClosed(true);
+      opener.current?.focus({ preventScroll: true });
+    } else setActive(undefined);
+  }, [active]);
   useEffect(() => {
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<ActiveOverlay>).detail;
       if (!detail?.pluginId || !detail.overlayId) return;
+      if (!active || closed) {
+        opener.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+      }
+      setClosed(false);
       const currentRequest = ++requestId.current;
-      setActive(
-        (current) =>
-          current ?? { pluginId: detail.pluginId, overlayId: detail.overlayId },
+      setActive((current) =>
+        current?.pluginId === detail.pluginId &&
+        current.overlayId === detail.overlayId
+          ? current
+          : { pluginId: detail.pluginId, overlayId: detail.overlayId },
       );
       void getPluginSlots("overlay", [], {
         pluginId: detail.pluginId,
@@ -359,10 +413,20 @@ export function PluginOverlayLayer() {
             contribution.presentation.path
           ) {
             if (
-              `${window.location.pathname}${window.location.search}` !==
-              contribution.presentation.path
+              !sameOverlayLocation(
+                `${window.location.pathname}${window.location.search}${window.location.hash}`,
+                overlayHref(
+                  contribution.presentation.path,
+                  import.meta.env.BASE_URL,
+                ),
+              )
             )
-              router.history.push(contribution.presentation.path);
+              router.history.push(
+                overlayHref(
+                  contribution.presentation.path,
+                  import.meta.env.BASE_URL,
+                ),
+              );
           }
           setActive(contribution ? { ...detail, contribution } : undefined);
         })
@@ -372,7 +436,7 @@ export function PluginOverlayLayer() {
     };
     window.addEventListener(openEvent, onOpen);
     return () => window.removeEventListener(openEvent, onOpen);
-  }, [router]);
+  }, [router, active, closed]);
   useEffect(() => {
     const onClose = (event: Event) => {
       const detail = (event as CustomEvent<{ pluginId?: string }>).detail;
@@ -382,13 +446,13 @@ export function PluginOverlayLayer() {
     return () => window.removeEventListener("dsui:overlay-close", onClose);
   }, [active?.pluginId, close]);
   useEffect(() => {
-    if (!active) return;
+    if (!active || closed) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, close]);
+  }, [active, closed, close]);
 
   const contribution = active?.contribution;
   const presentation = contribution?.presentation;
@@ -425,6 +489,18 @@ export function PluginOverlayLayer() {
   const targetId =
     presentation?.mode === "anchored" ? presentation.target : undefined;
   const targetRect = useOverlayTargetRect(Boolean(active), targetId);
+  const [expiredTarget, setExpiredTarget] = useState<PluginSlotResult>();
+  useEffect(() => {
+    if (!contribution || !targetId || targetRect) return;
+    const timeout = window.setTimeout(
+      () => setExpiredTarget(contribution),
+      8000,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [contribution, targetId, targetRect]);
+  const missingTarget = Boolean(
+    contribution && targetId && !targetRect && expiredTarget === contribution,
+  );
   if (
     !active ||
     contribution?.error ||
@@ -434,10 +510,13 @@ export function PluginOverlayLayer() {
   if (
     presentation?.mode === "anchored" &&
     presentation.path &&
-    pathname !== new URL(presentation.path, window.location.origin).pathname
+    !overlayMatchesRoute(pathname, presentation.path)
   )
     return null;
-  if (!contribution || (presentation?.mode === "anchored" && !targetRect))
+  if (
+    !contribution ||
+    (presentation?.mode === "anchored" && !targetRect && !missingTarget)
+  )
     return (
       <div className="fixed bottom-4 right-4 z-[100] rounded-lg border border-border-strong bg-surface-raised p-4 shadow-xl">
         <p role="status" className="text-sm text-secondary">
@@ -449,12 +528,15 @@ export function PluginOverlayLayer() {
       </div>
     );
   return (
-    <OverlayDialog
-      key={`${active.pluginId}/${active.overlayId}`}
-      active={active}
-      contribution={contribution}
-      close={close}
-      targetRect={targetRect}
-    />
+    <div hidden={closed}>
+      <OverlayDialog
+        key={`${active.pluginId}/${active.overlayId}`}
+        active={active}
+        contribution={contribution}
+        close={close}
+        targetRect={targetRect}
+        missingTarget={missingTarget}
+      />
+    </div>
   );
 }

@@ -1,20 +1,16 @@
-/**
- * Host resource overview.
- *
- * Numbers first, because a reading someone needs right now should not wait for
- * a chart to load, and charts below for the trend. Every reading comes from a
- * declared resource, so the host owns refresh: the page holds no timer and does
- * not fan out a request per metric on every render.
- */
 import {
   Card,
   Chart,
   type ChartWindow,
+  Collection,
+  Columns,
   definePage,
   Grid,
-  PageHeader,
+  KeyValue,
+  Meter,
   type PluginContext,
   type PluginResourceReader,
+  Resource,
   Section,
 } from "@northgraindata/dsui-plugin-sdk";
 import { metric } from "../components/metric.js";
@@ -26,25 +22,18 @@ import {
   hostCpu,
   hostDisk,
   hostMemory,
+  hostRuntime,
   type MemorySample,
 } from "../resources/host.js";
 import { WINDOWS } from "../stores/series.js";
 
-/** The plugin's own config, as the overview page reads it. */
 type MonitoringConfig = {
   paths: { path: string; mount: string }[];
   maxVolumes: number;
 };
-
-/**
- * Windows offered to the chart.
- *
- * Built from the shared list so the chart buttons, the resource validation and
- * the retention policy cannot drift apart.
- */
-const windows: ChartWindow[] = WINDOWS.map((window) => ({
-  label: window.label,
-  secs: window.secs,
+const windows: ChartWindow[] = WINDOWS.map(({ label, secs }) => ({
+  label,
+  secs,
 }));
 
 export const overviewPage = definePage<
@@ -52,121 +41,120 @@ export const overviewPage = definePage<
   PluginContext<MonitoringConfig>
 >({
   path: "/monitoring",
-  render: async ({ context, resource }) => {
-    const volumes = context.config.paths.slice(0, context.config.maxVolumes);
-    return renderOverview({ paths: volumes, resource });
-  },
+  render: async ({ context, resource }) =>
+    renderOverview({
+      paths: context.config.paths.slice(0, context.config.maxVolumes),
+      resource,
+    }),
 });
 
-/**
- * Reads every resource it draws from before building nodes.
- *
- * `resource()` may return a promise — a query that touches the filesystem is
- * async — and the nodes below index straight into the results, so each read is
- * awaited. Casting the promise to the result type instead would put a Promise
- * where the page expects an array and fail at the first `.map`.
- */
 async function renderOverview(input: {
   paths: readonly { path: string; mount: string }[];
   resource: PluginResourceReader;
 }) {
   const cpu = (await input.resource(hostCpu)) as CpuSample;
   const memory = (await input.resource(hostMemory)) as MemorySample;
-  const disks = (await input.resource(hostDisk, {
-    paths: input.paths,
-  })) as readonly DiskSample[];
-
-  const [oneMinute] = cpu.loadAverage;
-  // Load average is only meaningful relative to available parallelism; a busy
-  // single-core container and a busy 64-core host are not the same number.
-  const loadPerCore = cpu.cores === 0 ? 0 : oneMinute / cpu.cores;
-
+  const runtime = (await input.resource(hostRuntime)) as Awaited<
+    ReturnType<typeof hostRuntime.query>
+  >;
+  const disks = input.paths.length
+    ? ((await input.resource(hostDisk, {
+        paths: input.paths,
+      })) as readonly DiskSample[])
+    : [];
+  const busiest = [...disks].sort((a, b) => b.usedPercent - a.usedPercent)[0];
   return [
-    PageHeader({
-      title: "Host resources",
-      description: `Load ${oneMinute.toFixed(2)} · ${formatBytes(memory.usedBytes)} of ${formatBytes(memory.totalBytes)} memory`,
-    }),
-    Section({
-      title: "Now",
-      content: Grid({
-        columns: 3,
-        content: [
-          metric({
-            label: "Load per core",
-            value: loadPerCore.toFixed(2),
-            hint: `${oneMinute.toFixed(2)} over ${cpu.cores} cores`,
-          }),
-          metric({
-            label: "Memory",
-            value: `${memory.usedPercent.toFixed(0)}%`,
-            hint: `${formatBytes(memory.usedBytes)} of ${formatBytes(memory.totalBytes)}`,
-          }),
-          metric({
-            label: "Volumes",
-            value: String(disks.length),
-            hint: disks.length
-              ? disks.map((disk) => disk.mount).join(" · ")
-              : "none sampled",
-          }),
-        ],
-      }),
-    }),
-    disks.length === 0
-      ? statusNote({
-          text: "None of the configured paths could be sampled.",
-        })
-      : Section({
-          title: "Volumes",
-          content: Grid({
-            columns: 2,
-            content: disks.map((disk) =>
-              metric({
-                label: disk.mount,
-                value: formatBytes(disk.totalBytes - disk.freeBytes),
-                hint: `of ${formatBytes(disk.totalBytes)} · ${disk.usedPercent.toFixed(0)}% used`,
-              }),
-            ),
-          }),
+    Resource({
+      source: {
+        kind: "resource-binding",
+        resourceId: "host-overview",
+        input: {},
+        refresh: { kind: "poll", intervalMs: 5_000 },
+      },
+      content: [
+        Grid({
+          content: [
+            metric({
+              icon: "cpu",
+              label: "CPU load",
+              field: "cpu",
+              value: cpu.loadAverage[0].toFixed(2),
+              hint: `1-minute average · ${cpu.cores} logical cores`,
+            }),
+            metric({
+              icon: "layers",
+              label: "Memory used",
+              field: "memory",
+              value: `${memory.usedPercent.toFixed(0)}%`,
+              hint: { field: "memoryHint" },
+            }),
+            metric({
+              icon: "database",
+              label: "Busiest volume",
+              field: "disk",
+              value: busiest ? `${busiest.usedPercent.toFixed(0)}%` : "No data",
+              hint: { field: "diskHint" },
+            }),
+            metric({
+              icon: "activity",
+              label: "DSUI memory",
+              field: "processMemory",
+              value: formatBytes(runtime.processMemoryBytes),
+              hint: "Resident process memory",
+            }),
+          ],
         }),
-    Section({
-      title: "History",
-      content: Grid({
-        columns: 1,
-        content: [
-          Card({
-            title: "CPU load",
-            description: `One-minute load average. Fixed 0–${cpu.cores} core scale.`,
-            content: Chart({
-              source: seriesSource("host-cpu-series"),
-              windows,
-              label: "CPU load average",
-              yRange: { min: 0, max: Math.max(cpu.cores, 1) },
-              referenceLines: Array.from(
-                { length: Math.max(cpu.cores, 1) },
-                (_, index) => ({
-                  value: index + 1,
-                  label: `${index + 1} ${index === 0 ? "CPU" : "CPUs"} busy`,
-                }),
-              ),
-            }),
-          }),
-          Card({
-            title: "Memory used",
-            description: "Percentage of total, so it reads against disk.",
-            content: Chart({
-              source: seriesSource("host-memory-series"),
-              windows,
-              label: "Memory used over time",
-              yRange: { min: 0, max: 100, unit: "%" },
-            }),
-          }),
-        ],
-      }),
+        resourceHistory(cpu),
+        storageSection(disks),
+        KeyValue({ title: "Runtime", field: "runtime" }),
+      ],
     }),
   ];
 }
 
-/** Chart reads bind a resource by id, with the window as input. */
+function storageSection(disks: readonly DiskSample[]) {
+  return Section({
+    title: "Storage",
+    description:
+      "Usage at configured paths. Multiple paths may share a filesystem.",
+    content: Columns({
+      columns: [
+        {
+          weight: 1,
+          content: Card({
+            title: "Disk usage history",
+            description: "Mean usage across readable configured paths.",
+            content: Chart({
+              source: seriesSource("host-disk-series"),
+              windows,
+              label: "Mean disk usage over time",
+              yRange: { min: 0, max: 100, unit: "%" },
+            }),
+          }),
+        },
+        {
+          weight: 1,
+          content: disks.length
+            ? Grid({
+                content: Collection({
+                  field: "volumes",
+                  content: Card({
+                    title: { field: "title" },
+                    description: { field: "description" },
+                    variant: "panel",
+                    content: Meter({ field: "meter" }),
+                  }),
+                }),
+              })
+            : statusNote({
+                text: "No configured paths could be sampled. Check the monitoring paths and filesystem permissions.",
+              }),
+        },
+      ],
+    }),
+  });
+}
+
 function seriesSource(resourceId: string) {
   return {
     kind: "resource-binding" as const,
@@ -177,3 +165,47 @@ function seriesSource(resourceId: string) {
 }
 
 export type { MonitoringConfig, PluginContext };
+
+function resourceHistory(cpu: CpuSample) {
+  return Section({
+    title: "Resource history",
+    description: "Collected in the background, even when this page is closed.",
+    content: Columns({
+      columns: [
+        {
+          weight: 1,
+          content: Card({
+            title: "CPU load",
+            description: "Runnable and waiting tasks, not CPU utilization.",
+            content: Chart({
+              source: seriesSource("host-cpu-series"),
+              windows,
+              label: "CPU load average",
+              yRange: {
+                min: 0,
+                max: Math.max(cpu.cores, Math.ceil(cpu.loadAverage[0]), 1),
+              },
+              referenceLine: {
+                value: cpu.cores,
+                label: `${cpu.cores} logical cores`,
+              },
+            }),
+          }),
+        },
+        {
+          weight: 1,
+          content: Card({
+            title: "Memory usage",
+            description: "Used system memory as a share of total capacity.",
+            content: Chart({
+              source: seriesSource("host-memory-series"),
+              windows,
+              label: "Memory used over time",
+              yRange: { min: 0, max: 100, unit: "%" },
+            }),
+          }),
+        },
+      ],
+    }),
+  });
+}

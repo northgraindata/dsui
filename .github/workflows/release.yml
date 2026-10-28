@@ -52,6 +52,9 @@ jobs:
             exit 1
           fi
 
+      - name: Lint before release verification and packaging
+        run: bun run lint
+
       - name: Test image dependency declarations
         run: bun test packages/server/test/image-dependencies.test.ts
 

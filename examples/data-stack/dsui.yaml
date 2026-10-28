@@ -1,4 +1,7 @@
 adapters:
+  clickhouse:
+    source: local
+    path: /opt/dsui-adapters/clickhouse
   airflow:
     package: "@northgraindata/dsui-adapter-airflow"
   # Local workspace package, loaded in-process through the uniform loader.
@@ -23,3 +26,15 @@ services:
     name: Analytics database
     connection:
       method: memory
+
+  - id: clickhouse
+    adapter: clickhouse
+    name: ClickHouse
+    connection:
+      method: structured
+      host: clickhouse
+      protocol: http
+      port: 8123
+      database: default
+      username: default
+      password: dsui-test

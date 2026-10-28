@@ -1,5 +1,6 @@
 import { statfs } from "node:fs/promises";
 import {
+  type AdapterHealthCheck,
   healthReport,
   reachabilityCheck,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -24,7 +25,7 @@ const MAX_DISK_USAGE = 0.9;
  */
 export async function duckdbHealth(ctx: DuckDbContext) {
   const started = Date.now();
-  const checks = [];
+  const checks: AdapterHealthCheck[] = [];
 
   let version: string | undefined;
   try {

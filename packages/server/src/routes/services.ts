@@ -12,6 +12,9 @@ import type { SignalBus } from "../events/signal-bus.js";
 import type { PluginRuntime } from "../plugins/runtime.js";
 import { errorMessage, httpStatus } from "./errors.js";
 
+// Keep one stalled adapter from holding a service response open.
+const SERVICE_HEALTH_TIMEOUT_MS = 8_000;
+
 export const createServiceSchema = z.object({
   adapter: z.string().min(1),
   name: z.string().min(1).max(120),
@@ -196,6 +199,7 @@ export async function publicService(
   const connection = connectionFor(deps.cipher, source);
   const health = await adapter.backend.checkHealth(connection, {
     persistenceNamespace: source.service.id,
+    timeoutMs: SERVICE_HEALTH_TIMEOUT_MS,
   });
   return {
     id: source.service.id,

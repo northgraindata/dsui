@@ -7,6 +7,7 @@ import {
   PluginSlot,
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
+import { useSettings } from "../features/settings/settings-context";
 import { Icon } from "./icon";
 import { Wordmark } from "./wordmark";
 
@@ -23,6 +24,7 @@ export function AppChrome({
   pathname: string;
   openSearch(): void;
 }) {
+  const { snapshot } = useSettings();
   const profile = usePluginSlotBatch("sidebar.profile");
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
@@ -147,7 +149,8 @@ export function AppChrome({
                 fallback={
                   <Link to="/settings" className="workspace-profile">
                     <span>
-                      My workspace<small>Manage settings</small>
+                      {snapshot?.installation.name ?? "My workspace"}
+                      <small>Manage settings</small>
                     </span>
                     <Icon name="chevron" />
                   </Link>
@@ -161,6 +164,16 @@ export function AppChrome({
           className="app-content"
           data-dsui-overlay-target="app.content"
         >
+          {snapshot?.installation.environment !== "local" &&
+            snapshot?.installation.environment && (
+              <div
+                className="workspace-environment"
+                data-environment={snapshot.installation.environment}
+              >
+                {snapshot.installation.name} ·{" "}
+                {snapshot.installation.environment}
+              </div>
+            )}
           <Outlet />
         </main>
       </div>

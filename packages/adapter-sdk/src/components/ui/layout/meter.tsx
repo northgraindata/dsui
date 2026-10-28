@@ -76,9 +76,11 @@ function asMeter(value: unknown): MeterData | null {
 export function Meter({
   client,
   node,
+  context,
 }: {
   client: ComponentClient;
   node: PageNode;
+  context?: Record<string, unknown>;
 }) {
   const [data, setData] = useState<MeterData | undefined>(() =>
     node.props.data ? (asMeter(node.props.data) ?? undefined) : undefined,
@@ -118,17 +120,26 @@ export function Meter({
         {error}
       </Surface>
     );
-  if (!data)
+  const displayed =
+    typeof node.props.field === "string"
+      ? asMeter(context?.[node.props.field])
+      : data;
+  if (!displayed)
     return (
       <Surface className="p-5 text-[12px] text-secondary" aria-busy="true">
         Loading storage…
       </Surface>
     );
-  const total = data.segments.reduce((sum, segment) => sum + segment.value, 0);
-  const format = data.format ?? "bytes";
+  const total = displayed.segments.reduce(
+    (sum, segment) => sum + segment.value,
+    0,
+  );
+  const format = displayed.format ?? "bytes";
   const formatValue = (value: number) =>
     format === "number" ? formatNumber(value) : formatBytes(value);
-  const legend = data.segments.filter((segment) => segment.legend !== false);
+  const legend = displayed.segments.filter(
+    (segment) => segment.legend !== false,
+  );
   const legendTotal = legend.reduce((sum, segment) => sum + segment.value, 0);
   const header =
     total === legendTotal
@@ -140,7 +151,7 @@ export function Meter({
         <span>{header}</span>
       </div>
       <div className="ov-meter-bar" aria-hidden="true">
-        {data.segments.map((segment) => (
+        {displayed.segments.map((segment) => (
           <span
             key={segment.label}
             className="ov-meter-seg"
@@ -167,7 +178,9 @@ export function Meter({
           </li>
         ))}
       </ul>
-      {data.footer ? <p className="ov-meter-foot">{data.footer}</p> : null}
+      {displayed.footer ? (
+        <p className="ov-meter-foot">{displayed.footer}</p>
+      ) : null}
     </div>
   );
 }

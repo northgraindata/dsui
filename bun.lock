@@ -12,6 +12,7 @@
         "sharp": "^0.35.4",
         "turbo": "^2.7.3",
         "typescript": "^5.9.2",
+        "yaml": "^2.8.2",
       },
     },
     "apps/docs": {
@@ -114,6 +115,16 @@
         "@types/react": "^19.2.0",
       },
     },
+    "packages/adapter-clickhouse": {
+      "name": "@northgraindata/dsui-adapter-clickhouse",
+      "version": "0.1.0",
+      "dependencies": {
+        "@clickhouse/client": "^1.24.1",
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "http-proxy-agent": "^7.0.2",
+        "https-proxy-agent": "^7.0.6",
+      },
+    },
     "packages/adapter-dbt": {
       "name": "@northgraindata/dsui-adapter-dbt",
       "version": "0.1.0",
@@ -169,9 +180,11 @@
       },
       "devDependencies": {
         "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
       },
       "peerDependencies": {
         "react": "^19.0.0",
+        "react-dom": "^19.0.0",
       },
     },
     "packages/adapter-snowflake": {
@@ -277,6 +290,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@northgraindata/dsui-adapter-airflow": "workspace:*",
+        "@northgraindata/dsui-adapter-clickhouse": "workspace:*",
         "@northgraindata/dsui-adapter-dbt": "workspace:*",
         "@northgraindata/dsui-adapter-duckdb": "workspace:*",
         "@northgraindata/dsui-adapter-postgresql": "workspace:*",
@@ -571,6 +585,8 @@
 
     "@clack/prompts": ["@clack/prompts@1.7.0", "", { "dependencies": { "@clack/core": "1.4.3", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-y7/yvZ2TPAnR9+jnc00klvNNLkJiXFFrQA/hlLCcxA9a2A4zQIOimyFQ9XfwYKiGD1fb5GY8vbKIIgO8d5Tb2A=="],
 
+    "@clickhouse/client": ["@clickhouse/client@1.24.1", "", {}, "sha512-1kjKJ4uuD4J9JlRU4CpwEGfecstvtoGreBorhh7CxgB7r7PL54DCLD6gajKZhLCri84XlyD3CUxEm6rYkKC+dA=="],
+
     "@colors/colors": ["@colors/colors@1.6.1", "", {}, "sha512-dTmUJzXSuayBK+hZydEaXd2mhx61qWQwkwaBBY6LyEOVx/L9aQU5ac8eFNEsd9nrD1+zb9zvDCphLSe8g1F4Qw=="],
 
     "@dabh/diagnostics": ["@dabh/diagnostics@2.0.9", "", { "dependencies": { "@so-ric/colorspace": "^1.1.6", "enabled": "2.0.x", "kuler": "^2.0.0" } }, "sha512-R6siwR65Hm+3yfgP7o8DKhNvputQAwfoz9zTc3kyDudnomj2/BcLmD+uGQQPICjuFUp8ounPBU+jmKsocwVVAg=="],
@@ -760,6 +776,8 @@
     "@nodable/entities": ["@nodable/entities@3.1.0", "", {}, "sha512-LsS/DjHr+uDM647Gru/cA8+J3a3HfhttwCKLyuoyN7yXTFCxKBtSgMQBvrW9yNPa2/zDRUNuGPaH5QUFoa4arQ=="],
 
     "@northgraindata/dsui-adapter-airflow": ["@northgraindata/dsui-adapter-airflow@workspace:packages/adapter-airflow"],
+
+    "@northgraindata/dsui-adapter-clickhouse": ["@northgraindata/dsui-adapter-clickhouse@workspace:packages/adapter-clickhouse"],
 
     "@northgraindata/dsui-adapter-dbt": ["@northgraindata/dsui-adapter-dbt@workspace:packages/adapter-dbt"],
 

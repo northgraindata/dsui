@@ -40,7 +40,6 @@ import {
 } from "./context.js";
 import { createDuckDbClient } from "./duckdb-client.js";
 import { duckdbHealth } from "./health.js";
-import { duckdbSignals } from "./signals.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -88,6 +87,7 @@ import {
 } from "./resources/extensions.js";
 import { queryHistory } from "./resources/history.js";
 import { secrets } from "./resources/secrets.js";
+import { duckdbSignals } from "./signals.js";
 import {
   activityFiltersStore,
   dataExplorerStore,
