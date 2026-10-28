@@ -22,6 +22,13 @@ and password. The optional passcode is for Duo MFA; a Google Authenticator code
 cannot be verified through the Snowflake Node.js driver's password passcode
 option.
 
+Optional connection settings: `readOnly` (blocks writes, cancel and warehouse
+changes) and `statementTimeoutSeconds` (default 60).
+
+The Cost & usage page reads `SNOWFLAKE.ACCOUNT_USAGE` and needs
+`GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <role>`. Warehouse
+controls need `OPERATE`/`MODIFY` on the warehouse.
+
 Run
 `bun run --filter @northgraindata/dsui-adapter-snowflake typecheck` and
 `bun run --filter @northgraindata/dsui-adapter-snowflake test` from the

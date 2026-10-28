@@ -4,6 +4,11 @@ All notable changes to DSUI are documented here. The format follows [Keep a Chan
 
 ## [Unreleased]
 
+### Added
+
+- Snowflake adapter pages for query activity (with cancel), warehouse management (suspend, resume, resize, auto suspend and load charts), table details and DDL, and cost and usage from `SNOWFLAKE.ACCOUNT_USAGE`.
+- Snowflake `readOnly` and `statementTimeoutSeconds` connection options.
+
 ### Fixed
 
 - Make the public onboarding path npx-first with a complete local DuckDB quickstart.

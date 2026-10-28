@@ -30,6 +30,7 @@ function pageIcon(path: string) {
       "/files": "file",
       "/activity": "activity",
       "/warehouses": "cpu",
+      "/usage": "layers",
     }[path] ?? "grid"
   );
 }

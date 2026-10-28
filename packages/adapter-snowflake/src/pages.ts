@@ -1,6 +1,8 @@
 import {
   Button,
   Card,
+  CodeBlock,
+  Collection,
   Columns,
   definePage,
   Grid,
@@ -20,6 +22,8 @@ import {
   columns,
   databases,
   previewRows,
+  relationDdl,
+  relationDetails,
   relations,
   schemas,
   serverInfo,
@@ -172,26 +176,6 @@ export const overviewPage = definePage({
   ],
 });
 
-export const warehousesPage = definePage({
-  path: "/warehouses",
-  render: () => [
-    PageHeader({
-      title: "Warehouses",
-      description: "Compute available to the current Snowflake role.",
-    }),
-    Table({
-      source: warehouses(),
-      columns: [
-        { id: "name", label: "Name" },
-        { id: "size", label: "Size" },
-        { id: "state", label: "Status" },
-        { id: "autoSuspend", label: "Auto suspend (s)" },
-      ],
-      searchable: true,
-    }),
-  ],
-});
-
 export const dataPage = definePage({
   path: "/data",
   render: () =>
@@ -301,6 +285,21 @@ export const relationPage = definePage({
                 pageSize: 100,
               }),
             },
+            {
+              label: "Details",
+              content: KeyValue({ source: relationDetails(input) }),
+            },
+            {
+              label: "DDL",
+              content: Collection({
+                source: relationDdl(input),
+                content: CodeBlock({
+                  label: "Create statement",
+                  language: "sql",
+                  value: { field: "ddl" },
+                }),
+              }),
+            },
           ],
         }),
       ],
@@ -321,6 +320,16 @@ export const queryPage = definePage({
       value: query.get("sql") ?? undefined,
       action: runQuery,
       database: { source: warehouses(), label: "Warehouse" },
+      explorer: {
+        source: databases(),
+        children: {
+          source: schemas({ database: "$name" }),
+          children: {
+            source: relations({ database: "$database", schema: "$name" }),
+            typeField: "kind",
+          },
+        },
+      },
     }),
   ],
 });

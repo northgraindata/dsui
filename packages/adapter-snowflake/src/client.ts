@@ -1,5 +1,7 @@
 import snowflake from "snowflake-sdk";
 import type { SnowflakeConfig } from "./context.js";
+import { explainSnowflakeError } from "./errors.js";
+import { createUsageQueries, type UsageQueries } from "./usage.js";
 
 // The adapter host reserves stdout for JSON-RPC; the driver logs there by default.
 snowflake.configure({ logLevel: "OFF" });
@@ -10,6 +12,21 @@ export interface QueryResult {
   columns: string[];
   rows: Record<string, unknown>[];
   rowCount: number;
+}
+
+export interface QueryHistoryEntry {
+  queryId: string;
+  text: string;
+  user: string | null;
+  warehouse: string | null;
+  status: string;
+  startedAt: string | null;
+  elapsed: string;
+  bytesScanned: number | null;
+  rowsProduced: number | null;
+  errorMessage: string | null;
+  /** 1 while Snowflake can still cancel the statement; the Table `when` clause compares numbers. */
+  canCancel: 0 | 1;
 }
 
 export interface Database {
@@ -23,6 +40,38 @@ export interface Warehouse {
   size: string | null;
   state: string | null;
   autoSuspend: number | null;
+  autoResume: boolean | null;
+  running: number | null;
+  queued: number | null;
+  minClusters: number | null;
+  maxClusters: number | null;
+  owner: string | null;
+}
+
+export const WAREHOUSE_SIZES = [
+  "X-Small",
+  "Small",
+  "Medium",
+  "Large",
+  "X-Large",
+  "2X-Large",
+  "3X-Large",
+  "4X-Large",
+  "5X-Large",
+  "6X-Large",
+] as const;
+export type WarehouseSize = (typeof WAREHOUSE_SIZES)[number];
+
+export type WarehouseChange =
+  | { kind: "suspend" }
+  | { kind: "resume" }
+  | { kind: "resize"; size: WarehouseSize }
+  | { kind: "auto-suspend"; seconds: number };
+
+export interface WarehouseLoadSample {
+  time: number;
+  running: number;
+  queued: number;
 }
 
 export interface Schema {
@@ -47,8 +96,44 @@ export interface Column {
   defaultValue: string | null;
 }
 
-export interface SnowflakeClient {
+export interface AccountUsageAccess {
+  available: boolean;
+  reason: string | null;
+}
+
+export interface RelationDetails {
+  kind: string;
+  owner: string | null;
+  rowCount: number | null;
+  bytes: number | null;
+  clusteringKey: string | null;
+  retentionDays: number | null;
+  createdOn: string | null;
+  lastAltered: string | null;
+  comment: string | null;
+}
+
+export interface SnowflakeClient extends UsageQueries {
   serverInfo(): Promise<Record<string, unknown>>;
+  relationDetails(
+    database: string,
+    schema: string,
+    relation: string,
+  ): Promise<RelationDetails | undefined>;
+  relationDdl(
+    database: string,
+    schema: string,
+    relation: string,
+  ): Promise<string>;
+  getWarehouse(name: string): Promise<Warehouse | undefined>;
+  alterWarehouse(name: string, change: WarehouseChange): Promise<void>;
+  /** Average running and queued queries per 5-minute interval, last 24 hours. */
+  warehouseLoad(name: string): Promise<WarehouseLoadSample[]>;
+  listQueryHistory(limit: number): Promise<QueryHistoryEntry[]>;
+  getQuery(queryId: string): Promise<QueryHistoryEntry | undefined>;
+  cancelQuery(queryId: string): Promise<void>;
+  /** Whether the role can read SNOWFLAKE.ACCOUNT_USAGE (needs IMPORTED PRIVILEGES). */
+  accountUsageAccess(): Promise<AccountUsageAccess>;
   listDatabases(): Promise<Database[]>;
   listWarehouses(): Promise<Warehouse[]>;
   listSchemas(database: string): Promise<Schema[]>;
@@ -72,6 +157,81 @@ export interface SnowflakeClient {
   selectWarehouse(warehouse: string): Promise<void>;
   dispose(): Promise<void>;
 }
+
+const CANCELABLE_STATUSES = new Set([
+  "RUNNING",
+  "QUEUED",
+  "RESUMING_WAREHOUSE",
+  "BLOCKED",
+]);
+
+function formatElapsed(ms: number | null): string {
+  if (ms == null || !Number.isFinite(ms)) return "";
+  if (ms < 1_000) return `${Math.round(ms)} ms`;
+  const seconds = ms / 1_000;
+  if (seconds < 60) return `${seconds.toFixed(1)} s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${Math.round(seconds % 60)}s`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function toQueryEntry(row: Record<string, unknown>): QueryHistoryEntry {
+  const status = String(row.status);
+  const elapsedMs = row.elapsedMs == null ? null : Number(row.elapsedMs);
+  const text = (value: unknown) => (value == null ? null : String(value));
+  const count = (value: unknown) => (value == null ? null : Number(value));
+  return {
+    queryId: String(row.queryId),
+    text: String(row.text ?? ""),
+    user: text(row.user),
+    warehouse: text(row.warehouse),
+    status,
+    startedAt: text(row.startedAt),
+    elapsed: formatElapsed(elapsedMs),
+    bytesScanned: count(row.bytesScanned),
+    rowsProduced: count(row.rowsProduced),
+    errorMessage: text(row.errorMessage),
+    canCancel: CANCELABLE_STATUSES.has(status) ? 1 : 0,
+  };
+}
+
+function toWarehouse(row: Record<string, unknown>): Warehouse {
+  const text = (value: unknown) => (value == null ? null : String(value));
+  const count = (value: unknown) => (value == null ? null : Number(value));
+  return {
+    name: String(row.name),
+    size: text(row.size),
+    state: text(row.state),
+    autoSuspend: count(row.auto_suspend),
+    autoResume:
+      row.auto_resume == null ? null : String(row.auto_resume) === "true",
+    running: count(row.running),
+    queued: count(row.queued),
+    minClusters: count(row.min_cluster_count),
+    maxClusters: count(row.max_cluster_count),
+    owner: text(row.owner),
+  };
+}
+
+/** Only validated enum values and integers reach the SQL text. */
+export function warehouseChangeSql(change: WarehouseChange): string {
+  switch (change.kind) {
+    case "suspend":
+      return "SUSPEND";
+    case "resume":
+      return "RESUME IF SUSPENDED";
+    case "resize":
+      if (!WAREHOUSE_SIZES.includes(change.size))
+        throw new Error(`Unknown warehouse size: ${change.size}`);
+      return `SET WAREHOUSE_SIZE = '${change.size}'`;
+    case "auto-suspend":
+      if (!Number.isInteger(change.seconds) || change.seconds < 0)
+        throw new Error("Auto suspend must be a non-negative whole number.");
+      return `SET AUTO_SUSPEND = ${change.seconds}`;
+  }
+}
+
+const QUERY_HISTORY_COLUMNS = `QUERY_ID AS "queryId", QUERY_TEXT AS "text", USER_NAME AS "user", WAREHOUSE_NAME AS "warehouse", EXECUTION_STATUS AS "status", START_TIME AS "startedAt", TOTAL_ELAPSED_TIME AS "elapsedMs", BYTES_SCANNED AS "bytesScanned", ROWS_PRODUCED AS "rowsProduced", ERROR_MESSAGE AS "errorMessage"`;
 
 /** Quote a Snowflake identifier without changing its case or interpreting dots. */
 export function quoteIdentifier(value: string): string {
@@ -109,6 +269,9 @@ export function snowflakeConnectionOptions(config: SnowflakeConfig) {
     schema: config.schema,
     role: config.role,
     application: config.application,
+    sessionParameters: {
+      STATEMENT_TIMEOUT_IN_SECONDS: config.statementTimeoutSeconds,
+    },
     ...("username" in config ? { username: config.username } : {}),
     ...(config.method === "jwt"
       ? {
@@ -218,6 +381,35 @@ export async function createSnowflakeClient(
     return (await execute(sql, maxRows, undefined, binds)).rows;
   }
 
+  const relationDetails: SnowflakeClient["relationDetails"] = async (
+    database,
+    schema,
+    relation,
+  ) => {
+    const [row] = await rows(
+      `SELECT TABLE_TYPE AS "kind", TABLE_OWNER AS "owner", ROW_COUNT AS "rowCount", BYTES AS "bytes", CLUSTERING_KEY AS "clusteringKey", RETENTION_TIME AS "retentionDays", CREATED AS "createdOn", LAST_ALTERED AS "lastAltered", COMMENT AS "comment" FROM ${quoteIdentifier(database)}.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+      1,
+      [schema, relation],
+    );
+    if (!row) return undefined;
+    const text = (value: unknown) => (value == null ? null : String(value));
+    const count = (value: unknown) => (value == null ? null : Number(value));
+    return {
+      kind: String(row.kind),
+      owner: text(row.owner),
+      rowCount: count(row.rowCount),
+      bytes: count(row.bytes),
+      clusteringKey: text(row.clusteringKey),
+      retentionDays: count(row.retentionDays),
+      createdOn: text(row.createdOn),
+      lastAltered: text(row.lastAltered),
+      comment: text(row.comment),
+    };
+  };
+
+  const listWarehouses = async () =>
+    (await rows("SHOW WAREHOUSES")).map(toWarehouse);
+
   return {
     async serverInfo() {
       const [row] = await rows(
@@ -227,6 +419,37 @@ export async function createSnowflakeClient(
       if (!row) throw new Error("Snowflake did not return server information");
       return row;
     },
+    async listQueryHistory(limit) {
+      const resultLimit = Math.min(Math.max(Math.trunc(limit), 1), 10_000);
+      return (
+        await rows(
+          `SELECT ${QUERY_HISTORY_COLUMNS} FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(RESULT_LIMIT => ${resultLimit})) ORDER BY START_TIME DESC`,
+          resultLimit,
+        )
+      ).map(toQueryEntry);
+    },
+    async getQuery(queryId) {
+      const [row] = await rows(
+        `SELECT ${QUERY_HISTORY_COLUMNS} FROM TABLE(INFORMATION_SCHEMA.QUERY_HISTORY(RESULT_LIMIT => 10000)) WHERE QUERY_ID = ?`,
+        1,
+        [queryId],
+      );
+      return row ? toQueryEntry(row) : undefined;
+    },
+    async cancelQuery(queryId) {
+      await rows("SELECT SYSTEM$CANCEL_QUERY(?)", 1, [queryId]);
+    },
+    async accountUsageAccess() {
+      try {
+        await rows(
+          "SELECT 1 FROM SNOWFLAKE.ACCOUNT_USAGE.DATABASES LIMIT 1",
+          1,
+        );
+        return { available: true, reason: null };
+      } catch (error) {
+        return { available: false, reason: explainSnowflakeError(error) };
+      }
+    },
     async listDatabases() {
       return (await rows("SHOW DATABASES")).map((row) => ({
         name: String(row.name),
@@ -234,12 +457,27 @@ export async function createSnowflakeClient(
         createdOn: row.created_on ? String(row.created_on) : null,
       }));
     },
-    async listWarehouses() {
-      return (await rows("SHOW WAREHOUSES")).map((row) => ({
-        name: String(row.name),
-        size: row.size == null ? null : String(row.size),
-        state: row.state == null ? null : String(row.state),
-        autoSuspend: row.auto_suspend == null ? null : Number(row.auto_suspend),
+    listWarehouses,
+    async getWarehouse(name) {
+      return (await listWarehouses()).find((item) => item.name === name);
+    },
+    async alterWarehouse(name, change) {
+      await execute(
+        `ALTER WAREHOUSE ${quoteIdentifier(name)} ${warehouseChangeSql(change)}`,
+        1,
+      );
+    },
+    async warehouseLoad(name) {
+      return (
+        await rows(
+          `SELECT START_TIME AS "time", AVG_RUNNING AS "running", AVG_QUEUED_LOAD AS "queued" FROM TABLE(INFORMATION_SCHEMA.WAREHOUSE_LOAD_HISTORY(DATE_RANGE_START => DATEADD('hour', -24, CURRENT_TIMESTAMP()), WAREHOUSE_NAME => ?)) ORDER BY START_TIME`,
+          10_000,
+          [name],
+        )
+      ).map((row) => ({
+        time: new Date(String(row.time)).getTime(),
+        running: Number(row.running ?? 0),
+        queued: Number(row.queued ?? 0),
       }));
     },
     async selectWarehouse(warehouse) {
@@ -288,6 +526,19 @@ export async function createSnowflakeClient(
           row.defaultValue == null ? null : String(row.defaultValue),
       }));
     },
+    relationDetails,
+    async relationDdl(database, schema, relation) {
+      const details = await relationDetails(database, schema, relation);
+      if (!details) throw new Error(`${schema}.${relation} was not found.`);
+      const name = [database, schema, relation].map(quoteIdentifier).join(".");
+      const objectType = details.kind === "VIEW" ? "VIEW" : "TABLE";
+      const [row] = await rows(`SELECT GET_DDL(?, ?, TRUE) AS "ddl"`, 1, [
+        objectType,
+        name,
+      ]);
+      return String(row?.ddl ?? "");
+    },
+    ...createUsageQueries(rows),
     async preview(database, schema, relation, maxRows) {
       const name = [database, schema, relation].map(quoteIdentifier).join(".");
       return (await execute(`SELECT * FROM ${name} LIMIT ${maxRows}`, maxRows))

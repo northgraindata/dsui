@@ -1,7 +1,7 @@
 import type { PageDocument } from "@northgraindata/dsui-adapter-sdk";
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   executeAction,
   executeResource,
@@ -36,6 +36,8 @@ export function ServiceScreen({
   const [paths, setPaths] = useState<string[]>([]);
   const [page, setPage] = useState<PageDocument>();
   const [error, setError] = useState<string>();
+  // Live resource readers, re-run after an action so changes show without polling.
+  const watchers = useRef(new Set<() => Promise<void>>());
 
   useEffect(() => {
     dispatch({ type: "open", id: serviceId });
@@ -165,10 +167,12 @@ export function ServiceScreen({
             watchResource: (reference, listener) => {
               let active = true;
               let running = false;
+              // Only resources that declare `poll` refresh on a timer; the rest
+              // load once and refresh after an action.
               const refreshMs =
                 reference.refresh?.kind === "poll"
                   ? reference.refresh.intervalMs
-                  : 1000;
+                  : undefined;
               const run = async () => {
                 if (!active || running) return;
                 running = true;
@@ -187,10 +191,17 @@ export function ServiceScreen({
                 }
               };
               void run();
-              const timer = window.setInterval(run, refreshMs);
+              watchers.current.add(run);
+              const timer =
+                refreshMs === undefined
+                  ? undefined
+                  : window.setInterval(() => {
+                      if (!document.hidden) void run();
+                    }, refreshMs);
               return () => {
                 active = false;
-                window.clearInterval(timer);
+                watchers.current.delete(run);
+                if (timer !== undefined) window.clearInterval(timer);
               };
             },
             executeAction: async (reference) => {
@@ -199,6 +210,8 @@ export function ServiceScreen({
                 reference.actionId,
                 reference.input,
               );
+              if (result.status === "success")
+                for (const refresh of watchers.current) void refresh();
               return result.status === "success"
                 ? { status: "success" as const, data: result.data }
                 : { status: "error" as const, message: result.message };

@@ -1,0 +1,50 @@
+---
+title: Snowflake
+description: Browse Snowflake, run SQL, manage warehouses, and track cost and activity.
+---
+
+## Setup
+
+```yaml
+adapters:
+  snowflake:
+    source: local
+    path: packages/adapter-snowflake
+```
+
+Connect with **Key pair authentication (JWT)** (a private key file on the DSUI
+server) or **Password-based authentication**. Both need the account identifier,
+database and login name; schema, warehouse and role are optional.
+
+`readOnly: true` limits the query editor to `SELECT`, `WITH`, `SHOW`, `DESCRIBE`,
+`EXPLAIN`, `LIST` and `USE`, and disables query cancel and every warehouse
+change. `statementTimeoutSeconds` (default 60) sets the session statement
+timeout. Neither option replaces a restricted Snowflake role.
+
+## Available
+
+This adapter is in preview.
+
+- **Overview** with session, warehouses and databases.
+- **Data** explorer for databases, schemas and relations, with preview, columns,
+  details and DDL tabs.
+- **Query** editor with a catalog explorer; pick the warehouse to run on.
+- **Activity** lists recent queries for the current user, refreshed every few
+  seconds, with a detail page and a cancel action for running statements.
+- **Warehouses** with status and size filters, suspend and resume, and a detail
+  page with 24-hour load charts, resize and auto suspend.
+- **Cost & usage** with credits per day and per warehouse, storage per database
+  and the slowest queries of the last seven days.
+
+## Privileges
+
+Activity shows the current user's queries plus others the role may monitor.
+Warehouse changes need `OPERATE` (suspend, resume) or `MODIFY` (resize, auto
+suspend) on the warehouse. Cost & usage reads `SNOWFLAKE.ACCOUNT_USAGE`, which
+lags by up to about three hours and needs:
+
+```sql
+GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE <role>;
+```
+
+Without that grant the usage sections show the Snowflake error instead of data.

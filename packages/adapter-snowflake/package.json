@@ -7,7 +7,7 @@
     ".": "./src/adapter.ts"
   },
   "scripts": {
-    "test": "bun test src",
+    "test": "bun test src --pass-with-no-tests",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

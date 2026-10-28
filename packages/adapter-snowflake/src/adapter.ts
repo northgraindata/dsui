@@ -1,5 +1,14 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
-import { runQuery } from "./actions.js";
+import {
+  cancelQuery,
+  resizeWarehouse,
+  resumeWarehouse,
+  runQuery,
+  setWarehouseAutoSuspend,
+  suspendWarehouse,
+} from "./actions.js";
+import { activityPage, queryDetailPage } from "./activity-page.js";
+import { createTtlCache } from "./cache.js";
 import { createSnowflakeClient } from "./client.js";
 import {
   type SnowflakeConfig,
@@ -16,17 +25,32 @@ import {
   queryPage,
   relationPage,
   schemaPage,
-  warehousesPage,
 } from "./pages.js";
 import {
+  activity,
+  capabilities,
   columns,
+  creditsByDay,
+  creditsByWarehouse,
   databases,
   previewRows,
+  queryDetail,
+  queryText,
+  relationDdl,
+  relationDetails,
   relations,
   schemas,
   serverInfo,
+  slowQueries,
+  storageByDatabase,
+  usageSummary,
+  warehouseDetail,
+  warehouseLoad,
   warehouses,
 } from "./resources.js";
+import { snowflakeSignals } from "./signals.js";
+import { usagePage } from "./usage-page.js";
+import { warehouseDetailPage, warehousesPage } from "./warehouse-pages.js";
 
 export function createSnowflakeAdapter(createClient = createSnowflakeClient) {
   return defineAdapter<SnowflakeContext, SnowflakeConfig>({
@@ -68,8 +92,10 @@ export function createSnowflakeAdapter(createClient = createSnowflakeClient) {
         const clients = new Map<string, Promise<typeof client>>([
           [defaultWarehouse, Promise.resolve(client)],
         ]);
+        const cache = createTtlCache();
         return {
           client,
+          cache,
           config,
           defaultWarehouse,
           getClient(warehouse: string) {
@@ -98,6 +124,7 @@ export function createSnowflakeAdapter(createClient = createSnowflakeClient) {
               ),
             );
             clients.clear();
+            cache.clear();
           },
         };
       } catch (error) {
@@ -110,21 +137,46 @@ export function createSnowflakeAdapter(createClient = createSnowflakeClient) {
     health: snowflakeHealth,
     resources: [
       serverInfo,
+      capabilities,
+      usageSummary,
+      creditsByDay,
+      creditsByWarehouse,
+      storageByDatabase,
+      slowQueries,
+      relationDetails,
+      relationDdl,
+      activity,
+      queryDetail,
+      queryText,
       databases,
       warehouses,
+      warehouseDetail,
+      warehouseLoad,
       schemas,
       relations,
       columns,
       previewRows,
     ],
-    actions: [runQuery],
+    actions: [
+      runQuery,
+      cancelQuery,
+      suspendWarehouse,
+      resumeWarehouse,
+      resizeWarehouse,
+      setWarehouseAutoSuspend,
+    ],
+    signals: snowflakeSignals,
     pages: [
       overviewPage,
       dataPage,
       databasePage,
       schemaPage,
       relationPage,
+      usagePage,
       warehousesPage,
+      warehouseDetailPage,
+      activityPage,
+      queryDetailPage,
       queryPage,
     ],
   });
