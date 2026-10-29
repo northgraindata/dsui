@@ -79,8 +79,10 @@ export interface BuiltAdapter {
   commit?: string;
 }
 
-export const MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
-const MAX_UNPACKED_BYTES = 64 * 1024 * 1024;
+/** Repository download cap, separate from the selected package's size. */
+export const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
+const MAX_TAR_BYTES = 512 * 1024 * 1024;
+export const MAX_PACKAGE_BYTES = 64 * 1024 * 1024;
 export const _SHA = /^[a-f0-9]{40}$/;
 export const repository = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const safeSegment = /^[A-Za-z0-9._-]+$/;
@@ -122,13 +124,17 @@ function tarNumber(block: Uint8Array, start: number, length: number): number {
 export function extractTar(
   archive: Uint8Array,
   repository: string,
+  subdirectory?: string,
 ): Map<string, Uint8Array> {
   const [owner, name] = repository.split("/");
   if (!owner || !name)
     throw new ExternalAdapterError("Invalid GitHub repository");
   const rootPrefixes = [`${name}-`, `${owner}-${name}-`];
-  if (archive.length > MAX_ARCHIVE_BYTES)
-    throw new ExternalAdapterError("Adapter source archive exceeds size limit");
+  if (archive.length > MAX_TAR_BYTES)
+    throw new ExternalAdapterError("Repository archive exceeds size limit");
+  const packagePrefix = subdirectory
+    ? `${assertSafeRelativePath(subdirectory)}/`
+    : undefined;
   const files = new Map<string, Uint8Array>();
   let offset = 0;
   let total = 0;
@@ -154,11 +160,12 @@ export function extractTar(
     if (type === "5") continue;
     const relative = normalized.slice(separator + 1);
     if (!relative) continue;
+    if (packagePrefix && !relative.startsWith(packagePrefix)) continue;
     assertSafeRelativePath(relative);
     total += size;
-    if (total > MAX_UNPACKED_BYTES)
+    if (total > MAX_PACKAGE_BYTES)
       throw new ExternalAdapterError(
-        "Adapter source expands beyond size limit",
+        "Selected package expands beyond size limit",
       );
     if (files.has(relative))
       throw new ExternalAdapterError(
@@ -207,8 +214,13 @@ export async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
     const stream = new Blob([new Uint8Array(bytes)])
       .stream()
       .pipeThrough(new DecompressionStream("gzip"));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+    return await readResponseBytes(
+      new Response(stream),
+      MAX_TAR_BYTES,
+      "Repository archive",
+    );
   } catch (error) {
+    if (error instanceof ExternalAdapterError) throw error;
     throw new ExternalAdapterError(
       "Adapter source archive is not a valid gzip tarball",
       error,
@@ -498,7 +510,11 @@ export async function buildAdapter(
       MAX_ARCHIVE_BYTES,
       "Adapter source",
     );
-    const files = extractTar(await gunzip(archive), location.repository);
+    const files = extractTar(
+      await gunzip(archive),
+      location.repository,
+      location.subdirectory,
+    );
     await writeTree(sourceDir, files, location.subdirectory);
     // A pinned commit is recorded verbatim; a floating ref resolves to the
     // archive actually fetched, which is what the build consumed.

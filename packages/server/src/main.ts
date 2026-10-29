@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { runAdapterHost } from "./adapter-host";
 import { loadAdapter } from "./adapters/loader";
 import { type AdapterLoadEvent, createRuntime, defaultDataDir } from "./app";
+import { connectionCheck } from "./cli/connection-check";
 import { type Outcome, Progress } from "./cli/progress";
 import {
   type AdapterReport,
@@ -212,6 +213,7 @@ export async function run(argv = process.argv.slice(2)): Promise<number> {
     return 0;
   }
   if (command === "doctor") return doctor(args);
+  if (command === "connection-check") return connectionCheck(defaultDataDir());
   if (command === "adapter-host") {
     process.argv = [process.argv[0] ?? "bun", ...args];
     return runAdapterHost();
