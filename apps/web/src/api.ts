@@ -463,6 +463,14 @@ export async function runOperation(
 export async function currentPrincipal() {
   return request<{ id: string; role: string } | null>("/auth/me");
 }
+
+export function authenticationEntry() {
+  return request<
+    | { mode: "none" }
+    | { mode: "unavailable" }
+    | { mode: "plugin"; pluginId: string; pageId?: string }
+  >("/auth/entry");
+}
 export function titleFor(id: string) {
   return (
     (
