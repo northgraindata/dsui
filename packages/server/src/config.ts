@@ -263,7 +263,8 @@ export const gitAdapterSourceSchema = z
     path: z.string().min(1).optional(),
     /**
      * Full commit SHA of a prebuilt artifact. Together with `integrity` this
-     * selects the pinned-bundle path instead of building from source.
+     * selects the pinned-bundle path; without them the adapter is built from
+     * `ref` (or `main`).
      */
     commit: z
       .string()
@@ -281,11 +282,7 @@ export const gitAdapterSourceSchema = z
       .regex(/^\.\/dist\/[A-Za-z0-9._/-]+\.mjs$/)
       .optional(),
   })
-  .strict()
-  .refine((value) => Boolean(value.commit) !== Boolean(value.integrity), {
-    message:
-      "commit and integrity are both required for a pinned prebuilt adapter, or both omitted to build from source",
-  });
+  .strict();
 export type GitAdapterSource = z.infer<typeof gitAdapterSourceSchema>;
 
 /** Per-adapter presentation overrides keyed by adapter id. */
