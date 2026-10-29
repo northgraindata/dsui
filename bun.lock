@@ -125,6 +125,13 @@
         "https-proxy-agent": "^7.0.6",
       },
     },
+    "packages/adapter-dagster": {
+      "name": "@northgraindata/dsui-adapter-dagster",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+      },
+    },
     "packages/adapter-dbt": {
       "name": "@northgraindata/dsui-adapter-dbt",
       "version": "0.1.0",
@@ -283,6 +290,7 @@
       "dependencies": {
         "@northgraindata/dsui-adapter-airflow": "workspace:*",
         "@northgraindata/dsui-adapter-clickhouse": "workspace:*",
+        "@northgraindata/dsui-adapter-dagster": "workspace:*",
         "@northgraindata/dsui-adapter-dbt": "workspace:*",
         "@northgraindata/dsui-adapter-duckdb": "workspace:*",
         "@northgraindata/dsui-adapter-postgresql": "workspace:*",
@@ -722,6 +730,8 @@
     "@northgraindata/dsui-adapter-airflow": ["@northgraindata/dsui-adapter-airflow@workspace:packages/adapter-airflow"],
 
     "@northgraindata/dsui-adapter-clickhouse": ["@northgraindata/dsui-adapter-clickhouse@workspace:packages/adapter-clickhouse"],
+
+    "@northgraindata/dsui-adapter-dagster": ["@northgraindata/dsui-adapter-dagster@workspace:packages/adapter-dagster"],
 
     "@northgraindata/dsui-adapter-dbt": ["@northgraindata/dsui-adapter-dbt@workspace:packages/adapter-dbt"],
 
