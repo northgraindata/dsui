@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "airflow",
+    "dagster",
     "clickhouse",
     "duckdb",
     "dbt",

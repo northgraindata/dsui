@@ -1,0 +1,62 @@
+---
+title: Dagster
+description: Browse and run Dagster jobs from DSUI.
+---
+
+## Setup
+
+Add the local adapter and a service in `dsui.yaml`:
+
+```yaml
+adapters:
+  dagster:
+    source: local
+    path: ../adapter-dagster
+
+services:
+  - id: dagster
+    adapter: dagster
+    name: Dagster
+    connection:
+      method: dagster
+      baseUrl: http://127.0.0.1:3006
+```
+
+The URL points to the Dagster webserver, whose GraphQL endpoint is at
+`/graphql`. If DSUI runs in a container, use an address reachable from that
+container.
+
+## Connection methods
+
+| Method | Use | Required fields |
+| --- | --- | --- |
+| `dagster` | Open source webserver without API authentication | `baseUrl` |
+| `dagster-basic` | Self-hosted webserver behind a Basic-auth proxy | `baseUrl`, `username`, `password` |
+| `dagster-plus` | Dagster+ deployment | `baseUrl`, `apiToken` |
+
+For Dagster+, use the deployment root URL, such as
+`https://my-org.dagster.cloud/prod`, and a Dagster+ **user** token. The adapter
+adds `/graphql` and sends the token in the `Dagster-Cloud-Api-Token` header.
+Authenticated connections require HTTPS except for local loopback URLs.
+
+## Dagster terminology
+
+A **job** is the unit you launch and monitor. An op-based job contains a
+dependency **graph** of **ops**, which forms a DAG. An asset-based job instead
+materializes a selection of assets. Dagster does not have a separate
+Airflow-style DAG object.
+
+## Available
+
+- List jobs from all loaded repositories and code locations
+- Browse assets, their direct upstream and downstream dependencies, and latest materialization
+- Inspect job ops and dependencies
+- View recent runs, status, and execution events
+- Launch jobs and terminate active runs
+
+The adapter currently supports jobs with an empty run configuration. Use the
+Dagster UI for jobs that require configuration, asset materialization,
+schedules, and sensors.
+
+For a local instance with four sample jobs and asset lineage, see the repository's
+`data/dagster-test/README.md`.
