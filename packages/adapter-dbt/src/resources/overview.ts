@@ -4,6 +4,7 @@ import type { DbtContext } from "../context.js";
 export const overview = defineResource({
   id: "overview",
   query: async (_input: undefined, ctx: DbtContext) => {
+    if (ctx.config.method === "push") return { method: "push" };
     if (ctx.config.method === "local")
       return {
         method: "local",

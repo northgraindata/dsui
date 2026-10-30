@@ -28,6 +28,34 @@ connection:
   target: dev
 ```
 
+Connect dbt Core without giving DSUI access to your project.
+Your CI uploads the artifacts after each build, and DSUI reads what it received.
+This is the way to connect dbt Core on a hosted DSUI, where nothing runs next to your project.
+
+```yaml
+connection:
+  method: push
+  pushToken: ${DBT_PUSH_TOKEN}
+```
+
+Choose a secret of at least 24 characters, for example `openssl rand -hex 32`.
+Upload each artifact with one request after `dbt build`.
+Use the address of your DSUI instance and the id of the dbt service:
+
+```bash
+for artifact in manifest catalog run_results sources; do
+  curl --fail --silent --show-error --request PUT \
+    --header "Authorization: Bearer $DBT_PUSH_TOKEN" \
+    --data-binary "@target/$artifact.json" \
+    "$DSUI_URL/adapters/v1/services/$DSUI_SERVICE_ID/artifacts/$artifact.json"
+done
+```
+
+The latest upload of each artifact replaces the previous one.
+Uploading `run_results.json` also raises `dbt.run-failed`, `dbt.run-warning` or `dbt.run-succeeded` for that invocation, once per invocation ID.
+A push service is read-only: it browses what CI sent and does not run dbt.
+Service health reports whether artifacts have arrived.
+
 ### Docker limitation
 
 The official Docker image does not include a dbt runtime. If an adapter requires

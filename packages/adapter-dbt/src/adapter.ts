@@ -6,6 +6,7 @@ import { cancelRun } from "./actions/runs.js";
 import { createContext, dbtConnectionMethods } from "./context.js";
 import { dbtHealth } from "./health.js";
 import { dbtJobs, dbtSignals, dbtStores } from "./jobs.js";
+import { dbtIconUrl } from "./logo.js";
 import { artifactDetailPage, artifactsPage } from "./pages/artifacts.js";
 import { sourcesPage, testsPage } from "./pages/catalog.js";
 import { jobsPage, projectsPage } from "./pages/cloud.js";
@@ -42,6 +43,7 @@ import {
 import { overview } from "./resources/overview.js";
 import { runArtifacts, runDetail, runLogs } from "./resources/run-detail.js";
 import { runs } from "./resources/runs.js";
+import { dbtRoutes } from "./routes.js";
 import { dbtRunStore } from "./stores/runs.js";
 
 export function createDbtAdapter() {
@@ -52,8 +54,7 @@ export function createDbtAdapter() {
       version: "0.1.0",
       author: "DSUI",
       description: "Browse and operate dbt Cloud and local projects.",
-      iconUrl:
-        "https://images.seeklogo.com/logo-png/43/2/dbt-logo-png_seeklogo-431111.png",
+      iconUrl: dbtIconUrl,
     },
     connectionMethods: dbtConnectionMethods,
     context: createContext,
@@ -62,6 +63,7 @@ export function createDbtAdapter() {
     health: dbtHealth,
     jobs: dbtJobs,
     signals: dbtSignals,
+    routes: dbtRoutes,
     stores: [dbtRunStore, ...dbtStores],
     resources: [
       overview,

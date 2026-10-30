@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createMemoryBlobStore } from "@northgraindata/dsui-adapter-sdk";
 import { createContext } from "../src/context";
 import { dbtHealth } from "../src/health";
 import { createDbtLocalClient } from "../src/local";
@@ -13,7 +14,9 @@ test("local artifact context does not run dbt; health still detects a missing ex
     executable: "/missing-dsui-test-dbt",
   });
   expect(ctx.local).toBeDefined();
-  expect((await dbtHealth(ctx)).status).toBe("unavailable");
+  expect(
+    (await dbtHealth(ctx, { blobs: createMemoryBlobStore() })).status,
+  ).toBe("unavailable");
 });
 
 test("successful version probes are cached within a client and aborted probes cannot use the cache", async () => {
