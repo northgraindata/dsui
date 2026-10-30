@@ -167,8 +167,8 @@ export function AgentLauncher({ client }: ComponentProps) {
       <button
         type="button"
         className="da-trigger"
-        title="Open agent · ⌘ J"
-        aria-label="Open DSUI Agent"
+        title="Toggle agent · ⌘ J"
+        aria-label="Toggle DSUI Agent"
         aria-controls="dsui-agent-panel"
         onClick={open}
       >
