@@ -35,7 +35,11 @@ export function ServiceScreen({
   const [services, setServices] = useState<Service[]>([]);
   const [paths, setPaths] = useState<string[]>([]);
   const [page, setPage] = useState<PageDocument>();
-  const [error, setError] = useState<string>();
+  // Without the service there is no workspace chrome to keep, so that error
+  // takes the whole screen; page errors stay inside the workspace content.
+  const [serviceError, setServiceError] = useState<string>();
+  const [pagesError, setPagesError] = useState<string>();
+  const [pageError, setPageError] = useState<string>();
 
   useEffect(() => {
     dispatch({ type: "open", id: serviceId });
@@ -43,18 +47,29 @@ export function ServiceScreen({
 
   useEffect(() => {
     let active = true;
-    Promise.all([getServices(), getServicePages(serviceId)])
-      .then(([all, response]) => {
+    setPagesError(undefined);
+    getServices()
+      .then((all) => {
         if (!active) return;
         setServices(all);
         setService(all.find((candidate) => candidate.id === serviceId));
-        setPaths(response.pages.map((item) => item.path));
       })
       .catch(
         (cause) =>
           active &&
-          setError(
+          setServiceError(
             cause instanceof Error ? cause.message : "Could not load service.",
+          ),
+      );
+    getServicePages(serviceId)
+      .then((response) => {
+        if (active) setPaths(response.pages.map((item) => item.path));
+      })
+      .catch(
+        (cause) =>
+          active &&
+          setPagesError(
+            cause instanceof Error ? cause.message : "Could not load pages.",
           ),
       );
     return () => {
@@ -91,12 +106,13 @@ export function ServiceScreen({
     if (!path) return;
     let active = true;
     setPage(undefined);
+    setPageError(undefined);
     getPage(serviceId, `${path}${pageSearch}`)
       .then((document) => active && setPage(document))
       .catch(
         (cause) =>
           active &&
-          setError(
+          setPageError(
             cause instanceof Error ? cause.message : "Could not load page.",
           ),
       );
@@ -105,12 +121,14 @@ export function ServiceScreen({
     };
   }, [serviceId, path, pageSearch]);
 
-  if (error)
+  if (serviceError)
     return (
       <div className={pageClass}>
-        <UnavailableState detail={error} />
+        <UnavailableState detail={serviceError} />
       </div>
     );
+
+  const contentError = pagesError ?? pageError;
 
   if (!service)
     return (
@@ -139,7 +157,9 @@ export function ServiceScreen({
       }
       onSelectPage={embedded || split ? selectPage : undefined}
     >
-      {page ? (
+      {contentError ? (
+        <UnavailableState detail={contentError} />
+      ) : page ? (
         <DeclarativePageRenderer
           key={`${serviceId}/${path}${pageSearch}`}
           nodes={page.nodes}

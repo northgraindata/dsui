@@ -14,6 +14,11 @@ import {
 } from "react";
 import { getPluginSlots } from "../../api";
 import {
+  DrawerResizeHandle,
+  drawerExitMs,
+  useDrawerWidth,
+} from "./drawer-resize";
+import {
   overlayHref,
   overlayMatchesRoute,
   sameOverlayLocation,
@@ -31,7 +36,6 @@ type TargetRect = Pick<
   "top" | "right" | "bottom" | "left" | "width" | "height"
 >;
 const openEvent = "dsui:overlay-open";
-
 function useOverlayTargetRect(active: boolean, targetId?: string) {
   const [rect, setRect] = useState<TargetRect>();
   const update = useCallback(() => {
@@ -201,6 +205,20 @@ function OverlayDialog({
   const drawer = presentation?.mode === "drawer";
   const agentDrawer = drawer && active.pluginId === "ai-agent";
   const [height, setHeight] = useState(240);
+  const drawerWidth = useDrawerWidth(
+    drawer,
+    `dsui:drawer-width:${active.pluginId}/${active.overlayId}`,
+    drawer ? (presentation.width ?? 520) : 520,
+  );
+  // A docked drawer reserves its width so the workspace shrinks beside it.
+  useLayoutEffect(() => {
+    if (!drawer || !visible) return;
+    const root = document.documentElement;
+    root.style.setProperty("--plugin-drawer-width", `${drawerWidth.width}px`);
+    return () => {
+      root.style.removeProperty("--plugin-drawer-width");
+    };
+  }, [drawer, visible, drawerWidth.width]);
   useLayoutEffect(() => {
     if (!panel.current) return;
     setHeight(panel.current.getBoundingClientRect().height);
@@ -285,7 +303,7 @@ function OverlayDialog({
   }, [anchored, drawer]);
   const label = presentation?.label ?? "Plugin overlay";
   let style: CSSProperties | undefined;
-  if (drawer) style = { width: `min(${presentation.width ?? 520}px, 100vw)` };
+  if (drawer) style = { width: `min(${drawerWidth.width}px, 100vw)` };
   else if (targetRect && presentation)
     style = anchoredStyle(presentation, targetRect, height);
   else if (anchored)
@@ -298,7 +316,7 @@ function OverlayDialog({
   const backdropClass = anchored
     ? "pointer-events-none fixed inset-0 z-[100]"
     : drawer
-      ? "fixed inset-0 z-[100] flex justify-end bg-canvas/35"
+      ? "plugin-drawer fixed inset-y-0 right-0 z-[100] flex"
       : "fixed inset-0 z-[100] grid place-items-center bg-canvas/45 p-4 backdrop-blur-[2px]";
 
   return (
@@ -309,9 +327,10 @@ function OverlayDialog({
       <section
         ref={panel}
         tabIndex={-1}
+        data-closing={drawer && !visible ? "" : undefined}
         className={
           drawer
-            ? "relative flex h-full min-h-0 flex-col overflow-hidden border-l border-border-strong bg-surface-raised shadow-2xl [&>div]:min-h-0 [&>div]:flex-1 [&>div]:grid-rows-[minmax(0,1fr)]"
+            ? "plugin-drawer-panel relative flex h-full min-h-0 flex-col overflow-hidden border-l border-border-strong bg-surface-raised shadow-2xl [&>div]:min-h-0 [&>div]:flex-1 [&>div]:grid-rows-[minmax(0,1fr)]"
             : `relative max-h-[min(680px,90vh)] w-full max-w-2xl overflow-auto rounded-xl border border-border-strong bg-surface-raised p-5 shadow-2xl ${anchored ? "pointer-events-auto" : ""}`
         }
         style={style}
@@ -319,6 +338,7 @@ function OverlayDialog({
         aria-modal={!anchored && !drawer}
         aria-label={label}
       >
+        {drawer && <DrawerResizeHandle {...drawerWidth} />}
         {!agentDrawer && (
           <header className="mb-4 flex items-center justify-between">
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
@@ -371,6 +391,16 @@ export function PluginOverlayLayer() {
   const [active, setActive] = useState<ActiveOverlay>();
   const requestId = useRef(0);
   const [closed, setClosed] = useState(false);
+  // Keep a closed drawer mounted until its slide-out has played.
+  const [exited, setExited] = useState(false);
+  useEffect(() => {
+    if (!closed) {
+      setExited(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setExited(true), drawerExitMs);
+    return () => window.clearTimeout(timer);
+  }, [closed]);
   const opener = useRef<HTMLElement | null>(null);
   const close = useCallback(() => {
     requestId.current += 1;
@@ -383,6 +413,17 @@ export function PluginOverlayLayer() {
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<ActiveOverlay>).detail;
       if (!detail?.pluginId || !detail.overlayId) return;
+      // Re-triggering an open drawer (launcher click, shortcut) toggles it off.
+      if (
+        active &&
+        !closed &&
+        active.pluginId === detail.pluginId &&
+        active.overlayId === detail.overlayId &&
+        active.contribution?.presentation?.mode === "drawer"
+      ) {
+        close();
+        return;
+      }
       if (!active || closed) {
         opener.current =
           document.activeElement instanceof HTMLElement
@@ -436,7 +477,7 @@ export function PluginOverlayLayer() {
     };
     window.addEventListener(openEvent, onOpen);
     return () => window.removeEventListener(openEvent, onOpen);
-  }, [router, active, closed]);
+  }, [router, active, closed, close]);
   useEffect(() => {
     const onClose = (event: Event) => {
       const detail = (event as CustomEvent<{ pluginId?: string }>).detail;
@@ -528,12 +569,13 @@ export function PluginOverlayLayer() {
       </div>
     );
   return (
-    <div hidden={closed}>
+    <div hidden={closed && exited}>
       <OverlayDialog
         key={`${active.pluginId}/${active.overlayId}`}
         active={active}
         contribution={contribution}
         close={close}
+        visible={!closed}
         targetRect={targetRect}
         missingTarget={missingTarget}
       />
