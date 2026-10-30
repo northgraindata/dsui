@@ -18,6 +18,12 @@ import {
   loadConfig,
   toAdapterSourceLocation,
 } from "./config";
+import {
+  countUsage,
+  createTelemetry,
+  readInstall,
+  telemetryEnabled,
+} from "./telemetry";
 import { DSUI_VERSION } from "./version";
 
 const VERSION = DSUI_VERSION;
@@ -52,6 +58,33 @@ function openableUrl(hostname: string, port: number): string {
     hostname === "0.0.0.0" || hostname === "::" ? "localhost" : hostname;
   return `http://${host}:${port}`;
 }
+/** What each telemetry event reports: counts and fixed names, never configured values. */
+function telemetrySnapshotOptions(
+  runtime: ReturnType<typeof createRuntime>,
+  getConfig: () => Awaited<ReturnType<typeof loadConfig>>,
+) {
+  const install = readInstall(runtime.database);
+  return {
+    installId: install.id,
+    version: VERSION,
+    snapshot: () => {
+      const config = getConfig();
+      return {
+        serviceAdapters: [
+          ...config.services.map((service) => service.adapter),
+          ...runtime.database.listUiServices().map((row) => row.adapter),
+        ],
+        pluginPackages: Object.values(config.plugins ?? {}).map((entry) =>
+          "package" in entry ? entry.package : "",
+        ),
+        usage: countUsage(runtime.database),
+        errors: runtime.errors.drain(),
+        installCreatedAt: install.createdAt,
+      };
+    },
+  };
+}
+
 async function serve(): Promise<never> {
   const progress = new Progress();
   const sink = collector();
@@ -65,7 +98,7 @@ async function serve(): Promise<never> {
 
   // A failed adapter is survivable: the registry comes up without it and the
   // operator is told which one, so startup continues and says so.
-  await runtime.refreshConfig();
+  const config = await runtime.refreshConfig();
   progress.finish();
 
   const hostname = process.env.DSUI_HOST ?? "0.0.0.0";
@@ -73,10 +106,15 @@ async function serve(): Promise<never> {
   // server.port is the port actually bound, which differs from the request
   // when DSUI_PORT is 0 and the OS picks one.
   const server = Bun.serve({ fetch: runtime.app.fetch, hostname, port });
+  const telemetry = telemetryEnabled(process.env, config)
+    ? createTelemetry(telemetrySnapshotOptions(runtime, () => config))
+    : undefined;
+  telemetry?.start();
   let stopping = false;
   const shutdown = async () => {
     if (stopping) return;
     stopping = true;
+    telemetry?.stop();
     await server.stop(true);
     await runtime.close();
     process.exit(0);
@@ -93,6 +131,10 @@ async function serve(): Promise<never> {
       adapters: sink.reports(),
     }),
   );
+  if (telemetry)
+    process.stdout.write(
+      "Anonymous usage telemetry is on (version, OS, counts of services by adapter type). Disable with DSUI_TELEMETRY=off or DO_NOT_TRACK=1. Details: https://dsui.northgraindata.com/docs/telemetry\n",
+    );
 
   await new Promise<never>(() => undefined);
   throw new Error("unreachable");

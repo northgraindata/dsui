@@ -4,19 +4,16 @@ import Workspace from "./why-dsui-workspace.astro";
 const chapters = [
   {
     id: "connect",
-    number: "01",
     title: "Connect what you run.",
     text: "Bring your databases, pipelines, and storage into one workspace.",
   },
   {
     id: "extend",
-    number: "02",
     title: "Add what you need.",
     text: "Install plugins that give your workspace new capabilities.",
   },
   {
     id: "build",
-    number: "03",
     title: "Make it yours.",
     text: "Build the capabilities that are specific to your team with our SDKs.",
   },
@@ -26,10 +23,7 @@ const chapters = [
 <section id="why-dsui" class="why-section px-6 py-24 sm:py-32" aria-labelledby="why-title" data-why-root data-chapter="connect">
   <div class="why-inner">
     <div class="max-w-2xl">
-      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">
-        WHY DSUI
-      </p>
-      <h2 id="why-title" class="mt-6 text-balance text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
+      <h2 id="why-title" class="text-balance text-4xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
         Your stack is only the beginning.
       </h2>
       <p class="mt-6 text-pretty text-base leading-7 text-copy sm:text-lg">
@@ -42,7 +36,6 @@ const chapters = [
       <div class="why-chapters" role="group" aria-label="Explore DSUI capabilities">
         {chapters.map((chapter, index) => (
           <button type="button" class="why-chapter" data-why-chapter={chapter.id} aria-pressed={index === 0 ? "true" : "false"} aria-controls="why-workspace" disabled>
-            <span class="why-chapter-number">{chapter.number}</span>
             <span class="why-chapter-copy"><span class="why-chapter-title">{chapter.title}</span><span class="why-chapter-text">{chapter.text}</span></span>
             <span class="why-chapter-arrow" aria-hidden="true">↗</span>
           </button>
@@ -111,17 +104,16 @@ const chapters = [
   .why-inner { max-width: 1152px; margin-inline: auto; }
   .why-story { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 48px; align-items: center; }
   .why-chapters { min-width: 0; }
-  .why-chapter { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) 12px; gap: 12px; width: 100%; padding: 24px 0 24px 18px; text-align: left; border: 0; border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); background: transparent; color: var(--ds-color-copy-muted); cursor: pointer; }
+  .why-chapter { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 12px; gap: 12px; width: 100%; padding: 24px 0 24px 20px; text-align: left; border: 0; border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 14%, transparent); background: transparent; color: var(--ds-color-copy-muted); cursor: pointer; }
   .why-chapter::before { position: absolute; content: ""; top: 20px; bottom: 20px; left: -1px; width: 2px; background: var(--ds-color-brand-hover); opacity: 0; transition: opacity 180ms ease; }
   .why-chapter[aria-pressed="true"]::before { opacity: 1; }
-  .why-chapter-number { padding-top: 3px; font: 10px/1.5 ui-monospace, monospace; }
   .why-chapter-copy { display: grid; gap: 9px; }
-  .why-chapter-title { font-size: 16px; letter-spacing: -.025em; font-weight: 500; }
-  .why-chapter-text { font-size: 12px; line-height: 1.75; color: var(--ds-color-copy-muted); }
+  .why-chapter-title { font-size: 18px; letter-spacing: -.025em; font-weight: 500; }
+  .why-chapter-text { font-size: 14px; line-height: 1.65; color: var(--ds-color-copy-subtle); }
   .why-chapter-arrow { opacity: 0; font-size: 15px; }
   .why-chapter[aria-pressed="true"] .why-chapter-title { color: var(--ds-color-foreground); }
-  .why-chapter[aria-pressed="true"] .why-chapter-text { color: var(--ds-color-copy-subtle); }
-  .why-chapter[aria-pressed="true"] .why-chapter-number, .why-chapter[aria-pressed="true"] .why-chapter-arrow { opacity: 1; color: var(--ds-color-brand-muted); }
+  .why-chapter[aria-pressed="true"] .why-chapter-text { color: var(--ds-color-copy); }
+  .why-chapter[aria-pressed="true"] .why-chapter-arrow { opacity: 1; color: var(--ds-color-brand-muted); }
   .why-chapter:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 4px; border-radius: 3px; }
   .why-chapter:active .why-chapter-copy { transform: translateY(1px); }
   .why-stage { position: relative; min-width: 0; }
@@ -133,7 +125,7 @@ const chapters = [
     .why-chapter { display: flex; flex-direction: column; gap: 10px; padding: 16px 0 0; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 16%, transparent); }
     .why-chapter::before { left: 0; right: 0; top: -1px; bottom: auto; height: 2px; width: auto; }
     .why-chapter-title { font-size: 13px; line-height: 1.4; }
-    .why-chapter-text { display: none; }
+    .why-chapter-text { font-size: 12px; line-height: 1.5; }
     .why-chapter-arrow { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { .why-chapter::before { transition: none; } .why-chapter:active .why-chapter-copy { transform: none; } }

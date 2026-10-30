@@ -387,6 +387,7 @@ export const configSchema = z
       .optional(),
     adapters: z.record(adapterEntrySchema).optional(),
     plugins: z.record(pluginSourceSchema).optional(),
+    telemetry: z.object({ enabled: z.boolean().optional() }).optional(),
   })
   .passthrough();
 

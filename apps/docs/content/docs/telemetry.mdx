@@ -1,0 +1,50 @@
+---
+title: Telemetry
+description: What anonymous usage data a self-hosted DSUI sends, and how to turn it off.
+---
+
+A self-hosted DSUI server sends a small anonymous usage event when it starts and once a day while it runs.
+It helps the maintainers see which versions, platforms and adapters are in use.
+It is on by default, and the server prints a notice at startup saying so.
+
+## What is sent
+
+Every event contains exactly these fields.
+
+| Field | Example | Notes |
+| --- | --- | --- |
+| `event` | `server_started` | Or `server_heartbeat`. |
+| `installId` | random UUID | Generated on first run and stored in your database. It is not derived from your machine. |
+| `version` | `0.1.0` | The DSUI version. |
+| `os`, `arch` | `linux`, `arm64` | |
+| `runtime` | `bun 1.3.12` | |
+| `deployment` | `docker` | `docker`, `managed` (instances run by DSUI Cloud) or `other`. |
+| `serviceCounts` | `{"postgresql": 2, "other": 1}` | Number of services per built-in adapter. Community adapters are counted as `other`. |
+| `pluginCount` | `2` | Number of configured plugins. |
+| `pluginKinds` | `{"health": 1, "other": 1}` | Plugins by first-party name. Any other plugin is counted as `other`. |
+| `usage24h` | `{"actionsExecuted": 3, "pluginProcedures": 0, "servicesCreated": 1}` | How many actions, plugin procedures and service creations happened in the last 24 hours. Counts only. |
+| `installAgeDays` | `12` | Days since the install id was created. |
+| `errors` | `{"action_failed.postgresql": 2}` | How many times an action, a resource read or an adapter load failed since the previous report, by built-in adapter. Only counts: no message, stack trace or id leaves your server. |
+| `ci` | `false` | Whether the `CI` environment variable is set, so throwaway runs can be filtered out. |
+
+## What is never sent
+
+Hostnames, URLs, connection details, credentials, queries, resource names, user names, the installation name, and your IP address.
+Events go to the DSUI cloud API, which drops the IP address before forwarding them to a separate analytics project.
+
+## Turn it off
+
+Any one of these disables telemetry.
+
+```bash
+DSUI_TELEMETRY=off
+DO_NOT_TRACK=1
+```
+
+```yaml
+# dsui.yaml
+telemetry:
+  enabled: false
+```
+
+To send events to your own collector instead, set `DSUI_TELEMETRY_URL`.
