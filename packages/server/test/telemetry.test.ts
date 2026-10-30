@@ -121,6 +121,20 @@ test("plugins are reported by first-party name, everything else as other", () =>
   ).toEqual({ health: 2, other: 2 });
 });
 
+test("pro plugins are reported by name too", () => {
+  expect(
+    countPluginKinds([
+      "@northgraindata/dsui-plugin-auth-pro",
+      "@northgraindata/dsui-plugin-notifications-pro",
+      "@northgraindata/dsui-plugin-ai-diagnostics-pro",
+    ]),
+  ).toEqual({
+    "ai-diagnostics-pro": 1,
+    "auth-pro": 1,
+    "notifications-pro": 1,
+  });
+});
+
 test("usage counts audited actions from the last day under fixed names", () => {
   const database = new DsuiDatabase(":memory:");
   database.audit("local", "action.execute", "svc-1", { secret: "x" });

@@ -37,9 +37,12 @@ const KNOWN_ADAPTERS = [
 /** First-party plugins reported by name; any other package counts as "other". */
 const KNOWN_PLUGINS = [
   "ai-agent",
+  "ai-diagnostics-pro",
+  "auth-pro",
   "code-repository",
   "health",
   "monitoring",
+  "notifications-pro",
 ] as const;
 const PLUGIN_PACKAGE_PREFIX = "@northgraindata/dsui-plugin-";
 
