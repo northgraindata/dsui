@@ -15,7 +15,12 @@ const tiers = [
       href: `${docsBaseUrl}/getting-started/quickstart`,
     },
     description: "For builders who want full control.",
-    features: ["Self-host with npx or Docker", "All built-in adapters and core plugins", "Adapter SDK and Plugin SDK", "Community support"],
+    features: [
+      "Self-host with npx or Docker",
+      "All built-in adapters and core plugins",
+      "Adapter SDK and Plugin SDK",
+      "Community support",
+    ],
     featured: false,
   },
   {
@@ -25,7 +30,13 @@ const tiers = [
     note: "Pro plugins and managed cloud",
     cta: { label: "Talk to us", href: contactUrl },
     description: "For teams ready to hand off the operations.",
-    features: ["Everything in Community", "Managed cloud hosting", "Notifications and AI diagnostics", "AI usage included", "Team access and email support"],
+    features: [
+      "Everything in Community",
+      "Managed cloud hosting",
+      "Notifications and AI diagnostics",
+      "AI usage included",
+      "Team access and email support",
+    ],
     featured: true,
   },
   {
@@ -35,7 +46,12 @@ const tiers = [
     note: "Deployed in your cloud",
     cta: { label: "Talk to us", href: contactUrl },
     description: "For organizations with their own requirements.",
-    features: ["Everything in Cloud", "Deploy into your AWS, Azure or GCP", "Private networking, SSO and audit log", "Dedicated onboarding and support"],
+    features: [
+      "Everything in Cloud",
+      "Deploy into your AWS, Azure or GCP",
+      "Private networking, SSO and audit log",
+      "Dedicated onboarding and support",
+    ],
     featured: false,
   },
 ] as const;
@@ -74,7 +90,11 @@ const groups: readonly Group[] = [
     title: "Plugins",
     rows: [
       { label: "DSUI Agent", values: [true, true, true] },
-      { label: "AI usage included", hint: "DSUI Agent and AI diagnostics", values: [false, true, true] },
+      {
+        label: "AI usage included",
+        hint: "DSUI Agent and AI diagnostics",
+        values: [false, true, true],
+      },
       { label: "Service health", values: [true, true, true] },
       { label: "Monitoring", values: [true, true, true] },
       { label: "Code repository", values: [true, true, true] },
