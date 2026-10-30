@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { Service } from "../api";
 import {
   PluginSlot,
@@ -9,6 +10,7 @@ import { navigablePagePaths } from "../service-pages";
 import { AdapterTabs } from "./adapter-tabs";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
+import { useTopbarTabsSlot } from "./topbar-slot";
 
 function pageLabel(path: string) {
   if (path === "/") return "Overview";
@@ -53,6 +55,7 @@ export function AdapterWorkspace({
   onSelectPage?: (path: string) => void;
 }) {
   const pages = navigablePagePaths(paths);
+  const tabsSlot = useTopbarTabsSlot();
   const pluginSlots = usePluginSlotBatch(
     "service.workspace.after-header",
     service.id,
@@ -75,41 +78,51 @@ export function AdapterWorkspace({
     </Link>
   );
 
+  // The headline introduces the adapter, so it belongs on its overview;
+  // split panes keep the header elsewhere for their page switcher.
+  const showIdentity = !path || path === "/";
+  const showActions = embedded || Boolean(secondary);
   const content = (
     <div className="adapter-main-content">
-      <header
-        className="adapter-heading flex items-center justify-between"
-        data-dsui-overlay-target="service.workspace.header"
-      >
-        <div className="adapter-heading-identity">
-          <ServiceMark
-            adapter={service.adapter}
-            logo={service.logo}
-            size={embedded ? 44 : 64}
-          />
-          <div>
-            <h1>{service.name}</h1>
-            {!embedded && (
-              <p>Explore your data, browse schemas, tables and files.</p>
-            )}
-          </div>
-        </div>
-        {(embedded || secondary) && (
-          <div className="adapter-pane-actions">
-            <select
-              aria-label={`${service.name} page`}
-              value={pages.find(active) ?? pages[0] ?? ""}
-              onChange={(event) => onSelectPage?.(event.target.value)}
-            >
-              {pages.map((item) => (
-                <option key={item} value={item}>
-                  {pageLabel(item)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </header>
+      {(showIdentity || showActions) && (
+        <header
+          className="adapter-heading flex items-center justify-between"
+          data-dsui-overlay-target="service.workspace.header"
+        >
+          {showIdentity ? (
+            <div className="adapter-heading-identity">
+              <ServiceMark
+                adapter={service.adapter}
+                logo={service.logo}
+                size={embedded ? 44 : 64}
+              />
+              <div>
+                <h1>{service.name}</h1>
+                {!embedded && (
+                  <p>Explore your data, browse schemas, tables and files.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <span />
+          )}
+          {showActions && (
+            <div className="adapter-pane-actions">
+              <select
+                aria-label={`${service.name} page`}
+                value={pages.find(active) ?? pages[0] ?? ""}
+                onChange={(event) => onSelectPage?.(event.target.value)}
+              >
+                {pages.map((item) => (
+                  <option key={item} value={item}>
+                    {pageLabel(item)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </header>
+      )}
       <PluginSlot
         serviceId={service.id}
         results={pluginSlots.results}
@@ -155,9 +168,12 @@ export function AdapterWorkspace({
         </aside>
       )}
       <div className="adapter-main">
-        {!embedded && (
-          <AdapterTabs services={services} activeServiceId={service.id} />
-        )}
+        {!embedded &&
+          tabsSlot &&
+          createPortal(
+            <AdapterTabs services={services} activeServiceId={service.id} />,
+            tabsSlot,
+          )}
         {secondary ? (
           <div className="adapter-pane-grid">
             {content}

@@ -1,6 +1,6 @@
 import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 import { Link, Outlet } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getPluginCatalog } from "../api";
 import {
   PluginShellActions,
@@ -9,6 +9,7 @@ import {
 } from "../features/plugins/plugin-slots";
 import { useSettings } from "../features/settings/settings-context";
 import { Icon } from "./icon";
+import { TopbarTabsSlot } from "./topbar-slot";
 import { Wordmark } from "./wordmark";
 
 const destinations = [
@@ -16,6 +17,30 @@ const destinations = [
   { to: "/services", label: "Adapters", icon: "plug" },
   { to: "/settings", label: "Settings", icon: "gear" },
 ];
+
+const SIDEBAR_KEY = "dsui.sidebar.collapsed";
+
+/** Remembers the sidebar's collapsed state per browser. */
+function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const toggle = useCallback(() => {
+    setCollapsed((current) => {
+      try {
+        localStorage.setItem(SIDEBAR_KEY, String(!current));
+      } catch {
+        // Storage can be unavailable; the toggle still works for this visit.
+      }
+      return !current;
+    });
+  }, []);
+  return [collapsed, toggle] as const;
+}
 
 export function AppChrome({
   pathname,
@@ -28,16 +53,11 @@ export function AppChrome({
   const profile = usePluginSlotBatch("sidebar.profile");
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
-  const [topbarHidden, setTopbarHidden] = useState(false);
+  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
+  const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null);
   const [pluginNavigation, setPluginNavigation] = useState<
     PluginCatalog["navigation"]
   >([]);
-  useEffect(() => {
-    const onScroll = () => setTopbarHidden(window.scrollY > 10);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Navigation refreshes the caller profile even when its pathname is not read.
   useEffect(() => {
     let active = true;
@@ -79,6 +99,7 @@ export function AppChrome({
       activeOptions={{ exact: true }}
       to={item.to}
       className="app-nav-link"
+      title={item.label}
       aria-current={
         (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to))
           ? "page"
@@ -90,20 +111,42 @@ export function AppChrome({
     </Link>
   ));
   return (
-    <div className={`app-chrome ${inAdapter ? "app-chrome--adapter" : ""}`}>
+    <div
+      className={`app-chrome ${inAdapter ? "app-chrome--adapter" : ""}`}
+      data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"}
+    >
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <header className={`app-topbar${topbarHidden ? " is-hidden" : ""}`}>
-        <Wordmark />
-        <div className="app-topbar-search">
-          <button type="button" className="app-search" onClick={openSearch}>
-            <Icon name="search" />
-            <span>Search anything…</span>
-            <kbd>⌘ K</kbd>
+      <header className="app-topbar">
+        <div className="app-topbar-brand">
+          <Wordmark />
+          <button
+            type="button"
+            className="app-sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-expanded={!sidebarCollapsed}
+            aria-label={
+              sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Icon name="sidebar" />
           </button>
         </div>
-        <PluginShellActions />
+        <div ref={setTabsSlot} className="app-topbar-tabs" />
+        <div className="app-topbar-actions">
+          <button
+            type="button"
+            className="app-search-button"
+            onClick={openSearch}
+            aria-label="Search"
+            title="Search (⌘K)"
+          >
+            <Icon name="search" size={17} />
+          </button>
+          <PluginShellActions />
+        </div>
       </header>
       <div className="app-body">
         {!inAdapter && (
@@ -117,6 +160,7 @@ export function AppChrome({
                     to="/plugins/$pluginId/$"
                     params={{ pluginId: item.pluginId, _splat: item.pageId }}
                     className="app-nav-link"
+                    title={item.label}
                     aria-current={
                       pathname === `/plugins/${item.pluginId}/${item.pageId}`
                         ? "page"
@@ -174,7 +218,9 @@ export function AppChrome({
                 {snapshot.installation.environment}
               </div>
             )}
-          <Outlet />
+          <TopbarTabsSlot.Provider value={tabsSlot}>
+            <Outlet />
+          </TopbarTabsSlot.Provider>
         </main>
       </div>
     </div>

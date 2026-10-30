@@ -33,7 +33,7 @@ import {
 } from "@northgraindata/dsui-plugin-sdk";
 import zodToJsonSchema from "zod-to-json-schema";
 import { resolveSdkRoot } from "../adapters/sdk.js";
-import { allowed } from "../auth.js";
+import { allowed, LOCAL_PRINCIPAL_ID } from "../auth.js";
 import type { PluginSource } from "../config.js";
 import { withWebBasePath } from "../web-path.js";
 import { buildPlugin, type PluginFetch } from "./build.js";
@@ -514,7 +514,49 @@ export class PluginRuntime {
                   403,
                 );
             },
-            require: async (serviceId, permission) => {
+            requirePrincipal: async (
+              principalId,
+              serviceId,
+              permission,
+              action,
+            ) => {
+              if (this.securityFailure)
+                throw new PluginRequestError(
+                  "Authorization is unavailable",
+                  403,
+                );
+              let principal: PluginPrincipal | null;
+              if (this.authenticationProvider) {
+                if (!this.authenticationProvider.resolvePrincipal)
+                  throw new PluginRequestError(
+                    "Authentication provider does not support delegated identity resolution",
+                    403,
+                  );
+                principal =
+                  await this.authenticationProvider.resolvePrincipal(
+                    principalId,
+                  );
+              } else {
+                principal =
+                  principalId === LOCAL_PRINCIPAL_ID
+                    ? { id: LOCAL_PRINCIPAL_ID, role: "owner" }
+                    : null;
+              }
+              if (
+                !principal ||
+                principal.id !== principalId ||
+                !(await this.authorize(principal, permission, {
+                  type: "service",
+                  id: serviceId,
+                  ...action,
+                }))
+              )
+                throw new PluginRequestError(
+                  "Delegated service permission was revoked",
+                  403,
+                );
+            },
+            require: async (serviceId, permission, action) => {
               if (this.backgroundContext.getStore()) return;
               const principal = this.principalContext.getStore();
               if (
@@ -522,6 +564,7 @@ export class PluginRuntime {
                 !(await this.authorize(principal, permission, {
                   type: "service",
                   id: serviceId,
+                  ...action,
                 }))
               )
                 throw new PluginRequestError(
@@ -1149,12 +1192,17 @@ export class PluginRuntime {
   async requireServiceAccess(
     id: string,
     permission: PluginPermission,
+    action?: Pick<PluginResource, "actionId" | "actionInput">,
   ): Promise<void> {
     if (this.backgroundContext.getStore()) return;
     const principal = this.principalContext.getStore();
     if (
       !principal ||
-      !(await this.authorize(principal, permission, { type: "service", id }))
+      !(await this.authorize(principal, permission, {
+        type: "service",
+        id,
+        ...action,
+      }))
     )
       throw new PluginRequestError("Insufficient service permission", 403);
   }

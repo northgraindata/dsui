@@ -38,6 +38,7 @@ import {
 } from "./routes/services.js";
 import { registerSettingsRoutes } from "./routes/settings";
 import { registerSystemRoutes } from "./routes/system.js";
+import { createErrorCounter } from "./telemetry/errors";
 
 export type Runtime = ReturnType<typeof createRuntime>;
 
@@ -105,6 +106,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     options.configPath ??
     process.env.DSUI_CONFIG ??
     (existsSync("/etc/dsui/dsui.yaml") ? "/etc/dsui/dsui.yaml" : undefined);
+  const errors = createErrorCounter();
   const registry = new AdapterRegistry();
   const readiness = new Map<string, AdapterReadiness>();
   const database = new DsuiDatabase(databasePath);
@@ -247,7 +249,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ) ?? null)
           : null,
       executeAction: async (id, actionId, input, options) => {
-        await pluginRuntime.requireServiceAccess(id, "execute");
+        await pluginRuntime.requireServiceAccess(id, "execute", {
+          actionId,
+          actionInput: input,
+        });
         const result = await executeServiceAction(
           {
             registry,
@@ -539,6 +544,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ms: performance.now() - started,
           });
         } catch (error) {
+          errors.record("adapter_load_failed", id);
           const detail = error instanceof Error ? error.message : "Load failed";
           // Reported through onAdapterLoad rather than logged here: a failed
           // adapter is a startup state the CLI already renders, and printing an
@@ -631,6 +637,28 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
 
   const app = new Hono();
 
+  // Counts failed actions and resource reads by built-in adapter, for
+  // telemetry. A refusal (4xx) is the server working as designed, not a fault.
+  app.use("/api/v1/services/:id/*", async (context, next) => {
+    await next();
+    if (context.res.status < 500) return;
+    const category = context.req.path.includes("/actions/")
+      ? "action_failed"
+      : context.req.path.includes("/resources/")
+        ? "resource_query_failed"
+        : undefined;
+    if (!category) return;
+    errors.record(
+      category,
+      serviceSource(config, database, context.req.param("id"))?.service.adapter,
+    );
+  });
+  app.onError((error, context) => {
+    errors.record("unhandled_error");
+    console.error(error);
+    return context.text("Internal Server Error", 500);
+  });
+
   const serviceDeps = {
     registry,
     pluginRuntime,
@@ -668,6 +696,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
 
   return {
     app,
+    errors,
     database,
     registry,
     pluginRuntime,

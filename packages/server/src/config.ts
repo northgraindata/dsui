@@ -282,7 +282,7 @@ export const gitAdapterSourceSchema = z
       .optional(),
   })
   .strict()
-  .refine((value) => Boolean(value.commit) !== Boolean(value.integrity), {
+  .refine((value) => Boolean(value.commit) === Boolean(value.integrity), {
     message:
       "commit and integrity are both required for a pinned prebuilt adapter, or both omitted to build from source",
   });
@@ -387,6 +387,7 @@ export const configSchema = z
       .optional(),
     adapters: z.record(adapterEntrySchema).optional(),
     plugins: z.record(pluginSourceSchema).optional(),
+    telemetry: z.object({ enabled: z.boolean().optional() }).optional(),
   })
   .passthrough();
 
