@@ -13,7 +13,7 @@ import {
 } from "./build.js";
 import { assertAdapterDefinition } from "./definition.js";
 import type { AdapterFetch } from "./fetch.js";
-import { AdapterHostClient } from "./host.js";
+import { AdapterHostClient, type HostMethod } from "./host.js";
 import { resolveSdkRoot } from "./sdk.js";
 import type {
   AdapterBackend,
@@ -22,6 +22,9 @@ import type {
   JobCatalogEntry,
   LoadedAdapter,
   LoadedConnectionMethod,
+  RouteCall,
+  RouteCatalogEntry,
+  RouteReply,
   SignalCatalogEntry,
 } from "./types.js";
 import { AdapterExecutionError, AdapterLoadError } from "./types.js";
@@ -34,7 +37,7 @@ export interface AdapterLoadOptions {
   /** Subprocess host factory; callers can inject a controlled host. */
   spawnHost?: (bundlePath: string) => {
     request(request: {
-      method: "describe" | "health" | "page" | "resource" | "action" | "job";
+      method: HostMethod;
       connection?: unknown;
       target?: string;
       input?: unknown;
@@ -53,6 +56,8 @@ export interface AdapterLoadOptions {
   persistenceProvider?: (namespace: string) => StorePersistenceProvider;
   /** SQLite path passed to isolated adapter hosts. */
   persistenceDatabasePath?: string;
+  /** Directory under which isolated adapter hosts keep each service's blobs. */
+  persistenceBlobRoot?: string;
   /** Version stamped on the adapter SDK; defaults to the running DSUI. */
   version?: string;
   /** Called as an adapter build moves between phases. */
@@ -200,7 +205,50 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
     ...catalog,
     jobs: Array.isArray(catalog.jobs) ? catalog.jobs : [],
     signals,
+    routes: assertRoutes(catalog.routes, from),
   } as AdapterCatalog;
+}
+
+const ROUTE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+
+function assertRoutes(value: unknown, from: string): RouteCatalogEntry[] {
+  if (value === undefined) return [];
+  const invalid = () =>
+    new AdapterLoadError(`Invalid adapter routes from ${from}`);
+  if (!Array.isArray(value)) throw invalid();
+  return value.map((entry): RouteCatalogEntry => {
+    if (!entry || typeof entry !== "object") throw invalid();
+    const route = entry as Record<string, unknown>;
+    const auth = route.auth;
+    if (
+      typeof route.id !== "string" ||
+      typeof route.path !== "string" ||
+      !route.path.startsWith("/") ||
+      !ROUTE_METHODS.includes(route.method as string) ||
+      (route.permission !== "inspect" && route.permission !== "execute") ||
+      !Number.isInteger(route.maxBodyBytes) ||
+      !Number.isInteger(route.timeoutMs) ||
+      !(
+        auth === "principal" ||
+        (typeof auth === "object" &&
+          auth !== null &&
+          typeof (auth as { token?: unknown }).token === "string")
+      )
+    )
+      throw invalid();
+    return {
+      id: route.id,
+      method: route.method as RouteCatalogEntry["method"],
+      path: route.path,
+      auth:
+        auth === "principal"
+          ? "principal"
+          : { token: (auth as { token: string }).token },
+      permission: route.permission,
+      maxBodyBytes: route.maxBodyBytes as number,
+      timeoutMs: route.timeoutMs as number,
+    };
+  });
 }
 
 function assertHealthStatus(value: unknown, from: string): HealthStatus {
@@ -210,7 +258,7 @@ function assertHealthStatus(value: unknown, from: string): HealthStatus {
 }
 
 type RemoteHostRequest = {
-  method: "describe" | "health" | "page" | "resource" | "action" | "job";
+  method: HostMethod;
   connection?: unknown;
   target?: string;
   input?: unknown;
@@ -476,6 +524,69 @@ export class RemoteBackend implements AdapterBackend {
       };
     });
   }
+
+  async executeRoute(
+    routeId: string,
+    connection: unknown,
+    call: RouteCall,
+    options: { signal: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<RouteReply> {
+    const result = (await this.request({
+      method: "route",
+      connection,
+      target: routeId,
+      input: call,
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      persistenceNamespace: context?.persistenceNamespace,
+    })) as Partial<{
+      status: unknown;
+      headers: unknown;
+      body: unknown;
+      emissions: unknown;
+    }> | null;
+    const headers = result?.headers;
+    if (
+      !result ||
+      !Number.isInteger(result.status) ||
+      !headers ||
+      typeof headers !== "object" ||
+      Object.values(headers).some((value) => typeof value !== "string") ||
+      (result.body !== undefined && typeof result.body !== "string") ||
+      !Array.isArray(result.emissions)
+    )
+      throw new AdapterExecutionError(
+        "Adapter host returned an invalid route reply",
+      );
+    return {
+      status: result.status as number,
+      headers: headers as Record<string, string>,
+      ...(typeof result.body === "string"
+        ? { body: new Uint8Array(Buffer.from(result.body, "base64")) }
+        : {}),
+      emissions: result.emissions.map((entry) => {
+        const emission = entry as Record<string, unknown> | null;
+        if (
+          !emission ||
+          typeof emission.signalId !== "string" ||
+          !("payload" in emission) ||
+          (emission.idempotencyKey !== undefined &&
+            typeof emission.idempotencyKey !== "string")
+        )
+          throw new AdapterExecutionError(
+            "Adapter host returned an invalid signal",
+          );
+        return {
+          signalId: emission.signalId,
+          payload: emission.payload,
+          ...(typeof emission.idempotencyKey === "string"
+            ? { idempotencyKey: emission.idempotencyKey }
+            : {}),
+        };
+      }),
+    };
+  }
 }
 
 /**
@@ -490,6 +601,7 @@ export class RemoteBackend implements AdapterBackend {
 export function defaultHostCommand(
   bundlePath: string,
   databasePath?: string,
+  blobRoot?: string,
 ): {
   command: string;
   args: string[];
@@ -499,6 +611,7 @@ export function defaultHostCommand(
     "--bundle",
     bundlePath,
     ...(databasePath ? ["--database", databasePath] : []),
+    ...(blobRoot ? ["--blobs", blobRoot] : []),
   ];
   for (const candidate of [
     fileURLToPath(new URL("../adapter-host.ts", import.meta.url)),
@@ -566,6 +679,7 @@ export async function loadAdapter(
       const { command, args } = defaultHostCommand(
         bundlePath,
         options.persistenceDatabasePath,
+        options.persistenceBlobRoot,
       );
       return new AdapterHostClient({
         command,
@@ -590,6 +704,7 @@ export async function loadAdapter(
     components?: AdapterCatalog["components"];
     jobs?: JobCatalogEntry[];
     signals?: SignalCatalogEntry[];
+    routes?: unknown;
   };
   const catalog = assertCatalog(described, built.bundlePath);
   const metadata = described.metadata;
@@ -608,6 +723,7 @@ export async function loadAdapter(
       components: built.components ?? [],
       jobs: catalog.jobs,
       signals: catalog.signals,
+      routes: catalog.routes,
     },
     ...(described.connectionSchema
       ? { connectionSchema: described.connectionSchema }

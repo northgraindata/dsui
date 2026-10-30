@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { BlobStore } from "../blob";
 import type { SignalEmission } from "../job";
 import type { AnyResourceDefinition } from "../resource/types";
 import type { AnySignalDefinition } from "../signal";
@@ -129,6 +130,8 @@ export interface ActionRuntimeContext {
   readonly signal?: AbortSignal;
   /** Access to adapter-scoped stores for durable action-backed mutations. */
   readonly stores: StoreActionAccessor;
+  /** Binary storage private to this service. */
+  readonly blobs: BlobStore;
   /** Emits a declared adapter signal from this action execution. */
   readonly emit: <TSignal extends AnySignalDefinition>(
     definition: TSignal,

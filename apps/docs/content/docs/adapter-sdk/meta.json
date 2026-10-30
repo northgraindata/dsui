@@ -6,6 +6,7 @@
     "resources",
     "actions",
     "jobs",
+    "routes",
     "signals",
     "pages",
     "stores",

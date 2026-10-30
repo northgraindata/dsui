@@ -6,7 +6,8 @@ export type HostMethod =
   | "page"
   | "resource"
   | "action"
-  | "job";
+  | "job"
+  | "route";
 
 export interface AdapterHostRequest {
   id?: string | number;
@@ -232,7 +233,8 @@ export class AdapterHostClient {
       !namespace ||
       request.method === "describe" ||
       request.method === "action" ||
-      request.method === "job"
+      request.method === "job" ||
+      request.method === "route"
     )
       return this.ephemeral(request);
     let slot = this.slots.get(namespace);
