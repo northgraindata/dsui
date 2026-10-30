@@ -53,18 +53,11 @@ export function AppChrome({
   const profile = usePluginSlotBatch("sidebar.profile");
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
-  const [topbarHidden, setTopbarHidden] = useState(false);
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null);
   const [pluginNavigation, setPluginNavigation] = useState<
     PluginCatalog["navigation"]
   >([]);
-  useEffect(() => {
-    const onScroll = () => setTopbarHidden(window.scrollY > 10);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Navigation refreshes the caller profile even when its pathname is not read.
   useEffect(() => {
     let active = true;
@@ -125,7 +118,7 @@ export function AppChrome({
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <header className={`app-topbar${topbarHidden ? " is-hidden" : ""}`}>
+      <header className="app-topbar">
         <div className="app-topbar-brand">
           <Wordmark />
           <button
