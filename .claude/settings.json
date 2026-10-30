@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "posthog@anthropic-plugin-directory": true
+  }
+}
