@@ -1,5 +1,13 @@
 import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
-import { launchJob, terminateRun } from "./actions.js";
+import {
+  launchJob,
+  materializeAsset,
+  startSchedule,
+  startSensor,
+  stopSchedule,
+  stopSensor,
+  terminateRun,
+} from "./actions.js";
 import { createDagsterClient } from "./client.js";
 import {
   type DagsterConfig,
@@ -12,25 +20,37 @@ import { dagsterIconUrl } from "./logo.js";
 import {
   assetPage,
   assetsPage,
+  automationPage,
   jobPage,
   jobsPage,
+  lineagePage,
   overviewPage,
   runPage,
   runsPage,
 } from "./pages.js";
 import {
+  assetChecks,
   assetDetails,
   assetDownstream,
+  assetGraph,
+  assetHistory,
+  assetJobs,
+  assetLineage,
   assets,
   assetUpstream,
+  jobAssets,
   jobDetails,
+  jobGraph,
   jobRuns,
-  jobSteps,
   jobs,
   overview,
+  runAssets,
   runDetails,
+  runGraph,
   runLogs,
   runs,
+  schedules,
+  sensors,
 } from "./resources.js";
 
 export const dagsterAdapter = defineAdapter({
@@ -40,7 +60,8 @@ export const dagsterAdapter = defineAdapter({
     version: "0.1.0",
     author: "DSUI",
     iconUrl: dagsterIconUrl,
-    description: "Browse Dagster assets, lineage, jobs, and runs.",
+    description:
+      "Browse Dagster asset lineage, checks, jobs, automation, and runs.",
   },
   connectionMethods: {
     dagster: {
@@ -70,25 +91,45 @@ export const dagsterAdapter = defineAdapter({
   health: dagsterHealth,
   resources: [
     assets,
+    assetGraph,
     assetDetails,
+    assetLineage,
     assetUpstream,
     assetDownstream,
+    assetChecks,
+    assetHistory,
+    assetJobs,
     overview,
     jobs,
     jobDetails,
-    jobSteps,
+    jobGraph,
+    jobAssets,
     runs,
     jobRuns,
     runDetails,
+    runGraph,
+    runAssets,
     runLogs,
+    schedules,
+    sensors,
   ],
-  actions: [launchJob, terminateRun],
+  actions: [
+    launchJob,
+    materializeAsset,
+    terminateRun,
+    startSchedule,
+    stopSchedule,
+    startSensor,
+    stopSensor,
+  ],
   pages: [
     overviewPage,
+    lineagePage,
     assetsPage,
     assetPage,
     jobsPage,
     jobPage,
+    automationPage,
     runsPage,
     runPage,
   ],

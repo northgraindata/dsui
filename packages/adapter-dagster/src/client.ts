@@ -5,15 +5,24 @@ import type {
   DagsterConfig,
   DagsterEvent,
   DagsterJob,
+  DagsterMaterialization,
+  DagsterOp,
+  DagsterRepository,
   DagsterRun,
-  DagsterStep,
+  DagsterRunDetail,
+  DagsterSchedule,
+  DagsterSensor,
 } from "./context.js";
 
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+/** Dagster's implicit job that can materialize any asset selection. */
+const IMPLICIT_ASSET_JOB = "__ASSET_JOB";
+
 const errorSchema = z.object({ message: z.string() });
 const jobSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
+  isAssetJob: z.boolean(),
 });
 const repositorySchema = z.object({
   name: z.string(),
@@ -26,6 +35,27 @@ const runSchema = z.object({
   status: z.string(),
   startTime: z.number().nullable(),
   endTime: z.number().nullable(),
+});
+const assetKeySchema = z.object({ path: z.array(z.string()) });
+const runDetailSchema = runSchema.extend({
+  repositoryOrigin: z
+    .object({
+      repositoryName: z.string(),
+      repositoryLocationName: z.string(),
+    })
+    .nullable(),
+  stepKeysToExecute: z.array(z.string()).nullable(),
+  stepStats: z.array(
+    z.object({
+      stepKey: z.string(),
+      status: z.string().nullable(),
+      startTime: z.number().nullable(),
+      endTime: z.number().nullable(),
+    }),
+  ),
+  assetMaterializations: z.array(
+    z.object({ assetKey: assetKeySchema.nullable() }),
+  ),
 });
 const eventSchema = z.object({
   timestamp: z.string(),
@@ -45,11 +75,25 @@ const handleSchema = z.object({
     ),
   }),
 });
-const assetKeySchema = z.object({ path: z.array(z.string()) });
+const checkSchema = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+  blocking: z.boolean(),
+  executionForLatestMaterialization: z
+    .object({
+      status: z.string(),
+      timestamp: z.number(),
+      runId: z.string(),
+      evaluation: z.object({ severity: z.string() }).nullable(),
+    })
+    .nullable(),
+});
 const assetSchema = z.object({
   assetKey: assetKeySchema,
   description: z.string().nullable(),
   groupName: z.string(),
+  kinds: z.array(z.string()),
+  tags: z.array(z.object({ key: z.string(), value: z.string() })),
   repository: z.object({
     name: z.string(),
     location: z.object({ name: z.string() }),
@@ -65,17 +109,62 @@ const assetSchema = z.object({
   dependedByKeys: z.array(assetKeySchema),
   isMaterializable: z.boolean(),
   isPartitioned: z.boolean(),
-  hasAssetChecks: z.boolean(),
+  staleStatus: z.string().nullable(),
+  // Older instances answer with a migration error instead of checks.
+  assetChecksOrError: z.object({
+    __typename: z.string(),
+    checks: z.array(checkSchema).optional(),
+  }),
   assetMaterializations: z.array(
     z.object({ timestamp: z.string(), runId: z.string() }),
   ),
+});
+const latestInfoSchema = z.object({
+  assetKey: assetKeySchema,
+  inProgressRunIds: z.array(z.string()),
+  unstartedRunIds: z.array(z.string()),
+  latestRun: z.object({ runId: z.string(), status: z.string() }).nullable(),
+});
+const tickSchema = z.object({ timestamp: z.number(), status: z.string() });
+const scheduleSchema = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+  cronSchedule: z.string(),
+  executionTimezone: z.string().nullable(),
+  pipelineName: z.string(),
+  scheduleState: z.object({
+    id: z.string(),
+    status: z.string(),
+    ticks: z.array(tickSchema),
+  }),
+  futureTicks: z.object({
+    results: z.array(z.object({ timestamp: z.number().nullable() })),
+  }),
+});
+const sensorSchema = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+  sensorType: z.string(),
+  minIntervalSeconds: z.number(),
+  targets: z.array(z.object({ pipelineName: z.string() })).nullable(),
+  sensorState: z.object({
+    id: z.string(),
+    status: z.string(),
+    ticks: z.array(tickSchema.extend({ skipReason: z.string().nullable() })),
+  }),
+});
+const automationSchema = z.object({
+  name: z.string(),
+  location: z.object({ name: z.string() }),
+  schedules: z.array(scheduleSchema),
+  sensors: z.array(sensorSchema),
 });
 
 const repositoriesQuery = `query Repositories {
   repositoriesOrError {
     __typename
     ... on RepositoryConnection {
-      nodes { name location { name } jobs { name description } }
+      nodes { name location { name } jobs { name description isAssetJob } }
     }
     ... on PythonError { message }
   }
@@ -85,6 +174,8 @@ const assetsQuery = `query Assets {
     assetKey { path }
     description
     groupName
+    kinds
+    tags { key value }
     repository { name location { name } }
     jobNames
     owners { __typename ... on UserAssetOwner { email } ... on TeamAssetOwner { team } }
@@ -92,8 +183,56 @@ const assetsQuery = `query Assets {
     dependedByKeys { path }
     isMaterializable
     isPartitioned
-    hasAssetChecks
+    staleStatus
+    assetChecksOrError {
+      __typename
+      ... on AssetChecks {
+        checks {
+          name description blocking
+          executionForLatestMaterialization {
+            status timestamp runId evaluation { severity }
+          }
+        }
+      }
+    }
     assetMaterializations(limit: 1) { timestamp runId }
+  }
+}`;
+const latestInfoQuery = `query AssetsLatestInfo($keys: [AssetKeyInput!]!) {
+  assetsLatestInfo(assetKeys: $keys) {
+    assetKey { path }
+    inProgressRunIds
+    unstartedRunIds
+    latestRun { runId status }
+  }
+}`;
+const historyQuery = `query AssetHistory($path: [String!]!) {
+  assetOrError(assetKey: { path: $path }) {
+    __typename
+    ... on Asset { assetMaterializations(limit: 50) { timestamp runId stepKey } }
+    ... on AssetNotFoundError { message }
+  }
+}`;
+const automationQuery = `query Automation {
+  repositoriesOrError {
+    __typename
+    ... on RepositoryConnection {
+      nodes {
+        name
+        location { name }
+        schedules {
+          name description cronSchedule executionTimezone pipelineName
+          scheduleState { id status ticks(limit: 1) { timestamp status } }
+          futureTicks(limit: 1) { results { timestamp } }
+        }
+        sensors {
+          name description sensorType minIntervalSeconds
+          targets { pipelineName }
+          sensorState { id status ticks(limit: 1) { timestamp status skipReason } }
+        }
+      }
+    }
+    ... on PythonError { message }
   }
 }`;
 const runsQuery = `query Runs($cursor: String) {
@@ -108,7 +247,13 @@ const runsQuery = `query Runs($cursor: String) {
 const runQuery = `query Run($runId: ID!) {
   runOrError(runId: $runId) {
     __typename
-    ... on Run { runId jobName status startTime endTime }
+    ... on Run {
+      runId jobName status startTime endTime
+      repositoryOrigin { repositoryName repositoryLocationName }
+      stepKeysToExecute
+      stepStats { stepKey status startTime endTime }
+      assetMaterializations { assetKey { path } }
+    }
     ... on PythonError { message }
   }
 }`;
@@ -135,11 +280,8 @@ const logsQuery = `query RunLogs($runId: ID!) {
     ... on PythonError { message }
   }
 }`;
-const launchQuery = `mutation Launch($location: String!, $repository: String!, $job: String!, $config: RunConfigData!) {
-  launchRun(executionParams: {
-    selector: { repositoryLocationName: $location, repositoryName: $repository, jobName: $job }
-    runConfigData: $config
-  }) {
+const launchQuery = `mutation Launch($selector: JobOrPipelineSelector!, $config: RunConfigData!) {
+  launchRun(executionParams: { selector: $selector, runConfigData: $config }) {
     __typename
     ... on LaunchRunSuccess { run { runId } }
     ... on RunConfigValidationInvalid { errors { message } }
@@ -153,6 +295,37 @@ const terminateQuery = `mutation Terminate($runId: String!) {
     ... on TerminateRunFailure { message }
     ... on RunNotFoundError { runId }
     ... on PythonError { message }
+  }
+}`;
+const startScheduleQuery = `mutation StartSchedule($selector: ScheduleSelector!) {
+  startSchedule(scheduleSelector: $selector) {
+    __typename
+    ... on PythonError { message }
+    ... on UnauthorizedError { message }
+    ... on ScheduleNotFoundError { message }
+  }
+}`;
+const stopScheduleQuery = `mutation StopSchedule($id: String!) {
+  stopRunningSchedule(id: $id) {
+    __typename
+    ... on PythonError { message }
+    ... on UnauthorizedError { message }
+    ... on ScheduleNotFoundError { message }
+  }
+}`;
+const startSensorQuery = `mutation StartSensor($selector: SensorSelector!) {
+  startSensor(sensorSelector: $selector) {
+    __typename
+    ... on PythonError { message }
+    ... on UnauthorizedError { message }
+    ... on SensorNotFoundError { message }
+  }
+}`;
+const stopSensorQuery = `mutation StopSensor($id: String!) {
+  stopSensor(id: $id) {
+    __typename
+    ... on PythonError { message }
+    ... on UnauthorizedError { message }
   }
 }`;
 
@@ -171,25 +344,52 @@ function requireType(value: unknown, type: string): Record<string, unknown> {
   return record;
 }
 
-function mapRun(value: unknown): DagsterRun {
-  return runSchema.parse(value);
+/** Stable, URL-safe id for an asset key path. */
+export function assetIdFor(path: readonly string[]): string {
+  return Buffer.from(JSON.stringify(path)).toString("base64url");
 }
+
+/** Dagster's own synthetic jobs, which its UI hides as well. */
+function isHiddenJob(name: string): boolean {
+  return name.startsWith("__");
+}
+
+type JobSelector = Pick<
+  DagsterJob,
+  "name" | "repositoryName" | "repositoryLocationName"
+>;
+type NamedSelector = DagsterRepository & { name: string };
 
 export interface DagsterClient {
   listAssets(signal?: AbortSignal): Promise<DagsterAsset[]>;
-  listJobs(signal?: AbortSignal): Promise<DagsterJob[]>;
-  listRuns(signal?: AbortSignal): Promise<DagsterRun[]>;
-  getRun(runId: string, signal?: AbortSignal): Promise<DagsterRun>;
-  getRunLogs(runId: string, signal?: AbortSignal): Promise<DagsterEvent[]>;
-  getJobSteps(
-    job: Pick<DagsterJob, "name" | "repositoryName" | "repositoryLocationName">,
+  getAssetHistory(
+    path: readonly string[],
     signal?: AbortSignal,
-  ): Promise<DagsterStep[]>;
-  launchJob(
-    job: Pick<DagsterJob, "name" | "repositoryName" | "repositoryLocationName">,
+  ): Promise<DagsterMaterialization[]>;
+  listJobs(signal?: AbortSignal): Promise<DagsterJob[]>;
+  listSchedules(signal?: AbortSignal): Promise<DagsterSchedule[]>;
+  listSensors(signal?: AbortSignal): Promise<DagsterSensor[]>;
+  listRuns(signal?: AbortSignal): Promise<DagsterRun[]>;
+  getRun(runId: string, signal?: AbortSignal): Promise<DagsterRunDetail>;
+  getRunLogs(runId: string, signal?: AbortSignal): Promise<DagsterEvent[]>;
+  getJobOps(job: JobSelector, signal?: AbortSignal): Promise<DagsterOp[]>;
+  launchJob(job: JobSelector, signal?: AbortSignal): Promise<string>;
+  materializeAssets(
+    repository: DagsterRepository,
+    paths: readonly (readonly string[])[],
     signal?: AbortSignal,
   ): Promise<string>;
   terminateRun(runId: string, signal?: AbortSignal): Promise<void>;
+  setScheduleRunning(
+    schedule: NamedSelector & { stateId: string },
+    running: boolean,
+    signal?: AbortSignal,
+  ): Promise<void>;
+  setSensorRunning(
+    sensor: NamedSelector & { stateId: string },
+    running: boolean,
+    signal?: AbortSignal,
+  ): Promise<void>;
 }
 
 function createQuery(endpoint: URL, authHeaders: Record<string, string>) {
@@ -241,11 +441,39 @@ async function listRuns(
   return runs;
 }
 
-async function getJobSteps(
+async function getRun(
   query: Query,
-  job: Pick<DagsterJob, "name" | "repositoryName" | "repositoryLocationName">,
+  runId: string,
   signal?: AbortSignal,
-): Promise<DagsterStep[]> {
+): Promise<DagsterRunDetail> {
+  const run = runDetailSchema.parse(
+    requireType((await query(runQuery, { runId }, signal)).runOrError, "Run"),
+  );
+  return {
+    runId: run.runId,
+    jobName: run.jobName,
+    status: run.status,
+    startTime: run.startTime,
+    endTime: run.endTime,
+    repositoryName: run.repositoryOrigin?.repositoryName ?? "",
+    repositoryLocationName: run.repositoryOrigin?.repositoryLocationName ?? "",
+    plannedStepKeys: run.stepKeysToExecute,
+    steps: run.stepStats,
+    materializedAssetIds: [
+      ...new Set(
+        run.assetMaterializations.flatMap((event) =>
+          event.assetKey ? [assetIdFor(event.assetKey.path)] : [],
+        ),
+      ),
+    ],
+  };
+}
+
+async function getJobOps(
+  query: Query,
+  job: JobSelector,
+  signal?: AbortSignal,
+): Promise<DagsterOp[]> {
   const result = requireType(
     (
       await query(
@@ -266,15 +494,14 @@ async function getJobSteps(
     .filter((handle) => !handle.handleID.includes("."))
     .map((handle) => ({
       name: handle.solid.name,
-      upstream:
-        [
-          ...new Set(
-            handle.solid.inputs.flatMap((input) =>
-              input.dependsOn.map((dependency) => dependency.solid.name),
-            ),
+      dependsOn: [
+        ...new Set(
+          handle.solid.inputs.flatMap((input) =>
+            input.dependsOn.map((dependency) => dependency.solid.name),
           ),
-        ].join(", ") || "—",
-      kind: handle.solid.isDynamicMapped ? "Mapped op" : "Op",
+        ),
+      ],
+      isDynamicMapped: handle.solid.isDynamicMapped,
     }));
 }
 
@@ -309,35 +536,102 @@ async function listAssets(
   signal?: AbortSignal,
 ): Promise<DagsterAsset[]> {
   const data = await query(assetsQuery, {}, signal);
-  return z
-    .array(assetSchema)
-    .parse(data.assetNodes)
-    .map((asset) => ({
-      id: Buffer.from(JSON.stringify(asset.assetKey.path)).toString(
-        "base64url",
-      ),
+  const nodes = z.array(assetSchema).parse(data.assetNodes);
+  const latest = nodes.length
+    ? z
+        .array(latestInfoSchema)
+        .parse(
+          (
+            await query(
+              latestInfoQuery,
+              { keys: nodes.map((node) => ({ path: node.assetKey.path })) },
+              signal,
+            )
+          ).assetsLatestInfo,
+        )
+    : [];
+  const latestById = new Map(
+    latest.map((info) => [assetIdFor(info.assetKey.path), info]),
+  );
+  return nodes.map((asset) => {
+    const id = assetIdFor(asset.assetKey.path);
+    const info = latestById.get(id);
+    return {
+      id,
       name: asset.assetKey.path.join("/"),
       path: asset.assetKey.path,
       description: asset.description ?? "",
       group: asset.groupName,
+      kinds: asset.kinds,
+      tags: asset.tags.map((tag) =>
+        tag.value ? `${tag.key}=${tag.value}` : tag.key,
+      ),
       repositoryName: asset.repository.name,
       repositoryLocationName: asset.repository.location.name,
-      jobNames: asset.jobNames,
+      jobNames: asset.jobNames.filter((name) => !isHiddenJob(name)),
       owners: asset.owners.map((owner) =>
         owner.__typename === "UserAssetOwner" ? owner.email : owner.team,
       ),
-      upstreamIds: asset.dependencyKeys.map((key) =>
-        Buffer.from(JSON.stringify(key.path)).toString("base64url"),
-      ),
-      downstreamIds: asset.dependedByKeys.map((key) =>
-        Buffer.from(JSON.stringify(key.path)).toString("base64url"),
-      ),
+      upstreamIds: asset.dependencyKeys.map((key) => assetIdFor(key.path)),
+      downstreamIds: asset.dependedByKeys.map((key) => assetIdFor(key.path)),
       isMaterializable: asset.isMaterializable,
       isPartitioned: asset.isPartitioned,
-      hasAssetChecks: asset.hasAssetChecks,
+      staleStatus: asset.staleStatus,
+      checks: (asset.assetChecksOrError.checks ?? []).map((check) => {
+        const execution = check.executionForLatestMaterialization;
+        return {
+          name: check.name,
+          description: check.description ?? "",
+          blocking: check.blocking,
+          status: execution?.status ?? null,
+          severity: execution?.evaluation?.severity ?? null,
+          timestamp: execution?.timestamp ?? null,
+          runId: execution?.runId ?? null,
+        };
+      }),
       latestMaterialization: asset.assetMaterializations[0]?.timestamp ?? null,
       latestRunId: asset.assetMaterializations[0]?.runId ?? null,
-    }));
+      latestRun: info?.latestRun ?? null,
+      inProgress:
+        !!info &&
+        info.inProgressRunIds.length + info.unstartedRunIds.length > 0,
+    };
+  });
+}
+
+async function listAutomation(query: Query, signal?: AbortSignal) {
+  const result = requireType(
+    (await query(automationQuery, {}, signal)).repositoriesOrError,
+    "RepositoryConnection",
+  );
+  return z.array(automationSchema).parse(result.nodes);
+}
+
+async function launch(
+  query: Query,
+  selector: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<string> {
+  const result = (await query(launchQuery, { selector, config: {} }, signal))
+    .launchRun;
+  const parsed = z
+    .object({
+      __typename: z.string(),
+      errors: z.array(errorSchema).optional(),
+    })
+    .safeParse(result);
+  if (parsed.success && parsed.data.errors?.length)
+    throw graphqlError(parsed.data.errors[0]);
+  const success = requireType(result, "LaunchRunSuccess");
+  return z.object({ runId: z.string() }).parse(success.run).runId;
+}
+
+/** Mutation unions report success as a result type and failure as an error. */
+function requireMutation(value: unknown, success: string): void {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Invalid Dagster GraphQL response");
+  const typename = (value as Record<string, unknown>).__typename;
+  if (typename !== success) throw graphqlError(value);
 }
 
 export function createDagsterClient(config: DagsterConfig): DagsterClient {
@@ -345,6 +639,22 @@ export function createDagsterClient(config: DagsterConfig): DagsterClient {
 
   return {
     listAssets: (signal) => listAssets(query, signal),
+    getAssetHistory: async (path, signal) => {
+      const result = requireType(
+        (await query(historyQuery, { path }, signal)).assetOrError,
+        "Asset",
+      );
+      return z
+        .array(
+          z.object({
+            timestamp: z.string(),
+            runId: z.string(),
+            stepKey: z.string().nullable(),
+          }),
+        )
+        .parse(result.assetMaterializations)
+        .map((event) => ({ ...event, stepKey: event.stepKey ?? "" }));
+    },
     listJobs: async (signal) => {
       const result = requireType(
         (await query(repositoriesQuery, {}, signal)).repositoriesOrError,
@@ -352,22 +662,61 @@ export function createDagsterClient(config: DagsterConfig): DagsterClient {
       );
       const repositories = z.array(repositorySchema).parse(result.nodes);
       return repositories.flatMap((repository) =>
-        repository.jobs.map((job) => ({
-          name: job.name,
-          description: job.description ?? "",
+        repository.jobs
+          .filter((job) => !isHiddenJob(job.name))
+          .map((job) => ({
+            name: job.name,
+            description: job.description ?? "",
+            isAssetJob: job.isAssetJob,
+            repositoryName: repository.name,
+            repositoryLocationName: repository.location.name,
+          })),
+      );
+    },
+    listSchedules: async (signal) =>
+      (await listAutomation(query, signal)).flatMap((repository) =>
+        repository.schedules.map((schedule) => ({
+          name: schedule.name,
+          description: schedule.description ?? "",
+          cronSchedule: schedule.cronSchedule,
+          timezone: schedule.executionTimezone ?? "UTC",
+          jobName: schedule.pipelineName,
+          status: schedule.scheduleState.status,
+          stateId: schedule.scheduleState.id,
+          lastTick: schedule.scheduleState.ticks[0] ?? null,
+          nextTick: schedule.futureTicks.results[0]?.timestamp ?? null,
           repositoryName: repository.name,
           repositoryLocationName: repository.location.name,
         })),
-      );
-    },
-    listRuns: (signal) => listRuns(query, signal),
-    getRun: async (runId, signal) =>
-      mapRun(
-        requireType(
-          (await query(runQuery, { runId }, signal)).runOrError,
-          "Run",
-        ),
       ),
+    listSensors: async (signal) =>
+      (await listAutomation(query, signal)).flatMap((repository) =>
+        repository.sensors.map((sensor) => {
+          const tick = sensor.sensorState.ticks[0];
+          return {
+            name: sensor.name,
+            description: sensor.description ?? "",
+            sensorType: sensor.sensorType,
+            minIntervalSeconds: sensor.minIntervalSeconds,
+            jobNames: (sensor.targets ?? []).map(
+              (target) => target.pipelineName,
+            ),
+            status: sensor.sensorState.status,
+            stateId: sensor.sensorState.id,
+            lastTick: tick
+              ? {
+                  timestamp: tick.timestamp,
+                  status: tick.status,
+                  skipReason: tick.skipReason ?? "",
+                }
+              : null,
+            repositoryName: repository.name,
+            repositoryLocationName: repository.location.name,
+          };
+        }),
+      ),
+    listRuns: (signal) => listRuns(query, signal),
+    getRun: (runId, signal) => getRun(query, runId, signal),
     getRunLogs: async (runId, signal) => {
       const result = requireType(
         (await query(logsQuery, { runId }, signal)).logsForRun,
@@ -383,30 +732,71 @@ export function createDagsterClient(config: DagsterConfig): DagsterClient {
           stepKey: event.stepKey ?? "",
         }));
     },
-    getJobSteps: (job, signal) => getJobSteps(query, job, signal),
-    launchJob: async (job, signal) => {
-      const result = requireType(
-        (
-          await query(
-            launchQuery,
-            {
-              location: job.repositoryLocationName,
-              repository: job.repositoryName,
-              job: job.name,
-              config: {},
-            },
-            signal,
-          )
-        ).launchRun,
-        "LaunchRunSuccess",
-      );
-      return z.object({ runId: z.string() }).parse(result.run).runId;
-    },
+    getJobOps: (job, signal) => getJobOps(query, job, signal),
+    launchJob: (job, signal) =>
+      launch(
+        query,
+        {
+          repositoryLocationName: job.repositoryLocationName,
+          repositoryName: job.repositoryName,
+          jobName: job.name,
+        },
+        signal,
+      ),
+    materializeAssets: (repository, paths, signal) =>
+      launch(
+        query,
+        {
+          repositoryLocationName: repository.repositoryLocationName,
+          repositoryName: repository.repositoryName,
+          jobName: IMPLICIT_ASSET_JOB,
+          assetSelection: paths.map((path) => ({ path })),
+        },
+        signal,
+      ),
     terminateRun: async (runId, signal) => {
       requireType(
         (await query(terminateQuery, { runId }, signal)).terminateRun,
         "TerminateRunSuccess",
       );
+    },
+    setScheduleRunning: async (schedule, running, signal) => {
+      const data = running
+        ? await query(
+            startScheduleQuery,
+            {
+              selector: {
+                repositoryLocationName: schedule.repositoryLocationName,
+                repositoryName: schedule.repositoryName,
+                scheduleName: schedule.name,
+              },
+            },
+            signal,
+          )
+        : await query(stopScheduleQuery, { id: schedule.stateId }, signal);
+      requireMutation(
+        running ? data.startSchedule : data.stopRunningSchedule,
+        "ScheduleStateResult",
+      );
+    },
+    setSensorRunning: async (sensor, running, signal) => {
+      if (running) {
+        const data = await query(
+          startSensorQuery,
+          {
+            selector: {
+              repositoryLocationName: sensor.repositoryLocationName,
+              repositoryName: sensor.repositoryName,
+              sensorName: sensor.name,
+            },
+          },
+          signal,
+        );
+        requireMutation(data.startSensor, "Sensor");
+        return;
+      }
+      const data = await query(stopSensorQuery, { id: sensor.stateId }, signal);
+      requireMutation(data.stopSensor, "StopSensorMutationResult");
     },
   };
 }

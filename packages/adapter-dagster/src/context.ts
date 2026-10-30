@@ -25,11 +25,15 @@ export interface DagsterContext {
   client: DagsterClient;
 }
 
-export interface DagsterJob {
-  name: string;
-  description: string;
+export interface DagsterRepository {
   repositoryName: string;
   repositoryLocationName: string;
+}
+
+export interface DagsterJob extends DagsterRepository {
+  name: string;
+  description: string;
+  isAssetJob: boolean;
 }
 
 export interface DagsterRun {
@@ -40,6 +44,20 @@ export interface DagsterRun {
   endTime: number | null;
 }
 
+export interface DagsterRunStep {
+  stepKey: string;
+  status: string | null;
+  startTime: number | null;
+  endTime: number | null;
+}
+
+export interface DagsterRunDetail extends DagsterRun, DagsterRepository {
+  /** Steps the run will execute, or null when it executes the whole job. */
+  plannedStepKeys: string[] | null;
+  steps: DagsterRunStep[];
+  materializedAssetIds: string[];
+}
+
 export interface DagsterEvent {
   timestamp: string;
   message: string;
@@ -47,27 +65,76 @@ export interface DagsterEvent {
   stepKey: string;
 }
 
-export interface DagsterStep {
+export interface DagsterOp {
   name: string;
-  upstream: string;
-  kind: string;
+  dependsOn: string[];
+  isDynamicMapped: boolean;
 }
 
-export interface DagsterAsset {
+export interface DagsterAssetCheck {
+  name: string;
+  description: string;
+  blocking: boolean;
+  /** Resolved status of the latest execution, or null when it never ran. */
+  status: string | null;
+  severity: string | null;
+  timestamp: number | null;
+  runId: string | null;
+}
+
+export interface DagsterAsset extends DagsterRepository {
   id: string;
   name: string;
   path: string[];
   description: string;
   group: string;
-  repositoryName: string;
-  repositoryLocationName: string;
+  kinds: string[];
+  tags: string[];
   jobNames: string[];
   owners: string[];
   upstreamIds: string[];
   downstreamIds: string[];
   isMaterializable: boolean;
   isPartitioned: boolean;
-  hasAssetChecks: boolean;
+  staleStatus: string | null;
+  checks: DagsterAssetCheck[];
   latestMaterialization: string | null;
   latestRunId: string | null;
+  /** Latest run that targeted the asset, which may not have materialized it. */
+  latestRun: { runId: string; status: string } | null;
+  inProgress: boolean;
+}
+
+export interface DagsterMaterialization {
+  timestamp: string;
+  runId: string;
+  stepKey: string;
+}
+
+interface DagsterTick {
+  timestamp: number;
+  status: string;
+}
+
+export interface DagsterSchedule extends DagsterRepository {
+  name: string;
+  description: string;
+  cronSchedule: string;
+  timezone: string;
+  jobName: string;
+  status: string;
+  stateId: string;
+  lastTick: DagsterTick | null;
+  nextTick: number | null;
+}
+
+export interface DagsterSensor extends DagsterRepository {
+  name: string;
+  description: string;
+  sensorType: string;
+  minIntervalSeconds: number;
+  jobNames: string[];
+  status: string;
+  stateId: string;
+  lastTick: (DagsterTick & { skipReason: string }) | null;
 }
