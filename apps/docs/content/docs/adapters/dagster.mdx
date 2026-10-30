@@ -48,15 +48,30 @@ Airflow-style DAG object.
 
 ## Available
 
-- List jobs from all loaded repositories and code locations
-- Browse assets, their direct upstream and downstream dependencies, and latest materialization
-- Inspect job ops and dependencies
-- View recent runs, status, and execution events
-- Launch jobs and terminate active runs
+- **Lineage**: an interactive graph of every asset, framed by asset group and
+  tagged with its kinds (dbt, Python, Snowflake, and others). Hover a node to
+  trace its full upstream and downstream lineage, filter by kind, and
+  materialize from the inspector.
+- **Assets**: status (materialized, stale, failed, never materialized), kinds,
+  checks, owners, materialization history, and the jobs that build each asset
+- **Jobs**: asset jobs show their assets with neighbouring assets from other
+  jobs; op jobs show their op graph. Launch jobs and terminate active runs.
+- **Runs**: a step graph coloured by each step's outcome, the assets a run
+  materialized, and execution events
+- **Automation**: start and stop schedules and sensors
 
-The adapter currently supports jobs with an empty run configuration. Use the
-Dagster UI for jobs that require configuration, asset materialization,
-schedules, and sensors.
+## Kinds and groups
 
-For a local instance with four sample jobs and asset lineage, see the repository's
+Kinds and groups come from your Dagster definitions, not from DSUI. Set them
+with `@asset(kinds={"dbt", "snowflake"}, group_name="marts")`; integrations
+such as `dagster-dbt` set kinds automatically. Common kinds get a recognisable
+colour; any other kind is shown as a neutral tag.
+
+## Limitations
+
+Jobs and asset materializations launch with an empty run configuration, so use
+the Dagster UI for runs that need configuration or partitions.
+
+For a local instance with sample asset groups, kinds, checks, asset jobs, op
+jobs, a schedule, and a sensor, see the repository's
 `data/dagster-test/README.md`.
