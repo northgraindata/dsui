@@ -40,6 +40,7 @@ import {
 } from "./context.js";
 import { createDuckDbClient } from "./duckdb-client.js";
 import { duckdbHealth } from "./health.js";
+import { duckdbIconUrl } from "./logo.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -117,8 +118,7 @@ export function createDuckDbAdapter(
       version: "0.1.0",
       author: "DSUI",
       description: "Browse DuckDB catalogs, run SQL, and manage extensions.",
-      iconUrl:
-        "https://pbs.twimg.com/profile_images/1274363897676521474/qgbqYYuV_400x400.jpg",
+      iconUrl: duckdbIconUrl,
     },
     connectionMethods: duckdbConnectionMethods,
     context: async (config: DuckDbConfig): Promise<DuckDbContext> => {
