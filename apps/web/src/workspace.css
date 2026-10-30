@@ -21,46 +21,9 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: transparent;
-  transition: transform 0.25s ease;
-}
-.app-topbar.is-hidden {
-  transform: translateY(-100%);
-}
-/* Topbar is gone: rails and layout fill the full viewport height. */
-.app-topbar.is-hidden ~ .app-body {
-  min-height: 100dvh;
-}
-.app-topbar.is-hidden ~ .app-body .adapter-layout {
-  min-height: 100dvh;
-}
-.app-topbar.is-hidden ~ .app-body .adapter-layout[data-embedded="true"] {
-  min-height: 0;
-}
-.app-topbar.is-hidden ~ .app-body .adapter-layout[data-split="true"] {
-  min-height: 0;
-}
-@media (min-width: 641px) {
-  .app-topbar.is-hidden ~ .app-body .app-sidebar,
-  .app-topbar.is-hidden ~ .app-body .adapter-sidebar {
-    top: 0;
-    height: 100dvh;
-  }
-}
-.app-body,
-.adapter-layout {
-  transition: min-height 0.25s ease;
-}
-.app-sidebar,
-.adapter-sidebar {
-  transition:
-    top 0.25s ease,
-    height 0.25s ease;
-}
-@media (prefers-reduced-motion: reduce) {
-  .app-topbar {
-    transition: none;
-  }
+  /* Stays in place while scrolling, so content passes beneath a frosted bar. */
+  background: color-mix(in srgb, var(--color-canvas) 86%, transparent);
+  backdrop-filter: blur(14px);
 }
 .app-topbar > * {
   position: relative;
