@@ -2,11 +2,14 @@
 import BuildYourOwn from "@/components/build-your-own.astro";
 import Footer from "@/components/footer.astro";
 import HowItWorks from "@/components/how-it-works.astro";
+import ManagedCloud from "@/components/managed-cloud.astro";
 import PluginEcosystem from "@/components/plugin-ecosystem.astro";
+import Pricing from "@/components/pricing.astro";
 import StarOnGithub from "@/components/ui/button-github.astro";
 import IntegrationsSection from "@/components/ui/integrations-3.astro";
 import ShaderBackground from "@/components/ui/line-shader-homlu-ui.astro";
 import WhyDsui from "@/components/why-dsui.astro";
+import { cloudUrl } from "@/lib/cloud-url";
 import Base from "../layouts/Base.astro";
 
 const docsBaseUrl = import.meta.env.DEV
@@ -49,6 +52,14 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
           >
           <a
             class="rounded-lg px-3 py-2 text-sm text-copy transition-colors hover:bg-foreground/8 hover:text-foreground"
+            href="#cloud">Cloud</a
+          >
+          <a
+            class="rounded-lg px-3 py-2 text-sm text-copy transition-colors hover:bg-foreground/8 hover:text-foreground"
+            href="#pricing">Pricing</a
+          >
+          <a
+            class="rounded-lg px-3 py-2 text-sm text-copy transition-colors hover:bg-foreground/8 hover:text-foreground"
             href={docsBaseUrl}>Documentation</a
           >
         </div>
@@ -71,6 +82,11 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
               <path d="m12 2.7 2.83 5.73 6.32.92-4.57 4.46 1.08 6.3L12 17.14l-5.66 2.97 1.08-6.3-4.57-4.46 6.32-.92L12 2.7Z"></path>
             </svg>
           </a>
+          <a
+            class="hidden min-h-10 items-center rounded-lg px-3 text-sm font-medium text-copy transition-colors hover:bg-foreground/8 hover:text-foreground sm:inline-flex"
+            href={cloudUrl("navbar")}
+            data-cloud-link="navbar">Sign in</a
+          >
           <a
             class="hero-action inline-flex min-h-10 items-center rounded-lg bg-action-primary px-3.5 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover"
             href={gettingStartedUrl}
@@ -149,11 +165,61 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
     <HowItWorks />
     <IntegrationsSection />
     <BuildYourOwn />
+    <ManagedCloud />
+    <Pricing />
     <Footer />
   </main>
 </Base>
 
 <script>
+  // PostHog exists only after the visitor allows measurement, so capturing is a
+  // no-op until then. Pageviews and referrers come from autocapture.
+  type Capture = { capture(name: string, props?: object): void };
+  const capture = (name: string, props?: object) =>
+    (window as { posthog?: Capture }).posthog?.capture(name, props);
+
+  /** The call to action a link stands for, from where it points. */
+  const ctaFor = (href: string): string | undefined => {
+    const url = new URL(href, location.href);
+    if (url.hostname === "cloud.dsui.northgraindata.com") return "cloud";
+    if (url.pathname.startsWith("/demo")) return "live_demo";
+    if (url.pathname.includes("/docs/getting-started/quickstart"))
+      return "get_started";
+    if (url.pathname.endsWith("/docs") || url.pathname.includes("/docs/"))
+      return "docs";
+    if (url.hostname === "github.com" && url.pathname.endsWith("/discussions"))
+      return "talk_to_us";
+    if (url.hostname === "github.com") return "github";
+    return undefined;
+  };
+
+  document.addEventListener("click", (event) => {
+    const link = (event.target as Element).closest<HTMLAnchorElement>("a[href]");
+    if (!link) return;
+    const cta = ctaFor(link.href);
+    if (!cta) return;
+    capture("cta_clicked", {
+      cta,
+      location: link.dataset.cloudLink ?? link.closest("section")?.id ?? "page",
+    });
+  });
+
+  // Which parts of the page people actually reach, once per section per visit.
+  const seen = new Set<string>();
+  const sections = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting || seen.has(entry.target.id)) continue;
+        seen.add(entry.target.id);
+        capture("section_viewed", { section: entry.target.id });
+      }
+    },
+    { threshold: 0.4 },
+  );
+  document.querySelectorAll("main section[id]").forEach((section) => {
+    sections.observe(section);
+  });
+
   const starLabels = document.querySelectorAll<HTMLElement>("[data-github-stars]");
 
   fetch("https://api.github.com/repos/northgraindata/dsui", {

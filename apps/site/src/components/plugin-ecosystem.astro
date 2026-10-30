@@ -76,11 +76,10 @@ const docsBaseUrl = import.meta.env.DEV
   : "/docs";
 ---
 
-<section id="plugins" class="relative overflow-clip bg-canvas py-24 text-foreground sm:py-32" aria-labelledby="plugins-title">
+<section id="plugins" class="plugins-section relative overflow-clip py-24 text-foreground sm:py-32" aria-labelledby="plugins-title">
   <div class="mx-auto max-w-6xl px-6">
     <div class="max-w-2xl">
-      <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">PLUGIN ECOSYSTEM</p>
-      <h2 id="plugins-title" class="mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">More possibilities.<br />Same workspace.</h2>
+      <h2 id="plugins-title" class="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">More possibilities.<br />Same workspace.</h2>
       <p class="mt-6 text-pretty text-base leading-7 text-copy sm:text-lg">Investigate problems, route notifications, and bring your team into the workspace. Add the capabilities your stack needs.</p>
     </div>
 
@@ -109,6 +108,7 @@ const docsBaseUrl = import.meta.env.DEV
 </section>
 
 <style>
+  .plugins-section { background: radial-gradient(70% 38% at 85% 8%, color-mix(in srgb, var(--ds-violet-500) 13%, transparent), transparent 70%), radial-gradient(60% 34% at 8% 52%, color-mix(in srgb, var(--ds-blue-500) 13%, transparent), transparent 70%), radial-gradient(60% 30% at 90% 92%, color-mix(in srgb, var(--ds-teal-200) 7%, transparent), transparent 70%), var(--ds-color-canvas); }
   .plugin-stories { margin-top: 72px; }
   .plugin-story { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .85fr); align-items: center; gap: 64px; padding: 64px 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); scroll-margin-top: 100px; }
   .plugin-story:first-child { padding-top: 48px; }
@@ -116,7 +116,7 @@ const docsBaseUrl = import.meta.env.DEV
   .plugin-story-reverse .plugin-visual { order: 2; }
   .plugin-story-reverse .plugin-copy { order: 1; }
   .plugin-visual { position: relative; min-width: 0; }
-  .plugin-visual-glow { position: absolute; pointer-events: none; inset: 5% -8%; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--plugin-accent) 8%, transparent), transparent 70%); }
+  .plugin-visual-glow { position: absolute; pointer-events: none; inset: 5% -8%; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--plugin-accent) 16%, transparent), transparent 70%); }
   .agent-showcase { display: block; width: 100%; height: auto; }
   .plugin-preview { position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--plugin-accent) 18%, transparent); border-radius: 12px; box-shadow: 0 16px 48px color-mix(in srgb, var(--ds-color-canvas) 65%, transparent); }
   .plugin-copy { min-width: 0; }
@@ -130,7 +130,7 @@ const docsBaseUrl = import.meta.env.DEV
   .plugins-footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); padding-top: 28px; }
   .plugins-footer p { font-size: 15px; font-weight: 500; color: var(--ds-color-copy); }
   .plugins-footer div > span { display: block; margin-top: 6px; font-size: 13px; color: var(--ds-color-copy-subtle); }
-  .plugin-plan-note { margin-top: 24px; color: var(--ds-color-copy-muted); font-size: 11px; }
+  .plugin-plan-note { margin-top: 24px; color: var(--ds-color-copy-subtle); font-size: 13px; }
   @media (hover: hover) and (pointer: fine) { .plugin-link:hover { color: var(--ds-color-foreground); } }
   @media (max-width: 1000px) { .plugin-story, .plugin-story-reverse { gap: 36px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
   @media (max-width: 760px) {

@@ -1,4 +1,5 @@
 ---
+import { ConsentBanner, ConsentDialog, ConsentScript } from "c15t/astro/components";
 import "../styles/global.css";
 
 interface Props {
@@ -35,6 +36,11 @@ const {
     <meta name="apple-mobile-web-app-title" content="DSUI" />
     <link rel="manifest" href="/favicons/site.webmanifest?v=20260915" />
     <title>{title}</title>
+    <ConsentScript />
   </head>
-  <body><slot /></body>
+  <body>
+    <slot />
+    <ConsentBanner />
+    <ConsentDialog />
+  </body>
 </html>
