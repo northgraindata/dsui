@@ -1,0 +1,51 @@
+---
+import ShaderBackground from "./ui/line-shader-homlu-ui.astro";
+---
+
+<figure class="notification-stage" aria-label="Example Slack notification">
+  <div class="notification-background" aria-hidden="true"><ShaderBackground /></div>
+  <div class="slack-window">
+    <div class="slack-channel"><span aria-hidden="true">#</span> data-alerts</div>
+    <div class="slack-message">
+      <img class="slack-avatar" src="/branding/logo-icon.svg" width="34" height="34" alt="" loading="lazy" />
+      <div class="message-content">
+        <div class="message-author"><strong>DSUI</strong><span class="app-label">APP</span><span class="message-time">09:41</span></div>
+        <p class="message-intro">A pipeline needs your attention.</p>
+        <div class="message-attachment">
+          <p class="alert-source"><span class="alert-dot" aria-hidden="true"></span>Airflow <span aria-hidden="true">/</span> Task failed</p>
+          <p class="alert-title">Daily revenue pipeline failed</p>
+          <p class="alert-description">A task failed during the latest DAG run.</p>
+          <dl class="alert-fields"><div><dt>DAG</dt><dd><code>daily_revenue</code></dd></div><div><dt>Task</dt><dd><code>transform_orders</code></dd></div></dl>
+          <span class="alert-link">Open in DSUI <span aria-hidden="true">↗</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<style>
+  .notification-stage { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: center; min-height: 440px; padding: 56px 28px 40px; overflow: hidden; background: var(--ds-color-canvas); }
+  .notification-background { position: absolute; z-index: -1; inset: -60px; pointer-events: none; opacity: .55; mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent); }
+  .slack-window { width: 90%; max-width: 380px; margin-inline: auto; border: 1px solid #ffffff24; border-radius: 8px; background: #1a1d21; color: #d1d2d3; box-shadow: 0 20px 48px #0005; text-align: left; }
+  .slack-channel { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid #ffffff18; font-size: 13px; font-weight: 600; color: #f8f8f8; }
+  .slack-channel > span:first-child { color: #ababad; font-size: 18px; }
+  .slack-message { display: flex; align-items: flex-start; gap: 10px; padding: 16px; }
+  .slack-avatar { flex-shrink: 0; padding: 6px; border-radius: 5px; background: #111625; }
+  .message-content { min-width: 0; flex: 1; }
+  .message-author { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; line-height: 20px; }
+  .message-author strong { color: #f8f8f8; font-size: 14px; }
+  .app-label { padding: 0 4px; border-radius: 3px; background: #ffffff14; color: #ababad; font-size: 9px; line-height: 14px; }
+  .message-time { color: #ababad; font-size: 10px; }
+  .message-intro { margin-top: 3px; font-size: 12px; line-height: 1.6; }
+  .message-attachment { margin-top: 10px; padding: 2px 0 2px 14px; border-left: 3px solid #e58282; }
+  .alert-source { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #ababad; font-size: 10px; }
+  .alert-dot { width: 6px; height: 6px; border-radius: 50%; background: #e58282; }
+  .alert-title { margin-top: 8px; color: #f8f8f8; font-size: 13px; font-weight: 600; line-height: 1.5; }
+  .alert-description { margin-top: 6px; font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; }
+  code { padding: 1px 3px; border: 1px solid #ffffff16; border-radius: 3px; background: #ffffff06; color: #e9a9b7; font-size: 10px; }
+  .alert-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; font-size: 11px; line-height: 1.6; }
+  dt { color: #f8f8f8; font-weight: 600; }
+  dd { margin: 0; }
+  .alert-link { display: inline-flex; align-items: center; gap: 12px; min-height: 34px; margin-top: 10px; padding: 3px 12px; border: 1px solid #ffffff4d; border-radius: 4px; color: #f8f8f8; font-size: 11px; font-weight: 500; }
+  @media (max-width: 440px) { .notification-stage { padding: 44px 14px 32px; min-height: 400px; } .slack-window { width: 88%; } .slack-channel { padding-inline: 14px; } .slack-message { padding-inline: 12px; gap: 8px; } .slack-avatar { width: 28px; height: 28px; padding: 4px; } .message-attachment { padding-left: 10px; } }
+</style>

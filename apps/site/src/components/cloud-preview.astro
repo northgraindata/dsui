@@ -1,0 +1,154 @@
+---
+const services = [
+  {
+    name: "Analytics warehouse",
+    adapter: "PostgreSQL",
+    logo: "postgresql.svg",
+  },
+  { name: "Data pipelines", adapter: "Airflow", logo: "airflow.svg" },
+  { name: "Object storage", adapter: "S3", logo: "s3.svg" },
+];
+const views = [
+  {
+    id: "overview",
+    name: "Overview",
+    path: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
+  },
+  {
+    id: "instance",
+    name: "Instance status",
+    path: "M3 3h18v7H3z M3 14h18v7H3z M7 6h.01 M7 17h.01",
+  },
+];
+---
+
+<div class="cloud-preview" data-cloud-preview>
+  <div class="preview-label"><span><img src="/branding/logo-icon.svg" alt="" width="17" height="17" />DSUI Cloud</span></div>
+  <div class="cloud-shell">
+    <aside class="cloud-sidebar" aria-label="Cloud preview navigation">
+      <div class="workspace-picker"><span class="workspace-avatar">DP</span><div><strong>Data Platform</strong><small>data-platform.example.com</small></div><span aria-hidden="true">⌄</span></div>
+      <div class="sidebar-search" aria-hidden="true">⌕ <span>Find a service or plugin…</span></div>
+      <div class="preview-navigation" role="group" aria-label="Choose a Cloud page preview">{views.map((view, index) => <button type="button" data-cloud-view={view.id} aria-pressed={index === 1 ? "true" : "false"} aria-controls={`cloud-preview-${view.id}`}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={view.path} /></svg>{view.name}</button>)}</div>
+      <div class="sidebar-details" aria-hidden="true"><p>Services <span>＋</span></p>{services.map((service) => <div class="sidebar-service"><img src={`/assets/logos/${service.logo}`} width="16" height="16" alt="" /><span>{service.adapter}</span><i></i></div>)}<p>Plugins <span>＋</span></p><div class="sidebar-plugin"><img src="/assets/dsui-agent-icon.webp" width="17" height="17" alt="" loading="lazy" />DSUI Agent</div><div class="sidebar-plugin"><img src="/assets/notifications-icon.webp" width="17" height="17" alt="" loading="lazy" />Notifications</div><div class="sidebar-plugin"><img src="/assets/ai-diagnostics-icon.webp" width="17" height="17" alt="" loading="lazy" />AI diagnostics</div></div>
+      <div class="sidebar-footer" aria-hidden="true"><span>♙ Members</span><span>▤ Billing</span><span>⚙ Settings</span><div class="profile"><span class="person-avatar">AL</span><span>Alex Lee</span><span>⌄</span></div></div>
+    </aside>
+    <div class="cloud-main">
+      <div class="cloud-toolbar"><span data-cloud-page-title>Instance status</span><div aria-hidden="true"><span class="version-chip">v1 <span>Deployed</span>⌄</span><span class="running-chip"><i></i>Running⌄</span><span class="open-instance">Open DSUI ↗</span></div></div>
+      <div class="cloud-page" id="cloud-preview-overview" data-cloud-page="overview" aria-label="Example Cloud workspace overview" hidden>
+        <header class="page-heading"><h3>Welcome back, Alex</h3><p>Data Platform · data-platform.example.com</p></header>
+        <div class="overview-columns"><section><div class="section-title"><h4>Services</h4><span aria-hidden="true">＋ Add service</span></div><div class="service-list">{services.map((service) => <div><img src={`/assets/logos/${service.logo}`} width="25" height="25" alt="" loading="lazy" /><span><strong>{service.name}</strong><small>{service.adapter}</small></span><span class="service-health"><i aria-hidden="true"></i>Healthy</span><span class="row-arrow" aria-hidden="true">→</span></div>)}</div></section><section><div class="section-title"><h4>Team</h4></div><div class="team-card"><div class="team-avatars" aria-hidden="true"><span>AL</span><span>SM</span><span>JR</span></div><div><strong>3 members</strong><small>1 invited</small></div><span aria-hidden="true">→</span></div></section></div>
+      </div>
+      <div class="cloud-page" id="cloud-preview-instance" data-cloud-page="instance" aria-label="Example Cloud instance status with illustrative availability and resource readings">
+        <header class="page-heading instance-heading"><div><h3><i aria-hidden="true"></i>Running</h3><p>All systems operational.</p><p>data-platform.example.com · DSUI main</p></div><div class="instance-actions" aria-hidden="true"><span>↻ Restart</span><span>Stop</span></div></header>
+        <div class="stats-grid">{[{label:"Uptime",value:"99.96%",note:"Last 30 days"},{label:"Response time",value:"124 ms",note:"95th percentile"},{label:"Configuration",value:"v1",note:"v1 is running"},{label:"Region",value:"Helsinki",note:"Helsinki"}].map((stat) => <div><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.note}</small></div>)}</div>
+        <section class="status-card availability-card"><div class="status-card-title"><h4>Availability</h4><span>99.96% last 30 days</span></div><p>Daily status from what your instance reports.</p><div class="availability-bars" role="img" aria-label="Illustrative daily availability for 90 days">{Array.from({length:90}, (_,index) => <span class:list={{"partial-day":index===48}}></span>)}</div><div class="bar-labels"><span>90 days ago</span><span>Today</span></div></section>
+        <div class="status-columns"><section class="status-card"><h4>Components</h4><p>DSUI and the adapters it loaded.</p><div class="component-row"><span>DSUI</span><span>Healthy</span></div><div class="component-row"><span>postgresql adapter</span><span>Healthy</span></div><div class="component-row"><span>airflow adapter</span><span>Healthy</span></div></section><section class="status-card"><h4>Resources</h4><p>Current use of the machine.</p><div class="resource"><div><span>CPU</span><span>12%</span></div><span class="resource-track"><span style="width:12%"></span></span></div><div class="resource"><div><span>Memory</span><span>38%</span></div><span class="resource-track"><span style="width:38%"></span></span></div></section></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>("[data-cloud-preview]")) {
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>("[data-cloud-view]")];
+    const pages = [...root.querySelectorAll<HTMLElement>("[data-cloud-page]")];
+    const title = root.querySelector<HTMLElement>("[data-cloud-page-title]");
+    for (const button of buttons) {
+      button.addEventListener("click", () => {
+        for (const item of buttons) item.setAttribute("aria-pressed", String(item === button));
+        for (const page of pages) page.hidden = page.dataset.cloudPage !== button.dataset.cloudView;
+        if (title) title.textContent = button.dataset.cloudView === "instance" ? "Instance status" : "Overview";
+      });
+    }
+  }
+</script>
+
+<style>
+  .cloud-preview { width: 100%; max-width: 1056px; min-width: 0; overflow: hidden; border: 1px solid #293650; border-radius: 12px; background: #020617; box-shadow: 0 24px 80px #0006; text-align: left; }
+  .preview-label { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 12px 18px; border-bottom: 1px solid #1c273e; color: #8996af; font-size: 9px; }
+  .preview-label > span:first-child { display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-weight: 500; font-size: 11px; }
+  .cloud-shell { display: grid; grid-template-columns: 190px minmax(0, 1fr); }
+  .cloud-sidebar { display: flex; flex-direction: column; min-width: 0; padding: 18px 10px 10px; border-right: 1px solid #1c273e; }
+  .workspace-picker { display: flex; align-items: center; gap: 9px; padding: 0 4px; }
+  .workspace-avatar, .person-avatar, .team-avatars > span { display: grid; place-items: center; flex-shrink: 0; border-radius: 7px; background: #17375a; color: #a6cbf0; font-size: 9px; }
+  .workspace-avatar { width: 29px; height: 29px; }
+  .workspace-picker > div { min-width: 0; flex: 1; }
+  .workspace-picker strong { display: block; font-size: 11px; font-weight: 500; color: #e2e8f0; }
+  .workspace-picker small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; color: #7a8ba7; font-size: 8px; }
+  .workspace-picker > span:last-child { color: #7a8ba7; font-size: 12px; }
+  .sidebar-search { display: flex; gap: 7px; padding: 8px; margin: 18px 0 16px; border: 1px solid #1c273e; border-radius: 6px; color: #7a8ba7; font-size: 9px; }
+  .preview-navigation { display: grid; gap: 4px; }
+  .preview-navigation button { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 34px; padding: 8px; border: 1px solid transparent; border-radius: 6px; text-align: left; color: #8996af; font-size: 10px; cursor: pointer; }
+  .preview-navigation button[aria-pressed="true"] { background: #ffffff10; border-color: #ffffff0a; color: #e2e8f0; }
+  .preview-navigation button:hover { color: #f1f5f9; background: #ffffff08; }
+  .preview-navigation button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+  .sidebar-details > p { display: flex; justify-content: space-between; margin: 20px 7px 10px; color: #7a8ba7; font-size: 9px; }
+  .sidebar-service, .sidebar-plugin { display: flex; align-items: center; gap: 8px; min-height: 29px; padding: 5px 8px; color: #a3b1c8; font-size: 9px; }
+  .sidebar-service img { object-fit: contain; }
+  .sidebar-service i { margin-left: auto; }
+  i { display: inline-block; flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%; background: #7ab79b; }
+  .sidebar-footer { display: grid; gap: 10px; margin-top: auto; padding: 32px 8px 0; font-size: 9px; color: #8996af; }
+  .profile { display: flex; align-items: center; gap: 8px; padding-top: 14px; margin-top: 3px; border-top: 1px solid #1c273e; color: #cbd5e1; }
+  .person-avatar { width: 24px; height: 24px; background: #343049; color: #cbc5e3; }
+  .profile > span:last-child { margin-left: auto; }
+  .cloud-main { min-width: 0; }
+  .cloud-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; min-height: 52px; padding: 12px 20px; border-bottom: 1px solid #1c273e; }
+  .cloud-toolbar > span { font-size: 12px; font-weight: 500; color: #e2e8f0; }
+  .cloud-toolbar > div { display: flex; gap: 8px; align-items: center; }
+  .version-chip, .running-chip { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border: 1px solid #293650; border-radius: 5px; font-size: 8px; color: #a3b1c8; }
+  .version-chip > span { color: #7ab79b; }
+  .open-instance { padding: 5px 7px; font-size: 8px; color: #93c5fd; }
+  .cloud-page { min-height: 490px; padding: 28px; }
+  .cloud-page[hidden] { display: none; }
+  .page-heading h3 { color: #e2e8f0; font-size: 22px; font-weight: 600; letter-spacing: -.04em; }
+  .page-heading p { margin-top: 6px; color: #8996af; font-size: 10px; line-height: 1.7; }
+  .overview-columns { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 22px; margin-top: 32px; }
+  .section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 20px; margin-bottom: 10px; }
+  .section-title h4 { font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: #8996af; }
+  .section-title > span { color: #7a8ba7; font-size: 8px; }
+  .service-list, .team-card { border: 1px solid #1c273e; border-radius: 10px; background: #ffffff05; }
+  .service-list > div { display: flex; align-items: center; gap: 10px; padding: 13px 12px; }
+  .service-list > div + div { border-top: 1px solid #1c273e; }
+  .service-list img { object-fit: contain; flex-shrink: 0; }
+  .service-list strong { display: block; color: #d1dbea; font-size: 10px; font-weight: 500; }
+  .service-list small { display: block; margin-top: 4px; color: #7a8ba7; font-size: 8px; }
+  .service-health { display: flex; align-items: center; gap: 5px; margin-left: auto; color: #8996af; font-size: 8px; }
+  .row-arrow { font-size: 11px; color: #7a8ba7; }
+  .team-card { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 15px; }
+  .team-avatars { display: flex; padding-left: 0; }
+  .team-avatars > span { width: 23px; height: 23px; margin-left: -5px; border: 2px solid #020617; font-size: 6px; }
+  .team-avatars > span:first-child { margin-left: 0; background: #343049; color: #cbc5e3; }
+  .team-avatars > span:last-child { background: #253e3d; color: #abc7bc; }
+  .team-card strong { display: block; color: #d1dbea; font-size: 10px; font-weight: 400; }
+  .team-card small { display: block; margin-top: 4px; font-size: 8px; color: #7a8ba7; }
+  .team-card > span { margin-left: auto; color: #7a8ba7; }
+  .instance-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .instance-heading h3 { display: flex; align-items: center; gap: 10px; }
+  .instance-heading h3 i { width: 7px; height: 7px; }
+  .instance-heading p:last-child { font-size: 8px; }
+  .instance-actions { display: flex; gap: 8px; color: #8996af; font-size: 8px; }
+  .instance-actions > span { padding: 6px 8px; border: 1px solid #293650; border-radius: 5px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-top: 22px; }
+  .stats-grid > div { padding: 12px; border: 1px solid #1c273e; border-radius: 8px; background: #ffffff05; }
+  .stats-grid > div > span { display: block; color: #8996af; font-size: 8px; }
+  .stats-grid strong { display: block; margin-top: 10px; font-size: 20px; font-weight: 500; letter-spacing: -.04em; color: #e2e8f0; }
+  .stats-grid small { display: block; margin-top: 5px; font-size: 7px; color: #7a8ba7; }
+  .status-card { margin-top: 16px; padding: 16px; border: 1px solid #1c273e; border-radius: 8px; background: #ffffff05; }
+  .status-card h4 { color: #d1dbea; font-size: 10px; font-weight: 500; }
+  .status-card > p { margin-top: 5px; color: #7a8ba7; font-size: 8px; line-height: 1.6; }
+  .status-card-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .status-card-title > span { color: #8996af; font-size: 8px; }
+  .availability-bars { display: flex; gap: 2px; height: 29px; margin-top: 16px; }
+  .availability-bars > span { flex: 1; min-width: 0; background: #619d87; border-radius: 1px; }
+  .availability-bars > .partial-day { background: #c7ae79; }
+  .bar-labels { display: flex; justify-content: space-between; margin-top: 7px; color: #7a8ba7; font-size: 7px; }
+  .status-columns { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+  .component-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; color: #a3b1c8; font-size: 9px; }
+  .component-row > span:last-child { color: #7ab79b; font-size: 8px; }
+  .resource { margin-top: 16px; }
+  .resource > div { display: flex; justify-content: space-between; font-size: 8px; color: #8996af; }
+  .resource-track { display: block; height: 4px; margin-top: 7px; border-radius: 4px; background: #1c273e; overflow: hidden; }
+  .resource-track > span { display: block; height: 100%; border-radius: inherit; background: #7da1d1; }
+  @media (max-width: 900px) { .cloud-shell { grid-template-columns: 156px minmax(0, 1fr); } .cloud-page { padding: 22px 18px; } .overview-columns { grid-template-columns: 1fr; gap: 22px; } .team-card { max-width: 240px; } .service-health { font-size: 7px; } .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } .status-columns { gap: 10px; } .version-chip { display: none; } .stats-grid strong { font-size: 17px; } }
+  @media (max-width: 600px) { .preview-label { padding-inline: 12px; } .cloud-shell { grid-template-columns: 1fr; } .cloud-sidebar { display: block; padding: 8px; border-right: 0; border-bottom: 1px solid #1c273e; } .workspace-picker, .sidebar-search, .sidebar-details, .sidebar-footer { display: none; } .preview-navigation { grid-template-columns: repeat(2,minmax(0,1fr)); } .preview-navigation button { justify-content: center; } .cloud-toolbar { padding: 10px 14px; } .cloud-toolbar > span { font-size: 10px; } .running-chip { font-size: 7px; } .open-instance { font-size: 7px; } .cloud-page { min-height: 480px; padding: 22px 16px; } .page-heading h3 { font-size: 20px; } .status-columns { grid-template-columns: 1fr; gap: 0; } .instance-actions { display: none; } .status-card-title > span { font-size: 7px; } }
+</style>

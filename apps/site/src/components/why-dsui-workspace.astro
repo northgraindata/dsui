@@ -1,71 +1,93 @@
 ---
 const tools = [
+  { name: "Airflow", logo: "airflow.svg" },
+  { name: "dbt", logo: "dbt.png" },
+  { name: "PostgreSQL", logo: "postgresql.svg" },
+  { name: "S3", logo: "s3.svg" },
+  { name: "MinIO", logo: "minio.svg" },
+  { name: "ClickHouse", logo: "clickhouse.png" },
+];
+const capabilities = [
   {
-    name: "PostgreSQL",
-    logo: "postgresql.svg",
-    position: "left: 20%; top: 23%",
+    name: "DSUI Agent",
+    detail: "Ask across your stack",
+    icon: "dsui-agent-icon.webp",
   },
-  { name: "Airflow", logo: "airflow.svg", position: "left: 50%; top: 23%" },
-  { name: "S3", logo: "s3.svg", position: "left: 80%; top: 23%" },
+  {
+    name: "AI diagnostics",
+    detail: "Investigate with context",
+    icon: "ai-diagnostics-icon.webp",
+  },
+  { name: "MCP", detail: "Connect your AI tools", icon: "mcp-icon.webp" },
+  { name: "Your plugins", detail: "Build your own capabilities", icon: null },
 ];
 ---
 
-<div id="why-workspace" class="stack-scene" role="img" aria-label="DSUI core connected to PostgreSQL, Airflow and S3" data-stack-scene>
-  <div class="scene-grid" aria-hidden="true"></div>
-  <div class="scene-halo" aria-hidden="true"></div>
-  <div class="stack-board" aria-hidden="true">
-    <div class="board-surface"></div>
-    <div class="board-slots">{[20, 50, 80].map((left) => [23, 75].map((top) => <div class="board-slot" style={`left: ${left}%; top: ${top}%`}></div>))}</div>
-  <div class="core" aria-hidden="true"><img src="/branding/logo-icon.svg" width="38" height="38" alt="" /><span>DSUI<span class="core-label">Core</span></span></div>
-
-  <div class="stack-layer" data-stack-layer="1" data-visible="true" aria-hidden="true">
-    <svg class="connections" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M20 23V38Q20 50 30 50H50M50 23V48M80 23V38Q80 50 70 50H50" /></svg>
-    {tools.map((tool) => <div class="stack-node tool-node" style={tool.position}><img src={`/assets/logos/${tool.logo}`} width="28" height="28" alt="" /><span>{tool.name}</span></div>)}
+<figure class="stack-diagram" aria-labelledby="stack-diagram-caption">
+  <div class="diagram-labels" aria-hidden="true"><span>Your existing tools</span><span>One control plane</span><span>Extend what you can do</span></div>
+  <div class="diagram-flow">
+    <svg class="diagram-wires" viewBox="0 0 1000 348" preserveAspectRatio="none" fill="none" aria-hidden="true">
+      {[24, 84, 144, 204, 264, 324].map((y) => <path d={`M260 ${y} C350 ${y} 340 174 420 174`} />)}
+      {[34.5, 127.5, 220.5, 313.5].map((y) => <path d={`M580 174 C660 174 650 ${y} 740 ${y}`} />)}
+      <circle cx="420" cy="174" r="3" /><circle cx="580" cy="174" r="3" />
+    </svg>
+    <ul class="tool-nodes" aria-label="Your existing tools">
+      {tools.map((tool) => <li><img src={`/assets/logos/${tool.logo}`} width="26" height="26" alt="" loading="lazy" /><span>{tool.name}</span></li>)}
+    </ul>
+    <div class="dsui-node"><img src="/branding/logo-icon.svg" width="64" height="64" alt="" loading="lazy" /><strong>DSUI</strong><span>Your control plane</span></div>
+    <ul class="capability-nodes" aria-label="Capabilities connected through DSUI">
+      {capabilities.map((capability) => <li>
+        {capability.icon ? <img src={`/assets/${capability.icon}`} width="36" height="36" alt="" loading="lazy" /> : <span class="sdk-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5 M16 7l5 5-5 5 M14 4l-4 16" /></svg></span>}
+        <div><strong>{capability.name}</strong><span>{capability.detail}</span></div>
+      </li>)}
+    </ul>
   </div>
-
-  <div class="stack-layer" data-stack-layer="2" data-visible="false" aria-hidden="true">
-    <svg class="connections" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M50 50H30Q20 50 20 58V75M50 50H70Q80 50 80 58V75" /></svg>
-    <div class="stack-node plugin-node" style="left: 20%; top: 75%"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5Z" /></svg><span>DSUI Agent</span></div>
-    <div class="stack-node plugin-node" style="left: 80%; top: 75%"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-7 6 14 3-7h4" /></svg><span>Service health</span></div>
-  </div>
-
-  <div class="stack-layer" data-stack-layer="3" data-visible="false" aria-hidden="true">
-    <svg class="connections custom-connection" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M50 50V75" /></svg>
-    <div class="stack-node custom-node" style="left: 50%; top: 75%"><span class="code-symbol">&lt;/&gt;</span><span>Your integration</span></div>
-  </div>
-  </div>
-</div>
+  <figcaption id="stack-diagram-caption"><span class="caption-rule" aria-hidden="true"></span>Your infrastructure stays where it is. DSUI connects to it.<span class="caption-rule" aria-hidden="true"></span></figcaption>
+</figure>
 
 <style>
-  .stack-scene { position: relative; width: 100%; aspect-ratio: 1.6; perspective: 1100px; perspective-origin: 50% 50%; }
-  .scene-grid { position: absolute; inset: 0 -6%; pointer-events: none; background-image: linear-gradient(color-mix(in srgb, var(--ds-color-brand-muted) 7%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--ds-color-brand-muted) 7%, transparent) 1px, transparent 1px); background-size: 36px 36px; mask-image: radial-gradient(ellipse at 58% 50%, black 10%, transparent 68%); }
-  .scene-halo { position: absolute; inset: 15% 4% 0; background: radial-gradient(ellipse, color-mix(in srgb, var(--ds-color-brand) 14%, transparent), transparent 70%); }
-  .stack-board { position: absolute; left: 58%; top: 50%; width: 68%; height: 72%; transform-origin: center; transform-style: preserve-3d; transform: translate(-50%, -50%) rotateX(22deg) rotateZ(-6deg); }
-  .board-surface::before, .board-surface::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
-  .board-surface::before { background-image: radial-gradient(circle, rgb(105 186 255 / 80%) .7px, transparent 1px), url("/assets/platform-aurora-grain.jpg"); background-size: 5px 5px, cover; background-position: center; background-repeat: repeat, no-repeat; opacity: .55; mask-image: linear-gradient(115deg, #000 0%, #0003 22%, #000 39%, #0002 62%, #000 87%, #0003); }
-  .board-surface { position: absolute; inset: 0; border: 1px solid; border-radius: 16px; border-color: rgb(126 180 228 / 40%); background: linear-gradient(125deg, #0c1724, #070d16 44%, #0c1621); box-shadow: inset 0 1px 0 rgb(176 214 255 / 18%), 0 1px 0 #162334, 0 2px 0 #142030, 0 3px 0 #121e2c, 0 4px 0 #101a27, 0 5px 0 #0e1722, 0 6px 0 #0c141e, 0 7px 0 #0a111a, 0 8px 0 #080e16, 0 9px 0 #060b12, 0 24px 40px #0007; }
-  .board-surface::after { background: radial-gradient(ellipse at 0% 100%, rgb(28 135 255 / 16%), transparent 42%), linear-gradient(135deg, rgb(130 192 255 / 5%), transparent 30%, #0004); box-shadow: inset 1px 0 0 rgb(122 197 255 / 26%); }
-  .board-slots, .stack-layer { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
-  .board-slot { position: absolute; width: 24%; height: 26%; transform: translate(-50%, -50%); border: 1px solid rgb(108 164 210 / 28%); border-radius: 12px; background: linear-gradient(145deg, #02050a, #080e16); box-shadow: inset 0 5px 10px #000c, inset 0 1px 3px #000, 0 1px 0 rgb(154 202 255 / 9%); }
-  .core { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) translateZ(5px); display: flex; align-items: center; justify-content: center; gap: 12px; width: 42%; height: 19%; border: 1px solid color-mix(in srgb, var(--ds-color-brand-soft) 25%, transparent); border-radius: 12px; background: linear-gradient(135deg, #101e2e, #070e17); box-shadow: inset 0 1px 0 rgb(155 221 255 / 35%), 0 0 0 1px rgb(87 189 255 / 40%), 0 0 28px color-mix(in srgb, var(--ds-color-brand) 12%, transparent), -1px 1px 0 var(--ds-color-surface), -2px 2px 0 var(--ds-color-surface), -3px 3px 0 var(--ds-color-surface), -4px 4px 0 var(--ds-color-surface), -2px 5px 12px #0004; font-size: clamp(16px, 2vw, 24px); font-weight: 600; letter-spacing: -.04em; }
-  .core-label { display: block; margin-top: 2px; color: var(--ds-color-copy-subtle); font-size: 10px; font-weight: 400; letter-spacing: 0; }
-  .core img { width: 30px; height: 30px; }
-  .connections { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: color-mix(in srgb, var(--ds-color-brand-muted) 16%, transparent); stroke-width: 1; opacity: 0; transition: opacity 400ms ease; }
-  .connections path { vector-effect: non-scaling-stroke; }
-  .stack-node { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; width: 24%; height: 26%; border: 1px solid rgb(118 175 224 / 35%); border-radius: 12px; background: linear-gradient(145deg, #111e2c, #080f19 65%); box-shadow: inset 0 1px 0 rgb(168 216 255 / 13%), -1px 1px 0 var(--ds-color-surface), -2px 2px 0 var(--ds-color-surface), -3px 3px 0 var(--ds-color-surface), -4px 4px 0 var(--ds-color-surface), -3px 7px 14px #0005; font-size: clamp(8px, 1vw, 11px); color: var(--ds-color-copy); opacity: 0; transform: translate(-50%, -50%) translateZ(180px); transition: opacity 350ms cubic-bezier(.23, 1, .32, 1), transform 800ms cubic-bezier(.23, 1, .32, 1); }
-  .stack-node img { object-fit: contain; }
-  .plugin-node { color: var(--ds-color-brand-muted); }
-  .plugin-node span { color: var(--ds-color-copy); }
-  .custom-node { border: 1px solid var(--ds-color-brand-softest); background: radial-gradient(ellipse at 50% 0%, rgb(96 165 250 / 65%), transparent 75%), linear-gradient(145deg, #2457bf, #102454); box-shadow: inset 0 1px 0 #ffffff80, inset 0 0 18px rgb(96 165 250 / 30%), 0 0 0 1px rgb(147 197 253 / 45%), 0 0 16px rgb(96 165 250 / 65%), 0 0 42px rgb(59 130 246 / 55%), 0 14px 55px rgb(37 99 235 / 65%), 0 5px 0 #153a80; color: white; }
-  .custom-node .code-symbol { color: white; text-shadow: 0 0 12px rgb(191 219 254 / 80%); }
-  .custom-node::before { content: ""; position: absolute; inset: -18px; border-radius: 24px; background: radial-gradient(ellipse, rgb(59 130 246 / 24%), transparent 70%); transform: translateZ(-1px); pointer-events: none; }
-  .custom-connection { stroke-dasharray: 4 5; }
-  .code-symbol { color: var(--ds-color-brand-muted); font: 21px/1 ui-monospace, monospace; }
-  [data-visible="true"] .stack-node { opacity: 1; transform: translate(-50%, -50%) translateZ(5px); }
-  [data-visible="true"] .connections { opacity: 1; }
-  [data-visible="true"] .stack-node:nth-of-type(2) { transition-delay: 100ms; }
-  [data-visible="true"] .stack-node:nth-of-type(3) { transition-delay: 200ms; }
-  @media (max-width: 540px) { .stack-scene { aspect-ratio: 1; perspective: 800px; } .stack-board { left: 50%; width: 78%; height: 57%; transform: translate(-50%, -50%) rotateX(18deg) rotateZ(-5deg); } .core { gap: 8px; } .core img { width: 24px; height: 24px; } .stack-node img, .stack-node svg { width: 23px; height: 23px; } .core-label { font-size: 8px; } }
-  [data-instant="true"] .stack-node, [data-instant="true"] .connections { transition: none; }
-  @media (prefers-reduced-motion: reduce) { .stack-node, .connections { transition: none !important; } }
+  .stack-diagram { max-width: 1000px; margin: 64px auto 0; }
+  .diagram-labels, .diagram-flow { display: grid; grid-template-columns: 26% 16% 26%; justify-content: space-between; }
+  .diagram-labels { margin-bottom: 24px; color: var(--ds-color-copy-subtle); font: 10px ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; }
+  .diagram-labels > :nth-child(2) { text-align: center; }
+  .diagram-flow { position: relative; align-items: center; height: 348px; }
+  .diagram-wires { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--ds-color-brand-muted); pointer-events: none; }
+  .diagram-wires path { stroke: currentColor; stroke-width: 1; opacity: .35; vector-effect: non-scaling-stroke; }
+  .diagram-wires circle { fill: currentColor; opacity: .75; }
+  .tool-nodes, .capability-nodes { position: relative; display: grid; }
+  .tool-nodes { gap: 12px; }
+  .tool-nodes li { display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 18px; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent); border-radius: 8px; background: var(--ds-color-canvas); color: var(--ds-color-copy); font-size: 14px; }
+  .tool-nodes img { object-fit: contain; flex-shrink: 0; }
+  .dsui-node { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 1; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 55%, transparent); border-radius: 18px; background: var(--ds-color-canvas); box-shadow: 0 0 48px color-mix(in srgb, var(--ds-color-brand) 10%, transparent), inset 0 1px 0 color-mix(in srgb, var(--ds-color-brand-muted) 12%, transparent); }
+  .dsui-node strong { margin-top: 12px; font-size: 24px; font-weight: 600; letter-spacing: -.04em; }
+  .dsui-node > span { margin-top: 5px; color: var(--ds-color-copy-subtle); font-size: 10px; }
+  .capability-nodes { gap: 24px; }
+  .capability-nodes li { display: flex; align-items: center; gap: 12px; height: 69px; padding: 0 14px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 16%, transparent); border-radius: 8px; background: var(--ds-color-canvas); }
+  .capability-nodes img { flex-shrink: 0; border-radius: 8px; }
+  .capability-nodes strong { display: block; font-size: 13px; font-weight: 500; }
+  .capability-nodes li div > span { display: block; margin-top: 5px; color: var(--ds-color-copy-subtle); font-size: 10px; line-height: 1.4; }
+  .sdk-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 20%, transparent); border-radius: 8px; color: var(--ds-color-brand-muted); }
+  .sdk-icon svg { width: 22px; height: 22px; }
+  figcaption { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 40px; color: var(--ds-color-copy-subtle); font-size: 12px; line-height: 1.7; text-align: center; }
+  .caption-rule { width: 48px; height: 1px; background: color-mix(in srgb, var(--ds-color-copy) 18%, transparent); }
+  @media (max-width: 760px) {
+    .stack-diagram { max-width: 480px; margin-top: 40px; }
+    .diagram-labels { display: none; }
+    .diagram-wires { display: none; }
+    .diagram-flow { display: flex; flex-direction: column; height: auto; }
+    .tool-nodes { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .tool-nodes li { padding: 0 12px; gap: 10px; font-size: 12px; }
+    .tool-nodes img { width: 22px; height: 22px; }
+    .dsui-node { width: 148px; margin: 40px 0; }
+    .dsui-node::before, .dsui-node::after { position: absolute; left: 50%; width: 1px; height: 40px; background: color-mix(in srgb, var(--ds-color-brand-muted) 45%, transparent); content: ""; }
+    .dsui-node::before { bottom: 100%; }
+    .dsui-node::after { top: 100%; }
+    .dsui-node img { width: 52px; height: 52px; }
+    .capability-nodes { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .capability-nodes li { height: auto; min-height: 100px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; padding: 14px; }
+    .capability-nodes strong { font-size: 12px; }
+    .capability-nodes li div > span { margin-top: 4px; }
+    figcaption { margin-top: 28px; font-size: 11px; }
+    .caption-rule { display: none; }
+  }
 </style>

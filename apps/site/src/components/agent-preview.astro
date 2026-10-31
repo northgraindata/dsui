@@ -1,0 +1,83 @@
+---
+import ShaderBackground from "./ui/line-shader-homlu-ui.astro";
+
+const suggestions = [
+  {
+    title: "Diagnose my stack",
+    detail: "Check services for issues",
+    path: "M21 21l-5-5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
+  },
+  {
+    title: "Why is my database unavailable?",
+    detail: "Analyze connection errors",
+    path: "M20 6c0 2-3.6 3-8 3S4 8 4 6s3.6-3 8-3 8 1 8 3z M4 6v12c0 2 3.6 3 8 3s8-1 8-3V6 M4 12c0 2 3.6 3 8 3s8-1 8-3",
+  },
+  {
+    title: "Show recent failures",
+    detail: "Find issues across tools",
+    path: "m12 3 10 18H2z M12 9v5 M12 17h.01",
+  },
+  {
+    title: "Explore my data",
+    detail: "Discover tables and schemas",
+    path: "m12 3 10 5-10 5L2 8z M2 12l10 5 10-5 M2 16l10 5 10-5",
+  },
+  {
+    title: "Explore a service",
+    detail: "Discover what it can read",
+    path: "m8 6-6 6 6 6 M16 6l6 6-6 6 M14 3l-4 18",
+  },
+  {
+    title: "Compare workspace resources",
+    detail: "Inspect models and run results",
+    path: "M20 6c0 2-3.6 3-8 3S4 8 4 6s3.6-3 8-3 8 1 8 3z M4 6v12c0 2 3.6 3 8 3s8-1 8-3V6 M4 12c0 2 3.6 3 8 3s8-1 8-3",
+  },
+];
+---
+
+<div class="agent-stage">
+  <div class="agent-background" aria-hidden="true"><ShaderBackground /></div>
+  <div class="agent-panel" role="img" aria-label="DSUI Agent new chat preview, with four suggested prompts for investigating services, exploring data, and comparing resources, plus a message composer.">
+    <div aria-hidden="true">
+      <div class="agent-header"><span class="agent-brand"><img src="/branding/logo-icon.svg" width="21" height="21" alt="" loading="lazy" />DSUI Agent</span><span class="header-actions"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 3 8 M3 4v7h7 M12 7v5l3 2" /></svg><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16 M4 12h16" /></svg><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m6 6 12 12 M6 18 18 6" /></svg></span></div>
+      <div class="chat-tabs"><span>New chat <span>×</span></span></div>
+      <div class="agent-welcome">
+        <p class="welcome-title">How can I help you today?</p>
+        <p class="welcome-description">I can analyze your data stack, investigate issues and explore data across your tools.</p>
+        <div class="agent-suggestions">{suggestions.slice(0, 4).map((suggestion) => <div class="suggestion"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d={suggestion.path} /></svg><span><strong>{suggestion.title}</strong><small>{suggestion.detail}</small></span></div>)}</div>
+      </div>
+      <div class="agent-footer"><div class="agent-composer"><p>Ask anything… Use <span>@</span> to mention a service</p><div class="composer-bar"><span class="composer-tools"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m21 11-8 8a6 6 0 0 1-8-8l9-9a4 4 0 0 1 6 6l-9 9a2 2 0 0 1-3-3l8-8" /></svg><span class="model-name">Select model <span>⌄</span></span></span><span class="send-icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7 M12 5v14" /></svg></span></div></div><p class="agent-notice">AI can make mistakes · Data &amp; privacy</p></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .agent-stage { position: relative; isolation: isolate; display: grid; place-items: center; min-height: 440px; padding: 36px 28px; overflow: hidden; background: var(--ds-color-canvas); }
+  .agent-background { position: absolute; z-index: -1; inset: -60px; pointer-events: none; opacity: .55; mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent); }
+  .agent-panel { width: 88%; max-width: 390px; overflow: hidden; border: 1px solid #34445e; border-radius: 12px; background: #080f1c; box-shadow: 0 20px 48px #0005; text-align: left; }
+  .agent-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 16px; border-bottom: 1px solid #ffffff0d; }
+  .agent-brand { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #e0e8f5; }
+  .header-actions { display: flex; align-items: center; gap: 14px; color: #8995a8; }
+  .chat-tabs { padding: 10px 16px; border-bottom: 1px solid #ffffff08; }
+  .chat-tabs > span { display: inline-flex; align-items: center; gap: 20px; padding: 5px 8px; border: 1px solid #ffffff0d; border-radius: 6px; background: #ffffff07; font-size: 9px; color: #e0e8f5; }
+  .chat-tabs > span > span { color: #8591a4; font-size: 14px; line-height: 1; }
+  .agent-welcome { padding: 18px 16px 16px; }
+  .welcome-title { color: #e0e8f5; font-size: 19px; line-height: 1.25; letter-spacing: -.6px; font-weight: 550; }
+  .welcome-description { margin-top: 8px; max-width: 290px; color: #8996aa; font-size: 10px; line-height: 1.7; }
+  .agent-suggestions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 16px; }
+  .suggestion { display: flex; align-items: flex-start; gap: 7px; padding: 10px 8px; min-height: 58px; border: 1px solid #ffffff0d; border-radius: 8px; background: #ffffff03; }
+  .suggestion > svg { flex-shrink: 0; margin-top: 2px; width: 13px; height: 13px; color: #8b9bb4; }
+  .suggestion strong { display: block; color: #d1dbea; font-size: 9px; line-height: 1.5; font-weight: 500; }
+  .suggestion small { display: block; margin-top: 3px; font-size: 8px; line-height: 1.5; color: #8996aa; }
+  .agent-footer { padding: 12px; border-top: 1px solid #ffffff08; }
+  .agent-composer { padding: 12px; border: 1px solid #ffffff16; border-radius: 10px; background: #ffffff04; }
+  .agent-composer > p { color: #8390a5; font-size: 9px; line-height: 1.6; }
+  .agent-composer > p > span { color: #a5c8ff; }
+  .composer-bar, .composer-tools { display: flex; align-items: center; }
+  .composer-bar { justify-content: space-between; gap: 12px; margin-top: 12px; }
+  .composer-tools { gap: 10px; color: #8995a8; }
+  .model-name { display: flex; align-items: center; gap: 10px; color: #8f9db3; font-size: 9px; }
+  .send-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: #9ebff5; color: #101c30; }
+  .agent-notice { margin-top: 10px; text-align: center; color: #8390a5; font-size: 8px; }
+  @media (max-width: 440px) { .agent-stage { min-height: 400px; padding: 28px 14px; } .agent-panel { width: 94%; } .agent-header { padding-inline: 12px; } .agent-welcome { padding-inline: 12px; } .header-actions { gap: 10px; } .suggestion { padding: 8px 6px; gap: 5px; } .welcome-title { font-size: 18px; } }
+</style>

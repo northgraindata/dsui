@@ -1,5 +1,7 @@
 ---
-import ScreenshotPlaceholder from "./screenshot-placeholder.astro";
+import AgentPreview from "./agent-preview.astro";
+import CapabilityPreview from "./capability-preview.astro";
+import NotificationPreview from "./notification-preview.astro";
 
 const plugins = [
   {
@@ -70,6 +72,25 @@ const plugins = [
     accent: "var(--ds-teal-200)",
     icon: "/assets/team-access-icon.webp",
   },
+  {
+    id: "mcp",
+    number: "05",
+    name: "MCP",
+    category: "CONNECT YOUR AI",
+    title: "Your stack. In your AI tools.",
+    description:
+      "Connect your MCP-compatible AI client to DSUI. Explore connected services with access limited to your permissions, choose which services to share, and revoke the connection at any time.",
+    features: [
+      "OAuth or personal tokens",
+      "Scoped service access",
+      "Revocable connections",
+    ],
+    screenshot: "",
+    source: null,
+    pro: true,
+    accent: "var(--ds-color-brand-muted)",
+    icon: "/assets/mcp-icon.webp",
+  },
 ] as const;
 const docsBaseUrl = import.meta.env.DEV
   ? "http://localhost:4322/docs"
@@ -89,7 +110,9 @@ const docsBaseUrl = import.meta.env.DEV
           <div class="plugin-visual">
             <div class="plugin-visual-glow" aria-hidden="true"></div>
             <div class="plugin-preview">
-              {plugin.id === "dsui-agent" ? <img src="/assets/dsui-agent-showcase-v3.webp" alt="DSUI Agent with a new chat, suggested prompts for investigating services, and a message composer." width="1586" height="992" loading="lazy" class="agent-showcase" /> : plugin.id === "notifications" ? <img src="/assets/notifications-showcase.png" alt="DSUI Notifications showing channels, rules, and Slack and Discord delivery history" width="1448" height="1086" loading="lazy" class="agent-showcase" /> : <ScreenshotPlaceholder label={plugin.name} title={plugin.name} description={plugin.screenshot} />}
+              {plugin.id === "dsui-agent" && <AgentPreview />}
+              {plugin.id === "notifications" && <NotificationPreview />}
+              {(plugin.id === "ai-diagnostics" || plugin.id === "team-access" || plugin.id === "mcp") && <CapabilityPreview variant={plugin.id} />}
             </div>
           </div>
           <div class="plugin-copy">
@@ -108,7 +131,9 @@ const docsBaseUrl = import.meta.env.DEV
 </section>
 
 <style>
-  .plugins-section { background: radial-gradient(70% 38% at 85% 8%, color-mix(in srgb, var(--ds-violet-500) 13%, transparent), transparent 70%), radial-gradient(60% 34% at 8% 52%, color-mix(in srgb, var(--ds-blue-500) 13%, transparent), transparent 70%), radial-gradient(60% 30% at 90% 92%, color-mix(in srgb, var(--ds-teal-200) 7%, transparent), transparent 70%), var(--ds-color-canvas); }
+  .plugins-section { background: var(--ds-color-canvas); }
+  .plugins-section::before { position: absolute; inset: 0; pointer-events: none; content: ""; background: radial-gradient(70% 38% at 85% 8%, color-mix(in srgb, var(--ds-violet-500) 13%, transparent), transparent 70%), radial-gradient(60% 34% at 8% 52%, color-mix(in srgb, var(--ds-blue-500) 13%, transparent), transparent 70%), radial-gradient(60% 30% at 90% 92%, color-mix(in srgb, var(--ds-teal-200) 7%, transparent), transparent 70%); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 240px, #000 calc(100% - 240px), transparent); mask-image: linear-gradient(to bottom, transparent, #000 240px, #000 calc(100% - 240px), transparent); }
+  .plugins-section > div { position: relative; }
   .plugin-stories { margin-top: 72px; }
   .plugin-story { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .85fr); align-items: center; gap: 64px; padding: 64px 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); scroll-margin-top: 100px; }
   .plugin-story:first-child { padding-top: 48px; }
@@ -117,7 +142,6 @@ const docsBaseUrl = import.meta.env.DEV
   .plugin-story-reverse .plugin-copy { order: 1; }
   .plugin-visual { position: relative; min-width: 0; }
   .plugin-visual-glow { position: absolute; pointer-events: none; inset: 5% -8%; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--plugin-accent) 16%, transparent), transparent 70%); }
-  .agent-showcase { display: block; width: 100%; height: auto; }
   .plugin-preview { position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--plugin-accent) 18%, transparent); border-radius: 12px; box-shadow: 0 16px 48px color-mix(in srgb, var(--ds-color-canvas) 65%, transparent); }
   .plugin-copy { min-width: 0; }
   .plugin-identity { display: flex; align-items: center; gap: 12px; }

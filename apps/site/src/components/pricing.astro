@@ -8,19 +8,13 @@ const tiers = [
   {
     id: "community",
     name: "Community",
-    price: "Free",
+    price: "$0",
     note: "Open source, Apache-2.0",
     cta: {
       label: "Get started",
       href: `${docsBaseUrl}/getting-started/quickstart`,
     },
     description: "For builders who want full control.",
-    features: [
-      "Self-host with npx or Docker",
-      "All built-in adapters and core plugins",
-      "Adapter SDK and Plugin SDK",
-      "Community support",
-    ],
     featured: false,
   },
   {
@@ -30,13 +24,6 @@ const tiers = [
     note: "Pro plugins and managed cloud",
     cta: { label: "Talk to us", href: contactUrl },
     description: "For teams ready to hand off the operations.",
-    features: [
-      "Everything in Community",
-      "Managed cloud hosting",
-      "Notifications and AI diagnostics",
-      "AI usage included",
-      "Team access and email support",
-    ],
     featured: true,
   },
   {
@@ -46,12 +33,6 @@ const tiers = [
     note: "Deployed in your cloud",
     cta: { label: "Talk to us", href: contactUrl },
     description: "For organizations with their own requirements.",
-    features: [
-      "Everything in Cloud",
-      "Deploy into your AWS, Azure or GCP",
-      "Private networking, SSO and audit log",
-      "Dedicated onboarding and support",
-    ],
     featured: false,
   },
 ] as const;
@@ -61,6 +42,7 @@ type Cell = boolean | string;
 type Row = {
   label: string;
   hint?: string;
+  icon?: string;
   values: readonly [Cell, Cell, Cell];
 };
 type Group = { title: string; rows: readonly Row[] };
@@ -82,35 +64,58 @@ const groups: readonly Group[] = [
         label: "Connections encrypted with your master key",
         values: [true, true, true],
       },
-      { label: "Configuration in dsui.yaml", values: [true, true, true] },
-      { label: "Apache-2.0 source", values: [true, true, true] },
     ],
   },
   {
     title: "Plugins",
     rows: [
-      { label: "DSUI Agent", values: [true, true, true] },
+      {
+        label: "DSUI Agent",
+        icon: "/assets/dsui-agent-icon.webp",
+        values: [true, true, true],
+      },
       {
         label: "AI usage included",
         hint: "DSUI Agent and AI diagnostics",
         values: [false, true, true],
       },
-      { label: "Service health", values: [true, true, true] },
-      { label: "Monitoring", values: [true, true, true] },
-      { label: "Code repository", values: [true, true, true] },
+      {
+        label: "Service health",
+        icon: "/assets/service-health-icon.webp",
+        values: [true, true, true],
+      },
+      {
+        label: "Monitoring",
+        icon: "/assets/host-monitoring-icon.webp",
+        values: [true, true, true],
+      },
+      {
+        label: "Code repository",
+        icon: "/assets/code-repositories-icon.webp",
+        values: [true, true, true],
+      },
       {
         label: "Notifications",
+        icon: "/assets/notifications-icon.webp",
         hint: "Slack and Discord, rules, delivery history",
         values: [false, true, true],
       },
       {
         label: "AI diagnostics",
+        icon: "/assets/ai-diagnostics-icon.webp",
         hint: "Evidence-based reports and draft pull requests",
         values: [false, true, true],
       },
       {
         label: "Team access",
+        icon: "/assets/team-access-icon.webp",
         hint: "Teams, roles and service-level access",
+        values: [false, true, true],
+      },
+      {
+        label: "MCP",
+        icon: "/assets/mcp-icon.webp",
+        hint: "Connect AI clients with scoped access to your services",
         values: [false, true, true],
       },
       { label: "Early access to new Pro plugins", values: [false, true, true] },
@@ -187,51 +192,49 @@ const groups: readonly Group[] = [
       </p>
     </div>
 
-    <div class="plan-grid">
-      {tiers.map((tier) => (
-        <article class:list={["plan-card", { "plan-card-featured": tier.featured }]} aria-labelledby={`plan-${tier.id}`}>
-          <div class="plan-icon">
-            <svg aria-hidden="true" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              {tier.id === "community" && <path d="m8 8-4 4 4 4 M16 8l4 4-4 4 M14 4l-4 16" />}
-              {tier.id === "cloud" && <path d="M7 18a5 5 0 1 1 .3-10A7 7 0 0 1 21 11a3.5 3.5 0 0 1-1 7z" />}
-              {tier.id === "enterprise" && <path d="M4 21V7l8-4 8 4v14 M2 21h20 M9 21v-5h6v5 M8 8h1 M15 8h1 M8 12h1 M15 12h1" />}
-            </svg>
-          </div>
-          <div class="plan-eyebrow"><h3 id={`plan-${tier.id}`}>{tier.name}</h3>{tier.featured && <span>MANAGED FOR YOU</span>}</div>
-          <p class="plan-description">{tier.description}</p>
-          <p class="plan-price">{tier.id === "community" ? "$0" : "Let’s talk"}<span>{tier.note}</span></p>
-          <a class:list={["pricing-cta", { "pricing-cta-primary": tier.featured }]} href={tier.cta.href}>{tier.cta.label}<span aria-hidden="true">↗</span></a>
-          <ul class="plan-features">{tier.features.map((feature) => <li><svg class="feature-check" aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6" /></svg>{feature}</li>)}</ul>
-        </article>
-      ))}
-    </div>
-
-    <div class="pricing-scroll" tabindex="0" role="region" aria-label="Plan comparison">
+    <p class="pricing-scroll-hint">Swipe to compare all three plans <span aria-hidden="true">↔</span></p>
+    <div class="pricing-scroll" tabindex="0" role="region" aria-label="Compare Community, Cloud, and Enterprise plans">
       <table class="pricing-table">
         <caption class="sr-only">Compare what each DSUI plan includes</caption>
         <colgroup><col class="col-feature" /><col /><col /><col /></colgroup>
         <thead>
           <tr>
-            <td class="pricing-corner"><span class="comparison-label">Plan comparison</span></td>
+            <th scope="col" class="pricing-intro">
+              <span class="comparison-kicker">FIND YOUR FIT</span>
+              <span class="comparison-title">Same foundation.<br />Your choice of control.</span>
+              <span class="comparison-note">Compare the platform, hosting,<br />and support in each plan.</span>
+            </th>
             {tiers.map((tier) => (
-              <th scope="col" class:list={["pricing-head", { "pricing-featured": tier.featured }]}>
-                <span class="tier-name">{tier.name}</span>
-
+              <th scope="col" id={`tier-${tier.id}`} class:list={["pricing-head", { "pricing-head-featured": tier.featured }]}>
+                <span class="tier-identity">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    {tier.id === "community" && <path d="m8 8-4 4 4 4 M16 8l4 4-4 4 M14 4l-4 16" />}
+                    {tier.id === "cloud" && <path d="M7 18a5 5 0 1 1 .3-10A7 7 0 0 1 21 11a3.5 3.5 0 0 1-1 7z" />}
+                    {tier.id === "enterprise" && <path d="M4 21V7l8-4 8 4v14 M2 21h20 M9 21v-5h6v5 M8 8h1 M15 8h1 M8 12h1 M15 12h1" />}
+                  </svg>
+                  <span class="tier-name">{tier.name}</span>
+                </span>
+                <span class="tier-description">{tier.description}</span>
+                <span class:list={["tier-price", { "tier-price-free": tier.id === "community" }]}>{tier.price}</span>
+                <span class="tier-note">{tier.note}</span>
+                <a class:list={["pricing-cta", { "pricing-cta-primary": tier.featured }]} href={tier.cta.href}>{tier.cta.label}<span aria-hidden="true">↗</span></a>
               </th>
             ))}
           </tr>
         </thead>
-        {groups.map((group) => (
+        {groups.map((group, groupIndex) => (
           <tbody>
-            <tr class="group-row"><th scope="colgroup" colspan="4">{group.title}</th></tr>
-            {group.rows.map((row) => (
+            <tr class="group-row"><th scope="rowgroup" colspan="4"><span class="group-heading"><span class="group-number" aria-hidden="true">{String(groupIndex + 1).padStart(2, "0")}</span>{group.title}</span></th></tr>
+            {group.rows.map((row, rowIndex) => (
               <tr>
-                <th scope="row" class="feature">
-                  <span>{row.label}</span>
-                  {row.hint && <small>{row.hint}</small>}
+                <th id={`feature-${groupIndex}-${rowIndex}`} scope="row" class="feature">
+                  <div class="feature-content">
+                    {row.icon && <img class="feature-icon" src={row.icon} width="26" height="26" alt="" loading="lazy" />}
+                    <div><span>{row.label}</span>{row.hint && <small>{row.hint}</small>}</div>
+                  </div>
                 </th>
                 {row.values.map((value, index) => (
-                  <td class:list={{ "pricing-featured": tiers[index].featured }}>
+                  <td headers={`feature-${groupIndex}-${rowIndex} tier-${tiers[index].id}`} class:list={{ "cloud-cell": tiers[index].featured }}>
                     {value === true ? (
                       <>
                         <svg class="yes" aria-hidden="true" viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7" /></svg>
@@ -253,10 +256,10 @@ const groups: readonly Group[] = [
         ))}
         <tfoot>
           <tr>
-            <td class="pricing-corner"></td>
+            <th scope="row" class="pricing-foot-label">Ready when you are.</th>
             {tiers.map((tier) => (
-              <td class:list={["pricing-foot", { "pricing-featured": tier.featured }]}>
-                <a class:list={["pricing-cta", { "pricing-cta-primary": tier.featured }]} href={tier.cta.href}>{tier.cta.label}</a>
+              <td class="pricing-foot">
+                <a class:list={["pricing-cta", { "pricing-cta-primary": tier.featured }]} href={tier.cta.href}>{tier.cta.label}<span aria-hidden="true">↗</span></a>
               </td>
             ))}
           </tr>
@@ -268,57 +271,52 @@ const groups: readonly Group[] = [
 </section>
 
 <style>
-  .plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 56px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 20%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 20%, transparent); }
-  .plan-card { padding: 36px 32px; background: var(--ds-color-canvas); }
-  .plan-card + .plan-card { border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 16%, transparent); }
-  .plan-card-featured { box-shadow: inset 0 2px var(--ds-color-brand-muted); }
-  .plan-icon { margin-bottom: 28px; color: var(--ds-color-brand-muted); }
-  .feature-check { flex-shrink: 0; width: 16px; height: 20px; color: var(--ds-color-copy-subtle); }
-  .plan-eyebrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-  .plan-eyebrow h3 { font-size: 18px; font-weight: 600; }
-  .plan-eyebrow > span { font: 9px ui-monospace, monospace; letter-spacing: .08em; color: var(--ds-color-brand-muted); }
-  .plan-description { min-height: 48px; margin-top: 14px; font-size: 14px; line-height: 1.7; color: var(--ds-color-copy-subtle); }
-  .plan-price { margin: 30px 0 24px; font-size: 36px; font-weight: 600; letter-spacing: -.04em; }
-  .plan-price > span { display: block; margin-top: 8px; font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--ds-color-copy-subtle); }
-  .plan-card .pricing-cta { display: flex; justify-content: space-between; width: 100%; }
-  .plan-features { display: grid; gap: 15px; margin-top: 28px; padding-top: 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent); }
-  .plan-features li { display: flex; gap: 10px; font-size: 13px; line-height: 1.6; color: var(--ds-color-copy); }
-  
-  @media (max-width: 900px) { .plan-grid { grid-template-columns: 1fr; } .plan-card { padding-inline: 0; } .plan-card + .plan-card { border-left: 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 16%, transparent); } .plan-card-featured { box-shadow: none; } .plan-description { min-height: 0; } }
-
-  .pricing-section {
-    background: var(--ds-color-canvas);
-  }
-  .pricing-scroll { margin-top: 64px; overflow-x: auto; border: 0; border-radius: 0; background: var(--ds-color-canvas); }
-  .pricing-scroll:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 3px; }
-  .pricing-table { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  .pricing-section { background: var(--ds-color-canvas); scroll-margin-top: 80px; }
+  .pricing-scroll { margin-top: 64px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--ds-color-copy-faint) var(--ds-color-canvas); }
+  .pricing-scroll:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 6px; }
+  .pricing-table { width: 100%; min-width: 840px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
   .col-feature { width: 34%; }
-  .pricing-table th, .pricing-table td { text-align: left; font-weight: 400; }
-  .pricing-head { padding: 24px; vertical-align: bottom; }
-  .comparison-label { display: block; padding: 24px 0; font-size: 14px; color: var(--ds-color-copy-subtle); }
-  .pricing-table thead th { border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 20%, transparent); }
-  .pricing-table td:not(:first-child), .pricing-table thead th { text-align: center; }
-  .pricing-table td .yes, .pricing-table td .no { margin-inline: auto; }
-  .pricing-head > span { display: block; }
-  .tier-name { font-size: 15px; font-weight: 500; color: var(--ds-color-brand-muted); }
-  .pricing-featured { background: transparent; }
-  .group-row th { position: sticky; left: 0; padding: 36px 24px 12px; font-size: 13px; font-weight: 500; letter-spacing: .01em; color: var(--ds-color-foreground); border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent); }
-  tbody tr:not(.group-row) > * { padding: 14px 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 7%, transparent); }
-  .feature { position: sticky; left: 0; z-index: 1; background: var(--ds-color-canvas); font-size: 14px; line-height: 1.5; color: var(--ds-color-copy); }
-  .feature small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.5; color: var(--ds-color-copy-subtle); }
-  td { font-size: 14px; color: var(--ds-color-copy); }
-  .yes { display: block; color: var(--ds-color-brand-hover); }
-  .no { display: block; width: 10px; height: 1.5px; background: var(--ds-color-copy-faint); }
-  .text { font-size: 13px; color: var(--ds-color-copy-subtle); }
-  .pricing-foot { padding: 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent); }
-  .pricing-corner { border-top: 0; }
-  tfoot .pricing-corner { border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent); }
-  .pricing-cta { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding-inline: 20px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 24%, transparent); border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--ds-color-copy); transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
-  .pricing-cta-primary { border-color: transparent; background: var(--ds-color-brand-strong); color: var(--ds-color-foreground); }
-  .pricing-cta:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 3px; }
-  @media (hover: hover) and (pointer: fine) {
-    .pricing-cta:not(.pricing-cta-primary):hover { background: color-mix(in srgb, var(--ds-color-foreground) 8%, transparent); color: var(--ds-color-foreground); }
-    .pricing-cta-primary:hover { background: var(--ds-color-brand-deep); }
-  }
-  @media (max-width: 760px) { .pricing-scroll { margin-top: 44px; } .col-feature { width: 40%; } }
+  .pricing-table th, .pricing-table td { font-weight: 400; }
+  .pricing-intro, .pricing-head { border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); text-align: left; vertical-align: top; }
+  .pricing-intro { padding: 36px 36px 32px 0; }
+  .comparison-kicker { display: block; color: var(--ds-color-copy-subtle); font: 9px ui-monospace, monospace; letter-spacing: .12em; }
+  .comparison-title { display: block; margin-top: 24px; font-size: 23px; line-height: 1.35; font-weight: 500; letter-spacing: -.035em; color: var(--ds-color-foreground); }
+  .comparison-note { display: block; margin-top: 16px; font-size: 12px; line-height: 1.8; color: var(--ds-color-copy-subtle); }
+  .pricing-head { padding: 32px 24px; border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); }
+  .pricing-head-featured { border-top: 2px solid var(--ds-color-brand-muted); padding-top: 31px; }
+  .tier-identity { display: flex; align-items: center; gap: 10px; }
+  .tier-identity svg { flex-shrink: 0; color: var(--ds-color-copy-subtle); }
+  .pricing-head-featured .tier-identity svg { color: var(--ds-color-brand-muted); }
+  .tier-name { font-size: 19px; font-weight: 500; letter-spacing: -.035em; color: var(--ds-color-foreground); }
+  .tier-description { display: block; min-height: 54px; margin-top: 14px; color: var(--ds-color-copy-subtle); font-size: 12px; line-height: 1.7; }
+  .tier-price { display: flex; align-items: end; min-height: 56px; margin-top: 24px; color: var(--ds-color-foreground); font-size: 22px; font-weight: 500; line-height: 1.25; letter-spacing: -.04em; }
+  .tier-price-free { font-size: 38px; line-height: 1; }
+  .tier-note { display: block; min-height: 36px; margin-top: 9px; font-size: 10px; line-height: 1.7; color: var(--ds-color-copy-subtle); }
+  .pricing-cta { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 40px; padding: 9px 12px; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 23%, transparent); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--ds-color-copy); }
+  .pricing-head .pricing-cta { margin-top: 14px; }
+  .pricing-cta > span { color: var(--ds-color-copy-subtle); }
+  .pricing-cta-primary { background: var(--ds-color-brand-strong); border-color: var(--ds-color-brand-strong); color: var(--ds-color-foreground); }
+  .pricing-cta-primary > span { color: var(--ds-color-brand-softest); }
+  .pricing-cta:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 4px; }
+  .group-row th { padding: 32px 0 14px; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 20%, transparent); text-align: left; }
+  .group-heading { position: sticky; left: 0; display: inline-flex; align-items: center; gap: 12px; color: var(--ds-color-foreground); font-size: 13px; font-weight: 500; letter-spacing: -.01em; }
+  .group-number { color: var(--ds-color-copy-subtle); font: 9px ui-monospace, monospace; }
+  tbody tr:not(.group-row) > * { padding: 15px 24px; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 9%, transparent); }
+  tbody tr:last-child > * { border-bottom: 0; }
+  .feature { position: sticky; left: 0; z-index: 1; background: var(--ds-color-canvas); text-align: left; font-size: 12px; line-height: 1.7; color: var(--ds-color-copy); }
+  tbody tr:not(.group-row) > .feature { padding-left: 0; padding-right: 36px; }
+  .feature-content { display: flex; align-items: center; gap: 10px; }
+  .feature-icon { flex-shrink: 0; object-fit: contain; }
+  .feature small { display: block; margin-top: 3px; color: var(--ds-color-copy-subtle); font-size: 10px; line-height: 1.7; }
+  tbody td { border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 7%, transparent); text-align: center; }
+  .yes { display: block; margin-inline: auto; color: var(--ds-color-copy-subtle); }
+  .cloud-cell .yes { color: var(--ds-color-brand-muted); }
+  .no { display: block; width: 9px; height: 1px; margin-inline: auto; background: var(--ds-color-copy-faint); }
+  .text { color: var(--ds-color-copy-subtle); font-size: 11px; line-height: 1.7; }
+  .pricing-foot { padding: 28px 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); }
+  .pricing-foot-label { padding: 28px 24px 28px 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); color: var(--ds-color-copy-subtle); font-size: 12px; text-align: left; }
+  .pricing-scroll-hint { display: none; }
+  @media (hover: hover) and (pointer: fine) { .pricing-cta:hover { border-color: var(--ds-color-copy-subtle); background: color-mix(in srgb, var(--ds-color-copy) 6%, transparent); } .pricing-cta-primary:hover { background: var(--ds-color-brand-deep); border-color: var(--ds-color-brand-deep); } tbody tr:not(.group-row):hover > * { background: color-mix(in srgb, var(--ds-color-surface) 70%, var(--ds-color-canvas)); } }
+  @media (max-width: 900px) { .pricing-head, .pricing-foot { padding-inline: 18px; } .tier-name { font-size: 18px; } .tier-price { font-size: 20px; } .tier-price-free { font-size: 36px; } }
+  @media (max-width: 760px) { .pricing-scroll-hint { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 36px; color: var(--ds-color-copy-subtle); font-size: 11px; } .pricing-scroll { margin-top: 14px; } .pricing-table { min-width: 640px; } .col-feature { width: 160px; } .tier-description { min-height: 64px; } .tier-price { font-size: 18px; } .tier-price-free { font-size: 34px; } .pricing-intro { padding-right: 24px; } .comparison-title { font-size: 21px; } }
 </style>

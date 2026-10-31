@@ -1,6 +1,7 @@
 ---
 import { Code } from "astro:components";
 import NeuralNoise from "@/components/ui/neural-noise.astro";
+import ConnectionPreview from "./connection-preview.astro";
 
 const docsBaseUrl = import.meta.env.DEV
   ? "http://localhost:4322/docs"
@@ -158,7 +159,7 @@ volumes:
                     </div>
                     {step.lang === "text" ? <a class="workspace-address" href={step.code} target="_blank" rel="noopener noreferrer">{step.code}</a> : <Code code={step.code} lang={step.lang} theme="github-dark" />}
                   </div>}
-                  {"preview" in step && <div class="mt-6 overflow-hidden rounded-lg border border-foreground/10"><img src="/assets/dsui-first-connection.webp" alt="DSUI connection setup for ClickHouse, with connection details and a Test connection button." width="1586" height="992" loading="lazy" decoding="async" class="block h-auto w-full" /></div>}
+                  {"preview" in step && <div class="mt-6 overflow-hidden rounded-lg border border-foreground/10"><ConnectionPreview /></div>}
                 </article>
               </li>
             ))}

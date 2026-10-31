@@ -1,18 +1,18 @@
-![DSUI — The extensible platform for your data stack.](./assets/readme/banner.png)
+![DSUI — The AI-native control plane for your data stack.](./assets/readme/banner-ai-native.png)
 
-[Website](https://dsui.northgraindata.com) · [Live Demo](https://dsui.northgraindata.com/demo) · [Documentation](https://dsui.northgraindata.com/docs)
+[Website](https://dsui.northgraindata.com) · [Live Demo](https://dsui.northgraindata.com/demo) · [Documentation](https://dsui.northgraindata.com/docs) · [Discord](https://discord.gg/6vgtDbVggc)
 
-# The extensible platform for your data stack.
+# The AI-native control plane for your data stack.
 
-Open-source, extensible platform for your data stack. Connect tools, install plugins, and build custom capabilities.
+Connect your data tools and manage them from one place. Explore your infrastructure, run operations, and work across services with AI that understands your stack.
 
 ![CI](https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg)![Release](https://img.shields.io/github/v/release/northgraindata/dsui?include_prereleases)![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)![Container](https://img.shields.io/badge/ghcr.io-dsui-536edb)
 
 ![DSUI workspace overview showing connected data and infrastructure services](./assets/readme/product.png)
 
-## Connect tools, install plugins, and build custom capabilities
+## One control plane across your stack
 
-Your tools, your infrastructure, your capabilities. Extend DSUI to fit the way your team works.
+Connect tools through adapters, run service operations, and use DSUI Agent to work across your connected stack. Extend the platform with plugins and SDKs.
 
 ## Get started
 
@@ -106,6 +106,10 @@ The official container keeps its local state in `/data`. It does not need a sepa
 ```bash
 docker pull ghcr.io/northgraindata/dsui:latest
 ```
+
+## Community
+
+Join the [DSUI Discord](https://discord.gg/6vgtDbVggc) to ask questions, share your setup, discuss integrations, and help shape what we build next.
 
 ## Contributing
 
