@@ -48,6 +48,13 @@ export const models = defineResource({
           ? (config as Record<string, unknown>)
           : undefined;
       const dependsOn = value.depends_on;
+      const upstream =
+        dependsOn && typeof dependsOn === "object" && !Array.isArray(dependsOn)
+          ? (dependsOn as Record<string, unknown>).nodes
+          : undefined;
+      const upstreamCount = Array.isArray(upstream) ? upstream.length : 0;
+      const database = typeof value.database === "string" ? value.database : "";
+      const schema = typeof value.schema === "string" ? value.schema : "";
       return [
         {
           uniqueId:
@@ -55,8 +62,8 @@ export const models = defineResource({
           name: value.name,
           package:
             typeof value.package_name === "string" ? value.package_name : "",
-          database: typeof value.database === "string" ? value.database : "",
-          schema: typeof value.schema === "string" ? value.schema : "",
+          database,
+          schema,
           materialized:
             typeof configRecord?.materialized === "string"
               ? configRecord.materialized
@@ -69,6 +76,10 @@ export const models = defineResource({
             !Array.isArray(dependsOn)
               ? ((dependsOn as Record<string, unknown>).nodes ?? [])
               : [],
+          location: [database, schema].filter(Boolean).join("."),
+          upstreamLabel: upstreamCount
+            ? `${upstreamCount} upstream`
+            : "No upstream",
         },
       ];
     });

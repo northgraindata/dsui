@@ -1,9 +1,4 @@
-import {
-  Badge,
-  definePage,
-  PageHeader,
-  Table,
-} from "@northgraindata/dsui-adapter-sdk";
+import { definePage, List, PageHeader } from "@northgraindata/dsui-adapter-sdk";
 import { cancelRun } from "../actions/runs.js";
 import { runs } from "../resources/runs.js";
 import { dbtRunStore } from "../stores/runs.js";
@@ -21,25 +16,27 @@ export const runsPage = definePage({
     }));
     return [
       PageHeader({ title: "Runs", description: "Recent dbt executions." }),
-      Table({
+      List({
         ...(archived.length ? { data: archived } : { source: runs() }),
-        columns: [
-          { id: "id", label: "Run" },
-          { id: "job_id", label: "Job" },
-          {
-            id: "status",
-            label: "Status",
-            renderCell: Badge({ label: { field: "status" }, dot: true }),
-          },
-          { id: "cause", label: "Cause" },
-          { id: "started_at", label: "Started" },
-        ],
+        noun: "run",
+        searchable: true,
+        pageSize: 25,
+        filters: [{ field: "status", label: "Status" }],
+        item: {
+          icon: "history",
+          title: "job_id",
+          description: "cause",
+          meta: ["id"],
+          status: { label: "status", detail: "started_at" },
+        },
+        emptyMessage: "No dbt runs yet.",
         rowLink: { path: "/runs/:runId", params: { runId: "id" } },
         rowActions: [
           {
             action: cancelRun,
             label: "Cancel",
-            icon: "stop",
+            icon: "close",
+            variant: "danger",
             input: { runId: "id" },
           },
         ],
