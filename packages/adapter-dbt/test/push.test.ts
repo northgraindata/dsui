@@ -158,20 +158,21 @@ test("a service on another method does not accept pushes", async () => {
   expect(reply.response.status).toBe(409);
 });
 
-test("health says whether CI has delivered anything", async () => {
+test("a push service is healthy before its first upload, and says what it waits for", async () => {
   const blobs = createMemoryBlobStore();
   const ctx = await createContext({
     method: "push",
     pushToken: connection.pushToken,
   });
   const before = await dbtHealth(ctx, { blobs });
-  expect(before.checks[0]?.ok).toBe(false);
-  expect(before.checks[0]?.detail).toContain("Nothing pushed yet");
+  // The connection test needs a healthy service before it can be saved.
+  expect(before.status).toBe("healthy");
+  expect(before.checks[0]?.detail).toContain("Waiting for the first upload");
 
   await blobs.put("artifacts/manifest.json", "{}");
   const after = await dbtHealth(ctx, { blobs });
-  expect(after.checks[0]?.ok).toBe(true);
   expect(after.status).toBe("healthy");
+  expect(after.checks[0]?.detail).toContain("1 artifact");
 });
 
 describe("run history", () => {

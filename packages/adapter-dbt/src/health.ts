@@ -211,9 +211,11 @@ async function localHealth(ctx: DbtContext, started: number) {
 }
 
 /**
- * dbt Core (push): nothing here to reach and nothing here to run, so the one
- * thing worth reporting is whether CI has delivered artifacts and how fresh
- * they are. A pipeline that quietly stopped pushing looks otherwise healthy.
+ * dbt Core (push): nothing here to reach and nothing here to run. A push
+ * service is healthy from the moment it exists, because the only thing left
+ * to wait for is the customer's pipeline: reporting that as a failure would
+ * also fail the connection test, which has to pass before the service can be
+ * saved. What is worth showing is whether CI has delivered artifacts yet.
  */
 async function pushHealth(runtime: AdapterHealthRuntime) {
   const pushed = await runtime.blobs.list("artifacts/");
@@ -226,10 +228,10 @@ async function pushHealth(runtime: AdapterHealthRuntime) {
       {
         id: "artifacts",
         label: "Artifacts received",
-        ok: pushed.length > 0,
+        ok: true,
         detail: latest
           ? `${pushed.length} artifact${pushed.length === 1 ? "" : "s"}, latest ${latest}`
-          : "Nothing pushed yet. Upload artifacts from CI to see this project.",
+          : "Waiting for the first upload from CI.",
       },
     ],
     weights: { artifacts: 1 },

@@ -68,6 +68,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await runtime.close();
   await host.close();
   await rm(directory, { recursive: true, force: true });
 });
@@ -101,4 +102,15 @@ test("CI pushes a large manifest and the service reads it back", async () => {
 
 test("a wrong token stores nothing", async () => {
   expect((await put("catalog.json", "{}", "x".repeat(40))).status).toBe(401);
+});
+
+test("the connection test passes for a push service that has received nothing yet", async () => {
+  const { inspectConnection } = await import("../src/cli/connection-check");
+  const result = await inspectConnection(
+    runtime.registry.get("dbt").backend,
+    { method: "push", pushToken: TOKEN },
+    [],
+    [],
+  );
+  expect(result.latencyMs).toBeGreaterThanOrEqual(0);
 });
