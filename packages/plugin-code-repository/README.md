@@ -40,6 +40,22 @@ For a source-built plugin, replace `package` and `browserBundle` with
 The source builder produces both bundles. Docker and npm releases ship both
 artifacts. Configuration changes take effect after restarting DSUI.
 
+Instead of a fixed `githubToken`, a host can hand out short-lived GitHub
+tokens, for example from a GitHub App:
+
+```yaml
+      githubTokenSource:
+        url: https://panel.example.com/github/token
+        secret: "${GITHUB_TOKEN_SERVICE_SECRET}"
+```
+
+Before fetching a repository the plugin sends `GET <url>?owner=<owner>` with
+`Authorization: Bearer <secret>` and expects `{ "token": "...", "expiresAt": "<ISO time>" }`.
+The token is kept in memory until five minutes before it expires. If GitHub
+refuses it earlier, the plugin asks for a new one once and retries. The address
+must use HTTPS, or be on this machine for development. A `githubToken`, when
+set, is used instead and the service is never asked.
+
 Tokens are optional for public repositories. GitHub tokens need read access to
 repository contents. For GitLab API browsing, use a token with `read_api` scoped
 to the required projects. Credentials stay in server configuration and are never
