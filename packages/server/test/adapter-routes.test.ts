@@ -65,6 +65,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await runtime.close();
   await host.close();
   await rm(directory, { recursive: true, force: true });
 });
