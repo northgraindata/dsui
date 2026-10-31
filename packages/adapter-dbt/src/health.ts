@@ -2,6 +2,7 @@ import { access, stat } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type AdapterHealthCheck,
+  type AdapterHealthRuntime,
   healthReport,
   reachabilityCheck,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -17,8 +18,12 @@ import type { DbtContext } from "./context.js";
  * with the other's signals would produce confident nonsense, so the checks
  * branch on the configured connection method.
  */
-export async function dbtHealth(ctx: DbtContext) {
+export async function dbtHealth(
+  ctx: DbtContext,
+  runtime: AdapterHealthRuntime,
+) {
   const started = Date.now();
+  if (ctx.config.method === "push") return pushHealth(runtime);
   if (ctx.config.method === "cloud" && ctx.cloud)
     return cloudHealth(ctx, started);
   return localHealth(ctx, started);
@@ -202,5 +207,31 @@ async function localHealth(ctx: DbtContext, started: number) {
         : score >= 60
           ? "warning"
           : "unavailable",
+  });
+}
+
+/**
+ * dbt Core (push): nothing here to reach and nothing here to run, so the one
+ * thing worth reporting is whether CI has delivered artifacts and how fresh
+ * they are. A pipeline that quietly stopped pushing looks otherwise healthy.
+ */
+async function pushHealth(runtime: AdapterHealthRuntime) {
+  const pushed = await runtime.blobs.list("artifacts/");
+  const latest = pushed.reduce<string | undefined>(
+    (at, blob) => (!at || blob.updatedAt > at ? blob.updatedAt : at),
+    undefined,
+  );
+  return healthReport({
+    checks: [
+      {
+        id: "artifacts",
+        label: "Artifacts received",
+        ok: pushed.length > 0,
+        detail: latest
+          ? `${pushed.length} artifact${pushed.length === 1 ? "" : "s"}, latest ${latest}`
+          : "Nothing pushed yet. Upload artifacts from CI to see this project.",
+      },
+    ],
+    weights: { artifacts: 1 },
   });
 }

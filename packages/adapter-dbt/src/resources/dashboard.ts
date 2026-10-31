@@ -1,6 +1,10 @@
-import { defineResource } from "@northgraindata/dsui-adapter-sdk";
-import { readArtifact } from "../artifacts.js";
+import {
+  defineResource,
+  type ResourceRuntimeContext,
+} from "@northgraindata/dsui-adapter-sdk";
+import { artifactSource, readArtifact } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
+import { listRuns } from "../run-history.js";
 
 type RunRow = {
   id: string;
@@ -20,7 +24,10 @@ function record(value: unknown): Record<string, unknown> | undefined {
 
 export const dashboard = defineResource({
   id: "dashboard",
-  query: async (_input: undefined, ctx: DbtContext) => {
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
     if (ctx.config.method === "cloud") {
       const [projects, jobs, runs] = await Promise.all([
         ctx.cloud?.listProjects(),
@@ -39,8 +46,9 @@ export const dashboard = defineResource({
         segments: statusSegments(runs?.map((run) => run.status)),
       };
     }
-    const manifest = await readArtifact(ctx.config, "manifest.json");
-    const results = await readArtifact(ctx.config, "run_results.json");
+    const source = artifactSource(ctx);
+    const manifest = await readArtifact(source, "manifest.json");
+    const results = await readArtifact(source, "run_results.json");
     const nodes = record(manifest.data?.nodes);
     const resultRows = Array.isArray(results.data?.results)
       ? results.data.results
@@ -78,7 +86,10 @@ export const dashboard = defineResource({
 
 export const recentRuns = defineResource({
   id: "recent-runs",
-  query: async (_input: undefined, ctx: DbtContext): Promise<RunRow[]> => {
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ): Promise<RunRow[]> => {
     if (ctx.cloud) {
       const runs = await ctx.cloud.listRuns();
       return runs.slice(0, 10).map((run) => ({
@@ -90,8 +101,17 @@ export const recentRuns = defineResource({
       }));
     }
 
-    if (ctx.config.method !== "local") return [];
-    const results = await readArtifact(ctx.config, "run_results.json");
+    if (ctx.config.method === "push") {
+      return (await listRuns(ctx.blobs, 10)).map((run) => ({
+        cause: "Pushed from CI",
+        id: run.id,
+        job: "Pushed build",
+        started: run.startedAt,
+        status: formatStatus(run.status),
+      }));
+    }
+
+    const results = await readArtifact(artifactSource(ctx), "run_results.json");
     const rows = Array.isArray(results.data?.results)
       ? results.data.results
       : [];

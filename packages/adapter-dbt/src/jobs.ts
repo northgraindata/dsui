@@ -95,7 +95,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-function localRunResults(data: Record<string, unknown>) {
+export function localRunResults(data: Record<string, unknown>) {
   const metadata = record(data.metadata);
   const generatedAt =
     typeof metadata?.generated_at === "string" ? metadata.generated_at : "";
@@ -118,6 +118,12 @@ function localRunResults(data: Record<string, unknown>) {
       warningNodes.push(uniqueId);
   }
   return { runId, generatedAt, failedNodes, warningNodes };
+}
+
+/** The signal for a finished dbt Core invocation, by what its nodes did. */
+export function localRunSignal(result: ReturnType<typeof localRunResults>) {
+  if (result.failedNodes.length) return dbtRunFailed;
+  return result.warningNodes.length ? dbtRunWarning : dbtRunSucceeded;
 }
 
 export const monitorDbtRuns = defineJob<DbtContext>({
@@ -178,12 +184,7 @@ export const monitorDbtRuns = defineJob<DbtContext>({
     if (Date.parse(result.generatedAt) < Date.parse(previous.finishedAt))
       return;
     if (previous.runIds.includes(result.runId)) return;
-    const definition = result.failedNodes.length
-      ? dbtRunFailed
-      : result.warningNodes.length
-        ? dbtRunWarning
-        : dbtRunSucceeded;
-    emit(definition, result, { idempotencyKey: result.runId });
+    emit(localRunSignal(result), result, { idempotencyKey: result.runId });
     cursorStore.actions.advance({
       finishedAt: result.generatedAt,
       runIds: [result.runId],

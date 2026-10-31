@@ -53,6 +53,7 @@ test("configuration changes, service removal and runtime shutdown retire service
         components: [],
         jobs: [],
         signals: [],
+        routes: [],
       },
       backend,
     });

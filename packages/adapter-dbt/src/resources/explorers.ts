@@ -1,14 +1,10 @@
-import { defineResource, z } from "@northgraindata/dsui-adapter-sdk";
-import { readArtifact } from "../artifacts.js";
+import {
+  defineResource,
+  type ResourceRuntimeContext,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
+import { artifactSource, readArtifact } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
-
-function local(ctx: DbtContext) {
-  if (ctx.config.method !== "local")
-    throw new Error(
-      "This resource is available for dbt Local connections only",
-    );
-  return ctx.config;
-}
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -46,8 +42,11 @@ function artifactMetadata(data: Record<string, unknown> | undefined) {
 
 export const manifestOverview = defineResource({
   id: "manifest-overview",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "manifest.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(artifactSource(ctx), "manifest.json");
     const metadata = artifactMetadata(artifact.data);
     return {
       ...metadata,
@@ -72,8 +71,14 @@ export const manifestOverview = defineResource({
 
 export const semanticOverview = defineResource({
   id: "semantic-overview",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "semantic_manifest.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "semantic_manifest.json",
+    );
     return {
       ...artifactMetadata(artifact.data),
       semanticModels: arrayLength(artifact.data?.semantic_models),
@@ -88,8 +93,14 @@ export const semanticOverview = defineResource({
 
 export const semanticModels = defineResource({
   id: "semantic-models",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "semantic_manifest.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "semantic_manifest.json",
+    );
     const models = Array.isArray(artifact.data?.semantic_models)
       ? artifact.data.semantic_models
       : [];
@@ -113,8 +124,14 @@ export const semanticModels = defineResource({
 
 export const semanticMetrics = defineResource({
   id: "semantic-metrics",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "semantic_manifest.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "semantic_manifest.json",
+    );
     const metrics = Array.isArray(artifact.data?.metrics)
       ? artifact.data.metrics
       : [];
@@ -137,8 +154,14 @@ export const semanticMetrics = defineResource({
 
 export const semanticSavedQueries = defineResource({
   id: "semantic-saved-queries",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "semantic_manifest.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "semantic_manifest.json",
+    );
     const queries = Array.isArray(artifact.data?.saved_queries)
       ? artifact.data.saved_queries
       : [];
@@ -166,8 +189,11 @@ export const semanticSavedQueries = defineResource({
 
 export const catalogRelations = defineResource({
   id: "catalog-relations",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "catalog.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(artifactSource(ctx), "catalog.json");
     return records(artifact.data?.nodes).map((node) => ({
       uniqueId: stringValue(node.unique_id),
       name: stringValue(node.name) || stringValue(node.unique_id),
@@ -185,8 +211,11 @@ export const catalogRelations = defineResource({
 
 export const freshnessRows = defineResource({
   id: "freshness-rows",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const config = local(ctx);
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const config = artifactSource(ctx);
     const freshness = await readArtifact(config, "freshness.json");
     const fallback = await readArtifact(config, "sources.json");
     const data = freshness.present ? freshness.data : fallback.data;
@@ -202,8 +231,14 @@ export const freshnessRows = defineResource({
 
 export const graphSummaryRows = defineResource({
   id: "graph-summary-rows",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "graph_summary.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "graph_summary.json",
+    );
     return records(artifact.data?.linked).map((row) => ({
       id: stringValue(row.name),
       name: stringValue(row.name),
@@ -215,8 +250,14 @@ export const graphSummaryRows = defineResource({
 
 export const osiOverview = defineResource({
   id: "osi-overview",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "osi_document.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "osi_document.json",
+    );
     return {
       ...artifactMetadata(artifact.data),
       sections: artifact.data ? Object.keys(artifact.data).join(", ") : "",
@@ -229,8 +270,14 @@ export const osiOverview = defineResource({
 
 export const runResultsOverview = defineResource({
   id: "run-results-overview",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "run_results.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "run_results.json",
+    );
     const results = Array.isArray(artifact.data?.results)
       ? artifact.data.results
       : [];
@@ -259,8 +306,14 @@ export const runResultsOverview = defineResource({
 
 export const runResultRows = defineResource({
   id: "run-result-rows",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "run_results.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "run_results.json",
+    );
     const results = Array.isArray(artifact.data?.results)
       ? artifact.data.results
       : [];

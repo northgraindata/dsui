@@ -1,24 +1,21 @@
-import { defineResource, z } from "@northgraindata/dsui-adapter-sdk";
+import {
+  defineResource,
+  type ResourceRuntimeContext,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
 import {
   artifactNames,
+  artifactSource,
   readArtifact,
   readArtifactDetail,
   readArtifacts,
 } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
 
-function local(ctx: DbtContext) {
-  if (ctx.config.method !== "local")
-    throw new Error(
-      "This resource is available for dbt Local connections only",
-    );
-  return ctx.config;
-}
-
 export const artifacts = defineResource({
   id: "artifacts",
-  query: (_input: undefined, ctx: DbtContext) =>
-    readArtifacts(local(ctx)).then((items) =>
+  query: (_input: undefined, ctx: DbtContext & ResourceRuntimeContext) =>
+    readArtifacts(artifactSource(ctx)).then((items) =>
       items.map(({ data: _data, ...item }) => item),
     ),
 });
@@ -26,14 +23,17 @@ export const artifacts = defineResource({
 export const artifactDetail = defineResource({
   id: "artifact-detail",
   input: z.object({ artifactName: z.enum(artifactNames) }),
-  query: ({ artifactName }, ctx: DbtContext) =>
-    readArtifactDetail(local(ctx), artifactName),
+  query: ({ artifactName }, ctx: DbtContext & ResourceRuntimeContext) =>
+    readArtifactDetail(artifactSource(ctx), artifactName),
 });
 
 export const models = defineResource({
   id: "models",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "manifest.json");
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const artifact = await readArtifact(artifactSource(ctx), "manifest.json");
     if (!artifact.data) return [];
     const nodes = artifact.data.nodes;
     if (!nodes || typeof nodes !== "object" || Array.isArray(nodes)) return [];
@@ -77,8 +77,11 @@ export const models = defineResource({
 
 const modelInput = z.object({ modelId: z.string().min(1) });
 
-async function readModel(ctx: DbtContext, modelId: string) {
-  const artifact = await readArtifact(local(ctx), "manifest.json");
+async function readModel(
+  ctx: DbtContext & ResourceRuntimeContext,
+  modelId: string,
+) {
+  const artifact = await readArtifact(artifactSource(ctx), "manifest.json");
   const nodes = artifact.data?.nodes;
   if (!nodes || typeof nodes !== "object" || Array.isArray(nodes))
     throw new Error("manifest.json does not contain model nodes");
@@ -125,24 +128,26 @@ async function readModel(ctx: DbtContext, modelId: string) {
 export const modelDetail = defineResource({
   id: "model-detail",
   input: modelInput,
-  query: ({ modelId }, ctx: DbtContext) => readModel(ctx, modelId),
+  query: ({ modelId }, ctx: DbtContext & ResourceRuntimeContext) =>
+    readModel(ctx, modelId),
 });
 
 export const modelColumns = defineResource({
   id: "model-columns",
   input: modelInput,
-  query: ({ modelId }, ctx: DbtContext) =>
+  query: ({ modelId }, ctx: DbtContext & ResourceRuntimeContext) =>
     readModel(ctx, modelId).then((model) => model.columns),
 });
 
 export const runGraph = defineResource({
   id: "run-graph",
   input: z.object({ runId: z.string().min(1) }),
-  query: async (_input, ctx: DbtContext) => {
-    if (ctx.config.method !== "local") return [];
+  query: async (_input, ctx: DbtContext & ResourceRuntimeContext) => {
+    if (ctx.cloud) return [];
+    const source = artifactSource(ctx);
     const [manifest, results] = await Promise.all([
-      readArtifact(ctx.config, "manifest.json"),
-      readArtifact(ctx.config, "run_results.json"),
+      readArtifact(source, "manifest.json"),
+      readArtifact(source, "run_results.json"),
     ]);
     const nodes = manifest.data?.nodes;
     if (!nodes || typeof nodes !== "object" || Array.isArray(nodes)) return [];
@@ -189,8 +194,8 @@ export const runGraph = defineResource({
 export const modelLineage = defineResource({
   id: "model-lineage",
   input: modelInput,
-  query: async ({ modelId }, ctx: DbtContext) => {
-    const artifact = await readArtifact(local(ctx), "manifest.json");
+  query: async ({ modelId }, ctx: DbtContext & ResourceRuntimeContext) => {
+    const artifact = await readArtifact(artifactSource(ctx), "manifest.json");
     const nodes = artifact.data?.nodes;
     if (!nodes || typeof nodes !== "object" || Array.isArray(nodes)) return [];
     const records = nodes as Record<string, unknown>;

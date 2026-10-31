@@ -1,8 +1,15 @@
 import type { ActionBinding, ActionResult } from "../action/index";
 import type { AdapterDefinition } from "../adapter/index";
+import { type BlobStore, createMemoryBlobStore } from "../blob";
 import type { SignalEmission } from "../job";
 import { type AnyPageDefinition, matchRoute } from "../page/index";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
+import {
+  type RouteDefinition,
+  RouteError,
+  type RouteRequest,
+  type RouteResponse,
+} from "../route";
 import { UnknownPageError } from "../shared/errors";
 import {
   createStoreInstance,
@@ -20,6 +27,9 @@ import type {
   JobExecutionOptions,
   PageScope,
   ResourceResult,
+  RouteExecution,
+  RouteExecutionOptions,
+  RouteRequestData,
 } from "./types";
 
 /**
@@ -79,6 +89,8 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
   private readonly stores: StoreRegistry;
   private readonly resources: ResourceExecutor<TContext>;
   private readonly actions: ActionExecutor<TContext>;
+  /** Binary storage private to this service. */
+  readonly blobs: BlobStore;
   private disposed = false;
 
   /**
@@ -93,10 +105,12 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
     this.definition = definition;
     this.context = context;
     this.stores = new StoreRegistry(definition, options.persistenceProvider);
+    this.blobs = options.blobStore ?? createMemoryBlobStore();
     this.resources = new ResourceExecutor<TContext>(
       context,
       { get: (store) => this.store(store) },
       () => this.stores.ready(),
+      this.blobs,
     );
     this.actions = new ActionExecutor<TContext>(
       context,
@@ -104,6 +118,7 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
       { get: (store) => this.store(store) },
       () => this.stores.ready(),
       () => this.stores.flush(),
+      this.blobs,
     );
   }
 
@@ -213,28 +228,88 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
         context: this.context,
         runId: options.runId,
         signal: options.signal,
+        blobs: this.blobs,
         store: (definition) => this.store(definition),
-        emit: (signal, payload, emitOptions) => {
-          if (options.signal.aborted)
-            throw options.signal.reason ?? new Error("Job was aborted");
-          const declared = this.definition.signals.find(
-            (candidate) => candidate.id === signal.id,
-          );
-          if (!declared)
-            throw new Error(`Job emitted undeclared signal: ${signal.id}`);
-          emissions.push({
-            signalId: declared.id,
-            payload: declared.schema.parse(payload),
-            ...(emitOptions?.idempotencyKey
-              ? { idempotencyKey: emitOptions.idempotencyKey }
-              : {}),
-          });
-        },
+        emit: this.emitter("Job", emissions, options.signal),
       });
     } finally {
       await this.stores.flush();
     }
     return emissions;
+  }
+
+  /**
+   * Serves one request for a declared route. Handler failures other than a
+   * {@link RouteError} propagate, so the host can answer 500 without leaking
+   * the message.
+   */
+  async runRoute(
+    routeId: string,
+    request: RouteRequestData,
+    options: RouteExecutionOptions,
+  ): Promise<RouteExecution> {
+    const route = this.definition.routes.find(
+      (candidate) => candidate.id === routeId,
+    );
+    if (!route) throw new Error(`Unknown adapter route: ${routeId}`);
+    const emissions: SignalEmission[] = [];
+    await this.stores.ready();
+    let response: RouteResponse;
+    try {
+      response = await (route as RouteDefinition<TContext>).handle({
+        request: withBodyReaders(request),
+        context: this.context,
+        signal: options.signal,
+        blobs: this.blobs,
+        store: (definition) => this.store(definition),
+        emit: this.emitter("Route", emissions, options.signal),
+      });
+    } catch (error) {
+      if (error instanceof RouteError)
+        response = {
+          status: error.status,
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ message: error.message }),
+        };
+      else throw error;
+    } finally {
+      await this.stores.flush();
+    }
+    if (
+      !Number.isInteger(response?.status) ||
+      response.status < 100 ||
+      response.status > 599
+    )
+      throw new Error(`Route "${routeId}" returned an invalid status`);
+    return { response, emissions };
+  }
+
+  /** Emits only declared signals, rejecting emissions after an abort. */
+  private emitter(
+    what: string,
+    emissions: SignalEmission[],
+    signal: AbortSignal,
+  ): (
+    definition: { readonly id: string },
+    payload: unknown,
+    options?: { readonly idempotencyKey?: string },
+  ) => void {
+    return (definition, payload, options) => {
+      if (signal.aborted)
+        throw signal.reason ?? new Error(`${what} was aborted`);
+      const declared = this.definition.signals.find(
+        (candidate) => candidate.id === definition.id,
+      );
+      if (!declared)
+        throw new Error(`${what} emitted undeclared signal: ${definition.id}`);
+      emissions.push({
+        signalId: declared.id,
+        payload: declared.schema.parse(payload),
+        ...(options?.idempotencyKey
+          ? { idempotencyKey: options.idempotencyKey }
+          : {}),
+      });
+    };
   }
 
   /**
@@ -291,4 +366,18 @@ export class AdapterRuntime<TContext> implements AdapterInstance<TContext> {
     this.stores.dispose();
     await this.definition.disposeContext?.(this.context);
   }
+}
+
+function withBodyReaders(request: RouteRequestData): RouteRequest {
+  return {
+    ...request,
+    text: () => new TextDecoder().decode(request.body),
+    json: () => {
+      try {
+        return JSON.parse(new TextDecoder().decode(request.body));
+      } catch {
+        throw new RouteError(400, "Request body is not valid JSON");
+      }
+    },
+  };
 }

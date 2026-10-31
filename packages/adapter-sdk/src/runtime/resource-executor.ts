@@ -1,4 +1,5 @@
 import type { StoreActionAccessor } from "../action/types";
+import type { BlobStore } from "../blob";
 import type { RefreshPolicy } from "../refresh/policy";
 import { PollingRefreshPolicy } from "../refresh/polling";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
@@ -31,6 +32,7 @@ export class ResourceExecutor<TContext> {
     private readonly context: TContext,
     private readonly stores: StoreActionAccessor,
     private readonly readyStores: () => Promise<void>,
+    private readonly blobs: BlobStore,
   ) {}
 
   /**
@@ -50,7 +52,7 @@ export class ResourceExecutor<TContext> {
       await this.readyStores();
       const data = (await query(
         binding.input,
-        withRuntimeHelpers(this.context, this.stores),
+        withRuntimeHelpers(this.context, this.stores, this.blobs),
       )) as TOutput;
       return { status: "success", data };
     } catch (error) {
@@ -159,7 +161,7 @@ export class ResourceExecutor<TContext> {
       await this.readyStores();
       const data = await entry.binding.definition.query(
         entry.binding.input,
-        withRuntimeHelpers(this.context, this.stores),
+        withRuntimeHelpers(this.context, this.stores, this.blobs),
       );
       if (this.disposed || runId !== entry.executive) return;
       const result: ResourceResult<unknown> = { status: "success", data };
@@ -180,6 +182,7 @@ export class ResourceExecutor<TContext> {
 function withRuntimeHelpers<TContext>(
   context: TContext,
   stores: StoreActionAccessor,
+  blobs: BlobStore,
 ): TContext {
   const augmented = Object.create(
     context != null &&
@@ -192,9 +195,9 @@ function withRuntimeHelpers<TContext>(
     (typeof context === "object" || typeof context === "function")
   )
     Object.assign(augmented, context);
-  Object.defineProperty(augmented, "stores", {
-    enumerable: false,
-    value: stores,
+  Object.defineProperties(augmented, {
+    stores: { enumerable: false, value: stores },
+    blobs: { enumerable: false, value: blobs },
   });
   return augmented as TContext;
 }

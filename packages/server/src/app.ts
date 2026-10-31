@@ -16,6 +16,7 @@ import {
   loadConfig,
   toAdapterSourceLocation,
 } from "./config.js";
+import { removeServiceBlobs } from "./db/blob-storage.js";
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
@@ -26,6 +27,7 @@ import { PluginJobService } from "./plugins/job-service.js";
 import { registerPluginRoutes } from "./plugins/routes.js";
 import { type PluginModuleLoader, PluginRuntime } from "./plugins/runtime.js";
 import { createPluginStorage, createPluginStores } from "./plugins/storage.js";
+import { registerAdapterRouteEndpoints } from "./routes/adapter-routes.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerExecuteRoutes } from "./routes/execute.js";
@@ -102,6 +104,7 @@ export function defaultDataDir(): string {
 export function createRuntime(options: CreateRuntimeOptions = {}) {
   const dataDir = options.dataDir ?? defaultDataDir();
   const databasePath = options.databasePath ?? join(dataDir, "dsui.sqlite");
+  const blobRoot = join(dataDir, "blobs");
   const configPath =
     options.configPath ??
     process.env.DSUI_CONFIG ??
@@ -483,6 +486,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     persistenceProvider: (namespace) =>
       new SqliteStorePersistenceProvider(database, namespace),
     persistenceDatabasePath: databasePath,
+    persistenceBlobRoot: blobRoot,
   };
 
   /**
@@ -670,6 +674,8 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     getConfig,
     refreshConfig,
     audit,
+    removeServiceData: (serviceId: string) =>
+      removeServiceBlobs(blobRoot, serviceId),
   };
   registerSystemRoutes(app, {
     pluginRuntime,
@@ -693,6 +699,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   });
   registerServiceRoutes(app, serviceDeps);
   registerExecuteRoutes(app, serviceDeps);
+  registerAdapterRouteEndpoints(app, {
+    ...serviceDeps,
+    spoolDirectory: join(dataDir, "tmp", "route-bodies"),
+  });
 
   return {
     app,

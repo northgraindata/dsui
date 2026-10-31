@@ -1,0 +1,101 @@
+---
+title: Routes
+description: Serve HTTP endpoints from a configured service, such as a CI upload or a webhook.
+---
+
+A route is an HTTP endpoint an adapter serves for each configured service.
+Use one when something other than a person at the DSUI web app has to talk to the service.
+A CI job that uploads build artifacts and a system that calls a webhook are the usual cases.
+
+Declare a route with `defineRoute` and add it to the adapter's `routes` list:
+
+```ts
+import {
+  defineAdapter,
+  defineRoute,
+  routeJson,
+} from "@northgraindata/dsui-adapter-sdk";
+
+export default defineAdapter({
+  metadata: { id: "reports", name: "Reports", version: "1.0.0" },
+  health: async () => ({ status: "healthy", score: 100, checks: [] }),
+  routes: [
+    defineRoute({
+      id: "upload",
+      method: "PUT",
+      path: "/reports/:name",
+      auth: { token: "uploadToken" },
+      maxBodyBytes: 20 * 1024 * 1024,
+      handle: async ({ request, blobs }) => {
+        await blobs.put(`reports/${request.params.name}`, request.body);
+        return routeJson({ size: request.body.byteLength }, 201);
+      },
+    }),
+  ],
+});
+```
+
+## Where a route is served
+
+Every route is served at `/adapters/v1/services/<service id><path>`.
+The route above is `PUT /adapters/v1/services/reports/reports/q3.json` for a service with the id `reports`.
+This path lives outside `/api/v1`, so it behaves the same with or without an authentication plugin.
+
+## Who may call it
+
+The `auth` option is required, and a route is never public.
+
+- `"principal"` accepts a signed-in DSUI user. The host resolves the caller the way it does for the rest of the API, so an authentication plugin applies when one is installed.
+  Set `permission` to `inspect` or `execute`. It defaults to `inspect` for `GET` and `execute` for everything else.
+- `{ token: "<field>" }` accepts a machine caller. `<field>` names a field of the service's connection config that holds a shared secret.
+  The caller sends it as `Authorization: Bearer <secret>`.
+  Declare the field in the connection method's schema and give it a name that contains `token`, `secret`, `key` or `password`, so the connection form hides it.
+
+A service whose secret is not set rejects every request.
+The host compares secrets in constant time and never passes the `Authorization` or `Cookie` header on to the handler.
+
+## What the handler receives
+
+`handle` receives an authenticated, size-limited request and the same helpers a job gets:
+
+- `request` has `method`, `path`, `params`, `query`, `headers`, `body` as bytes, and `text()` and `json()` helpers.
+- `context` is the adapter context for the service.
+- `store` gives access to persistent adapter stores.
+- `blobs` is binary storage private to the service. See below.
+- `emit` publishes a declared [signal](/docs/adapter-sdk/signals).
+- `signal` is aborted when the client disconnects or the route's `timeoutMs` passes.
+
+Return a `RouteResponse`, or use `routeJson` for JSON.
+Throw `RouteError(status, message)` to answer with a specific status.
+Any other error becomes a plain `500` and its message stays in the server log, because it may name hosts or paths.
+
+## What the host does for you
+
+The host owns the parts that must not differ between adapters.
+
+- Request bodies larger than `maxBodyBytes` get `413`. The default is 1 MiB and no route can raise it above 256 MiB. The size is counted while the body streams, so a client cannot bypass the limit by misreporting `content-length`.
+- Each call is written to the audit log as `route.call`.
+- A reply is served from DSUI's own origin, so the host adds `Content-Security-Policy: default-src 'none'; sandbox` and `nosniff`, and forwards only `content-type`, `cache-control` and `etag` from the adapter.
+- Replies travel from the adapter process as one line of JSON, so keep them small. Large downloads belong behind a resource or an action.
+
+## Blobs
+
+A store holds small JSON state.
+Use `blobs` for data that is too large or too opaque for that, such as an uploaded artifact.
+
+```ts
+await blobs.put("runs/42/manifest.json", bytes);
+const manifest = await blobs.get("runs/42/manifest.json");
+const runs = await blobs.list("runs/");
+```
+
+Keys are `/`-separated paths of letters, digits, `.`, `_` and `-`. A segment cannot start with a dot.
+`put` is atomic, so a reader sees the old bytes or the new ones, never a mix.
+`blobs` is also available to resources, actions, jobs and health checks.
+Blobs belong to one service, and the host deletes them when the service is deleted.
+
+## Compatibility
+
+Routes are part of adapter API `0.3.0`.
+A host accepts adapters built against `0.2.0` and `0.3.0`, so existing adapters keep working.
+An adapter that declares routes needs a host that supports them.

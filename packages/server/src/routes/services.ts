@@ -170,6 +170,8 @@ export interface ServiceDeps {
   getConfig(): DsuiConfig;
   refreshConfig(): Promise<DsuiConfig>;
   refreshJobs?(): void;
+  /** Drops what the host keeps for a service besides its row, such as blobs. */
+  removeServiceData?(serviceId: string): Promise<void>;
 }
 
 export async function publicService(
@@ -336,6 +338,7 @@ export function registerServiceRoutes(
           "Configuration-managed services cannot be deleted here",
         );
       deps.database.deleteUiService(source.service.id);
+      await deps.removeServiceData?.(source.service.id);
       await deps.registry
         .list()
         .find((adapter) => adapter.id === source.service.adapter)

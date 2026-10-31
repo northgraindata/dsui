@@ -1,8 +1,10 @@
 import type { z } from "zod";
 import type { AnyActionDefinition } from "../action/index";
+import type { BlobStore } from "../blob";
 import type { AnyJobDefinition } from "../job";
 import type { AnyPageDefinition } from "../page/index";
 import type { AnyResourceDefinition } from "../resource/index";
+import type { AnyRouteDefinition } from "../route";
 import type { AnySignalDefinition } from "../signal";
 import type { AnyStoreDefinition } from "../store/index";
 
@@ -15,7 +17,15 @@ import type { AnyStoreDefinition } from "../store/index";
  * adapter.sdkVersion === ADAPTER_SDK_VERSION; // true
  * ```
  */
-export const ADAPTER_API_VERSION = "0.2.0";
+export const ADAPTER_API_VERSION = "0.3.0";
+/**
+ * Contract versions a host can still load. A newer version only adds optional
+ * members, so a definition built against an older one keeps working.
+ */
+export const SUPPORTED_ADAPTER_API_VERSIONS: readonly string[] = [
+  "0.2.0",
+  ADAPTER_API_VERSION,
+];
 /** @deprecated Use ADAPTER_API_VERSION. This is a host contract, not npm SemVer. */
 export const ADAPTER_SDK_VERSION = ADAPTER_API_VERSION;
 
@@ -125,6 +135,12 @@ export interface AdapterHealthReport {
   readonly checks: readonly AdapterHealthCheck[];
 }
 
+/** What the host lends a health probe besides the adapter's own context. */
+export interface AdapterHealthRuntime {
+  /** Binary storage private to the probed service. */
+  readonly blobs: BlobStore;
+}
+
 export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
   /** Discriminant: always `"adapter"`. */
   readonly kind: "adapter";
@@ -166,7 +182,10 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
    * methods can vary its checks per method (a local project differs from a
    * hosted account).
    */
-  readonly health: (ctx: TContext) => Promise<AdapterHealthReport>;
+  readonly health: (
+    ctx: TContext,
+    runtime: AdapterHealthRuntime,
+  ) => Promise<AdapterHealthReport>;
   /** Round-trip time above which this service is degraded, when declared. */
   readonly latencyBudgetMs?: number;
   /** Adapter- and page-scoped store definitions. */
@@ -181,6 +200,8 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
   readonly jobs: readonly AnyJobDefinition<TContext>[];
   /** Signals this adapter is allowed to emit into DSUI's event stream. */
   readonly signals: readonly AnySignalDefinition[];
+  /** HTTP endpoints each configured service serves. */
+  readonly routes: readonly AnyRouteDefinition<TContext>[];
 }
 
 /**
@@ -236,7 +257,10 @@ export interface DefineAdapterOptions<TContext, TConfig> {
    *
    * @see {@link AdapterDefinition.health}
    */
-  health: (ctx: TContext) => Promise<AdapterHealthReport>;
+  health: (
+    ctx: TContext,
+    runtime: AdapterHealthRuntime,
+  ) => Promise<AdapterHealthReport>;
   /**
    * Round-trip time above which this service is considered degraded.
    *
@@ -258,4 +282,6 @@ export interface DefineAdapterOptions<TContext, TConfig> {
   jobs?: readonly AnyJobDefinition<TContext>[];
   /** Signal definitions referenced by the adapter's jobs. */
   signals?: readonly AnySignalDefinition[];
+  /** HTTP endpoints, served per configured service. */
+  routes?: readonly AnyRouteDefinition<TContext>[];
 }
