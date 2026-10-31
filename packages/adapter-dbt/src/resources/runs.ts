@@ -5,6 +5,7 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import { artifactSource, readArtifact } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
+import { listRuns } from "../run-history.js";
 
 export const runs = defineResource({
   id: "runs",
@@ -13,6 +14,16 @@ export const runs = defineResource({
     ctx: DbtContext & ResourceRuntimeContext,
   ) => {
     if (ctx.cloud) return ctx.cloud.listRuns();
+    if (ctx.config.method === "push") {
+      return (await listRuns(ctx.blobs)).map((run) => ({
+        cause: "Pushed from CI",
+        id: run.id,
+        job: "Pushed build",
+        job_id: "Pushed build",
+        started_at: run.startedAt,
+        status: run.status,
+      }));
+    }
     const artifact = await readArtifact(
       artifactSource(ctx),
       "run_results.json",
@@ -31,12 +42,12 @@ export const runs = defineResource({
     return [
       {
         id: "local-latest",
-        job: ctx.config.method === "push" ? "Pushed build" : "Local dbt",
-        job_id: ctx.config.method === "push" ? "Pushed build" : "Local dbt",
+        job: "Local dbt",
+        job_id: "Local dbt",
         status: statuses.some((status) => ["error", "fail"].includes(status))
           ? "error"
           : "success",
-        cause: ctx.config.method === "push" ? "Pushed from CI" : "Local run",
+        cause: "Local run",
         started_at:
           typeof artifact.data.metadata === "object" &&
           artifact.data.metadata !== null &&

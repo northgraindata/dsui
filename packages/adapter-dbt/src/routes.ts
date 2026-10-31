@@ -10,6 +10,7 @@ import {
 } from "./artifacts.js";
 import type { DbtContext } from "./context.js";
 import { localRunResults, localRunSignal } from "./jobs.js";
+import { archiveRun } from "./run-history.js";
 
 /** A large project's manifest.json runs to tens of megabytes. */
 const MAX_ARTIFACT_BYTES = 128 * 1024 * 1024;
@@ -58,6 +59,7 @@ export const pushArtifact = defineRoute<DbtContext>({
     await blobs.put(pushedArtifactKey(name), request.body);
 
     if (name === "run_results.json") {
+      await archiveRun(blobs, data as Record<string, unknown>, request.body);
       const result = localRunResults(data as Record<string, unknown>);
       if (
         result.runId &&
