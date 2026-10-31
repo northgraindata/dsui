@@ -52,6 +52,9 @@ done
 ```
 
 The latest upload of each artifact replaces the previous one.
+Every `run_results.json` is also kept as its own run, named by its dbt invocation ID, so the Runs page lists the history.
+Runs are kept for 14 days, and at most 500, and older ones are deleted when the next one arrives.
+Pushing the same run again replaces it.
 Uploading `run_results.json` also raises `dbt.run-failed`, `dbt.run-warning` or `dbt.run-succeeded` for that invocation, once per invocation ID.
 A push service is read-only: it browses what CI sent and does not run dbt.
 Service health reports whether artifacts have arrived.

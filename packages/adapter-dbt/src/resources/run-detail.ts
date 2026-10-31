@@ -10,6 +10,7 @@ import {
   readLocalRunLog,
 } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
+import { readRun, summarizeRun } from "../run-history.js";
 
 const input = z.object({ runId: z.string().min(1) });
 
@@ -18,6 +19,18 @@ export const runDetail = defineResource({
   input,
   query: async ({ runId }, ctx: DbtContext & ResourceRuntimeContext) => {
     if (ctx.cloud) return ctx.cloud.getRun(runId);
+    if (ctx.config.method === "push") {
+      const archived = await readRun(ctx.blobs, runId);
+      if (archived) {
+        const run = summarizeRun(runId, archived);
+        return {
+          id: run.id,
+          resultCount: run.total,
+          startedAt: run.startedAt,
+          status: run.status,
+        };
+      }
+    }
     const artifact = await readArtifact(
       artifactSource(ctx),
       "run_results.json",

@@ -4,6 +4,7 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import { artifactSource, readArtifact } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
+import { listRuns } from "../run-history.js";
 
 type RunRow = {
   id: string;
@@ -97,6 +98,16 @@ export const recentRuns = defineResource({
         status: formatStatus(run.status),
         cause: run.cause ?? "",
         started: run.started_at ?? "",
+      }));
+    }
+
+    if (ctx.config.method === "push") {
+      return (await listRuns(ctx.blobs, 10)).map((run) => ({
+        cause: "Pushed from CI",
+        id: run.id,
+        job: "Pushed build",
+        started: run.startedAt,
+        status: formatStatus(run.status),
       }));
     }
 

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
   createAdapterInstance,
   createMemoryBlobStore,
@@ -7,7 +7,15 @@ import { createDbtAdapter } from "../src/adapter";
 import { createContext } from "../src/context";
 import { dbtHealth } from "../src/health";
 import { artifacts } from "../src/resources/artifacts";
-import { dashboard } from "../src/resources/dashboard";
+import { dashboard, recentRuns } from "../src/resources/dashboard";
+import { runDetail } from "../src/resources/run-detail";
+import { runs } from "../src/resources/runs";
+import {
+  archiveRun,
+  MAX_KEPT_RUNS,
+  RUN_RETENTION_MS,
+  runKey,
+} from "../src/run-history";
 
 const connection = { method: "push", pushToken: "t".repeat(32) };
 const put = (name: string, body: unknown, raw?: string) => ({
@@ -164,4 +172,107 @@ test("health says whether CI has delivered anything", async () => {
   const after = await dbtHealth(ctx, { blobs });
   expect(after.checks[0]?.ok).toBe(true);
   expect(after.status).toBe("healthy");
+});
+
+describe("run history", () => {
+  const runAt = (id: string, generated: string, status = "success") => ({
+    metadata: { generated_at: generated, invocation_id: id },
+    results: [{ status, unique_id: "model.p.a" }],
+  });
+  const pushRun = (
+    instance: Awaited<ReturnType<typeof connect>>["instance"],
+    body: unknown,
+  ) => instance.runRoute("push-artifact", put("run_results.json", body), live);
+
+  test("every pushed run is kept and listed newest first", async () => {
+    const { instance } = await connect();
+    await pushRun(instance, runAt("run-a", "2026-10-30T09:00:00Z"));
+    await pushRun(instance, runAt("run-b", "2026-10-30T11:00:00Z", "error"));
+
+    const listed = await instance.executeResource(runs());
+    expect(listed.status === "success" ? listed.data : []).toMatchObject([
+      { id: "run-b", status: "error" },
+      { id: "run-a", status: "success" },
+    ]);
+  });
+
+  test("pushing the same run again replaces it", async () => {
+    const { instance } = await connect();
+    await pushRun(instance, runAt("run-a", "2026-10-30T09:00:00Z", "error"));
+    await pushRun(instance, runAt("run-a", "2026-10-30T09:00:00Z"));
+    const listed = await instance.executeResource(runs());
+    expect(listed.status === "success" ? listed.data : []).toMatchObject([
+      { id: "run-a", status: "success" },
+    ]);
+  });
+
+  test("a run opens from its own results, not the latest", async () => {
+    const { instance } = await connect();
+    await pushRun(instance, runAt("run-a", "2026-10-30T09:00:00Z", "error"));
+    await pushRun(instance, runAt("run-b", "2026-10-30T11:00:00Z"));
+    const detail = await instance.executeResource(
+      runDetail({ runId: "run-a" }),
+    );
+    expect(detail).toMatchObject({
+      data: { id: "run-a", resultCount: 1, status: "error" },
+    });
+  });
+
+  test("the dashboard lists the most recent runs", async () => {
+    const { instance } = await connect();
+    await pushRun(instance, runAt("run-a", "2026-10-30T09:00:00Z"));
+    const recent = await instance.executeResource(recentRuns());
+    expect(recent).toMatchObject({
+      data: [{ id: "run-a", job: "Pushed build", status: "Success" }],
+    });
+  });
+
+  test("runs older than two weeks are deleted when the next one arrives", async () => {
+    const blobs = createMemoryBlobStore();
+    const bytes = (id: string) =>
+      new TextEncoder().encode(
+        JSON.stringify(runAt(id, "2026-10-01T00:00:00Z")),
+      );
+    await archiveRun(blobs, runAt("old", "2026-10-01T00:00:00Z"), bytes("old"));
+    const later = new Date(Date.now() + RUN_RETENTION_MS + 60_000);
+    await archiveRun(
+      blobs,
+      runAt("new", "2026-10-30T00:00:00Z"),
+      bytes("new"),
+      later,
+    );
+    expect((await blobs.list("runs/")).map((blob) => blob.key)).toEqual([
+      "runs/new/run_results.json",
+    ]);
+  });
+
+  test("however often a pipeline pushes, only the newest runs are kept", async () => {
+    const blobs = createMemoryBlobStore();
+    for (let index = 0; index < MAX_KEPT_RUNS + 5; index += 1) {
+      const id = `run-${index}`;
+      await archiveRun(
+        blobs,
+        runAt(id, "2026-10-30T00:00:00Z"),
+        new TextEncoder().encode(
+          JSON.stringify(runAt(id, "2026-10-30T00:00:00Z")),
+        ),
+      );
+    }
+    const kept = await blobs.list("runs/");
+    expect(kept).toHaveLength(MAX_KEPT_RUNS);
+    expect(kept.map((blob) => blob.key)).toContain(
+      `runs/run-${MAX_KEPT_RUNS + 4}/run_results.json`,
+    );
+  });
+
+  test("an invocation id cannot name a path outside runs/", () => {
+    for (const id of ["../etc", "a/b", "..", "x..y", "  "]) {
+      const key = runKey({ metadata: { invocation_id: id } }, "{}");
+      expect(key).toMatch(
+        /^runs\/[A-Za-z0-9][A-Za-z0-9._-]*\/run_results\.json$/,
+      );
+      expect(key).not.toContain("..");
+    }
+    expect(runKey({}, "{}")).toMatch(/^runs\/[0-9a-f]{32}\//);
+  });
 });
