@@ -1,0 +1,402 @@
+/* List: one readable row per record, with status and actions at the end. */
+.dsui-list {
+  container-type: inline-size;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.dsui-list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dsui-list-count {
+  margin-right: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.dsui-list-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(260px, 100%);
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  color: var(--color-muted);
+  transition: border-color 0.15s ease;
+}
+.dsui-list-search:focus-within {
+  border-color: var(--color-accent);
+}
+.dsui-list-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.dsui-list-search input::placeholder {
+  color: var(--color-muted);
+}
+.dsui-list-filter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  color: var(--color-secondary);
+  cursor: pointer;
+}
+.dsui-list-filter:hover,
+.dsui-list-filter[data-active="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-primary);
+}
+.dsui-list-filter span {
+  min-width: 16px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.dsui-list-items {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+  overflow: hidden;
+}
+.dsui-list-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 60px;
+  padding: 0 12px 0 0;
+  transition: background-color 0.15s ease;
+}
+.dsui-list-row + .dsui-list-row {
+  border-top: 1px solid var(--color-border);
+}
+.dsui-list-row:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, transparent);
+}
+.dsui-list-row[data-busy="true"] {
+  opacity: 0.7;
+}
+.dsui-list-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  align-self: stretch;
+  padding: 11px 0 11px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.dsui-list-main {
+  cursor: pointer;
+}
+button.dsui-list-main:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.dsui-list-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-surface-hover) 60%, transparent);
+  color: var(--color-secondary);
+}
+.dsui-list-row:hover .dsui-list-icon {
+  border-color: var(--color-border-strong);
+  color: var(--color-primary);
+}
+.dsui-list-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.dsui-list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.dsui-list-title strong {
+  overflow: hidden;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsui-list-badge {
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  color: var(--color-muted);
+  font-size: 10.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.dsui-list-description {
+  overflow: hidden;
+  color: var(--color-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsui-list-error {
+  color: var(--color-unavailable);
+  font-size: 11px;
+}
+
+.dsui-list-status {
+  display: grid;
+  flex: none;
+  gap: 4px;
+  width: 150px;
+  --dsui-list-tone: var(--color-muted);
+}
+.dsui-list-status[data-tone="healthy"] {
+  --dsui-list-tone: var(--color-healthy);
+}
+.dsui-list-status[data-tone="warning"] {
+  --dsui-list-tone: var(--color-warning);
+}
+.dsui-list-status[data-tone="unavailable"] {
+  --dsui-list-tone: var(--color-unavailable);
+}
+.dsui-list-status[data-tone="info"] {
+  --dsui-list-tone: var(--color-accent);
+}
+.dsui-list-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.dsui-list-status-label i {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--dsui-list-tone);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--dsui-list-tone) 18%, transparent);
+}
+/* Nothing has happened yet: a hollow ring rather than a filled dot. */
+.dsui-list-status[data-tone="muted"] .dsui-list-status-label i {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--dsui-list-tone);
+}
+.dsui-list-status[data-tone="muted"] .dsui-list-status-label {
+  color: var(--color-secondary);
+}
+.dsui-list-status[data-tone="info"] .dsui-list-status-label i {
+  animation: dsui-list-pulse 1.6s ease-in-out infinite;
+}
+.dsui-list-status small {
+  padding-left: 16px;
+  color: var(--color-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+@keyframes dsui-list-pulse {
+  50% {
+    box-shadow: 0 0 0 5px
+      color-mix(in srgb, var(--dsui-list-tone) 0%, transparent);
+  }
+}
+
+.dsui-list-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+.dsui-list-action {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-secondary);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.dsui-list-action:hover:not(:disabled) {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+.dsui-list-action:focus-visible,
+.dsui-list-filter:focus-visible,
+.dsui-list-more:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.dsui-list-action-slot {
+  width: 32px;
+  height: 32px;
+}
+.dsui-list-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dsui-list-menu {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 10px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+}
+.dsui-list-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-secondary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.dsui-list-menu > button:hover:not(:disabled),
+.dsui-list-menu > button:focus-visible {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+  outline: none;
+}
+.dsui-list-menu > button[data-variant="danger"] {
+  color: var(--color-unavailable);
+}
+.dsui-list-menu > button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.dsui-list-filters fieldset {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 4px 4px 8px;
+  border: 0;
+}
+.dsui-list-filters legend {
+  padding: 4px 6px;
+  color: var(--color-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.dsui-list-filters label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--color-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.dsui-list-filters label:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.dsui-list-filters input {
+  accent-color: var(--color-accent);
+}
+
+.dsui-list-empty {
+  margin: 0;
+  padding: 28px 16px;
+  border: 1px dashed var(--color-border);
+  border-radius: 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.dsui-list-more {
+  justify-self: center;
+  padding: 7px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dsui-list-more:hover {
+  border-color: var(--color-accent);
+  color: var(--color-primary);
+}
+
+/* Narrow panes: the status drops under the text instead of crowding it. */
+@container (max-width: 560px) {
+  .dsui-list-row {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding-bottom: 10px;
+  }
+  .dsui-list-main {
+    flex-basis: 100%;
+    padding-bottom: 0;
+  }
+  .dsui-list-status {
+    width: auto;
+    margin-left: 16px;
+    margin-right: auto;
+  }
+  .dsui-list-row:has(.dsui-list-icon) .dsui-list-status {
+    margin-left: 66px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsui-list-status[data-tone="info"] .dsui-list-status-label i {
+    animation: none;
+  }
+}

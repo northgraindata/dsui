@@ -12,7 +12,20 @@ import type { ComponentProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
 import { LiveDuration } from "./live-duration";
 import { LiveEta, LiveProgress } from "./live-progress";
+import {
+  isRowActionDisabled,
+  matchesWhen,
+  performRowAction,
+  resolveLink,
+} from "./row-action";
 import { TableExplorer } from "./table-explorer";
+
+export {
+  actionId,
+  isRowActionDisabled,
+  matchesWhen,
+  resolveLink,
+} from "./row-action";
 
 type TableNodeProps = TableProps & { component?: string };
 
@@ -158,20 +171,6 @@ function normalizeRows(value: unknown): Record<string, unknown>[] {
     : [];
 }
 
-export function resolveLink(
-  path: string,
-  params: Record<string, string>,
-  row: Record<string, unknown>,
-): string | null {
-  let resolved = path;
-  for (const [param, field] of Object.entries(params)) {
-    const value = row[field];
-    if (value === null || value === undefined || value === "") return null;
-    resolved = resolved.replace(`:${param}`, encodeURIComponent(String(value)));
-  }
-  return resolved;
-}
-
 function RowAction({
   client,
   row,
@@ -201,50 +200,10 @@ function RowAction({
             )
           )
             return;
-          if (spec.link) {
-            const href = resolveLink(spec.link.path, spec.link.params, row);
-            if (href) client.navigate(href);
-            return;
-          }
-          if (!spec.action) return;
-          const input = Object.fromEntries(
-            Object.entries(spec.input ?? {}).map(([key, field]) => [
-              key,
-              row[field],
-            ]),
-          );
           setBusy(true);
           setActionError(undefined);
-          client
-            .executeAction({ actionId: actionId(spec.action), input })
-            .then((result) => {
-              if (result.status !== "success") {
-                setActionError(result.message ?? "Action failed");
-                return;
-              }
-              onDone();
-              if (spec.successLink) {
-                const resultData =
-                  result.data && typeof result.data === "object"
-                    ? (result.data as Record<string, unknown>)
-                    : {};
-                const href = resolveLink(
-                  spec.successLink.path,
-                  spec.successLink.params,
-                  { ...row, ...resultData },
-                );
-                if (href) client.navigate(href);
-                else
-                  setActionError(
-                    "Action succeeded but the follow-up link is missing data",
-                  );
-              }
-            })
-            .catch((cause: unknown) => {
-              setActionError(
-                cause instanceof Error ? cause.message : "Action failed",
-              );
-            })
+          void performRowAction(client, spec, row, onDone)
+            .then(setActionError)
             .finally(() => setBusy(false));
         }}
       >
@@ -280,31 +239,10 @@ function RowMenuAction({
             !window.confirm(spec.confirmation.description)
           )
             return;
-          if (spec.link) {
-            const href = resolveLink(spec.link.path, spec.link.params, row);
-            if (href) client.navigate(href);
-            return;
-          }
-          if (!spec.action) return;
-          const input = Object.fromEntries(
-            Object.entries(spec.input ?? {}).map(([key, field]) => [
-              key,
-              row[field],
-            ]),
-          );
           setBusy(true);
           setActionError(undefined);
-          client
-            .executeAction({ actionId: actionId(spec.action), input })
-            .then((result) => {
-              if (result.status !== "success")
-                setActionError(result.message ?? "Action failed");
-            })
-            .catch((cause: unknown) => {
-              setActionError(
-                cause instanceof Error ? cause.message : "Action failed",
-              );
-            })
+          void performRowAction(client, spec, row)
+            .then(setActionError)
             .finally(() => setBusy(false));
         }}
       >
@@ -313,37 +251,6 @@ function RowMenuAction({
       {actionError ? <span role="alert">{actionError}</span> : null}
     </>
   );
-}
-
-export function matchesWhen(
-  row: Record<string, unknown>,
-  when: TableRowAction["when"] | TableRowAction["disabledWhen"],
-): boolean {
-  if (!when) return true;
-  const value = row[when.field];
-  if (when.equals !== undefined && value !== when.equals) return false;
-  if (when.notEquals !== undefined && value === when.notEquals) return false;
-  return true;
-}
-
-export function isRowActionDisabled(
-  row: Record<string, unknown>,
-  when: TableRowAction["disabledWhen"],
-): boolean {
-  return when ? matchesWhen(row, when) : false;
-}
-
-export function actionId(
-  action: TableRowAction["action"] | TableRowMenuAction["action"],
-): string {
-  if (!action) throw new Error("Table action is missing");
-  if (typeof action === "string") return action;
-  // Browser nodes carry serialized { actionId } references; raw definitions
-  // carry { id }. Accept both so actions survive the server boundary.
-  const reference = action as { actionId?: unknown; id?: unknown };
-  if (typeof reference.actionId === "string") return reference.actionId;
-  if (typeof reference.id === "string") return reference.id;
-  throw new Error("Table action is missing");
 }
 
 function formatCell(value: unknown): string {
