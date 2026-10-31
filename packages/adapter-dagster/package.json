@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "bun test --pass-with-no-tests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sync:kind-icons": "bun scripts/sync-kind-icons.ts"
   },
   "dependencies": {
     "@northgraindata/dsui-adapter-sdk": "workspace:*",

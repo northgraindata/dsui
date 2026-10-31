@@ -60,6 +60,9 @@ button.dg-tag:hover { color: var(--color-primary); border-color: var(--color-bor
 .dg-node-body { display: flex; align-items: center; gap: 12px; flex: 1; min-height: 0; padding: 10px 14px 8px 16px; }
 .dg-glyph { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-hover); color: var(--color-secondary); font-family: var(--dg-mono); font-weight: 600; font-size: 12px; line-height: 1; }
 .dg-glyph[data-long="true"] { font-size: 10px; }
+.dg-glyph[data-icon="true"] { background: color-mix(in srgb, var(--color-surface-hover) 70%, var(--color-surface)); color: var(--color-primary); }
+.dg-kind-icon { display: block; flex-shrink: 0; object-fit: contain; }
+.dg-kind-icon--mono { background-color: currentColor; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
 .dg-node-text { display: grid; gap: 6px; min-width: 0; flex: 1; }
 .dg-node-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .dg-node-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--color-primary); }

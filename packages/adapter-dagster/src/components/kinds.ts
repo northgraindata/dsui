@@ -1,13 +1,20 @@
+import { DAGSTER_KINDS } from "./kind-icons.generated";
+
 /**
  * Display style for Dagster asset kinds. Kinds are free-form strings set in
- * definitions or by integrations; the common ones get a recognisable colour
- * and short glyph, anything else falls back to a neutral tag.
+ * definitions or by integrations. Known kinds use Dagster's own icon and
+ * label; the colour and glyph below tint the dots and stand in for kinds
+ * whose icon Dagster lacks or the sync skipped.
  */
 export interface KindStyle {
   label: string;
   glyph: string;
   /** Mid-tone brand colour, legible on both light and dark surfaces. */
   color?: string;
+  /** Dagster's icon for the kind, as a data URI. */
+  icon?: string;
+  /** Single-colour icon that should take the surrounding text colour. */
+  mono?: boolean;
 }
 
 const KINDS: Record<string, KindStyle> = {
@@ -46,7 +53,7 @@ const KINDS: Record<string, KindStyle> = {
   sigma: { label: "Sigma", glyph: "Σ", color: "#9A9A9A" },
   hex: { label: "Hex", glyph: "Hx", color: "#F5A3C7" },
   jupyter: { label: "Jupyter", glyph: "Jn", color: "#F37626" },
-  "scikit-learn": { label: "scikit-learn", glyph: "SK", color: "#F7931E" },
+  scikitlearn: { label: "scikit-learn", glyph: "SK", color: "#F7931E" },
   pytorch: { label: "PyTorch", glyph: "PT", color: "#EE4C2C" },
   tensorflow: { label: "TensorFlow", glyph: "TF", color: "#FF8F00" },
   openai: { label: "OpenAI", glyph: "AI", color: "#10A37F" },
@@ -65,27 +72,27 @@ const KINDS: Record<string, KindStyle> = {
 const ALIASES: Record<string, string> = {
   postgresql: "postgres",
   pyspark: "spark",
-  sklearn: "scikit-learn",
-  scikit_learn: "scikit-learn",
+  sklearn: "scikitlearn",
   deltalake: "delta",
-  "delta-lake": "delta",
-  "power bi": "powerbi",
-  "google sheets": "googlesheets",
   notebook: "jupyter",
   ipynb: "jupyter",
   torch: "pytorch",
 };
 
+/** Dagster's own normalisation: "Google-Sheets" and "googlesheets" match. */
 export function kindKey(kind: string): string {
-  const key = kind.trim().toLowerCase();
-  return ALIASES[key] ?? key;
+  return kind.replace(/[ _.-]/g, "").toLowerCase();
 }
 
 export function kindStyle(kind: string): KindStyle {
-  return (
-    KINDS[kindKey(kind)] ?? {
-      label: kind,
-      glyph: kind.slice(0, 2).toUpperCase(),
-    }
-  );
+  const key = kindKey(kind);
+  const fallback = KINDS[ALIASES[key] ?? key];
+  const dagster = DAGSTER_KINDS[key];
+  return {
+    label: dagster?.label ?? fallback?.label ?? kind,
+    glyph: fallback?.glyph ?? kind.slice(0, 2).toUpperCase(),
+    color: fallback?.color,
+    icon: dagster?.icon,
+    mono: dagster?.mono,
+  };
 }

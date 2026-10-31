@@ -32,7 +32,7 @@ import {
   zoomAround,
 } from "./graph-layout";
 import { GRAPH_STYLES } from "./graph-styles";
-import { kindKey, kindStyle } from "./kinds";
+import { type KindStyle, kindKey, kindStyle } from "./kinds";
 
 /**
  * Dagster's lineage graph: assets (or ops and run steps) laid out by
@@ -244,8 +244,42 @@ function Dot({ color }: { color: string }) {
   );
 }
 
+/** Dagster's icon for a kind; single-colour ones take the text colour. */
+function KindIcon({ style, size }: { style: KindStyle; size: number }) {
+  if (!style.icon) return null;
+  if (style.mono)
+    return (
+      <i
+        aria-hidden="true"
+        className="dg-kind-icon dg-kind-icon--mono"
+        style={{
+          width: size,
+          height: size,
+          WebkitMaskImage: `url("${style.icon}")`,
+          maskImage: `url("${style.icon}")`,
+        }}
+      />
+    );
+  return (
+    <img
+      aria-hidden="true"
+      alt=""
+      className="dg-kind-icon"
+      src={style.icon}
+      width={size}
+      height={size}
+    />
+  );
+}
+
 function KindGlyph({ kind, label }: { kind?: string; label: string }) {
   const style = kind ? kindStyle(kind) : undefined;
+  if (style?.icon)
+    return (
+      <span aria-hidden="true" className="dg-glyph" data-icon="true">
+        <KindIcon style={style} size={20} />
+      </span>
+    );
   const glyph = style?.glyph ?? label.trim().charAt(0).toUpperCase();
   return (
     <span
@@ -277,7 +311,11 @@ function KindTag({
   onClick?: () => void;
 }) {
   const style = kindStyle(kind);
-  const dot = <Dot color={style.color ?? "var(--color-muted)"} />;
+  const mark = style.icon ? (
+    <KindIcon style={style} size={12} />
+  ) : (
+    <Dot color={style.color ?? "var(--color-muted)"} />
+  );
   return onClick ? (
     <button
       type="button"
@@ -286,12 +324,12 @@ function KindTag({
       aria-pressed={active}
       title={`Highlight ${style.label}`}
     >
-      {dot}
+      {mark}
       {style.label}
     </button>
   ) : (
     <span className="dg-tag">
-      {dot}
+      {mark}
       {style.label}
     </span>
   );
