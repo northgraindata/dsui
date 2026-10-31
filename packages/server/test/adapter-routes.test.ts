@@ -181,3 +181,27 @@ test("calls are audited and no request body is left on disk", async () => {
   const spool = join(directory, "tmp", "route-bodies");
   expect(await readdir(spool)).toEqual([]);
 });
+
+test("with the web app served, a GET route still reaches the adapter and not index.html", async () => {
+  const web = await mkdtemp(join(tmpdir(), "dsui-web-"));
+  try {
+    await writeFile(join(web, "index.html"), "<html>the web app</html>");
+    const configPath = join(directory, "dsui.yaml");
+    const served = createRuntime({
+      configPath,
+      dataDir: directory,
+      webRoot: web,
+    });
+    await served.refreshConfig();
+    served.registry.register(runtime.registry.get("route-test"));
+
+    const route = await served.app.request(url("/files/missing"));
+    expect(route.status).toBe(404);
+    expect(await route.text()).not.toContain("the web app");
+    // The web app itself is still served for everything else.
+    const page = await served.app.request("http://dsui.test/some/page");
+    expect(await page.text()).toContain("the web app");
+  } finally {
+    await rm(web, { recursive: true, force: true });
+  }
+});

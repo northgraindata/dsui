@@ -3,6 +3,9 @@ import type { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import type { PluginRuntime } from "../plugins/runtime.js";
 import { DSUI_VERSION } from "../version.js";
+import { ADAPTER_ROUTE_PREFIX } from "./adapter-routes.js";
+
+const SERVER_PATHS = ["/api/", `${ADAPTER_ROUTE_PREFIX}/`];
 
 export function registerSystemRoutes(
   app: Hono,
@@ -24,8 +27,11 @@ export function registerSystemRoutes(
   if (webRoot && existsSync(webRoot)) {
     app.use("/*", serveStatic({ root: webRoot }));
     const index = serveStatic({ root: webRoot, path: "index.html" });
+    // Paths the server answers itself must not fall through to the web app.
     app.get("*", (context, next) =>
-      context.req.path.startsWith("/api/") ? next() : index(context, next),
+      SERVER_PATHS.some((prefix) => context.req.path.startsWith(prefix))
+        ? next()
+        : index(context, next),
     );
   }
 }
