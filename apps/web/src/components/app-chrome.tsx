@@ -8,6 +8,7 @@ import {
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
 import { useSettings } from "../features/settings/settings-context";
+import { shortcutHint, useShortcuts } from "../shortcuts";
 import { Icon } from "./icon";
 import { TopbarTabsSlot } from "./topbar-slot";
 import { Wordmark } from "./wordmark";
@@ -54,6 +55,7 @@ export function AppChrome({
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
+  useShortcuts({ sidebar: toggleSidebar });
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null);
   const [pluginNavigation, setPluginNavigation] = useState<
     PluginCatalog["navigation"]
@@ -129,7 +131,7 @@ export function AppChrome({
             aria-label={
               sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
             }
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={`${sidebarCollapsed ? "Expand" : "Collapse"} sidebar (${shortcutHint("sidebar")})`}
           >
             <Icon name="sidebar" />
           </button>
@@ -141,7 +143,7 @@ export function AppChrome({
             className="app-search-button"
             onClick={openSearch}
             aria-label="Search"
-            title="Search (⌘K)"
+            title={`Search (${shortcutHint("search")})`}
           >
             <Icon name="search" size={17} />
           </button>

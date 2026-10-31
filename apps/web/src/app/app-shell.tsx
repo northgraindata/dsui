@@ -1,25 +1,47 @@
 import { cn } from "@northgraindata/dsui-ui";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { getPluginCatalog, getServices, type Service } from "../api";
 import { AppChrome } from "../components/app-chrome";
 import { Icon } from "../components/icon";
 import { ServiceMark } from "../components/service-mark";
-import { AdapterTabsProvider } from "../features/adapter-workspace/adapter-tabs-context";
+import { ShortcutsDialog } from "../components/shortcuts-dialog";
+import {
+  AdapterTabsProvider,
+  useAdapterTabs,
+} from "../features/adapter-workspace/adapter-tabs-context";
+import { visibleAdapterTabs } from "../features/adapter-workspace/adapter-tabs-state";
 import { PluginOverlayLayer } from "../features/plugins/plugin-overlay-layer";
 import { SettingsProvider } from "../features/settings/settings-provider";
+import { useShortcuts } from "../shortcuts";
 
-function useShortcut(key: string, fn: () => void) {
+/** Whether the DSUI Agent plugin, which owns ⌘J, is ready to open. */
+function useAgentAvailable(enabled: boolean) {
+  const [available, setAvailable] = useState(false);
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === key) {
-        event.preventDefault();
-        fn();
-      }
+    if (!enabled) return;
+    let active = true;
+    getPluginCatalog()
+      .then((catalog) => {
+        if (active)
+          setAvailable(
+            catalog.plugins.some(
+              (plugin) => plugin.id === "ai-agent" && plugin.status === "ready",
+            ),
+          );
+      })
+      .catch(() => active && setAvailable(false));
+    return () => {
+      active = false;
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [key, fn]);
+  }, [enabled]);
+  return available;
 }
 
 export function AppShell() {
@@ -33,7 +55,10 @@ export function AppShell() {
 }
 
 function ShellContent() {
+  const navigate = useNavigate();
+  const { state: tabs } = useAdapterTabs();
   const [commandOpen, setCommandOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [barePluginPage, setBarePluginPage] = useState<{
     pathname: string;
     bare: boolean;
@@ -74,9 +99,34 @@ function ShellContent() {
     };
   }, [pathname, pluginPage?.[1], pluginPage?.[2]]);
 
-  useShortcut("k", () => {
-    if (!hideAppChrome) setCommandOpen(true);
-  });
+  const agentAvailable = useAgentAvailable(shortcutsOpen);
+  const switchTab = (step: 1 | -1) => {
+    const ids = visibleAdapterTabs(tabs).map((tab) =>
+      tab.kind === "split" ? tab.leftId : tab.id,
+    );
+    if (!ids.length) return;
+    const current = /^\/services\/([^/]+)/.exec(pathname)?.[1];
+    const index = current ? ids.indexOf(decodeURIComponent(current)) : -1;
+    const next =
+      index < 0
+        ? ids[step > 0 ? 0 : ids.length - 1]
+        : ids[(index + step + ids.length) % ids.length];
+    if (next)
+      void navigate({
+        to: "/services/$serviceId",
+        params: { serviceId: next },
+      });
+  };
+
+  useShortcuts(
+    {
+      search: () => setCommandOpen(true),
+      shortcuts: () => setShortcutsOpen((open) => !open),
+      "next-tab": () => switchTab(1),
+      "previous-tab": () => switchTab(-1),
+    },
+    !hideAppChrome,
+  );
 
   if (hideAppChrome) return <Outlet />;
 
@@ -85,6 +135,12 @@ function ShellContent() {
       <AppChrome pathname={pathname} openSearch={() => setCommandOpen(true)} />
       <PluginOverlayLayer />
       {commandOpen && <CommandPalette close={() => setCommandOpen(false)} />}
+      {shortcutsOpen && (
+        <ShortcutsDialog
+          close={() => setShortcutsOpen(false)}
+          agentAvailable={agentAvailable}
+        />
+      )}
     </>
   );
 }
@@ -92,9 +148,62 @@ function ShellContent() {
 const paletteRow =
   "flex h-8 w-full items-center gap-2.5 border-0 bg-transparent px-3 text-left text-[12px] text-secondary transition-colors hover:bg-surface-hover hover:text-primary";
 
+type PaletteItem = {
+  id: string;
+  label: string;
+  /** Extra words that should find this item, such as "help". */
+  keywords?: string;
+  icon: ReactNode;
+  run: () => void;
+};
+
+/** Palette entries grouped for display, filtered by the typed query. */
+function paletteGroups({
+  query,
+  services,
+  go,
+}: {
+  query: string;
+  services: readonly Service[];
+  go: (to: string) => void;
+}): [string, PaletteItem[]][] {
+  const commands: PaletteItem[] = [
+    {
+      id: "home",
+      label: "Dashboard",
+      keywords: "home",
+      icon: <Icon name="grid" />,
+      run: () => go("/"),
+    },
+    {
+      id: "add-service",
+      label: "Add service",
+      keywords: "new connection adapter",
+      icon: <Icon name="plus" />,
+      run: () => go("/services/new"),
+    },
+  ];
+  const serviceItems: PaletteItem[] = services.map((service) => ({
+    id: service.id,
+    label: service.name,
+    keywords: service.adapter,
+    icon: <ServiceMark adapter={service.adapter} logo={service.logo} />,
+    run: () => go(`/services/${service.id}`),
+  }));
+  const needle = query.trim().toLowerCase();
+  const matches = (item: PaletteItem) =>
+    !needle ||
+    `${item.label} ${item.keywords ?? ""}`.toLowerCase().includes(needle);
+  return [
+    ["Commands", commands.filter(matches)],
+    ["Services", serviceItems.filter(matches)],
+  ];
+}
+
 function CommandPalette({ close }: { close: () => void }) {
   const navigate = useNavigate();
   const [services, setServices] = useState<Service[]>([]);
+  const [query, setQuery] = useState("");
   const [entered, setEntered] = useState(false);
   const closeTimer = useRef<number | undefined>(undefined);
 
@@ -137,6 +246,9 @@ function CommandPalette({ close }: { close: () => void }) {
     return () => removeEventListener("keydown", handleKeyDown);
   }, [requestClose]);
 
+  const groups = paletteGroups({ query, services, go });
+  const visible = groups.flatMap(([, items]) => items);
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop dismisses on outside press; the dialog itself carries the semantic role
     <div
@@ -161,43 +273,50 @@ function CommandPalette({ close }: { close: () => void }) {
           <Icon name="search" />
           <input
             ref={(element) => element?.focus()}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") visible[0]?.run();
+            }}
             placeholder="Search commands…"
+            aria-label="Search commands"
             className="h-full w-full border-0 bg-transparent font-mono text-[12px] text-primary outline-none placeholder:text-muted"
           />
         </div>
-        <div className="max-h-80 overflow-auto p-1.5">
-          <p className="px-3 pb-1 pt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-            Navigate
-          </p>
-          <button type="button" className={paletteRow} onClick={() => go("/")}>
-            <Icon name="grid" /> Dashboard{" "}
-            <kbd className="ml-auto font-mono text-[10px] text-muted">↵</kbd>
-          </button>
-          <button
-            type="button"
-            className={paletteRow}
-            onClick={() => go("/services/new")}
-          >
-            <Icon name="plus" /> Add service
-          </button>
-          {services.length > 0 && (
-            <p className="px-3 pb-1 pt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-              Services
-            </p>
-          )}
-          {services.map((service) => (
-            <button
-              type="button"
-              key={service.id}
-              className={paletteRow}
-              onClick={() => go(`/services/${service.id}`)}
-            >
-              <ServiceMark adapter={service.adapter} logo={service.logo} />{" "}
-              {service.name}
-            </button>
-          ))}
-        </div>
+        <PaletteResults groups={groups} />
       </div>
+    </div>
+  );
+}
+
+function PaletteResults({ groups }: { groups: [string, PaletteItem[]][] }) {
+  const empty = groups.every(([, items]) => items.length === 0);
+  return (
+    <div className="max-h-80 overflow-auto p-1.5">
+      {empty && (
+        <p className="px-3 py-3 text-[12px] text-muted">
+          No matching commands.
+        </p>
+      )}
+      {groups.map(([title, items]) =>
+        items.length ? (
+          <div key={title}>
+            <p className="px-3 pb-1 pt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
+              {title}
+            </p>
+            {items.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={paletteRow}
+                onClick={item.run}
+              >
+                {item.icon} {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null,
+      )}
     </div>
   );
 }
