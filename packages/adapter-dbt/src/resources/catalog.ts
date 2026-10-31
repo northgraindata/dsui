@@ -45,6 +45,9 @@ export const sources = defineResource({
         maxLoadedAt:
           typeof fresh?.max_loaded_at === "string" ? fresh.max_loaded_at : "",
         error: typeof fresh?.error === "string" ? fresh.error : "",
+        location: [source.database, source.schema]
+          .filter((part) => typeof part === "string" && part)
+          .join("."),
       };
     });
   },

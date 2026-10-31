@@ -3,6 +3,7 @@ import {
   Collection,
   definePage,
   KeyValue,
+  List,
   PageHeader,
   Table,
   Tabs,
@@ -68,29 +69,26 @@ export const dagRunDetailPage = definePage({
           },
           {
             label: "Tasks",
-            content: Table({
+            content: List({
               source: taskInstances(input),
+              noun: "task",
               searchable: true,
               pageSize: 25,
               filters: [
-                {
-                  field: "state",
-                  label: "State",
-                  options: [
-                    { label: "Running", value: "running" },
-                    { label: "Failed", value: "failed" },
-                    { label: "Success", value: "success" },
-                    { label: "Queued", value: "queued" },
-                  ],
+                { field: "stateLabel", label: "State" },
+                { field: "operator", label: "Operator" },
+              ],
+              item: {
+                icon: "network",
+                title: "name",
+                badge: "operator",
+                description: "attempt",
+                status: {
+                  label: "stateLabel",
+                  tone: "stateTone",
+                  detail: "durationLabel",
                 },
-              ],
-              columns: [
-                { id: "name", label: "Task" },
-                { id: "state", label: "State" },
-                { id: "tryNumber", label: "Try" },
-                { id: "durationDisplay", label: "Duration (s)" },
-                { id: "operator", label: "Operator" },
-              ],
+              },
               rowLink: {
                 path: `/dags/${encodeURIComponent(params.dagId)}/runs/${encodeURIComponent(params.dagRunId)}/tasks/:taskId/:mapIndex/:tryNumber`,
                 params: {
@@ -102,6 +100,7 @@ export const dagRunDetailPage = definePage({
               rowActions: [
                 {
                   label: "Retry",
+                  icon: "reload",
                   action: retryTask,
                   input: {
                     dagId: "dagId",
@@ -114,6 +113,7 @@ export const dagRunDetailPage = definePage({
                 },
                 {
                   label: "Clear",
+                  icon: "reload",
                   action: clearTask,
                   input: {
                     dagId: "dagId",

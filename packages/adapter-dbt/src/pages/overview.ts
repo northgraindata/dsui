@@ -4,11 +4,11 @@ import {
   Columns,
   definePage,
   Grid,
+  List,
   Meter,
   Resource,
   Section,
   Stack,
-  Table,
   Value,
 } from "@northgraindata/dsui-adapter-sdk";
 import { runBuild } from "../actions/build.js";
@@ -144,14 +144,16 @@ export const overviewPage = definePage({
       title: "Recent runs",
       description: "Latest runs for this connection.",
       link: { label: "View all", path: "/runs" },
-      content: Table({
+      content: List({
         source: recentRuns(),
-        columns: [
-          { id: "status", label: "Status" },
-          { id: "job", label: "Job" },
-          { id: "cause", label: "Cause" },
-          { id: "started", label: "Started" },
-        ],
+        noun: "run",
+        item: {
+          icon: "history",
+          title: "job",
+          description: "cause",
+          status: { label: "status", detail: "started" },
+        },
+        emptyMessage: "No runs yet.",
         rowLink: { path: "/runs/:runId", params: { runId: "id" } },
       }),
     }),
