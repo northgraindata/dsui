@@ -35,6 +35,7 @@ import zodToJsonSchema from "zod-to-json-schema";
 import { resolveSdkRoot } from "../adapters/sdk.js";
 import { allowed, LOCAL_PRINCIPAL_ID } from "../auth.js";
 import type { PluginSource } from "../config.js";
+import { githubRepository } from "../github-repository.js";
 import { withWebBasePath } from "../web-path.js";
 import { buildPlugin, type PluginFetch } from "./build.js";
 import { parseCron } from "./cron.js";
@@ -200,6 +201,26 @@ function bundledPluginPath(specifier: string): string | undefined {
 const requireFromWorkingDirectory = createRequire(
   resolve(process.cwd(), "package.json"),
 );
+
+type BuildableSource = Extract<PluginSource, { source: "local" | "git" }>;
+
+/** Where a source-built plugin's files come from. */
+function pluginLocation(
+  source: BuildableSource,
+): Parameters<typeof buildPlugin>[1] {
+  if (source.source === "local") return { kind: "local", path: source.path };
+  const repository = githubRepository(source.repository);
+  if (!repository)
+    throw new Error(
+      `Plugin source must name a GitHub repository as owner/name, got "${source.repository}"`,
+    );
+  return {
+    kind: "git",
+    repository,
+    ref: source.ref ?? "main",
+    ...(source.path ? { path: source.path } : {}),
+  };
+}
 
 async function loadInstalledPlugin(specifier: string): Promise<unknown> {
   const bundled = bundledPluginPath(specifier);
@@ -443,38 +464,27 @@ export class PluginRuntime {
             ? source
             : undefined;
         const built = buildable
-          ? await buildPlugin(
-              id,
-              buildable.source === "local"
-                ? { kind: "local", path: buildable.path }
-                : {
-                    kind: "git",
-                    repository: buildable.repository,
-                    ref: buildable.ref ?? "main",
-                    ...(buildable.path ? { path: buildable.path } : {}),
-                  },
-              {
-                dataDir: this.sourceOptions.dataDir ?? process.cwd(),
-                ...("token" in buildable && buildable.token
-                  ? { githubToken: buildable.token }
-                  : {}),
-                // A source-built plugin links against the prepared SDK the
-                // same way an adapter does, so both resolve the same
-                // workspace packages instead of two copies.
-                sdkPackageRoot:
-                  this.sourceOptions.sdkPackageRoot ??
-                  (await resolveSdkRoot({
-                    dataDir: this.sourceOptions.dataDir ?? process.cwd(),
-                    version: process.env.DSUI_VERSION ?? "0.0.0",
-                  })),
-                ...(this.sourceOptions.fetch
-                  ? { fetch: this.sourceOptions.fetch }
-                  : {}),
-                ...(this.sourceOptions.offline
-                  ? { offline: this.sourceOptions.offline }
-                  : {}),
-              },
-            )
+          ? await buildPlugin(id, pluginLocation(buildable), {
+              dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+              ...("token" in buildable && buildable.token
+                ? { githubToken: buildable.token }
+                : {}),
+              // A source-built plugin links against the prepared SDK the
+              // same way an adapter does, so both resolve the same
+              // workspace packages instead of two copies.
+              sdkPackageRoot:
+                this.sourceOptions.sdkPackageRoot ??
+                (await resolveSdkRoot({
+                  dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+                  version: process.env.DSUI_VERSION ?? "0.0.0",
+                })),
+              ...(this.sourceOptions.fetch
+                ? { fetch: this.sourceOptions.fetch }
+                : {}),
+              ...(this.sourceOptions.offline
+                ? { offline: this.sourceOptions.offline }
+                : {}),
+            })
           : undefined;
         const module = await this.loadModule(
           built?.bundlePath ?? ("package" in source ? source.package : ""),
