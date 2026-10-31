@@ -8,10 +8,10 @@ import {
   definePage,
   Grid,
   KeyValue,
+  List,
   PageHeader,
   Section,
   Stack,
-  Table,
   Tabs,
   Value,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -31,6 +31,35 @@ import {
   taskInstanceGraph,
 } from "../resources/runs.js";
 
+/** Trigger sits on each DAG row; pausing lives in its menu. */
+export const dagActions = [
+  {
+    label: "Trigger",
+    icon: "play",
+    variant: "primary" as const,
+    action: triggerDag,
+    input: { dagId: "dagId" },
+    successLink: {
+      path: "/dags/:dagId?tab=graph&runId=:dagRunId",
+      params: { dagId: "dagId", dagRunId: "dagRunId" },
+    },
+  },
+  {
+    label: "Pause",
+    icon: "pause",
+    action: pauseDag,
+    input: { dagId: "dagId" },
+    when: { field: "isPaused", equals: false },
+  },
+  {
+    label: "Unpause",
+    icon: "play",
+    action: unpauseDag,
+    input: { dagId: "dagId" },
+    when: { field: "isPaused", equals: true },
+  },
+];
+
 export const dagListPage = definePage({
   path: "/dags",
   render: () => [
@@ -38,8 +67,9 @@ export const dagListPage = definePage({
       title: "DAGs",
       description: "Monitor schedules and start or pause workflows.",
     }),
-    Table({
+    List({
       source: dags(),
+      noun: "DAG",
       searchable: true,
       pageSize: 25,
       filters: [
@@ -51,50 +81,22 @@ export const dagListPage = definePage({
             { label: "Paused", value: "paused" },
           ],
         },
+        { field: "owners", label: "Owner" },
       ],
-      columns: [
-        { id: "name", label: "DAG" },
-        { id: "schedule", label: "Schedule" },
-        { id: "owners", label: "Owners" },
-        {
-          id: "status",
-          label: "Status",
-          renderCell: Badge({
-            label: { field: "status" },
-            tone: { field: "statusTone" },
-            dot: true,
-          }),
+      item: {
+        icon: "network",
+        title: "name",
+        badge: "schedule",
+        description: "description",
+        meta: ["owners"],
+        status: {
+          label: "statusLabel",
+          tone: "statusTone",
+          detail: "nextRunLabel",
         },
-        { id: "lastParsedTime", label: "Last parsed" },
-      ],
+      },
       rowLink: { path: "/dags/:dagId", params: { dagId: "dagId" } },
-      rowActions: [
-        {
-          label: "Trigger",
-          icon: "play",
-          variant: "primary",
-          action: triggerDag,
-          input: { dagId: "dagId" },
-          successLink: {
-            path: "/dags/:dagId?tab=graph&runId=:dagRunId",
-            params: { dagId: "dagId", dagRunId: "dagRunId" },
-          },
-        },
-        {
-          label: "Pause",
-          icon: "pause",
-          action: pauseDag,
-          input: { dagId: "dagId" },
-          when: { field: "isPaused", equals: false },
-        },
-        {
-          label: "Unpause",
-          icon: "reload",
-          action: unpauseDag,
-          input: { dagId: "dagId" },
-          when: { field: "isPaused", equals: true },
-        },
-      ],
+      rowActions: dagActions,
     }),
   ],
 });
@@ -154,49 +156,26 @@ export function normalizeDagRunId(value: string | null): string | undefined {
   return value?.replaceAll(" ", "+") || undefined;
 }
 
-function runsTable(dagId: string, recent: boolean) {
-  return Table({
+function runsList(dagId: string, recent: boolean) {
+  return List({
     source: recent ? recentDagRuns({ dagId }) : dagRuns({ dagId }),
-    columns: recent
-      ? [
-          { id: "displayRunId", label: "Run" },
-          {
-            id: "state",
-            label: "Status",
-            renderCell: Badge({
-              label: { field: "state" },
-              tone: { field: "stateTone" },
-              dot: true,
-            }),
-          },
-          { id: "duration", label: "Duration" },
-          { id: "startedAt", label: "Started" },
-        ]
-      : [
-          { id: "dagRunId", label: "Run" },
-          { id: "state", label: "State" },
-          { id: "runType", label: "Type" },
-          { id: "logicalDateDisplay", label: "Logical date" },
-          { id: "startedAt", label: "Started" },
-          { id: "endedAt", label: "Ended" },
-        ],
+    noun: "run",
+    searchable: !recent,
+    pageSize: recent ? undefined : 25,
+    filters: recent ? undefined : [{ field: "stateLabel", label: "State" }],
+    item: {
+      icon: "history",
+      title: "displayRunId",
+      badge: "runType",
+      description: "summary",
+      status: { label: "stateLabel", tone: "stateTone", detail: "duration" },
+    },
+    emptyMessage: "This DAG has not run yet.",
     rowLink: {
       path: `/dags/${encodeURIComponent(dagId)}/runs/:dagRunId`,
       params: { dagRunId: "dagRunId" },
     },
     rowActions: [
-      ...(recent
-        ? [
-            {
-              label: "View run",
-              icon: "eye",
-              link: {
-                path: `/dags/${encodeURIComponent(dagId)}/runs/:dagRunId`,
-                params: { dagRunId: "dagRunId" },
-              },
-            },
-          ]
-        : []),
       {
         label: "Terminate run",
         icon: "close",
@@ -266,7 +245,7 @@ function overviewContent(dagId: string) {
             content: Section({
               title: "Recent runs",
               description: "The five latest workflow runs.",
-              content: runsTable(dagId, true),
+              content: runsList(dagId, true),
             }),
           }),
         },
@@ -307,19 +286,23 @@ function detailTabs(
       {
         label: "Runs",
         link: `${basePath}?tab=runs`,
-        content: runsTable(dagId, false),
+        content: runsList(dagId, false),
       },
       {
         label: "Tasks",
         link: `${basePath}?tab=tasks`,
-        content: Table({
+        content: List({
           source: dagTasks({ dagId }),
-          columns: [
-            { id: "name", label: "Task" },
-            { id: "operator", label: "Operator" },
-            { id: "owner", label: "Owner" },
-            { id: "isMapped", label: "Mapped" },
-          ],
+          noun: "task",
+          searchable: true,
+          filters: [{ field: "operator", label: "Operator" }],
+          item: {
+            icon: "network",
+            title: "name",
+            badge: "operator",
+            description: "ownerLabel",
+            meta: ["mappedLabel"],
+          },
         }),
       },
       {

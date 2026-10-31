@@ -2,6 +2,7 @@ import {
   Button,
   definePage,
   Form,
+  List,
   PageHeader,
   Stack,
   Table,
@@ -45,20 +46,23 @@ export const connectionsPage = definePage({
             variant: "primary",
           }),
         }),
-        Table({
+        List({
           source: connections(),
+          noun: "connection",
+          filters: [{ field: "connectionType", label: "Type" }],
           searchable: true,
           pageSize: 25,
-          columns: [
-            { id: "connectionId", label: "Connection ID" },
-            { id: "connectionType", label: "Type" },
-            { id: "host", label: "Host" },
-            { id: "login", label: "Login" },
-            { id: "description", label: "Description" },
-          ],
+          item: {
+            icon: "plug",
+            title: "connectionId",
+            badge: "connectionType",
+            description: "description",
+            meta: ["address"],
+          },
           rowActions: [
             {
               label: "Edit",
+              icon: "edit",
               link: {
                 path: "/connections/:connectionId/edit?connectionType=:connectionType&host=:host&login=:login&schema=:schema&port=:port&description=:description",
                 params: {
@@ -74,6 +78,7 @@ export const connectionsPage = definePage({
             },
             {
               label: "Delete",
+              icon: "close",
               variant: "danger",
               action: deleteConnection,
               input: { connectionId: "connectionId" },
@@ -205,18 +210,21 @@ export const variablesPage = definePage({
             variant: "primary",
           }),
         }),
-        Table({
+        List({
           source: variables(),
+          noun: "variable",
           searchable: true,
           pageSize: 25,
-          columns: [
-            { id: "key", label: "Key" },
-            { id: "description", label: "Description" },
-            { id: "isEncrypted", label: "Encrypted" },
-          ],
+          item: {
+            icon: "braces",
+            title: "key",
+            badge: "encryptedLabel",
+            description: "description",
+          },
           rowActions: [
             {
               label: "Edit",
+              icon: "edit",
               link: {
                 path: "/variables/:key/edit?description=:description",
                 params: { key: "key", description: "description" },
@@ -224,6 +232,7 @@ export const variablesPage = definePage({
             },
             {
               label: "Delete",
+              icon: "close",
               variant: "danger",
               action: deleteVariable,
               input: { key: "key" },
@@ -314,20 +323,22 @@ export const poolsPage = definePage({
             variant: "primary",
           }),
         }),
-        Table({
+        List({
           source: pools(),
+          noun: "pool",
           searchable: true,
           pageSize: 25,
-          columns: [
-            { id: "name", label: "Pool" },
-            { id: "slots", label: "Slots" },
-            { id: "occupiedSlots", label: "Occupied" },
-            { id: "openSlots", label: "Open" },
-            { id: "description", label: "Description" },
-          ],
+          item: {
+            icon: "layers",
+            title: "name",
+            description: "description",
+            meta: ["usageLabel"],
+            status: { label: "openLabel", tone: "openTone" },
+          },
           rowActions: [
             {
               label: "Edit",
+              icon: "edit",
               link: {
                 path: "/pools/:name/edit?slots=:slots&description=:description",
                 params: {
@@ -339,6 +350,7 @@ export const poolsPage = definePage({
             },
             {
               label: "Delete",
+              icon: "close",
               variant: "danger",
               action: deletePool,
               input: { name: "name" },
@@ -423,17 +435,19 @@ export const usersPage = definePage({
           description:
             "Airflow 2.1 uses its legacy user API. Airflow 3 delegates identities and roles to its configured auth manager.",
         }),
-        Table({
+        List({
           source: users(),
+          noun: "user",
           searchable: true,
           pageSize: 25,
-          columns: [
-            { id: "username", label: "User" },
-            { id: "name", label: "Name" },
-            { id: "email", label: "Email" },
-            { id: "active", label: "Active" },
-            { id: "roles", label: "Roles" },
-          ],
+          item: {
+            icon: "user",
+            title: "username",
+            badge: "roles",
+            description: "name",
+            meta: ["email"],
+            status: { label: "statusLabel", tone: "statusTone" },
+          },
         }),
       ],
     }),

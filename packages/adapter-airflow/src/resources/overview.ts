@@ -1,5 +1,6 @@
 import { defineResource } from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext } from "../context.js";
+import { runStateTone, stateLabel } from "./runs.js";
 
 function formatDate(value: string | undefined): string | null {
   if (!value) return null;
@@ -37,6 +38,11 @@ export const overviewDags = defineResource({
           nextRun: formatDate(dag.nextRun),
           status: dag.isPaused ? "paused" : "active",
           statusTone: dag.isPaused ? "muted" : "healthy",
+          lastRunState: latestRun ? stateLabel(latestRun.state) : "Never run",
+          lastRunTone: latestRun ? runStateTone(latestRun.state) : "muted",
+          lastRunLabel: latestRun
+            ? (formatDate(latestRun.logicalDate || latestRun.startDate) ?? "")
+            : "",
         };
       }),
     );
