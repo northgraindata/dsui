@@ -21,7 +21,7 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
   bun build packages/plugin-monitoring/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/monitoring.mjs && \
   bun build packages/plugin-code-repository/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/code-repository.mjs && \
   bun build packages/plugin-code-repository/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/code-repository.browser.mjs && \
-  bun -e "import { prepareSdk } from './packages/server/src/adapters/sdk.ts'; import { sdkVersions } from './scripts/release-packages.ts'; await prepareSdk('packages', '/out/sdk'); await Bun.write('/out/sdk-versions.json', JSON.stringify(await sdkVersions()));" && \
+  bun -e "import { prepareSdk } from './packages/server/src/adapters/sdk.ts'; import { sdkVersions } from './scripts/release-packages.ts'; await prepareSdk('packages', '/app/sdk'); await Bun.write('/out/sdk-versions.json', JSON.stringify(await sdkVersions()));" && \
   bun packages/server/src/image-dependencies.ts collect /src /out/image-dependencies.json
 
 FROM oven/bun:1.3.12
@@ -37,7 +37,7 @@ COPY --from=build --chown=65532:65532 /out/dsui /usr/local/bin/dsui
 COPY --from=build --chown=65532:65532 /src/apps/web/dist /app/web
 COPY --from=build --chown=65532:65532 /out/data /data
 COPY --from=build --chown=65532:65532 /out/runtime/plugins /app/plugins
-COPY --from=build --chown=65532:65532 /out/sdk /app/sdk
+COPY --from=build --chown=65532:65532 /app/sdk /app/sdk
 COPY --from=build --chown=65532:65532 /out/sdk-versions.json /app/sdk-versions.json
 
 ARG DSUI_VERSION=0.1.0
