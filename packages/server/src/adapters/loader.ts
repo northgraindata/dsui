@@ -590,6 +590,15 @@ export class RemoteBackend implements AdapterBackend {
 }
 
 /**
+ * A path inside a compiled binary's own filesystem (`/$bunfs/...`, or
+ * `B:/~BUN/...` on Windows). It answers `existsSync` but is not a script the
+ * binary can be given to run, so it must not count as a file on disk.
+ */
+export function isEmbedded(path: string): boolean {
+  return path.includes("$bunfs") || path.includes("~BUN");
+}
+
+/**
  * Command that runs one adapter-host subprocess for a built bundle.
  *
  * Three ways DSUI can be running, and the host has to be reached differently in
@@ -617,7 +626,7 @@ export function defaultHostCommand(
     fileURLToPath(new URL("../adapter-host.ts", import.meta.url)),
     fileURLToPath(import.meta.url),
   ])
-    if (existsSync(candidate))
+    if (!isEmbedded(candidate) && existsSync(candidate))
       return { command: process.execPath, args: [candidate, ...hostArgs] };
   // Compiled binary: its own image is not on disk, so it re-enters itself.
   return { command: process.execPath, args: hostArgs };
