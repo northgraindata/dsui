@@ -31,6 +31,7 @@ const KNOWN_ADAPTERS = [
   "duckdb",
   "postgresql",
   "s3",
+  "shaper",
   "trino",
 ] as const;
 

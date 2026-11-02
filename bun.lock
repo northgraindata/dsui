@@ -175,7 +175,7 @@
     },
     "packages/adapter-sdk": {
       "name": "@northgraindata/dsui-adapter-sdk",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "dependencies": {
         "@northgraindata/dsui-ui": "workspace:*",
         "@number-flow/react": "^0.6.2",
@@ -190,6 +190,18 @@
       "peerDependencies": {
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
+      },
+    },
+    "packages/adapter-shaper": {
+      "name": "@northgraindata/dsui-adapter-shaper",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-ui": "workspace:*",
+        "react": "^19.0.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
       },
     },
     "packages/core": {
@@ -252,7 +264,7 @@
     },
     "packages/plugin-sdk": {
       "name": "@northgraindata/dsui-plugin-sdk",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
         "zod": "^3.24.2",
@@ -293,6 +305,7 @@
         "@northgraindata/dsui-adapter-postgresql": "workspace:*",
         "@northgraindata/dsui-adapter-s3": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-adapter-shaper": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
         "@northgraindata/dsui-plugin-sdk": "workspace:*",
         "hono": "^4.11.7",
@@ -767,6 +780,8 @@
     "@northgraindata/dsui-adapter-s3": ["@northgraindata/dsui-adapter-s3@workspace:packages/adapter-s3"],
 
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
+
+    "@northgraindata/dsui-adapter-shaper": ["@northgraindata/dsui-adapter-shaper@workspace:packages/adapter-shaper"],
 
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],
 
@@ -1921,6 +1936,8 @@
     "@changesets/config/picomatch": ["picomatch@4.0.7", "", {}, "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA=="],
 
     "@changesets/git/picomatch": ["picomatch@4.0.7", "", {}, "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA=="],
+
+    "@northgraindata/dsui-server/yaml": ["yaml@2.9.1", "", { "bin": { "yaml": "bin.mjs" } }, "sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw=="],
 
     "@northgraindata/dsui-site/@astrojs/react": ["@astrojs/react@7.1.2", "", { "dependencies": { "@astrojs/internal-helpers": "0.13.0", "@vitejs/plugin-react": "^6.1.2", "devalue": "^6.0.2", "ultrahtml": "^1.7.0", "vite": "^8.3.4" }, "peerDependencies": { "@types/react": "^17.0.50 || ^18.0.21 || ^19.0.0", "@types/react-dom": "^17.0.17 || ^18.0.6 || ^19.0.0", "oxc-transform-react": "^0.145.0", "react": "^17.0.2 || ^18.0.0 || ^19.0.0", "react-dom": "^17.0.2 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["oxc-transform-react"] }, "sha512-lHzxxZdei/SXf1tShY0M0zWkbDs4FA79qnNPIDMYD0Bz5m6iY1bmRRVTQ+EEFsnFWefFoPX5A+NK3Nn8Ywdltw=="],
 
