@@ -1,4 +1,4 @@
-![DSUI — The AI-native control plane for your data stack.](./assets/readme/banner-ai-native.png)
+![DSUI - The AI-native control plane for your data stack.](./assets/readme/banner-ai-native.png)
 
 [Website](https://dsui.northgraindata.com) · [Live Demo](https://dsui.northgraindata.com/demo) · [Documentation](https://dsui.northgraindata.com/docs) · [Discord](https://discord.gg/6vgtDbVggc)
 
@@ -12,7 +12,24 @@ Connect your data tools and manage them from one place. Explore your infrastruct
 
 ## One control plane across your stack
 
-Connect tools through adapters, run service operations, and use DSUI Agent to work across your connected stack. Extend the platform with plugins and SDKs.
+Connect tools through adapters, run service operations, and use DSUI Agent to work across your connected stack.
+Extend the platform with plugins and SDKs.
+
+DSUI does not try to replace the tools you already run.
+Airflow stays the best place for Airflow, and your warehouse keeps its own console.
+DSUI is the one workspace you keep open for the everyday operations across all of them:
+
+- Check a failed DAG or a failing dbt run.
+- Inspect a table or run a query.
+- See whether a service is healthy.
+- Ask DSUI Agent to investigate across several services in one conversation.
+
+## DSUI Agent
+
+DSUI Agent is a chat inside the workspace.
+It can inspect the services you have access to and help investigate an issue across them, using what each adapter exposes.
+It runs on the model provider you configure (OpenAI, Anthropic, Gateway or OpenRouter).
+Read the [plugin README](./packages/plugin-ai-agent/README.md) for setup.
 
 ## Get started
 
@@ -31,11 +48,11 @@ directory; set `DSUI_MASTER_KEY` explicitly for controlled deployments.
 
 ## Docker deployment
 
-Use Docker when you want an isolated, reproducible deployment. It connects to
-services reachable from the container. If an adapter requires an executable or
-runtime, provide it in the image used to run DSUI.
+Use Docker when you want an isolated, reproducible deployment.
+It connects to services reachable from the container.
+If an adapter requires an executable or runtime, provide it in the image used to run DSUI.
 
-## One setup, across your stack
+### Example: a DuckDB workspace
 
 Configure a DuckDB database in `dsui.yaml`:
 
@@ -101,11 +118,27 @@ Install plugins to extend DSUI beyond connected services. Use the TypeScript [Pl
 
 ## Self-hosted deployment
 
-The official container keeps its local state in `/data`. It does not need a separate database or control plane. The official container image is published through GitHub Container Registry:
+The official container keeps its local state in `/data` and needs no separate database.
+It is published through GitHub Container Registry:
 
 ```bash
 docker pull ghcr.io/northgraindata/dsui:latest
 ```
+
+### Telemetry
+
+A self-hosted DSUI sends a small anonymous usage event when it starts and once a day.
+It contains versions, platform and counts of services per adapter type, never hostnames, URLs, credentials or queries.
+It is on by default and the server says so at startup.
+Turn it off with `DSUI_TELEMETRY=off` or `DO_NOT_TRACK=1`.
+The [telemetry page](https://dsui.northgraindata.com/docs/telemetry) lists every field.
+
+## DSUI Cloud
+
+Prefer not to run it yourself?
+DSUI Cloud is the managed version: we handle hosting, upgrades and backups, with Pro plugins and AI usage included.
+It can also run in your own cloud.
+[Talk to us](https://github.com/northgraindata/dsui/discussions) or see the [plans](https://dsui.northgraindata.com/#pricing).
 
 ## Community
 
