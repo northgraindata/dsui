@@ -1,0 +1,167 @@
+{
+  "name": "Revenue overview",
+  "visibility": "private",
+  "sections": [
+    {
+      "title": "Revenue overview",
+      "type": "header",
+      "queries": []
+    },
+    {
+      "title": null,
+      "type": "content",
+      "queries": [
+        {
+          "render": {
+            "type": "table",
+            "label": "Total revenue"
+          },
+          "columns": [
+            {
+              "name": "revenue",
+              "type": "number",
+              "nullable": false,
+              "tag": ""
+            },
+            {
+              "name": "CAST('Orders' AS \"LABEL\")",
+              "type": "string",
+              "nullable": false,
+              "tag": ""
+            }
+          ],
+          "rows": [[1234567.5, "Orders"]]
+        },
+        {
+          "render": {
+            "type": "linechart",
+            "label": "Revenue by week"
+          },
+          "columns": [
+            {
+              "name": "CAST(CAST(d AS \"DATE\") AS \"XAXIS\")",
+              "type": "date",
+              "nullable": false,
+              "tag": "index"
+            },
+            {
+              "name": "CAST(CAST((random() * 100) AS INTEGER) AS \"LINECHART\")",
+              "type": "number",
+              "nullable": false,
+              "tag": "value"
+            }
+          ],
+          "rows": [
+            [1767225600000, 84],
+            [1767830400000, 22],
+            [1768435200000, 70],
+            [1769040000000, 12],
+            [1769644800000, 14]
+          ]
+        },
+        {
+          "render": {
+            "type": "barchartHorizontalStacked",
+            "label": "Sessions per week"
+          },
+          "columns": [
+            {
+              "name": "CAST(CAST(d AS \"DATE\") AS \"XAXIS\")",
+              "type": "date",
+              "nullable": false,
+              "tag": "index"
+            },
+            {
+              "name": "CAST(c AS \"CATEGORY\")",
+              "type": "string",
+              "nullable": false,
+              "tag": "category"
+            },
+            {
+              "name": "CAST(CAST((random() * 50) AS INTEGER) AS \"BARCHART_STACKED\")",
+              "type": "number",
+              "nullable": false,
+              "tag": "value"
+            }
+          ],
+          "rows": [
+            [1767225600000, "web", 0],
+            [1767830400000, "web", 19],
+            [1768435200000, "web", 36],
+            [1769040000000, "web", 14],
+            [1769644800000, "web", 41],
+            [1767225600000, "app", 8],
+            [1767830400000, "app", 48],
+            [1768435200000, "app", 13],
+            [1769040000000, "app", 3],
+            [1769644800000, "app", 9]
+          ]
+        },
+        {
+          "render": {
+            "type": "piechart",
+            "label": "Share"
+          },
+          "columns": [
+            {
+              "name": "CAST(c AS \"CATEGORY\")",
+              "type": "string",
+              "nullable": false,
+              "tag": "category"
+            },
+            {
+              "name": "CAST(v AS \"PIECHART\")",
+              "type": "number",
+              "nullable": false,
+              "tag": "value"
+            }
+          ],
+          "rows": [["a", 3], ["b", 5]]
+        },
+        {
+          "render": {
+            "type": "gauge",
+            "label": "Gauge",
+            "gaugeCategories": [
+              {
+                "from": 0,
+                "to": 100
+              }
+            ]
+          },
+          "columns": [
+            {
+              "name": "CAST(72 AS \"GAUGE\")",
+              "type": "number",
+              "nullable": false,
+              "tag": "value"
+            }
+          ],
+          "rows": [[72]]
+        }
+      ]
+    },
+    {
+      "title": null,
+      "type": "header",
+      "queries": [
+        {
+          "render": {
+            "type": "dropdown",
+            "label": "Region"
+          },
+          "columns": [
+            {
+              "name": "region",
+              "type": "string",
+              "nullable": false,
+              "tag": "value"
+            }
+          ],
+          "rows": [["eu"], ["us"]]
+        }
+      ]
+    }
+  ],
+  "reloadAt": 0
+}

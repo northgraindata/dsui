@@ -1,0 +1,65 @@
+---
+title: Shaper
+description: Browse, edit, and operate Shaper dashboards, tasks, and SQL.
+---
+
+## Setup
+
+Add a Shaper service in DSUI, or declare one in `dsui.yaml`.
+
+```yaml
+services:
+  - id: shaper
+    adapter: shaper
+    name: Shaper
+    connection:
+      method: api
+      baseUrl: http://shaper:5454
+      apiKey: ${SHAPER_API_KEY}
+```
+
+Use the Compose service name when DSUI and Shaper run in the same Compose project.
+`localhost` points back to the DSUI container, not Shaper.
+
+## API key permissions
+
+Create the key in Shaper under API keys.
+The adapter works with a partial key and reports the missing permission when a feature needs it.
+
+| Permission | Used for |
+| --- | --- |
+| `deploy` | Listing, creating, editing, moving, and deleting dashboards and tasks |
+| `deploy:dry-run` | Validating dashboard SQL before saving |
+| `schema:read` | The query explorer |
+| `data:query` | The SQL page |
+| `jwt` | Rendering dashboards and exporting them |
+| `dashboard:read` | Dashboard exports |
+
+## Available
+
+- Browse dashboards and tasks, including their folders
+- View dashboards natively in DSUI, with Shaper's tables, values, line, bar, pie, donut and gauge views and its dropdown, text and date controls
+- Create, edit, validate, and delete dashboards and tasks as SQL
+- Export a dashboard as PDF, PNG, CSV, or XLSX
+- Run single SQL statements with a DuckDB schema explorer
+
+The adapter polls tasks every minute and emits `shaper.task-failed` and `shaper.task-succeeded` signals when a task's last run changes.
+The first poll only records history, so existing runs are not announced.
+
+## Limits
+
+- Dashboards render from the data Shaper returns, so a chart type DSUI has no view for appears as a table that names the type.
+- Shaper returns at most 3000 rows per dashboard query.
+- SQL results arrive as text from `/api/sql`, without column types, and the page shows at most 5000 rows.
+- Shaper hides query errors from the tokens used to render dashboards.
+  On failure DSUI validates the saved SQL with the API key and shows the real error.
+- Shaper keeps only the latest run of each task, so there is no run history.
+
+## Not yet available
+
+- Folders, dashboard visibility, and share passwords, which Shaper only allows for signed-in users
+- Users, invitations, and API key management
+- Running a saved task on demand
+- Embedding the original Shaper page, because Shaper sends `X-Frame-Options: SAMEORIGIN`
+
+Use Shaper's own UI for workflows outside this list.
