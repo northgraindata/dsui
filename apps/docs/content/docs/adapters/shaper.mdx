@@ -37,11 +37,13 @@ The adapter works with a partial key and reports the missing permission when a f
 
 ## Available
 
+- An overview of task health, failing tasks, upcoming runs, and recent dashboards
 - Browse dashboards and tasks, including their folders
 - View dashboards natively in DSUI, with Shaper's tables, values, line, bar, pie, donut and gauge views and its dropdown, text and date controls
 - Create, edit, validate, and delete dashboards and tasks as SQL
 - Export a dashboard as PDF, PNG, CSV, or XLSX
 - Run single SQL statements with a DuckDB schema explorer
+- AI agents can read a dashboard's values with `dashboard-summary` and run read-only queries with `sql-preview`, which only accepts allowlisted statements
 
 The adapter polls tasks every minute and emits `shaper.task-failed` and `shaper.task-succeeded` signals when a task's last run changes.
 The first poll only records history, so existing runs are not announced.

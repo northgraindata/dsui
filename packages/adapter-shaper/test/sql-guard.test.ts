@@ -60,8 +60,8 @@ describe("assertReadOnlySql", () => {
       "SELECT * FROM ('a.parquet')",
       "SELECT * FROM t JOIN 'a.parquet' ON true",
       "SELECT * FROM t, 'a.csv'",
-      "SELECT * FROM \"/etc/x.csv\"",
-      "SELECT * FROM \"a.parquet\"",
+      'SELECT * FROM "/etc/x.csv"',
+      'SELECT * FROM "a.parquet"',
       "SELECT '--' FROM '/etc/x'",
       "SELECT * FROM t WHERE u = 'https://example.com/x'",
     ]) {
@@ -73,7 +73,7 @@ describe("assertReadOnlySql", () => {
     for (const sql of [
       "SELECT 'from' AS word",
       "SELECT 'read_csv(x)' AS note",
-      "SELECT * FROM \"orders\" JOIN customers USING (id)",
+      'SELECT * FROM "orders" JOIN customers USING (id)',
       "SELECT * FROM t WHERE name IN ('a', 'b')",
       "SELECT a, 'x' FROM t",
       "SELECT 'it''s' FROM t",
