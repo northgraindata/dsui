@@ -1,0 +1,282 @@
+<dialog id="adapter-request" class="adapter-request" aria-labelledby="adapter-request-title" aria-describedby="adapter-request-description">
+  <div class="adapter-request-panel">
+    <button type="button" class="adapter-request-close" data-adapter-request-close aria-label="Close">
+      <span aria-hidden="true">×</span>
+    </button>
+
+    <p class="font-mono text-[11px] tracking-[0.16em] text-brand-muted">ADAPTERS</p>
+    <h2 id="adapter-request-title" class="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Don't see your adapter?</h2>
+    <p id="adapter-request-description" class="mt-3 text-sm leading-6 text-copy">
+      Tell us which service you run. We read every request and use them to decide what we build next.
+    </p>
+
+    <form class="mt-7 grid gap-5" data-adapter-request-form novalidate>
+      <div class="grid gap-5 sm:grid-cols-2">
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-foreground">Name <span class="text-brand-muted" aria-hidden="true">*</span></span>
+          <input name="name" type="text" autocomplete="name" required maxlength="120" class="adapter-request-input" />
+          <span class="adapter-request-error" data-error-for="name" role="alert" hidden></span>
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-foreground">Work email <span class="text-brand-muted" aria-hidden="true">*</span></span>
+          <input name="email" type="email" autocomplete="email" required maxlength="254" class="adapter-request-input" />
+          <span class="adapter-request-error" data-error-for="email" role="alert" hidden></span>
+        </label>
+      </div>
+
+      <label class="grid gap-2">
+        <span class="text-sm font-medium text-foreground">Which service do you need? <span class="text-brand-muted" aria-hidden="true">*</span></span>
+        <input name="adapter" type="text" placeholder="e.g. Snowflake, BigQuery, MySQL" required maxlength="120" class="adapter-request-input" />
+        <span class="adapter-request-error" data-error-for="adapter" role="alert" hidden></span>
+      </label>
+
+      <label class="grid gap-2">
+        <span class="text-sm font-medium text-foreground">Anything else? <span class="text-copy">(optional)</span></span>
+        <textarea name="message" rows="4" maxlength="2000" class="adapter-request-input resize-y"></textarea>
+      </label>
+
+      <label class="adapter-request-honeypot" aria-hidden="true">
+        Website
+        <input name="website" type="text" tabindex="-1" autocomplete="off" />
+      </label>
+
+      <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-sm text-copy" data-adapter-request-status role="status" aria-live="polite"></p>
+        <button
+          type="submit"
+          class="inline-flex h-11 items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-60"
+          data-adapter-request-submit
+        >
+          Send request
+        </button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<style>
+  .adapter-request {
+    width: min(100% - 2rem, 32rem);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 18%, transparent);
+    border-radius: 1.25rem;
+    background: var(--ds-color-canvas);
+    color: var(--ds-color-foreground);
+    box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.5);
+    overflow: auto;
+  }
+
+  .adapter-request[open] {
+    animation: adapter-request-in 420ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .adapter-request[open]::backdrop {
+    animation: adapter-request-backdrop-in 420ms ease-out both;
+  }
+
+  .adapter-request::backdrop {
+    background: rgb(4 6 12 / 0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .adapter-request-panel {
+    position: relative;
+    padding: 2rem;
+  }
+
+  .adapter-request-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.6rem;
+    color: var(--ds-color-copy);
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .adapter-request-close:hover {
+    color: var(--ds-color-foreground);
+    background: color-mix(in srgb, var(--ds-color-brand-muted) 10%, transparent);
+  }
+
+  .adapter-request-close:focus-visible,
+  .adapter-request-input:focus-visible {
+    outline: 2px solid var(--ds-color-brand-muted);
+    outline-offset: 2px;
+  }
+
+  .adapter-request-input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 18%, transparent);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--ds-color-foreground) 3%, transparent);
+    color: var(--ds-color-foreground);
+    font: inherit;
+    font-size: 0.925rem;
+  }
+
+  .adapter-request-input::placeholder {
+    color: color-mix(in srgb, var(--ds-color-copy) 60%, transparent);
+  }
+
+  .adapter-request-input:focus {
+    border-color: var(--ds-color-brand-muted);
+    outline: none;
+  }
+
+  .adapter-request-input[aria-invalid="true"] {
+    border-color: #e5484d;
+  }
+
+  .adapter-request-error {
+    font-size: 0.8rem;
+    color: #e5484d;
+  }
+
+  .adapter-request-honeypot {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  @keyframes adapter-request-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.97);
+      filter: blur(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  @keyframes adapter-request-backdrop-in {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0);
+      -webkit-backdrop-filter: blur(0);
+    }
+    to {
+      opacity: 1;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .adapter-request[open],
+    .adapter-request[open]::backdrop {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  const ENDPOINT = import.meta.env.PUBLIC_ADAPTER_REQUEST_URL ?? "/api/adapter-request";
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const MESSAGES = {
+    sent: "Thanks. We got it and will get back to you soon.",
+    error: "Something went wrong. Please try again in a moment.",
+  };
+
+  const dialog = document.querySelector<HTMLDialogElement>("#adapter-request");
+  const form = dialog?.querySelector<HTMLFormElement>("[data-adapter-request-form]");
+
+  if (dialog && form) {
+    const status = form.querySelector<HTMLElement>("[data-adapter-request-status]");
+    const submit = form.querySelector<HTMLButtonElement>("[data-adapter-request-submit]");
+
+    const setError = (field: string, message: string | null): void => {
+      const input = form.elements.namedItem(field) as HTMLInputElement | null;
+      const error = form.querySelector<HTMLElement>(`[data-error-for="${field}"]`);
+      if (!input || !error) return;
+      error.textContent = message ?? "";
+      error.hidden = message === null;
+      input.setAttribute("aria-invalid", String(message !== null));
+    };
+
+    const validate = (data: FormData): boolean => {
+      const name = String(data.get("name") ?? "").trim();
+      const email = String(data.get("email") ?? "").trim();
+      const adapter = String(data.get("adapter") ?? "").trim();
+
+      setError("name", name ? null : "Please tell us your name.");
+      setError("email", EMAIL_PATTERN.test(email) ? null : "Enter a valid email address.");
+      setError("adapter", adapter ? null : "Tell us which service you need.");
+
+      return Boolean(name && EMAIL_PATTERN.test(email) && adapter);
+    };
+
+    const open = (): void => {
+      form.reset();
+      for (const field of ["name", "email", "adapter"]) setError(field, null);
+      if (status) status.textContent = "";
+      if (!dialog.open) dialog.showModal();
+      form.querySelector<HTMLInputElement>("input[name='name']")?.focus();
+    };
+
+    document.addEventListener("click", (event) => {
+      const target = event.target as Element | null;
+      if (target?.closest("[data-open-adapter-request]")) {
+        event.preventDefault();
+        open();
+        return;
+      }
+      if (target?.closest("[data-adapter-request-close]")) {
+        dialog.close();
+        return;
+      }
+      // A click on the backdrop lands on the dialog element itself, outside the panel.
+      if (target === dialog) dialog.close();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+
+      // Honeypot: bots fill the hidden field. Pretend success and send nothing.
+      if (String(data.get("website") ?? "") !== "") {
+        if (status) status.textContent = MESSAGES.sent;
+        return;
+      }
+      if (!validate(data)) return;
+
+      if (submit) submit.disabled = true;
+      if (status) status.textContent = "Sending...";
+
+      try {
+        const response = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: String(data.get("name") ?? "").trim(),
+            email: String(data.get("email") ?? "").trim(),
+            adapter: String(data.get("adapter") ?? "").trim(),
+            message: String(data.get("message") ?? "").trim(),
+            page: window.location.href,
+          }),
+        });
+        if (!response.ok) throw new Error(`Request failed with ${response.status}`);
+        form.reset();
+        if (status) status.textContent = MESSAGES.sent;
+      } catch (error) {
+        if (status) status.textContent = MESSAGES.error;
+      } finally {
+        if (submit) submit.disabled = false;
+      }
+    });
+  }
+</script>
