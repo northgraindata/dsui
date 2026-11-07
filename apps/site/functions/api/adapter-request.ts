@@ -1,10 +1,10 @@
 // Cloudflare Pages Function. Receives the "Don't see your adapter?" form and
 // forwards it to a Discord webhook. The webhook URL is a secret, so it lives in
-// the environment (DISCORD_ADAPTER_WEBHOOK_URL) and never reaches the browser.
+// the environment (DISCORD_WEBHOOK_URL) and never reaches the browser.
 
 interface PagesContext {
   request: Request;
-  env: { DISCORD_ADAPTER_WEBHOOK_URL?: string };
+  env: { DISCORD_WEBHOOK_URL?: string };
 }
 
 interface AdapterRequest {
@@ -54,7 +54,7 @@ export const onRequestPost = async ({
   request,
   env,
 }: PagesContext): Promise<Response> => {
-  const webhookUrl = env.DISCORD_ADAPTER_WEBHOOK_URL;
+  const webhookUrl = env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return json({ error: "Not configured" }, 500);
 
   let body: AdapterRequest | null;
