@@ -7,6 +7,7 @@ import {
   getConnectors,
 } from "../api";
 import { AgentSetup } from "./agent-setup";
+import { Icon } from "./icon";
 import "./agents.css";
 
 export type Route = "direct" | "agent";
@@ -73,40 +74,44 @@ export function ConnectorRoute({
   }
 
   return (
-    <fieldset className="agent-route connection-field">
+    <fieldset className="connection-methods agent-route">
       <legend>How should DSUI reach it?</legend>
-      <div className="agent-route-options">
-        <label>
+      <p>
+        Straight from this instance, or through an agent inside your network.
+      </p>
+      <div className="connection-method-grid">
+        <label className="connection-method" data-selected={route === "direct"}>
           <input
             type="radio"
             name="connection-route"
             checked={route === "direct"}
             onChange={() => onRoute("direct")}
           />
-          Direct
+          <Icon name="plug" size={21} />
+          <span>
+            <strong>Direct</strong>
+            <small>The source is reachable from this DSUI instance.</small>
+          </span>
         </label>
-        <label>
+        <label className="connection-method" data-selected={route === "agent"}>
           <input
             type="radio"
             name="connection-route"
             checked={route === "agent"}
             onChange={() => onRoute("agent")}
           />
-          Via DSUI Agent
+          <Icon name="cpu" size={21} />
+          <span>
+            <strong>Via DSUI Agent</strong>
+            <small>Private network. No inbound ports to open.</small>
+          </span>
         </label>
       </div>
-      {route === "direct" && (
-        <small>
-          DSUI connects straight to the address you enter. Use this for sources
-          that are reachable from this DSUI instance.
-        </small>
-      )}
       {route === "agent" && (
-        <>
+        <div className="agent-route-body">
           <small>
-            An agent running inside your network makes an outbound connection to
-            DSUI and carries the traffic, so you open no inbound ports. Enter
-            the host and port exactly as the agent sees them.
+            Enter the host and port exactly as the agent sees them from its
+            network.
           </small>
           {loadError && (
             <p className="agent-error" role="alert">
@@ -146,7 +151,12 @@ export function ConnectorRoute({
             </>
           )}
           {!created && !creating && (
-            <Button type="button" onClick={() => setCreating(true)}>
+            <Button
+              className="agent-add"
+              type="button"
+              variant="secondary"
+              onClick={() => setCreating(true)}
+            >
               {usable.length > 0 ? "Add another agent" : "Add an agent"}
             </Button>
           )}
@@ -187,7 +197,7 @@ export function ConnectorRoute({
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </fieldset>
   );

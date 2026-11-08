@@ -91,25 +91,24 @@
     animation: none;
   }
 }
-.agent-route {
+.agent-route-body {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 14px;
 }
-.agent-route-options {
-  display: flex;
-  gap: 8px;
+.agent-route-body > small {
+  color: var(--color-text-secondary, inherit);
+  line-height: 1.5;
 }
-.agent-route-options label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+.agent-add {
+  justify-self: start;
+  padding: 8px 14px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: 8px;
+  background: transparent;
   font-size: 13px;
-  cursor: pointer;
 }
-.agent-route-options label:has(input:checked) {
+.agent-add:hover {
   border-color: var(--color-accent);
 }
 .agent-list {
