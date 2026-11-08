@@ -14,6 +14,7 @@ import { migration_0011_event_type } from "./0011_event_type.js";
 import { migration_0012_event_sequence } from "./0012_event_sequence.js";
 
 import { migration_0014_settings } from "./0014_settings";
+import { migration_0015_connectors } from "./0015_connectors";
 
 /** All migrations in version order. Add new files here, never reorder. */
 export const migrations: Migration[] = [
@@ -30,4 +31,5 @@ export const migrations: Migration[] = [
   migration_0011_event_type,
   migration_0012_event_sequence,
   migration_0014_settings,
+  migration_0015_connectors,
 ];

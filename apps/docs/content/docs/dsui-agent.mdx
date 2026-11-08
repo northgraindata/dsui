@@ -1,0 +1,60 @@
+---
+title: Private networks with the DSUI Agent
+description: Reach databases, Airflow and other sources that are not exposed to the internet, without opening inbound ports.
+---
+
+Some sources cannot be reached from the machine that runs DSUI.
+They sit in a private network, a VPC, a cluster, or behind a firewall.
+The DSUI Agent solves this for every adapter and every deployment style.
+
+The agent is a small program that runs next to your sources.
+It makes one outbound connection to DSUI and forwards traffic to the hosts you allow.
+It forwards bytes and never reads them, so your reverse proxy, Basic auth, JWT, mTLS and database passwords keep working.
+The credentials stay in DSUI.
+
+## Connect a source
+
+1. Open **Connect** for any adapter, or go to **Settings, Agents**.
+2. Choose **Via DSUI Agent** and add an agent. DSUI shows a token once, and commands for Docker, Kubernetes, Linux, Windows or any machine.
+3. Run the agent next to your sources. DSUI shows it as online with the address it connects from.
+4. Fill in the adapter fields as usual. Enter the host and port **as the agent sees them**, for example `airflow-api:8080`.
+5. Test the connection and save.
+
+One agent serves a whole site.
+Many services can share it, each pointing at a different host and port.
+
+## What the agent may reach
+
+The allowlist is set on the agent, on your side.
+DSUI cannot add to it.
+A request for a target that is not on the list is refused.
+
+| Entry | Matches |
+| --- | --- |
+| `airflow.internal:8080` | that host and port |
+| `db.internal:*` | any port on that host |
+| `*.corp.local:443` | any subdomain, one port |
+| `10.20.0.0/16:5432` | IP addresses in a range |
+
+## How it works
+
+```
+your network                            DSUI
+dsui-agent  -- outbound wss :443 -->  tunnel endpoint
+   |                                   adapter -> loopback proxy
+   +-> airflow-api:8080 <-- streams ---+
+```
+
+DSUI starts the adapter process of a routed service with proxy settings that point at a loopback-only proxy.
+That proxy opens a stream to the agent for each connection.
+Adapters need no changes, and TLS and the `Host` header reach the source untouched.
+
+## Operating it
+
+- **Rotate token** disconnects the running agent until you restart it with the new token.
+- **Revoke** disconnects the agent and stops it from reconnecting.
+- An agent cannot be deleted while a service uses it.
+- Behind a reverse proxy such as Caddy, set `DSUI_TRUST_PROXY=1` so DSUI shows the agent's real address.
+  Keep idle WebSocket timeouts above 60 seconds.
+
+The agent itself is documented in the [dsui-agent repository](https://github.com/northgraindata/dsui-agent).
