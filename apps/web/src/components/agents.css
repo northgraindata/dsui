@@ -144,3 +144,17 @@
   color: var(--color-danger, #cf222e);
   font-size: 12px;
 }
+
+.agent-option-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-text-secondary, #8892a6);
+  opacity: 0.6;
+}
+.agent-option-dot[data-online="true"] {
+  background: #2da44e;
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(45, 164, 78, 0.18);
+}

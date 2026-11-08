@@ -126,6 +126,14 @@ export function ConnectorRoute({
               options={usable.map((connector) => ({
                 value: connector.id,
                 label: connector.name,
+                icon: (
+                  <span
+                    className="agent-option-dot"
+                    data-online={connector.online}
+                    role="img"
+                    aria-label={connector.online ? "Online" : "Offline"}
+                  />
+                ),
                 description: connector.online
                   ? `Online${connector.info.observedIp ? ` · ${connector.info.observedIp}` : ""}`
                   : "Offline",
