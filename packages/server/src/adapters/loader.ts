@@ -6,6 +6,7 @@ import type {
   StorePersistenceProvider,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
+import { routeConnection } from "../connectors/routing.js";
 import {
   type AdapterBuildPhase,
   type AdapterSourceLocation,
@@ -267,6 +268,7 @@ type RemoteHostRequest = {
   signal?: AbortSignal;
   timeoutMs?: number;
   hostIdleTimeoutMs?: number;
+  env?: Record<string, string>;
 };
 
 type RemoteHost = {
@@ -312,7 +314,13 @@ export class RemoteBackend implements AdapterBackend {
     >[],
   ) {}
 
-  private request(request: RemoteHostRequest): Promise<unknown> {
+  private request(routable: RemoteHostRequest): Promise<unknown> {
+    // A service that uses a DSUI agent carries a reserved key; strip it and
+    // give the host process the proxy that reaches the agent.
+    const routed = routeConnection(routable.connection);
+    const request: RemoteHostRequest = routed.env
+      ? { ...routable, connection: routed.connection, env: routed.env }
+      : routable;
     const connection = request.connection;
     const methodId =
       connection && typeof connection === "object" && "method" in connection

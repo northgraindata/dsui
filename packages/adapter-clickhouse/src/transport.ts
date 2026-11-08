@@ -5,6 +5,9 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { type ClickHouseConfig, normalizeConfig } from "./config.js";
 export function createDriver(config: ClickHouseConfig, control: boolean) {
   const normalized = normalizeConfig(config);
+  // A service routed through a DSUI agent gets its proxy from the host process;
+  // an explicit proxy in the connection still wins.
+  const proxyUrl = config.proxyUrl ?? process.env.DSUI_CONNECTOR_PROXY_URL;
   const tls = {
     ...(config.caCert ? { ca: config.caCert } : {}),
     ...(config.clientCert
@@ -14,8 +17,8 @@ export function createDriver(config: ClickHouseConfig, control: boolean) {
   };
   const makeAgent = (maxSockets: number) => {
     const options = { keepAlive: config.keepAlive, maxSockets };
-    if (config.proxyUrl && normalized.url.startsWith("https:")) {
-      const agent = new HttpsProxyAgent(config.proxyUrl, options);
+    if (proxyUrl && normalized.url.startsWith("https:")) {
+      const agent = new HttpsProxyAgent(proxyUrl, options);
       Object.assign(agent.options, tls);
       const connect = agent.connect.bind(agent);
       // Proxy TLS and target TLS have separate trust and client identities.
@@ -23,7 +26,7 @@ export function createDriver(config: ClickHouseConfig, control: boolean) {
         connect(request, { ...target, ...tls });
       return agent;
     }
-    if (config.proxyUrl) return new HttpProxyAgent(config.proxyUrl, options);
+    if (proxyUrl) return new HttpProxyAgent(proxyUrl, options);
     if (config.caCert || config.clientCert)
       return new HttpsAgent({ ...tls, ...options });
     return undefined;
