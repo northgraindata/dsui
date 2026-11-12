@@ -161,4 +161,28 @@ describe("generic plugin tools", () => {
       ],
     ]);
   });
+
+  it("surfaces verified navigation from an action result", async () => {
+    const { context } = harness();
+    (context.services as { executeAction: unknown }).executeAction =
+      async () => ({
+        id: "d1",
+        navigation: [
+          { label: "Open", path: "/dashboards/d1" },
+          { label: "Escape", path: "//evil.example" },
+        ],
+      });
+    const result = (await executeTool(context, [], "execute_action", {
+      serviceId: "svc-1",
+      actionId: "arbitrary-action",
+      input: {},
+    })) as { navigation?: { label: string; path: string; href: string }[] };
+    expect(result.navigation).toEqual([
+      {
+        label: "Open",
+        path: "/dashboards/d1",
+        href: "/services/svc-1/dashboards/d1",
+      },
+    ]);
+  });
 });

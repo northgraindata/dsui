@@ -42,8 +42,33 @@ export const createAppInput = z.object({
   content: z.string().min(1, "SQL is required"),
 });
 
+const SQL_GUIDE = [
+  "A Shaper dashboard is DuckDB SQL: several queries separated by ';', each one becomes one element.",
+  "Call validate-dashboard with the SQL first and fix any error before create-app.",
+  "'Title'::SECTION starts a section; 'Card title'::LABEL as its own query titles the next element.",
+  "Table: a plain SELECT. Single value: one row, one column. ::PERCENT for 0-1 values.",
+  "Line chart: ts::TIMESTAMP::XAXIS, value::LINECHART, optional series::CATEGORY.",
+  "Bar chart: label::XAXIS, value::BARCHART (or ::BARCHART_STACKED), optional series::CATEGORY.",
+  "Pie or donut: value::PIECHART (or ::DONUTCHART), name::CATEGORY. Gauge: value::GAUGE with ::RANGE.",
+  "Filters come first: col::DROPDOWN AS name, then read it with getvariable('name'). Also ::DATEPICKER and ::INPUT.",
+  "Example: SELECT 'Revenue'::LABEL; SELECT sum(amount) AS Revenue FROM orders;",
+  "Do not use $variable syntax. Check table and column names with the schema resources before writing SQL.",
+].join(" ");
+
+const appNavigation = (type: "dashboard" | "task", id: string) => [
+  {
+    label:
+      type === "dashboard" ? "Open dashboard in DSUI" : "Open task in DSUI",
+    path:
+      type === "dashboard"
+        ? `/dashboards/${encodeURIComponent(id)}`
+        : `/tasks/${encodeURIComponent(id)}/edit`,
+  },
+];
+
 export const createApp = defineAction({
   id: "create-app",
+  description: `Create a Shaper dashboard or task from SQL. ${SQL_GUIDE} New dashboards are private; use share-dashboard to share one.`,
   input: createAppInput,
   run: async (input, ctx: Ctx) => {
     const [result] = await ctx.client.deploy(
@@ -58,7 +83,11 @@ export const createApp = defineAction({
     );
     if (!result?.id) throw new Error("Shaper did not return the new app id");
     ctx.invalidate();
-    return { id: result.id, type: input.type };
+    return {
+      id: result.id,
+      type: input.type,
+      navigation: appNavigation(input.type, result.id),
+    };
   },
 });
 
@@ -72,6 +101,7 @@ export const updateAppInput = z.object({
 
 export const updateApp = defineAction({
   id: "update-app",
+  description: `Rename, move or change the SQL of a Shaper dashboard or task. ${SQL_GUIDE}`,
   input: updateAppInput,
   run: async ({ id, type, name, path, content }, ctx: Ctx) => {
     if (name === undefined && path === undefined && content === undefined)
@@ -92,7 +122,7 @@ export const updateApp = defineAction({
       ctx.signal,
     );
     ctx.invalidate();
-    return { id, type };
+    return { id, type, navigation: appNavigation(type, id) };
   },
 });
 
@@ -103,6 +133,8 @@ export const deleteAppInput = z.object({
 
 export const deleteApp = defineAction({
   id: "delete-app",
+  description:
+    "Permanently delete a Shaper dashboard or task. Ask the user to confirm first.",
   input: deleteAppInput,
   run: async ({ id, type }, ctx: Ctx) => {
     await ctx.client.deploy(

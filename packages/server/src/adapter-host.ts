@@ -81,6 +81,12 @@ function jsonSchemaOf(schema: unknown, what: string): unknown {
   }
 }
 
+/** The text an agent or person reads to decide when to use a resource or action. */
+function descriptionOf(member: object): { description?: string } {
+  const { description } = member as { description?: unknown };
+  return typeof description === "string" && description ? { description } : {};
+}
+
 function inputSchemaOf(member: object, what: string): unknown {
   // Runtime members are callables carrying the full definition.
   const inputSchema = (member as { definition?: { inputSchema?: unknown } })
@@ -257,11 +263,13 @@ export async function runAdapterHost(): Promise<number> {
               : {}),
             resources: definition.resources.map((resource) => ({
               id: resource.id,
+              ...descriptionOf(resource),
               inputSchema: inputSchemaOf(resource, `resource "${resource.id}"`),
               refresh: { ...resource.refresh },
             })),
             actions: definition.actions.map((action) => ({
               id: action.id,
+              ...descriptionOf(action),
               inputSchema: inputSchemaOf(action, `action "${action.id}"`),
             })),
             pages: definition.pages.map((page) => ({ path: page.path })),
