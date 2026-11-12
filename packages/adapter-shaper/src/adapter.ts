@@ -6,6 +6,7 @@ import {
   validateDashboard,
 } from "./actions/apps.js";
 import { exportDashboard } from "./actions/data.js";
+import { shareDashboard } from "./actions/share.js";
 import { runQuery } from "./actions/sql.js";
 import { createShaperClient } from "./client.js";
 import {
@@ -59,7 +60,7 @@ export function createShaperAdapter(
       api: {
         label: "API key",
         description:
-          "Enter the Shaper server URL and an API key. Create the key in Shaper under API keys; it needs deploy, schema:read, data:query and jwt permissions.",
+          "Enter the Shaper server URL and an API key. Create the key in Shaper under API keys; it needs deploy, schema:read, data:query and jwt permissions. To share dashboards, also add the email and password of a Shaper user, because Shaper only lets signed-in users change sharing.",
         schema: shaperConnectionSchema,
         contextIdleTimeoutMs: 300_000,
       },
@@ -95,6 +96,7 @@ export function createShaperAdapter(
       deleteApp,
       validateDashboard,
       exportDashboard,
+      shareDashboard,
     ],
     pages: [
       overviewPage,

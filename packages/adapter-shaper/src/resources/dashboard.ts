@@ -73,9 +73,17 @@ export const dashboardSummary = defineResource({
   input: dashboardInput,
   query: async ({ id, variables }, ctx: ShaperContext) => {
     try {
-      return summarizeDashboard(
-        await ctx.client.getDashboard(id, parseVariables(variables)),
-      );
+      return {
+        ...summarizeDashboard(
+          await ctx.client.getDashboard(id, parseVariables(variables)),
+        ),
+        navigation: [
+          {
+            label: "Open dashboard in DSUI",
+            path: `/dashboards/${encodeURIComponent(id)}`,
+          },
+        ],
+      };
     } catch (error) {
       throw await explainFailure(id, ctx, error);
     }
