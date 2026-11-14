@@ -180,7 +180,10 @@ test("CI runs are flagged so throwaway installs can be filtered out", async () =
 
 test("every field the event can carry is documented, and nothing else is", async () => {
   const page = await Bun.file(
-    new URL("../../../apps/docs/content/docs/reference/telemetry.mdx", import.meta.url),
+    new URL(
+      "../../../apps/docs/content/docs/reference/telemetry.mdx",
+      import.meta.url,
+    ),
   ).text();
   const documented = page
     .split("\n")
