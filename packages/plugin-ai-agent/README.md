@@ -1,4 +1,4 @@
-# DSUI Agent
+# AI assistant
 
 User-initiated chat for investigating a DSUI workspace. The launcher, drawer,
 conversations, instructions and tools belong to this plugin. The host contributes

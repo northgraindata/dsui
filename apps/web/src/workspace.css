@@ -1433,7 +1433,7 @@
   color: var(--color-warning);
   background: color-mix(in srgb, var(--color-warning) 5%, transparent);
 }
-/* Docked plugin drawer (AI agent): the workspace shrinks beside it. */
+/* Docked plugin drawer (AI assistant): the workspace shrinks beside it. */
 .app-chrome {
   padding-right: var(--plugin-drawer-width, 0px);
   transition: padding-right 0.22s ease;
