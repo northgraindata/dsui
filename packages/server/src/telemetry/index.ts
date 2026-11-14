@@ -10,7 +10,7 @@ import { readSettings, writeSettings } from "../db/settings";
  * It is sent to the DSUI cloud API relay, never to PostHog directly, so an OSS
  * server carries no analytics key. The payload is the whole contract: every
  * field is listed in `telemetryEventSchema` and documented in
- * `apps/docs/content/docs/telemetry.mdx`.
+ * `apps/docs/content/docs/reference/telemetry.mdx`.
  */
 
 /** Relay that validates, rate-limits and forwards events. Override with DSUI_TELEMETRY_URL. */
