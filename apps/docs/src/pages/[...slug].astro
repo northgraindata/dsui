@@ -1,29 +1,41 @@
 ---
 import { type CollectionEntry, render } from "astro:content";
-import type { TOCItemType } from "fumadocs-core/toc";
-import defaultMdxComponents from "fumadocs-ui/mdx";
-import { Docs } from "@/components/Docs";
-import Layout from "@/components/Layout.astro";
+import { mdxComponents } from "@/components/mdx";
+import DocsLayout from "@/layouts/DocsLayout.astro";
 import { source } from "@/lib/source";
 
 interface Props {
   page: CollectionEntry<"docs">;
 }
+
 export async function getStaticPaths() {
-  return source.getPages().map((page) => ({
-    params: { slug: page.slugs.length > 0 ? page.slugs.join("/") : undefined },
-    props: { page: page.data._raw },
-  }));
+  // Generated component pages are served by adapter-sdk/components/[component].
+  return source
+    .getPages()
+    .filter((page) => page.data._raw.digest !== "")
+    .map((page) => ({
+      params: {
+        slug: page.slugs.length > 0 ? page.slugs.join("/") : undefined,
+      },
+      props: { page: page.data._raw },
+    }));
 }
+
 const { page } = Astro.props;
 const { Content, headings } = await render(page);
-const section = page.id.includes("/")
-  ? page.id.split("/")[0].replaceAll("-", " ")
-  : "Documentation";
-const toc: TOCItemType[] = headings.map((heading) => ({
+const toc = headings.map((heading) => ({
   depth: heading.depth,
   title: heading.text,
   url: `#${heading.slug}`,
 }));
 ---
-<Layout><Fragment slot="head"><title>{page.data.title} — DSUI docs</title><meta name="description" content={page.data.description} /><meta property="og:title" content={`${page.data.title} — DSUI docs`} /><meta property="og:description" content={page.data.description} /><meta name="twitter:title" content={`${page.data.title} — DSUI docs`} /><meta name="twitter:description" content={page.data.description} /></Fragment><Docs tree={source.getPageTree()} pathname={Astro.url.pathname} params={Astro.params} page={{ toc }} client:load><header class="docs-page-header"><p class="docs-kicker">{section}</p><h1 class="text-3xl font-semibold">{page.data.title}</h1><p class="docs-description text-lg text-fd-muted-foreground">{page.data.description}</p></header><div class="prose flex-1"><Content components={{ ...defaultMdxComponents }} /></div></Docs></Layout>
+<DocsLayout
+  title={page.data.title}
+  description={page.data.description}
+  tree={source.getPageTree()}
+  toc={toc}
+  editPath={page.filePath}
+  markdownUrl={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/${page.id === "index" ? "index" : page.id.replace(/\/index$/, "")}.md`}
+>
+  <Content components={mdxComponents} />
+</DocsLayout>

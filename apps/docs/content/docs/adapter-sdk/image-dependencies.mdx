@@ -1,0 +1,37 @@
+---
+title: Image dependencies
+description: Declare the system packages that an adapter needs in the DSUI Docker image, and learn when DSUI installs them.
+contentType: reference
+---
+
+Some adapters call programs that aren't JavaScript, such as the `dbt` command. An adapter can declare the Debian packages and Python tools it needs in its `package.json`, and the DSUI Docker build installs them. This applies only when you build the image yourself.
+
+## Declare the packages
+
+Add a `dsui.image` object to the adapter's `package.json`. Use `apt` for Debian packages and `pipx` for Python command-line tools. A package can include a version, as `package=version` for `apt` and `package==version` for `pipx`:
+
+```json
+{
+  "dsui": {
+    "image": {
+      "apt": ["python3", "python3-venv", "pipx"],
+      "pipx": ["dbt-core==1.10.15"]
+    }
+  }
+}
+```
+
+DSUI supports only these two package managers, and it rejects any other key under `image`.
+
+### Use build variables
+
+A package can contain `${NAME}`. The image build replaces it with the value of the environment variable `NAME`, and it stops with `Missing NAME` when the variable isn't set. The official dbt adapter pins its version directly instead.
+
+## When DSUI installs them
+
+The image build scans the `package.json` files in the `packages` and `examples` directories of the DSUI repository, collects every declaration, removes duplicates, and installs them with `apt-get install --no-install-recommends` and `pipx install`.
+
+- **Your own image**: put your adapter in `packages/` or `examples/`, then build the image from the repository. DSUI installs its dependencies
+- **The official image**: it contains the dependencies of the official adapters, such as dbt Core. An adapter that you load with `source: git` or `source: local` doesn't add packages to an image that already exists, so build a derived image that installs them
+
+See [run DSUI in production](/docs/guides/production) for how to run an image.

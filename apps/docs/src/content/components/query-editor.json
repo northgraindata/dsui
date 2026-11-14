@@ -1,0 +1,25 @@
+{
+  "name": "QueryEditor",
+  "description": "Query editor with explorer sidebar.",
+  "props": {
+    "language": {
+      "description": "Syntax language"
+    },
+    "value": {
+      "description": "Initial query text"
+    },
+    "action": {
+      "description": "Action to execute the query"
+    },
+    "explorer": {
+      "description": "Tree explorer sidebar"
+    },
+    "database": {
+      "description": "Database selection for the editor, with the available databases and the current one"
+    },
+    "omitDatabaseFromSql": {
+      "description": "Write table names as schema.table without the database prefix, as PostgreSQL expects"
+    }
+  },
+  "example": "QueryEditor({\n  language: \"sql\",\n  value: \"SELECT 1\",\n  action: executeQuery(),\n  explorer: { source: tree(), nameField: \"name\" },\n})"
+}

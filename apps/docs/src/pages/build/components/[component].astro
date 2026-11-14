@@ -1,68 +1,70 @@
 ---
-import type { TOCItemType } from "fumadocs-core/toc";
-import { Docs } from "@/components/Docs";
-import Layout from "@/components/Layout.astro";
-import { components } from "@/lib/component-catalog";
+import CodeBlock from "@/components/CodeBlock.astro";
+import DocsLayout from "@/layouts/DocsLayout.astro";
+import { type ComponentPage, getComponentPages } from "@/lib/components";
 import { source } from "@/lib/source";
 
 export async function getStaticPaths() {
-  return components.map((comp) => ({
+  return (await getComponentPages()).map((comp) => ({
     params: { component: comp.slug },
     props: { comp },
   }));
 }
 
+interface Props {
+  comp: ComponentPage;
+}
+
 const { comp } = Astro.props;
 
-const toc: TOCItemType[] = [
+/** Renders `code` spans in short descriptions as inline code. */
+const inline = (text: string) =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+const toc = [
   { depth: 2, title: "Props", url: "#props" },
   { depth: 2, title: "Example", url: "#example" },
+  ...(comp.supportingTypes.length > 0
+    ? [{ depth: 2, title: "Supporting types", url: "#supporting-types" }]
+    : []),
 ];
+const sourceUrl = `https://github.com/northgraindata/dsui/blob/main/${comp.sourcePath}`;
 ---
-<Layout>
-  <Fragment slot="head">
-    <title>{comp.name} — DSUI docs</title>
-    <meta name="description" content={comp.description} />
-  </Fragment>
-  <Docs
-    tree={source.getPageTree()}
-    pathname={Astro.url.pathname}
-    params={Astro.params}
-    page={{ toc }}
-    client:load
-  >
-    <header class="docs-page-header">
-      <p class="docs-kicker">Builtin component</p>
-      <h1 class="text-3xl font-semibold">{comp.name}</h1>
-      <p class="docs-description text-lg text-fd-muted-foreground">{comp.description}</p>
-    </header>
-    <div class="prose flex-1">
-      <h2 id="props">Props</h2>
-      <div class="overflow-x-auto">
-        <table>
-          <thead>
-            <tr>
-              <th>Prop</th>
-              <th>Type</th>
-              <th>Default</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {comp.props.map((prop) => (
-              <tr>
-                <td><code>{prop.name}</code></td>
-                <td><code>{prop.type}</code></td>
-                <td>{prop.default ? <code>{prop.default}</code> : "—"}</td>
-                <td>{prop.description}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <h2 id="example">Example</h2>
-      <pre><code class="language-ts">{comp.example}</code></pre>
-    </div>
-  </Docs>
-</Layout>
+<DocsLayout
+  title={comp.name}
+  description={comp.description}
+  tree={source.getPageTree()}
+  toc={toc}
+>
+  <h2 id="props">Props</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {comp.props.map((prop) => (
+          <tr>
+            <td><code>{prop.name}</code>{prop.required && <> <span class="badge">required</span></>}</td>
+            <td><code>{prop.type}</code></td>
+            <td>{prop.default ? <code>{prop.default}</code> : <span class="muted">None</span>}</td>
+            <td set:html={inline(prop.description)} />
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <h2 id="example">Example</h2>
+  <CodeBlock code={comp.example} lang="ts" />
+  {comp.supportingTypes.length > 0 && (
+    <>
+      <h2 id="supporting-types">Supporting types</h2>
+      {comp.supportingTypes.map((type) => (
+        <CodeBlock code={type.declaration} lang="ts" label={type.name} />
+      ))}
+    </>
+  )}
+  <p><a href={sourceUrl}>View the source on GitHub</a></p>
+</DocsLayout>

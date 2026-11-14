@@ -1,0 +1,18 @@
+{
+  "name": "Badge",
+  "description": "Status indicator with label and tone.",
+  "props": {
+    "label": {
+      "description": "Badge text"
+    },
+    "tone": {
+      "description": "Color tone",
+      "default": "\"info\""
+    },
+    "dot": {
+      "description": "Show a colored dot",
+      "default": "false"
+    }
+  },
+  "example": "Badge({ label: \"Healthy\", tone: \"healthy\", dot: true })\nBadge({ label: row.status })"
+}

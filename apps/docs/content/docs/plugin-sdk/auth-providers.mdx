@@ -1,0 +1,87 @@
+---
+title: Authentication and authorization
+description: Build a plugin that signs people in and limits what they can do, using an authentication provider and an authorization provider.
+contentType: how-to
+---
+
+DSUI has no sign-in of its own. A security plugin supplies it. An **authentication provider** tells DSUI who is making each request, and an **authorization provider** can narrow what that person may do. For the roles and permissions, see [access control](/docs/guides/access-control).
+
+## Declare a security plugin
+
+A plugin that registers either provider must declare `security: true` in its metadata, and the person who runs DSUI must load it with `critical: true`:
+
+```ts
+export default definePlugin({
+  metadata: {
+    id: "demo-auth",
+    name: "Demo sign-in",
+    version: "0.1.0",
+    apiVersion: 1,
+    security: true,
+  },
+  configSchema: z.object({}),
+  setup(registry) {
+    // register the providers here
+  },
+});
+```
+
+```yaml
+plugins:
+  demo-auth:
+    source: local
+    path: ./demo-auth
+    critical: true
+```
+
+DSUI refuses a security plugin that isn't critical, with `Security plugins require critical: true`. If a critical plugin can't load, DSUI doesn't start, so it never runs without the access control that you meant to have.
+
+## Authenticate requests
+
+Register an authentication provider with `registry.authentication`. DSUI calls `authenticate(request)` for every API request. Return the person as `{ id, role }`, or `null` when the request has no valid credentials, and DSUI answers `401` with `Authentication required`.
+
+```ts
+registry.authentication({
+  authenticate(request) {
+    const user = request.headers.get("x-demo-user");
+    const role = user ? roles[user] : undefined;
+    return user && role ? { id: user, role } : null;
+  },
+  resolvePrincipal(id) {
+    const role = roles[id];
+    return role ? { id, role } : null;
+  },
+});
+```
+
+This example trusts a header, so it shows the shape of the code and isn't secure. A real provider checks a session cookie or a token.
+
+`role` is `owner`, `admin`, `operator`, or `viewer`, and it decides the default permissions. The optional `attributes` object carries anything else that your plugin needs, such as teams. DSUI never reads it.
+
+### Resolve a person again
+
+`resolvePrincipal(id)` is optional. DSUI calls it for background work that acts for a person, so a removed or demoted person loses access at once. Return the current `{ id, role }`, or `null` for someone who is gone. Without it, those checks fail safely. See [host capabilities](/docs/plugin-sdk/host-capabilities#work-on-someones-behalf).
+
+### Serve sign-in endpoints
+
+A provider can add `routes(request)` to handle its own sign-in, sign-out, and callback requests. DSUI mounts it at `/api/auth/<plugin id>/*`, before authentication, because a signed-out browser has to reach it. A plugin can't add middleware or reach any other path.
+
+## Show a sign-in screen
+
+Register a page with `public: true` and `shell: "bare"`. DSUI serves a public page without a signed-in person, and `bare` removes the workspace chrome. The workspace asks `GET /api/v1/auth/entry` to learn what to show before sign-in. The answer is `mode: "none"` without an authentication plugin, `mode: "plugin"` with the plugin's public page, or `mode: "unavailable"` when the security plugin failed to load. `GET /api/v1/auth/me` returns the signed-in person, or `null`.
+
+## Narrow permissions
+
+Register an authorization provider with `registry.authorization`. DSUI calls `authorize` after it applies the role's permissions, and the provider can only remove access:
+
+```ts
+registry.authorization({
+  authorize({ principal, permission }) {
+    return !(principal.id === "olga" && permission === "execute");
+  },
+});
+```
+
+Return `true` to keep what the role allows, and `false` to deny. A provider can't grant more than the role allows, so the roles are a ceiling that a bug in your plugin can't raise.
+
+With the two providers above, a request without credentials gets `401`. A viewer can read but not run actions, and gets `403` when they try. An owner can run actions. The operator `olga` has the role for `execute`, and the authorization provider still denies it with `403`.

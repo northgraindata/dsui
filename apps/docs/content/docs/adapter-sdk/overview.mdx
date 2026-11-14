@@ -1,46 +1,45 @@
 ---
 title: Adapter SDK
-description: Build server-side adapters that DSUI can render safely.
+description: Build an adapter that teaches DSUI to connect to a service, read its data, run its commands, and show it in the workspace.
+contentType: landing
 ---
 
-An adapter is a small TypeScript program that connects one service to the DSUI
-workspace. It describes how to connect, read data, perform actions, and compose
-the service's workflows. DSUI handles execution, refreshing, lifecycle, and
-rendering.
+An adapter is a TypeScript package that teaches DSUI to work with one kind of service. You describe how to connect, what to read, what to run, and what to show. DSUI builds your package from source, runs it in a separate process, and renders your pages in the workspace.
 
-The adapter mental model is deliberately small:
+You write the adapter with the `@northgraindata/dsui-adapter-sdk` package. Pin its exact version. The SDK works with DSUI through an API marker, described in [versions and compatibility](/docs/build/compatibility).
 
-```text
-connection + context
-       ├── resources  (reads)
-       ├── actions    (commands)
-       ├── jobs      (background work)
-       ├── signals   (events)
-       ├── stores     (state)
-       └── pages      (workflow)
-```
+## Start here
 
-| Primitive | Use it for | Docs |
+<Cards>
+<Card title="Build your first adapter" href="/docs/adapter-sdk/tutorial">
+Write, load, and run a small adapter in a few steps.
+</Card>
+<Card title="Choose adapter or plugin" href="/docs/build/overview">
+Check that an adapter is the right kind of extension.
+</Card>
+</Cards>
+
+## What an adapter is made of
+
+| Part | What it does | Page |
 | --- | --- | --- |
-| [Resource](/docs/adapter-sdk/resources) | External data | Read-only data sources managed by the runtime |
-| [Action](/docs/adapter-sdk/actions) | Commands and mutations | Side effects with abort, invalidation, store access |
-| [Jobs](/docs/adapter-sdk/jobs) | Background work | Scheduled polling for each configured service |
-| [Signals](/docs/adapter-sdk/signals) | Events | Typed, durable events emitted into DSUI's event stream |
-| [Page](/docs/adapter-sdk/pages) | Routes | Compose components with typed params and stores |
-| [Store](/docs/adapter-sdk/stores) | Local UI state | Client/session state with persistence |
-| [Component](/docs/adapter-sdk/custom-components) | Reusable UI | Server composites and browser components |
-| Context | Per-instance clients | Built during adapter initialization |
+| Connection and context | Defines how people connect, and holds the clients that your code shares | [Connections and context](/docs/adapter-sdk/connections-and-context) |
+| Health | Reports whether the service is healthy. Required | [Health checks](/docs/adapter-sdk/health) |
+| Resources | Read data, with a refresh policy | [Resources](/docs/adapter-sdk/resources) |
+| Actions | Run commands that change something | [Actions](/docs/adapter-sdk/actions) |
+| Jobs | Run background work for each service | [Jobs](/docs/adapter-sdk/jobs) |
+| Routes | Publish HTTP endpoints for each service | [Routes](/docs/adapter-sdk/routes) |
+| Signals | Publish typed events | [Signals](/docs/adapter-sdk/signals) |
+| Pages | Compose components into screens | [Pages](/docs/adapter-sdk/pages) |
+| Stores | Keep state for an adapter or a page | [Stores](/docs/adapter-sdk/stores) |
+| Components | Use [33 builtin components](/docs/build/components), or add your own | [Custom components](/docs/build/custom-components) |
 
-Keep external data in resources. Keep side effects in actions. Keep local or
-persistent UI state in stores. Adapters use DSUI's shared components instead of
-shipping a separate application. A limited [browser component](/docs/adapter-sdk/custom-components)
-is available when a service needs a specialized interaction.
+Keep reads in resources and changes in actions. DSUI can then refresh, cache, and authorize them correctly.
 
-DSUI ships [28 builtin components](/docs/adapter-sdk/components) for building pages — tables, cards, forms, layouts, and more.
+## How DSUI runs your adapter
 
-Start with [create an adapter](/docs/adapter-sdk/create-an-adapter), then read
-the resource, action, page, and store guides. The same SDK can be used for a
-private adapter around an internal service, but the primary use case is
-connecting the systems already present in a data or infrastructure stack.
+DSUI doesn't run your adapter in its own process. See the [runtime model](/docs/adapter-sdk/runtime-model) for how processes are created and reused, and [image dependencies](/docs/adapter-sdk/image-dependencies) if your adapter needs a program such as `dbt` in the Docker image.
 
-Read the [contribution guide](/docs/contributing) before opening a PR.
+## Share your adapter
+
+DSUI loads an adapter from a GitHub repository with `source: git`, or from a directory with `source: local`. See [release](/docs/adapter-sdk/release).

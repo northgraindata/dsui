@@ -1,0 +1,263 @@
+---
+title: Build your first adapter
+description: Build an adapter from scratch that shows whether an HTTP endpoint answers, load it into DSUI, and see its health, data, and action in the workspace.
+contentType: tutorial
+---
+
+In this tutorial, you build an adapter named `hello`. It connects to a web address, shows whether the address answers, reports its health, and has a button that checks again. You write about 110 lines of TypeScript, and DSUI builds and runs them for you.
+
+You need the workspace from the [quickstart](/docs/getting-started/quickstart), Node.js 18 or later, and network access. DSUI downloads the Adapter SDK from npm when it builds your adapter.
+
+<Steps>
+<Step>
+
+### Create the project
+
+Create a `hello-adapter` directory next to your `dsui.yaml`. Inside it, add `package.json`:
+
+```json {6-8}
+{
+  "name": "hello-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/adapter.ts"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "0.4.0"
+  }
+}
+```
+
+DSUI reads the entry file from `exports`, and the entry must be a TypeScript file. Pin the SDK to an exact version so that your adapter doesn't change when a new SDK is released.
+
+</Step>
+<Step>
+
+### Describe the connection
+
+A connection schema defines the fields that a person fills in when they add a service. Create `src/context.ts`, and start with the schema and the types:
+
+```ts
+import { z } from "@northgraindata/dsui-adapter-sdk";
+
+export const connectionSchema = z.object({
+  baseUrl: z.string().url(),
+  label: z.string().min(1).optional(),
+});
+
+export type HelloConfig = z.output<typeof connectionSchema>;
+
+export interface HelloContext {
+  config: HelloConfig;
+  probe(): Promise<{ reachable: boolean; latencyMs: number }>;
+}
+```
+
+Add the context below them. DSUI calls `createContext` when it needs to talk to the service, and it holds what your resources and actions share, here a probe that requests the address. By default DSUI builds a fresh context for each request and drops it afterwards, so keep it cheap:
+
+```ts
+export function createContext(config: HelloConfig): HelloContext {
+  return {
+    config,
+    async probe() {
+      const started = performance.now();
+      const reachable = await fetch(config.baseUrl, {
+        signal: AbortSignal.timeout(5_000),
+      })
+        .then((response) => response.ok)
+        .catch(() => false);
+      return { reachable, latencyMs: Math.round(performance.now() - started) };
+    },
+  };
+}
+```
+
+</Step>
+<Step>
+
+### Add a resource
+
+A resource reads data and gives DSUI a refresh policy. `poll("30s")` refreshes it every 30 seconds while someone looks at it. Create `src/resources.ts`:
+
+```ts
+import { defineResource, poll } from "@northgraindata/dsui-adapter-sdk";
+import type { HelloContext } from "./context.js";
+
+export const status = defineResource({
+  id: "status",
+  refresh: poll("30s"),
+  query: async (_input: undefined, ctx: HelloContext) => ({
+    label: ctx.config.label ?? "Hello",
+    url: ctx.config.baseUrl,
+    ...(await ctx.probe()),
+  }),
+});
+```
+
+</Step>
+<Step>
+
+### Add an action
+
+An action changes something or starts work. This one asks DSUI to read the `status` resource again. Create `src/actions.ts`:
+
+```ts
+import {
+  type ActionRuntimeContext,
+  defineAction,
+} from "@northgraindata/dsui-adapter-sdk";
+import type { HelloContext } from "./context.js";
+import { status } from "./resources.js";
+
+export const checkNow = defineAction({
+  id: "check-now",
+  run: async (_input: undefined, ctx: HelloContext & ActionRuntimeContext) => {
+    ctx.invalidate(status);
+    return { requested: true };
+  },
+});
+```
+
+</Step>
+<Step>
+
+### Build a page
+
+A page composes builtin components into a screen. This one shows the status as key-value pairs, with a button in the header that runs the action. Create `src/pages.ts`:
+
+```ts
+import {
+  Button,
+  definePage,
+  KeyValue,
+  PageHeader,
+  Section,
+} from "@northgraindata/dsui-adapter-sdk";
+import { checkNow } from "./actions.js";
+import { status } from "./resources.js";
+
+export const overviewPage = definePage({
+  path: "/",
+  render: () => [
+    PageHeader({
+      title: "Hello",
+      actions: [Button({ label: "Check now", action: checkNow() })],
+    }),
+    Section({
+      title: "Status",
+      content: KeyValue({ source: status() }),
+    }),
+  ],
+});
+```
+
+</Step>
+<Step>
+
+### Report health
+
+Every adapter must say what a healthy service looks like, so `defineAdapter` rejects a definition without `health`. Create `src/health.ts`. It combines checks into a score from 0 to 100, and each check carries a weight between 0 and 1 that is subtracted when the check fails:
+
+```ts
+import {
+  healthReport,
+  reachabilityCheck,
+} from "@northgraindata/dsui-adapter-sdk";
+import type { HelloContext } from "./context.js";
+
+export async function health(ctx: HelloContext) {
+  const { reachable, latencyMs } = await ctx.probe();
+  return healthReport({
+    checks: [reachabilityCheck(reachable, latencyMs)],
+    weights: { reachability: 1 },
+    latencyMs,
+  });
+}
+```
+
+</Step>
+<Step>
+
+### Define the adapter
+
+Put the pieces together in `src/adapter.ts`. The default export is the adapter:
+
+```ts {10,20}
+import { defineAdapter } from "@northgraindata/dsui-adapter-sdk";
+import { checkNow } from "./actions.js";
+import { connectionSchema, createContext } from "./context.js";
+import { health } from "./health.js";
+import { overviewPage } from "./pages.js";
+import { status } from "./resources.js";
+
+export default defineAdapter({
+  metadata: {
+    id: "hello",
+    name: "Hello",
+    version: "0.1.0",
+    description: "Shows whether an HTTP endpoint answers.",
+  },
+  connectionMethods: {
+    http: { label: "HTTP endpoint", schema: connectionSchema },
+  },
+  context: createContext,
+  latencyBudgetMs: 1_000,
+  health,
+  resources: [status],
+  actions: [checkNow],
+  pages: [overviewPage],
+});
+```
+
+The `id` must match the key that you use under `adapters` in `dsui.yaml`. `latencyBudgetMs` is the response time above which DSUI shows the service as slow.
+
+</Step>
+<Step>
+
+### Load the adapter
+
+Add the adapter and a service to `dsui.yaml`. The `path` is relative to the directory where you start DSUI:
+
+```yaml {4}
+adapters:
+  hello:
+    source: local
+    path: ./hello-adapter
+
+services:
+  - id: example
+    adapter: hello
+    connection:
+      baseUrl: https://example.com
+```
+
+Check that DSUI can build the adapter:
+
+```bash
+npx @northgraindata/dsui doctor
+```
+
+The first build takes a moment while DSUI installs the SDK. When it succeeds, the report ends with `all adapters loaded`.
+
+</Step>
+<Step>
+
+### Open it in the workspace
+
+Start DSUI with `npx @northgraindata/dsui`, open `http://localhost:4192`, and select **Hello**. You see the status, the health of the service, and the **Check now** button. Edit your adapter, then restart DSUI to build it again.
+
+</Step>
+</Steps>
+
+## How DSUI loads your adapter
+
+When DSUI starts, it copies your source, installs its dependencies, and bundles the entry file. It then runs the bundle in a separate process and asks it to describe itself. If the build fails, the workspace still starts without your adapter, and `dsui doctor` shows the reason. See [troubleshooting](/docs/guides/troubleshooting#an-adapter-is-unavailable).
+
+## Next steps
+
+- Give people a choice of connection methods in [connections and context](/docs/adapter-sdk/connections-and-context)
+- Score what matters for your service in [health](/docs/adapter-sdk/health)
+- Learn the details of [resources](/docs/adapter-sdk/resources), [actions](/docs/adapter-sdk/actions), and [pages](/docs/adapter-sdk/pages)
+- Publish your adapter from a GitHub repository, as described in [release](/docs/adapter-sdk/release)

@@ -1,37 +1,30 @@
 ---
 title: How DSUI works
-description: Understand the workspace, adapter, and runtime model behind DSUI.
+description: Learn how services, adapters, and plugins fit together, and where your credentials stay.
+contentType: conceptual
 ---
 
-DSUI is a workspace and control plane for the services in your data stack. It
-does not replace those services. It connects to them, presents their useful
-workflows in one place, and keeps service-specific behavior inside adapters.
+DSUI is a workspace for the services in your data stack. It doesn't replace those services. It connects to them, shows their workflows in one place, and keeps service-specific behavior inside adapters.
 
-## The product model
+## The building blocks
 
-```text
-Your services
-  ├── databases and query engines
-  ├── orchestration and scheduling
-  ├── transformation and modeling
-  ├── object storage and files
-  └── infrastructure tools
-          │
-          ▼
-      DSUI workspace
-          │
-          ▼
-   one place to inspect and operate them
-```
-
-You continue running the underlying services. DSUI gives them a consistent
-workspace, navigation model, and set of interaction patterns.
+- **Workspace**: the DSUI app you open in your browser. It lists your services and shows the pages each adapter provides.
+- **Service**: one configured connection to a data tool, such as a PostgreSQL database or an Airflow instance. You declare services in `dsui.yaml` or add them in the workspace.
+- **Adapter**: code that teaches DSUI to work with one kind of service. DSUI builds each adapter from source and runs it in its own subprocess.
+- **Plugin**: trusted code that extends the whole installation with pages, background jobs, settings, and authentication. DSUI loads plugins into the server process.
+- **DSUI Agent**: a process that forwards requests to services inside a private network. See [private networks](/docs/guides/private-networks).
 
 ## From configuration to workspace
 
-`dsui.yaml` declares which services DSUI should load:
+`dsui.yaml` declares the adapters DSUI loads and the services that use them. DSUI replaces `${NAME}` with the value of the environment variable `NAME`, so credentials stay out of the file:
 
-```yaml
+```yaml {2,9}
+adapters:
+  postgresql:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-postgresql
+
 services:
   - id: warehouse
     adapter: postgresql
@@ -43,63 +36,43 @@ services:
       password: ${POSTGRES_PASSWORD}
 ```
 
-At startup, DSUI validates the configuration, loads the requested adapter, and
-creates an isolated context for each configured service. The browser receives
-the workspace description and rendered data, not the service credentials.
+At startup, DSUI validates this file, builds each adapter listed under `adapters`, and connects each service to its adapter. If an adapter fails to build, the workspace still starts without it and the terminal names the adapter that failed.
 
-```text
-dsui.yaml
-  -> configuration validation
-  -> adapter loading
-  -> service context and client
-  -> pages, resources, and actions
-  -> workspace in the browser
-```
+The key under `adapters` must match the ID the adapter declares. DSUI refuses to load an adapter registered under a different ID.
 
-## What an adapter provides
-
-An adapter is the service-specific integration layer:
-
-- **Connection** describes and validates how DSUI reaches the service.
-- **Context** owns the configured client and service lifecycle.
-- **Resources** read external data and declare refresh behavior.
-- **Actions** perform commands or mutations and invalidate changed resources.
-- **Stores** hold adapter or page state, including state that must persist.
-- **Pages** compose the shared DSUI components into useful workflows.
-
-The Adapter SDK keeps these responsibilities explicit so a new integration does
-not need to build a separate frontend, routing system, or state framework.
-
-## Request and security boundary
+## How a request flows
 
 ```text
 Browser
   -> DSUI server
-  -> isolated adapter host
-  -> adapter context and service client
-  -> external service
+  -> adapter subprocess
+  -> your service
 ```
 
-Resources and actions execute on the server. Credentials stay in the server
-configuration or environment and are never part of the browser page model.
-Adapters may be isolated in a separate host process, so one adapter request does
-not rely on in-memory state from another request. Persistent adapter state must
-use a persistent store supplied by the runtime.
+The browser talks only to the DSUI server. The server runs resources and actions in the adapter subprocess, and the adapter calls your service with the credentials from your configuration. Credentials stay on the server, so the pages the browser receives never contain them.
 
-## Choosing the right primitive
+## What an adapter provides
 
-| Need | Use |
-| --- | --- |
-| Read data from a service | Resource |
-| Run a command or mutation | Action |
-| Keep filters, selections, or session state | Store |
-| Build a navigable workflow | Page |
-| Add a reusable visual interaction | Shared or browser component |
+- **Connection methods**: how DSUI reaches the service, for example `memory` or `file` for DuckDB.
+- **Resources**: read-only data from the service, with a refresh policy.
+- **Actions**: commands that change something, such as running a query or restarting a job.
+- **Pages**: workflows built from DSUI's shared components.
+- **Stores**: state kept for an adapter or a page.
+- **Jobs and signals**: background work and events about a service.
 
-Start with the [adapter SDK overview](/docs/adapter-sdk), or follow the
-[quickstart](/docs/getting-started/quickstart) to see the workspace running.
+## Adapters and plugins
 
-![Editorial illustration of services connected to one DSUI workspace](/docs/assets/dsui-runtime-overview.png)
+| | Adapter | Plugin |
+| --- | --- | --- |
+| Scope | One kind of service | The whole installation |
+| Where it runs | Isolated subprocess | The DSUI server process |
+| Typical use | Show and operate a database or an orchestrator | Add a page across services, react to events, authenticate people |
+| Built with | [Adapter SDK](/docs/adapter-sdk/overview) | [Plugin SDK](/docs/plugin-sdk/overview) |
 
-The browser only talks to DSUI. Credentials and service clients remain on the
-server side of this boundary.
+## Access control
+
+DSUI defines four roles: `owner`, `admin`, `operator`, and `viewer`. A viewer can inspect, an operator can also run actions, and an admin or owner can also change configuration.
+
+DSUI has no sign-in of its own. Without an authentication plugin, every request runs as a local owner. If more than one person uses your installation, put DSUI behind a reverse proxy that handles sign-in, or install an authentication plugin.
+
+![Services connected to one DSUI workspace](/docs/assets/dsui-runtime-overview.png)

@@ -1,0 +1,59 @@
+---
+title: Environment variables
+description: Reference for every environment variable that DSUI reads, grouped by what it controls.
+contentType: reference
+---
+
+DSUI reads these environment variables from the process that runs it. In Docker Compose, set them under `environment`. Values in `dsui.yaml` can also use any variable as `${NAME}`. See [connect a service](/docs/guides/connect-a-service#keep-credentials-out-of-the-file).
+
+## Run DSUI
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DSUI_CONFIG` | `./dsui.yaml` with npx, `/etc/dsui/dsui.yaml` in Docker | Path of the configuration file. The server uses its default only when the file exists |
+| `DSUI_HOST` | `0.0.0.0` | Address to listen on |
+| `DSUI_PORT` | `4192` | Port to listen on. `0` lets the system pick one, and the terminal prints it |
+| `DSUI_DATA_DIR` | `~/.local/share/dsui`, or `/data` in Docker | Directory for DSUI's database, stored files, and master key |
+| `XDG_DATA_HOME` | `~/.local/share` | When `DSUI_DATA_DIR` isn't set, DSUI uses `dsui` inside this directory |
+| `DSUI_MASTER_KEY` | Generated | A base64-encoded 32-byte key that encrypts connections saved in the workspace. When it's not set, DSUI creates `.master-key` in the data directory |
+| `DSUI_TRUST_PROXY` | Off | Set to `1` to show a DSUI Agent's address from the `X-Forwarded-For` header. Use it behind a reverse proxy |
+| `DSUI_WEB_BASE_PATH` | `/` | URL prefix that serves the workspace. The workspace files are built for one prefix, so set it when you build the Docker image |
+
+`DSUI_CONFIG` is read by `dsui doctor` too, but `doctor` doesn't use the `/etc/dsui/dsui.yaml` default.
+
+## Telemetry
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DSUI_TELEMETRY` | On | `off`, `0`, or `false` turns telemetry off |
+| `DO_NOT_TRACK` | Not set | `1` or `true` turns telemetry off |
+| `DSUI_TELEMETRY_URL` | The DSUI relay | Address to send events to |
+| `DSUI_TELEMETRY_TOKEN` | Not set | Sent as a bearer token with each event |
+| `DSUI_DEPLOYMENT` | Not set | Reported as `docker` or `managed`, and as `other` for any other value. The Docker image sets `docker` |
+| `CI` | Not set | When set to a value other than empty, `0`, or `false`, events are marked as coming from CI |
+
+See [telemetry](/docs/reference/telemetry) for what DSUI sends.
+
+## Terminal output
+
+| Variable | Meaning |
+| --- | --- |
+| `NO_COLOR` | When set, the command line prints no colors |
+| `FORCE_COLOR` | When set, the command line prints colors even when the output isn't a terminal |
+
+## Set for you
+
+The npx launcher and the Docker image set these variables so that DSUI finds its own files. You don't normally set them.
+
+| Variable | Meaning |
+| --- | --- |
+| `DSUI_VERSION` | The version that DSUI reports and uses to find matching SDK files |
+| `DSUI_WEB_ROOT` | Directory of the workspace files. Without it, DSUI looks in `apps/web/dist` under the current directory |
+| `DSUI_RUNTIME_PLUGINS` | Directory of the bundled first-party plugins |
+| `DSUI_SDK_ROOT` | Directory of the SDK packages that DSUI uses to build adapters and plugins |
+| `DSUI_BUN` | npx launcher only. Path of a Bun program to use instead of the bundled one |
+| `BUN_INSTALL_CACHE_DIR` | Docker image only. Keeps the adapter build cache on the `/data` volume |
+
+## Set for adapters
+
+When a service uses a DSUI Agent, DSUI starts its adapter with `HTTP_PROXY`, `HTTPS_PROXY`, their lowercase forms, and `DSUI_CONNECTOR_PROXY_URL`, and it clears `NO_PROXY`. See [private networks](/docs/guides/private-networks#adapter-support).

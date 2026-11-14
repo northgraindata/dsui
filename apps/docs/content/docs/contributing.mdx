@@ -1,39 +1,77 @@
 ---
 title: Contributing
-description: Make a focused change and verify it before opening a pull request.
+description: Pick an issue, make one focused change, run the checks, and open a pull request, with links to the full contribution guide.
+contentType: how-to
 ---
 
-Start with the [first contribution walkthrough](https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md#your-first-contribution).
+You can contribute with code, documentation, reproductions, or manual testing. You don't need an AI tool or a chat account. The full rules are in [CONTRIBUTING.md](https://github.com/northgraindata/dsui/blob/main/CONTRIBUTING.md).
 
-Browse [good first issues](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)
-for a bounded change, or [help wanted](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22)
-for broader projects. Documentation fixes, reproductions, and manual verification
-are welcome alongside code contributions. Comment on the issue before starting
-and ask questions there; no chat account is required.
+<Steps>
+<Step>
 
-Follow the contribution guide for repository boundaries, change scope, and
-verification expectations.
+### Pick an issue
+
+Browse [good first issues](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) for a bounded change, or [help wanted](https://github.com/northgraindata/dsui/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22) for broader work. Comment on the issue before you start, so maintainers can confirm the scope.
+
+</Step>
+<Step>
+
+### Set up the repository
+
+Fork and clone the repository, use the Bun version that `package.json` pins, and start the development servers:
 
 ```bash
 bun install --frozen-lockfile
-bun run check
+bun run dev
+```
+
+</Step>
+<Step>
+
+### Make one focused change
+
+Reproduce the problem first, and add a test for a behavior change. Keep the pull request to one purpose, and update the docs when a public contract changes. Name the branch `<type>/dsui-<number>-<short-description>`, such as `fix/dsui-123-wrap-long-values`, using the Linear ID that the GitHub issue shows.
+
+</Step>
+<Step>
+
+### Run the checks
+
+```bash
+bun run format:check
+bun run lint
+bun run typecheck
 bun run test
 bun run build
 ```
 
-Keep a pull request focused. Add tests for behavior changes and update the docs when a public contract changes.
+While you work, run the scripts of the package that you changed. For a documentation change, run the docs checks from `apps/docs`: `lint`, `test`, `typecheck`, `build`, and `check:links`.
 
-Use a branch such as `fix/dsui-123-wrap-long-values`, with the synced Linear ID
-listed in the GitHub issue. Ask a maintainer if the ID is missing. PRs from forks
-follow the same naming rule. Include both `Fixes #<github-issue-number>` and
-`Fixes DSUI-<linear-id>` in the PR description.
+</Step>
+<Step>
 
-For documentation-only work, check links and examples and build the changed
-surface. See the contribution guide for focused commands and the repository map.
+### Open a pull request
 
-For an adapter, start from the [Adapter SDK](/docs/adapter-sdk/overview). Validate the connection, keep credentials server-side, and state the coverage and limitations explicitly.
+Use the template. Describe the problem, the new behavior, and the checks that you ran, and add `Fixes #<github-issue-number>` and `Fixes DSUI-<linear-id>`. Include screenshots for a visible change.
 
-The [complete example adapter](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter)
-shows package setup, tests, local loading, resources, actions, pages, and
-optional browser components. Use it as the practical starting point for a new
-adapter.
+</Step>
+</Steps>
+
+## Where to make a change
+
+| Area | Directory |
+| --- | --- |
+| Product UI | `apps/web` |
+| Server and runtime | `packages/server` |
+| Adapter contracts and adapter components | `packages/adapter-sdk` |
+| Official integrations | `packages/adapter-*` |
+| Plugins and plugin contracts | `packages/plugin-*` |
+| Website and documentation | `apps/site`, `apps/docs` |
+
+## Build an extension
+
+To add an integration, start with the [Adapter SDK](/docs/adapter-sdk/overview) and its [tutorial](/docs/adapter-sdk/tutorial). To extend the whole workspace, see the [Plugin SDK](/docs/plugin-sdk/overview). The [example adapter](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter) shows a complete package.
+
+## Report a problem
+
+Report a vulnerability through [SECURITY.md](https://github.com/northgraindata/dsui/blob/main/SECURITY.md). Everyone who takes part agrees to the [Code of Conduct](https://github.com/northgraindata/dsui/blob/main/CODE_OF_CONDUCT.md).

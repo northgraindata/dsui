@@ -1,0 +1,20 @@
+{
+  "name": "Value",
+  "description": "Single field from a data source.",
+  "props": {
+    "source": {
+      "description": "Resource binding"
+    },
+    "field": {
+      "description": "Field name to extract"
+    },
+    "format": {
+      "description": "Display format",
+      "default": "\"text\""
+    },
+    "fallback": {
+      "description": "Shown when value is missing"
+    }
+  },
+  "example": "Value({ source: status(), field: \"url\" })\nValue({ source: metrics(), field: \"bytes\", format: \"bytes\", fallback: \"N/A\" })"
+}

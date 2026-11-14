@@ -1,26 +1,65 @@
 ---
 title: Resources
-description: Read plugin data with runtime-managed refresh.
+description: Reference for defineResource in a plugin, which declares a read of data with an input schema and a refresh policy that pages can use.
+contentType: reference
 ---
 
-Define a resource with `defineResource({ id, input?, query, refresh? })`, then
-register it with `registry.resource(resource)`. `query(input, context)` receives
-validated input and the plugin context. The default refresh policy is manual;
-use `poll("5s")` for data that should refresh while watched.
+A resource is a read that your plugin offers. You write the query, DSUI validates its input, and a page reads it and keeps it fresh on the policy you choose. A resource only reads. Put changes in [actions and procedures](/docs/plugin-sdk/actions).
+
+## Define and register a resource
+
+`defineResource` takes an `id`, an optional Zod `input` schema, a `query`, and an optional `refresh` policy. The query receives the validated input and the plugin `context`. Register the resource in `setup`:
 
 ```ts
-import { defineResource, poll } from "@northgraindata/dsui-plugin-sdk";
+import { defineResource, poll, z } from "@northgraindata/dsui-plugin-sdk";
 
 const clock = defineResource({
   id: "clock",
-  query: () => ({ timestamp: new Date().toISOString() }),
+  query: () => ({ now: new Date().toISOString() }),
   refresh: poll("5s"),
+});
+
+const echo = defineResource({
+  id: "echo",
+  input: z.object({ text: z.string().min(1) }),
+  query: ({ text }, context) => ({ text, plugin: context.pluginId }),
+});
+
+// Inside setup(registry):
+registry.resource(clock);
+registry.resource(echo);
+```
+
+## Choose a refresh policy
+
+| Policy | Behavior |
+| --- | --- |
+| `manual()` | DSUI reads the resource when a page asks for it, and doesn't refresh it on its own. This is the default |
+| `poll(interval)` | The same, and DSUI reads it again on a fixed interval. `interval` is `"500ms"`, `"5s"`, `"2m"`, or milliseconds |
+
+## Read a resource in a page
+
+A page's `render` function receives a `resource` reader. Pass it a resource, and an input if the resource takes one. DSUI runs the query on the resource's refresh policy, so a page that reads `clock` stays current without extra code:
+
+```ts
+definePage({
+  path: "/clock",
+  render: async ({ resource }) => {
+    const { now } = await resource(clock);
+    return [PageHeader({ title: now })];
+  },
 });
 ```
 
-Read declared resources through the page render function's `resource` reader.
-Keep reads in resources, mutations in [actions](/docs/plugin-sdk/actions), and
-scheduled work that must run without an open page in [jobs](/docs/plugin-sdk/jobs).
+## Call a resource over HTTP
 
-The [Health plugin](https://github.com/northgraindata/dsui/tree/main/packages/plugin-health/src/resources)
-shows host-backed service resources.
+DSUI lists a plugin's resources at `GET /api/v1/plugins/<plugin id>/resources`, with each resource's refresh policy and input schema. To run one, send the input as the body of `POST /api/v1/plugins/<plugin id>/resources/<resource id>`:
+
+```bash
+curl --request POST \
+  --header "Content-Type: application/json" \
+  --data '{"text": "hi"}' \
+  http://localhost:4192/api/v1/plugins/my-plugin/resources/echo
+```
+
+DSUI answers `{"data": …}`. An input that doesn't match the schema gets a `422` with `Plugin resource input is invalid`.

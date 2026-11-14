@@ -1,0 +1,20 @@
+{
+  "name": "CodeBlock",
+  "description": "Read-only syntax-highlighted code.",
+  "props": {
+    "label": {
+      "description": "Block label"
+    },
+    "value": {
+      "description": "Code content"
+    },
+    "language": {
+      "description": "Syntax language",
+      "default": "\"text\""
+    },
+    "data": {
+      "description": "Inline data to render as the code block content (alternative to `source`)"
+    }
+  },
+  "example": "CodeBlock({\n  label: \"Query\",\n  value: \"SELECT * FROM orders WHERE total > 100\",\n  language: \"sql\",\n})"
+}

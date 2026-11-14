@@ -1,0 +1,25 @@
+{
+  "name": "TextInput",
+  "description": "Text input field.",
+  "props": {
+    "name": {
+      "description": "Field name"
+    },
+    "label": {
+      "description": "Label text"
+    },
+    "value": {
+      "description": "Controlled value"
+    },
+    "onChange": {
+      "description": "Change callback (browser only)"
+    },
+    "placeholder": {
+      "description": "Placeholder text"
+    },
+    "secret": {
+      "description": "Mask input (password field)"
+    }
+  },
+  "example": "TextInput({ name: \"host\", label: \"Host\", placeholder: \"localhost\" })\nTextInput({ name: \"token\", label: \"Token\", secret: true })"
+}
