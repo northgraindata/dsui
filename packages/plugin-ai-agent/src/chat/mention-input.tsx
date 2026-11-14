@@ -155,7 +155,7 @@ export function MentionInput({
       <textarea
         ref={inputRef}
         role="combobox"
-        aria-label="Message DSUI Agent"
+        aria-label="Message AI assistant"
         aria-autocomplete="list"
         aria-haspopup="listbox"
         aria-expanded={Boolean(query)}

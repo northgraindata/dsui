@@ -12,7 +12,7 @@ Connect your data tools and manage them from one place. Explore your infrastruct
 
 ## One control plane across your stack
 
-Connect tools through adapters, run service operations, and use DSUI Agent to work across your connected stack.
+Connect tools through adapters, run service operations, and use the AI assistant to work across your connected stack.
 Extend the platform with plugins and SDKs.
 
 DSUI does not try to replace the tools you already run.
@@ -22,11 +22,11 @@ DSUI is the one workspace you keep open for the everyday operations across all o
 - Check a failed DAG or a failing dbt run.
 - Inspect a table or run a query.
 - See whether a service is healthy.
-- Ask DSUI Agent to investigate across several services in one conversation.
+- Ask the AI assistant to investigate across several services in one conversation.
 
-## DSUI Agent
+## AI assistant
 
-DSUI Agent is a chat inside the workspace.
+The AI assistant is a chat inside the workspace.
 It can inspect the services you have access to and help investigate an issue across them, using what each adapter exposes.
 It runs on the model provider you configure (OpenAI, Anthropic, Gateway or OpenRouter).
 Read the [plugin README](./packages/plugin-ai-agent/README.md) for setup.

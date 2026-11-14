@@ -93,7 +93,7 @@ export function createAiAgentPlugin(
   return definePlugin({
     metadata: {
       id: "ai-agent",
-      name: "DSUI Agent",
+      name: "AI assistant",
       version: "0.1.0",
       apiVersion: 1,
     },
@@ -110,7 +110,7 @@ export function createAiAgentPlugin(
         defineSlot({
           id: "chat-drawer",
           slot: "overlay",
-          presentation: { mode: "drawer", label: "DSUI Agent", width: 560 },
+          presentation: { mode: "drawer", label: "AI assistant", width: 560 },
           render: () => drawer(),
         }),
       );
