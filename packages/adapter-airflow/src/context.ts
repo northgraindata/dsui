@@ -157,6 +157,11 @@ export interface AirflowEventLog {
 }
 
 export interface AirflowClient {
+  /**
+   * Signs in ahead of the first request, so that request measures Airflow
+   * answering and not the login. Nothing to do for a method with no login.
+   */
+  authenticate(signal?: AbortSignal): Promise<void>;
   dispose(): void;
   getVersion(signal?: AbortSignal): Promise<AirflowVersion>;
   listDags(signal?: AbortSignal): Promise<DagSummary[]>;
