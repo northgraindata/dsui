@@ -1,13 +1,22 @@
 ---
 title: DuckDB
-description: Explore a local DuckDB database, run SQL, and manage extensions.
+description: Connect DSUI to an in-memory, file-based, or remote DuckDB database to browse its catalog, run SQL, and manage extensions.
+contentType: reference
 ---
 
-## Setup
+The DuckDB adapter opens a DuckDB database on the machine that runs DSUI, or attaches one in cloud storage or on a DuckDB server. It has several connection methods, so you must set `method` on every service.
 
-For a persistent database, use `method: file` with a path on the DSUI server filesystem. Mount the directory into the container first.
+## Add a DuckDB service
 
-```yaml
+Declare the adapter and the service in `dsui.yaml`. This example opens a database file:
+
+```yaml {12-13}
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-duckdb
+
 services:
   - id: warehouse
     adapter: duckdb
@@ -17,35 +26,55 @@ services:
       path: /data/warehouse.duckdb
 ```
 
-For a disposable database, use `method: memory`.
+The path is on the machine that runs DSUI, not in your browser. In Docker, mount the directory into the container first. See [run DSUI with Docker](/docs/getting-started/docker).
 
-```yaml
-connection:
-  method: memory
-  readOnly: false
-```
+## Connection methods
 
-## Available
+Choose one `method`. Every method also accepts `readOnly`, which defaults to `false`. When it's `true`, DuckDB opens the database in read-only mode.
 
-- Browse databases, schemas, tables, views, indexes, functions, and types
-- Preview data and inspect DDL
-- Run and cancel SQL queries
-- Create schemas, tables, views, and indexes
-- Attach databases and import data
-- Install, load, and manage extensions
-- Create secrets and work with notebooks
+### In-memory and file
+
+| Method | Fields | Meaning |
+| --- | --- | --- |
+| `memory` | | An empty database that exists only while DSUI holds the connection |
+| `file` | `path` (required) | A `.duckdb` file on the server's filesystem |
+
+DuckDB lets only one process hold a database file at a time. If another process has the file open, DSUI reports that the database file is locked. Close the other connection and try again. DSUI also runs requests to a `file` service one after another, not in parallel.
+
+### Cloud storage
+
+These methods open the database at `url` and create a DuckDB secret from the credential fields. All credential fields are optional.
+
+| Method | Storage | `url` scheme | Credential fields |
+| --- | --- | --- | --- |
+| `s3` | S3, MinIO, and other S3-compatible storage | `s3:` or `https:` | `s3AccessKeyId`, `s3SecretAccessKey`, `s3SessionToken`, `s3Region`, `s3Endpoint` |
+| `gcs` | Google Cloud Storage, through its S3 API with HMAC keys | `gcs:`, `gs:`, or `https:` | `gcsKeyId`, `gcsSecret` |
+| `r2` | Cloudflare R2 | `r2:` or `https:` | `r2KeyId`, `r2Secret`, `r2AccountId` |
+| `azure` | Azure Blob Storage | `az:`, `azure:`, or `https:` | `connectionString` |
+
+`url` is required for all of them. For example, `url: "s3://your_bucket/warehouse.duckdb"`.
+
+### DuckDB server
+
+| Method | Fields | Meaning |
+| --- | --- | --- |
+| `quack` | `uri`, `token`, `disableSsl` | A remote DuckDB instance served over HTTP |
+
+`uri` must start with `quack:` and defaults to `quack:localhost`. `token` authenticates DSUI to the server. `disableSsl` defaults to `false`, so reads use HTTPS unless you set it to `true`.
+
+## What you can do
+
+- **Data**: browse databases, schemas, tables, views, sequences, indexes, macros, functions, and types. Open a table to see its columns, a preview of its rows, and its DDL
+- **Query**: write and run SQL, and cancel a running query. DSUI keeps a history of the queries you run
+- **Notebooks**: create, save, duplicate, import, and delete notebooks
+- **Extensions**: install, load, unload, and reload DuckDB extensions
+- **Settings and secrets**: set and reset DuckDB settings, and create and drop secrets
+- **Changes**: attach and detach databases, create and drop schemas, tables, views, and indexes, and import data
 
 ## Signals
 
-Running a query from DSUI emits `duckdb.query-succeeded` or
-`duckdb.query-failed`, with the operation, duration, and row count or error
-code. Query text is not included. DuckDB's query history is maintained by
-DSUI, so queries launched outside DSUI do not emit these signals.
+Running a query in DSUI emits the signal `query-succeeded` or `query-failed`. The payload holds the operation, the duration in milliseconds, and the row count or the error code. It never includes the query text. DSUI keeps the query history, so queries that other clients run don't emit signals.
 
-## Not yet available
+## Use with a DSUI Agent
 
-- Multi-user database access control
-- A managed DuckDB server
-- Full coverage of every DuckDB extension and remote storage provider
-
-The file path is evaluated by DSUI, not by your browser. Mount the directory into the DSUI container before using a file-backed database.
+Remote DuckDB methods aren't verified to work through a DSUI Agent. The adapter doesn't read the proxy variables that DSUI sets for one. See [private networks](/docs/guides/private-networks#adapter-support).

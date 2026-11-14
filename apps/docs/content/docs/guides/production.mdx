@@ -1,0 +1,71 @@
+---
+title: Run DSUI in production
+description: Pin versions, persist and back up data, set the master key, and put DSUI behind a reverse proxy.
+contentType: how-to
+---
+
+This guide covers what to settle before other people rely on your DSUI installation: which version runs, where its data lives, how its encryption key is stored, and how people reach it.
+
+## Pin the versions
+
+By default, the quickstart follows the latest release and the `main` branch of the adapters. For a repeatable deployment, pin all three:
+
+- **DSUI**: use a release version in place of `latest`, such as `ghcr.io/northgraindata/dsui:release_version` for Docker, or `npx @northgraindata/dsui@release_version`. Releases publish the image and the npm package with the same version
+- **Adapters**: set `ref` to a tag or a commit SHA that you reviewed. Without a `ref`, DSUI builds the adapter from `main`
+- **Plugins**: set `ref` the same way on each `source: git` plugin
+
+```yaml {5}
+adapters:
+  postgresql:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: a_reviewed_commit_sha
+    path: packages/adapter-postgresql
+```
+
+## Keep the data directory
+
+DSUI stores its state in a data directory. It holds the database (`dsui.sqlite`), the files that adapters and plugins store (`blobs`), and the master key (`.master-key`).
+
+- **npx**: `~/.local/share/dsui`. Set `DSUI_DATA_DIR` to change it. DSUI also follows `XDG_DATA_HOME`
+- **Docker**: `/data`. Mount a volume there, so state survives a new container
+
+Back up the whole directory, including `.master-key`. Without the key, DSUI can't read the connections that people saved in the workspace.
+
+DSUI builds adapters from source when it starts. In Docker, the package cache lives on the `/data` volume, so a restart doesn't download dependencies again.
+
+## Set the master key yourself
+
+DSUI encrypts connections that people save in the workspace with a master key. If you don't set one, DSUI creates a key in `.master-key` in the data directory the first time it starts.
+
+For Docker, CI, or more than one instance, set the key yourself so it doesn't depend on a file. It must be a base64-encoded 32-byte key:
+
+```bash
+openssl rand -base64 32
+```
+
+Pass the result as `DSUI_MASTER_KEY`. Store it in your secret manager, and keep the same value across restarts and upgrades.
+
+## Put DSUI behind a reverse proxy
+
+DSUI binds to `0.0.0.0` on port `4192`. Set `DSUI_HOST` and `DSUI_PORT` to change that.
+
+DSUI has no sign-in of its own, and it terminates no TLS. Run it behind a reverse proxy that handles both, or keep it on a private network. Without an authentication plugin, everyone who can reach DSUI is the owner. See [how DSUI works](/docs/getting-started/concepts#access-control).
+
+- Forward requests to DSUI and keep the `Host` header
+- Allow WebSocket upgrades if you use [DSUI Agents](/docs/guides/private-networks)
+- Set `DSUI_TRUST_PROXY=1` so DSUI shows an agent's real address instead of the proxy's
+
+## Host DSUI under a URL prefix
+
+To serve DSUI at a path such as `/dsui`, build the image from a checkout of the repository with the prefix. The workspace's files are built for one prefix, so you can't change it at run time:
+
+```bash
+docker build --build-arg DSUI_WEB_BASE_PATH=/dsui/ -t your_registry/dsui .
+```
+
+Configure the proxy to route `/dsui` to the container and to strip the prefix. The default, `/`, serves DSUI from the root of the host.
+
+## Choose telemetry
+
+DSUI sends anonymous usage counts by default. See [telemetry](/docs/reference/telemetry) for what it sends and how to turn it off.

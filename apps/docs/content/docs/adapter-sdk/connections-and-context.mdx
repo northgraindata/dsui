@@ -1,0 +1,83 @@
+---
+title: Connections and context
+description: Reference for connection methods, how DSUI turns them into a form, and how the context that your resources and actions share is created and disposed.
+contentType: reference
+---
+
+A connection method describes one way to reach a service. DSUI builds the connection form from your schema, validates what a person enters, and passes the result to your context function. The context is the object that your resources, actions, jobs, and health check share.
+
+## Declare connection methods
+
+`connectionMethods` is a record. Each key is a method ID in kebab-case, and each value describes the method:
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `label` | Yes | Name shown in the form |
+| `description` | No | A sentence shown under the label |
+| `schema` | Yes | A Zod object schema of the method's fields. It doesn't include `method` |
+| `requestConcurrency` | No | `parallel` (default), or `serial` to queue requests for this method |
+| `contextIdleTimeoutMs` | No | Milliseconds to keep the context after a request. `0` (default) disposes it immediately |
+
+```ts
+import { defineAdapter, z } from "@northgraindata/dsui-adapter-sdk";
+
+export default defineAdapter({
+  // …
+  connectionMethods: {
+    file: {
+      label: "Local file",
+      requestConcurrency: "serial",
+      schema: z.object({ path: z.string().min(1) }),
+    },
+    server: {
+      label: "Server",
+      contextIdleTimeoutMs: 300_000,
+      schema: z.object({ url: z.string().url(), token: z.string().optional() }),
+    },
+  },
+});
+```
+
+### One method or several
+
+With one method, the schema is the connection schema as it is. People fill in its fields, and nobody sets `method`. With several methods, DSUI adds a `method` field, set to the method's ID, and it validates the rest against that method's schema. A person who writes `dsui.yaml` must then set `method`. The [integrations](/docs/integrations) page shows this for each official adapter.
+
+### Group related methods
+
+A method with `methods` instead of `schema` is a group. A group only organizes the form into sub-tabs. DSUI validates the methods inside it as if they were top-level.
+
+```ts
+connectionMethods: {
+  remote: {
+    label: "Remote",
+    methods: {
+      s3: { label: "S3", schema: s3Schema },
+      gcs: { label: "Google Cloud Storage", schema: gcsSchema },
+    },
+  },
+},
+```
+
+### Describe fields
+
+DSUI converts your schema to JSON Schema to build the form, so a `.describe()` on a field carries its help text into the form.
+
+## Create and dispose the context
+
+`context` receives the validated connection, and returns the context object or a promise of it. Without it, the context is an empty object. `disposeContext` releases what `context` opened, such as clients and sockets.
+
+```ts
+defineAdapter({
+  // …
+  context: async (config) => ({ client: await connect(config) }),
+  disposeContext: (ctx) => ctx.client.close(),
+});
+```
+
+By default, DSUI builds a fresh context for each request and disposes it as soon as the request ends. Keep `context` cheap, and open slow resources lazily. When creating the context is expensive, set `contextIdleTimeoutMs` on the method. DSUI then keeps the context between requests and disposes it after it has been idle that long.
+
+A context belongs to one configured service, so it never mixes connections. Keep per-person or per-page state out of it. Use a [store](/docs/adapter-sdk/stores) for that.
+
+## Support the DSUI Agent
+
+When a service goes through a [DSUI Agent](/docs/guides/private-networks), DSUI starts your adapter's process with `HTTP_PROXY`, `HTTPS_PROXY`, and `DSUI_CONNECTOR_PROXY_URL` set. A client that follows the standard proxy variables needs nothing more. A client that opens its own sockets must read `DSUI_CONNECTOR_PROXY_URL` and connect through that proxy.

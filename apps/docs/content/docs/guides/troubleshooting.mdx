@@ -1,43 +1,112 @@
 ---
 title: Troubleshooting
-description: Diagnose the common setup failures before opening an issue.
+description: Fix the most common startup, adapter, and connection problems, starting from the message DSUI shows.
+contentType: troubleshooting
 ---
 
-## Docker networking
+Find the message or symptom you see, then follow the fix. If none of them match, run `dsui doctor` first. It checks your configuration and builds every adapter, and it names what failed.
 
-Inside Compose, use service names such as `http://airflow:8080`. Do not use `localhost` for another container.
+## Check your setup with dsui doctor
+
+`dsui doctor` loads your configuration, builds each adapter, and prints one line per adapter. It exits with code `0` when every adapter loads and `1` otherwise.
+
+```bash
+npx @northgraindata/dsui doctor
+```
+
+In Docker, run it inside the running container and set `DSUI_CONFIG`. Unlike the server, `doctor` doesn't fall back to `/etc/dsui/dsui.yaml`:
+
+```bash
+docker compose exec -e DSUI_CONFIG=/etc/dsui/dsui.yaml dsui dsui doctor
+```
+
+Two options change the output:
+
+- **`--json`**: prints the report as JSON, for scripts
+- **`--check-adapters`**: only confirms that local adapter paths exist, without building. Use it for fast health checks
+
+## Configuration file not found
+
+**Message**: `Configuration file was not found: <path>`
+
+DSUI can't open the file that `DSUI_CONFIG` points to. Check the path and the spelling.
+
+- **npx**: DSUI loads `dsui.yaml` from the directory where you run the command. Run it from the directory that holds the file, or set `DSUI_CONFIG`.
+- **Docker**: DSUI reads `/etc/dsui/dsui.yaml` unless you set `DSUI_CONFIG`. Check that your Compose file mounts the file at that path.
+
+## Invalid configuration
+
+**Message**: `Invalid configuration: …`
+
+The message includes the field and the rule it broke. These are the common ones:
+
+- `service id must be kebab-case`: use lowercase letters, digits, and hyphens, starting with a letter, as in `local-duckdb`
+- `must be a git+https://github.com/owner/repository URL`: write the adapter's `repository` in that form
+- `ref contains unsupported characters`: a `ref` can contain only letters, digits, `.`, `_`, `/`, and `-`
+
+See [configuration](/docs/reference/configuration) for every option.
+
+## A required environment variable is missing
+
+**Message**: `Configuration requires environment variable NAME`
+
+Your `dsui.yaml` uses `${NAME}`, and the DSUI process doesn't have that variable. A variable in your shell isn't enough if DSUI runs elsewhere. In Docker, add the variable under `environment` in your Compose file.
+
+## An adapter is unavailable
+
+**Message**: `1 adapter unavailable · the workspace starts without it`, or `Cannot build adapter "<id>": …`
+
+DSUI builds each adapter from source when it starts. If a build fails, the workspace still starts without that adapter. Run `dsui doctor` to see the reason, then match it:
+
+| Reason | Fix |
+| --- | --- |
+| A download or install command failed | Check that the machine can reach GitHub and the npm registry. The build needs network access |
+| `Source archive has no package in "<path>"` | The `path` doesn't exist in the repository at that `ref`. Check both |
+| `Adapter source has no readable package.json` | `path` points at a directory that isn't an adapter package |
+| `Adapter declares id "a" but is registered as "b"` | The key under `adapters` must equal the ID the adapter declares. Rename the key |
+| `adapter source must be a local path, a package, or a GitHub repository` | Use `source: git` or `source: local`. DSUI doesn't load adapters by package name |
+
+## DSUI can't reach a service
+
+DSUI calls your services from the server, not from your browser. A host name must resolve from where DSUI runs.
+
+In Docker Compose, use the service name of the other container, such as `http://airflow:8080`. `localhost` is the DSUI container itself.
 
 ```yaml
 connection:
   baseUrl: http://airflow:8080
 ```
 
-## Connection refused
-
-Check that the target service is running, exposes the expected port, and is reachable from the DSUI container.
-
-```bash
-docker compose ps
-docker compose logs dsui
-docker compose logs airflow
-```
-
-If DSUI starts before the target is ready, add a healthcheck and `depends_on` condition to Compose.
+If DSUI starts before the service is ready, add a healthcheck to the service and a `depends_on` condition with `service_healthy` to DSUI. If the service is in a private network, use the [DSUI Agent](/docs/guides/private-networks).
 
 ## Authentication failed
 
-Confirm the base URL, username, and password outside DSUI first. For environment variables, make sure they are present in the DSUI process, not only in your shell.
+Confirm the address, username, and password outside DSUI first. Then check that your environment variables reach the DSUI process. Never paste credentials into an issue or a screenshot.
 
-Never paste credentials into an issue or a screenshot.
+## Saved connections can't be decrypted
 
-## CORS and proxies
+**Message**: `Could not decrypt stored service connection`, or `Could not read DSUI master key at <path>`
 
-Your browser talks to DSUI. DSUI talks to the adapter target. A target service normally does not need CORS configured for DSUI.
+DSUI encrypts connections that you save in the workspace with a master key. By default it creates the key in `.master-key` in the data directory, so it needs that file to read connections it saved earlier.
 
-When using a reverse proxy, forward requests to DSUI and preserve the `Host` header. Check browser developer tools for requests failing before they reach DSUI.
+- If you moved or deleted the data directory, restore the `.master-key` file from it.
+- If you set `DSUI_MASTER_KEY`, keep the same value. It must be a base64-encoded 32-byte key.
+- Connections declared in `dsui.yaml` aren't affected.
 
-## Logs and issue reports
+## The port is already in use
 
-For Docker, start with `docker logs <dsui-container>`. From a source checkout, copy the server terminal output.
+DSUI listens on port `4192`. Set `DSUI_PORT` to use another port, or `0` to let the system pick one. The terminal prints the address it uses.
 
-When you [open an issue](https://github.com/northgraindata/dsui/issues/new), include the DSUI version or commit, adapter, target version, sanitized configuration, expected behavior, actual behavior, and relevant logs.
+## DSUI can't write to the data directory
+
+The Docker image runs as user ID `65532`. A named volume works without changes. If you mount a host directory at `/data`, make it writable by that user ID.
+
+## Browser requests fail with a reverse proxy
+
+Your browser talks only to DSUI, so the services you connect don't need CORS settings for DSUI. When a reverse proxy sits in front of DSUI, forward requests to DSUI and keep the `Host` header. Check your browser's developer tools for requests that fail before they reach DSUI.
+
+## Collect logs for an issue report
+
+For Docker, run `docker compose logs dsui`. For npx, copy the terminal output. Run `dsui version` to get the version.
+
+When you [open an issue](https://github.com/northgraindata/dsui/issues/new), include the DSUI version, the adapter, the version of the service, your configuration with secrets removed, what you expected, what happened, and the logs.

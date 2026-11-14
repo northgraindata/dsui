@@ -1,45 +1,70 @@
 ---
 title: S3
-description: Browse and manage S3-compatible object storage.
+description: Connect DSUI to AWS S3, MinIO, or another S3-compatible store to browse buckets, preview objects, and upload, copy, and delete them.
+contentType: reference
 ---
 
-## Setup
+The S3 adapter works with AWS S3 and with any storage that speaks the S3 API, such as MinIO. It has a single connection method, so you don't set `method`.
 
-```yaml
+## Add an S3 service
+
+Declare the adapter and the service in `dsui.yaml`:
+
+```yaml {13-14}
+adapters:
+  s3:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-s3
+
 services:
-  - id: storage
+  - id: files
     adapter: s3
-    name: Storage
+    name: Data lake
     connection:
-      region: us-east-1
-      accessKeyId: ${S3_ACCESS_KEY_ID}
-      secretAccessKey: ${S3_SECRET_ACCESS_KEY}
+      region: eu-west-1
+      accessKeyId: ${AWS_ACCESS_KEY_ID}
+      secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
 ```
 
-For MinIO or another S3-compatible endpoint, set `endpoint` and `forcePathStyle`.
+For MinIO or another compatible store, add the store's `endpoint` and turn on `forcePathStyle`:
 
 ```yaml
 connection:
   endpoint: http://minio:9000
   forcePathStyle: true
+  accessKeyId: ${MINIO_ACCESS_KEY}
+  secretAccessKey: ${MINIO_SECRET_KEY}
 ```
 
-## Available
+See [connect a service](/docs/guides/connect-a-service) for how credentials work.
 
-- List buckets and browse objects and folders
-- Object details, metadata, tags, and versions
-- Preview text and images
-- Upload, copy, move, and delete objects
-- Presigned download URLs and folder zip downloads
-- Recent activity
+## Connection fields
+
+| Field | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `accessKeyId` | Yes | | Access key ID |
+| `secretAccessKey` | Yes | | Secret access key |
+| `region` | No | `us-east-1` | Region of your buckets |
+| `endpoint` | No | AWS | URL of an S3-compatible store. Leave it out for AWS S3 |
+| `forcePathStyle` | No | `false` | Put the bucket name in the URL path instead of the host name. Turn it on for MinIO |
+| `publicEndpoint` | No | The `endpoint` | URL that browsers use to reach the store. DSUI signs download links against it |
+
+Set `publicEndpoint` when `endpoint` is an address that only DSUI can reach, such as `http://minio:9000` inside a Compose network, and your browser needs a different address to download files.
+
+## What you can do
+
+- **Buckets**: list your buckets and see each bucket's versioning, encryption, policy, object count, and size
+- **Browse**: open folders, see an object's size, type, storage class, metadata, tags, and versions, and preview text and images
+- **Change**: upload objects, create folders, copy objects, and delete objects
+- **Share and download**: create a presigned download link that is valid from 60 seconds up to 7 days, and download a folder as a ZIP file
+- **Activity**: review the actions that DSUI ran against the store
 
 ## Signals
 
-Successful uploads emit `s3.object-uploaded`; successful delete operations emit
-`s3.objects-deleted` with the bucket, affected keys, and object count. Failed
-operations do not emit success signals.
+- **`object-uploaded`**: emitted after an upload. The payload holds the bucket, the key, the content type, and the size in bytes
+- **`objects-deleted`**: emitted after a delete. The payload holds the bucket, the keys, and the number of deleted objects
 
-## Not yet available
+## Use with a DSUI Agent
 
-- Bucket lifecycle and policy editing
-- Multipart upload management
+The S3 adapter doesn't read the proxy variables that DSUI sets for a DSUI Agent, so a store in a private network isn't verified to work through an agent. See [private networks](/docs/guides/private-networks#adapter-support).

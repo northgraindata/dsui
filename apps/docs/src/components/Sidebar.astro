@@ -1,0 +1,49 @@
+---
+import type { Root } from "fumadocs-core/page-tree";
+import { activeSection, normalizePath, sectionsOf } from "@/lib/tree";
+import SidebarNode from "./SidebarNode.astro";
+
+interface Props {
+  tree: Root;
+  pathname: string;
+}
+
+const { tree, pathname } = Astro.props;
+const current = normalizePath(pathname);
+const sections = sectionsOf(tree, pathname);
+const section = activeSection(tree, pathname);
+const loosePages = tree.children.filter((node) => node.type === "page");
+// The home page leads the first section, so the sidebar can link back to it.
+const home = loosePages.find((page) => normalizePath(page.url) === "/docs");
+const extras = loosePages.filter((page) => page !== home);
+const firstSection = tree.children.find((node) => node.type === "folder");
+const nodes = section
+  ? [
+      ...(home && section === firstSection
+        ? [{ ...home, name: "Introduction" }]
+        : []),
+      ...(section.index ? [section.index] : []),
+      ...section.children,
+    ]
+  : [];
+---
+<nav class="sidebar-scroll" aria-label="Documentation">
+  <ul class="sidebar-sections" aria-label="Sections">
+    {sections.map((item) => (
+      <li>
+        <a href={item.href} aria-current={item.active ? "true" : undefined}>{item.name}</a>
+      </li>
+    ))}
+  </ul>
+  {section && (
+    <div class="sidebar-group">
+      <p class="sidebar-heading">{section.name}</p>
+      <SidebarNode nodes={nodes} current={current} />
+    </div>
+  )}
+  {extras.length > 0 && (
+    <div class="sidebar-footer">
+      <SidebarNode nodes={extras} current={current} />
+    </div>
+  )}
+</nav>

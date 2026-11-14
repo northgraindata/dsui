@@ -1,0 +1,47 @@
+{
+  "name": "Chart",
+  "description": "Time series drawn as a line or area, bound to a resource or given as points.",
+  "props": {
+    "source": {
+      "description": "Resource binding that supplies the series. Use either `source` or `points`."
+    },
+    "points": {
+      "description": "Points the page already holds, as `{ time, value }` with `time` in milliseconds since the epoch"
+    },
+    "windows": {
+      "description": "Time windows the viewer can choose. The first is selected."
+    },
+    "kind": {
+      "description": "Line or filled area",
+      "default": "\"line\""
+    },
+    "scale": {
+      "description": "Which end of the value axis is bad",
+      "default": "\"higher-is-worse\""
+    },
+    "yRange": {
+      "description": "Fixed value axis range. Samples outside the range are clipped."
+    },
+    "referenceLine": {
+      "description": "One fixed value to mark, such as a threshold"
+    },
+    "referenceLines": {
+      "description": "Several fixed values to mark"
+    },
+    "exaggerate": {
+      "description": "Tighten the value axis so small movements fill the height",
+      "default": "false"
+    },
+    "lineWidth": {
+      "description": "Stroke width of the plotted line",
+      "default": "2"
+    },
+    "showValue": {
+      "description": "Print the latest value over the chart"
+    },
+    "label": {
+      "description": "Accessible description of what is plotted"
+    }
+  },
+  "example": "Chart({\n  source: loadAverage(),\n  windows: [\n    { label: \"1 hour\", secs: 3600 },\n    { label: \"24 hours\", secs: 86400 },\n  ],\n  scale: \"higher-is-worse\",\n  referenceLine: { value: 4, label: \"CPU count\" },\n  label: \"Load average\",\n})"
+}

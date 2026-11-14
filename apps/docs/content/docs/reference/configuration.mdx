@@ -1,117 +1,18 @@
 ---
 title: Configuration
-description: Declare services in dsui.yaml and keep secrets outside the file.
+description: Reference for every key in dsui.yaml, including services, adapters, plugins, settings, and telemetry, and for when a change takes effect.
+contentType: reference
 ---
 
-`dsui.yaml` describes the services DSUI should load at startup.
+`dsui.yaml` declares the adapters DSUI loads, the services that use them, the plugins that extend it, and a few installation settings. This page lists every key. For task-focused steps, see [connect a service](/docs/guides/connect-a-service) and [plugins](/docs/guides/plugins).
 
-```yaml
-adapters:
-  duckdb:
-    source: git
-    repository: "git+https://github.com/northgraindata/dsui"
-    ref: main
-    path: packages/adapter-duckdb
+## Where DSUI finds the file
 
-services:
-  - id: local-duckdb
-    adapter: duckdb
-    name: Local DuckDB
-    connection:
-      method: memory
-      readOnly: false
-```
+DSUI reads the file named by the `DSUI_CONFIG` environment variable. If it isn't set, the npx launcher uses `dsui.yaml` in the current directory when it exists, and the Docker image uses `/etc/dsui/dsui.yaml` when it exists. If no file is configured, DSUI starts with no services and no adapters. If `DSUI_CONFIG` points to a file that doesn't exist, DSUI stops with `Configuration file was not found`.
 
-`id` must be kebab-case. `adapter` selects a loaded adapter. `connection` is validated by that adapter before DSUI connects.
+A relative `DSUI_CONFIG` is looked up from the current directory, then from each parent directory.
 
-Adapters must be declared explicitly in `adapters:`; a service references one by ID.
-The examples below download and build the official DuckDB adapter from GitHub,
-so first startup requires network access. `ref: main` follows development; use a
-reviewed commit SHA for a reproducible deployment.
-
-## Complete local example
-
-This is a complete file-backed DuckDB setup. The DuckDB file and DSUI's local
-state live in the `dsui-data` Docker volume, so both survive container restarts.
-
-Project layout:
-
-```text
-.
-├── compose.yaml
-└── dsui.yaml
-```
-
-Create `dsui.yaml`:
-
-```yaml
-adapters:
-  duckdb:
-    source: git
-    repository: "git+https://github.com/northgraindata/dsui"
-    ref: main
-    path: packages/adapter-duckdb
-
-services:
-  - id: warehouse
-    adapter: duckdb
-    name: Analytics warehouse
-    connection:
-      method: file
-      path: /data/warehouse.duckdb
-```
-
-Create `compose.yaml` next to it:
-
-```yaml
-services:
-  dsui:
-    image: ghcr.io/northgraindata/dsui:latest
-    ports:
-      - "4192:4192"
-    environment:
-      DSUI_CONFIG: /etc/dsui/dsui.yaml
-    volumes:
-      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
-      - dsui-data:/data
-
-volumes:
-  dsui-data:
-```
-
-Start the workspace:
-
-```bash
-docker compose up -d
-```
-
-Open [http://localhost:4192](http://localhost:4192), select **Analytics warehouse**,
-and open **Query**. You can now run SQL against `/data/warehouse.duckdb`.
-
-Stop the container without removing its data:
-
-```bash
-docker compose down
-```
-
-Use `docker compose down -v` only when you also want to delete the DuckDB file
-and DSUI's persisted local state.
-
-Configuration is read by the DSUI process, while credentials should come from
-environment variables. In Docker, the `/data` volume persists DSUI state and
-file-backed databases; in the npx runtime, local state lives under
-`~/.local/share/dsui`.
-
-DSUI automatically generates `~/.local/share/dsui/.master-key` for local
-UI-managed connections. Do not delete or replace it if the data directory
-contains saved connections. For controlled deployments, provide a stable
-32-byte base64 key through `DSUI_MASTER_KEY` and keep it in your secret store.
-
-## Connect an existing stack
-
-The same file can declare several services. Use the Compose service name as the
-host when DSUI and the service run in the same Compose project. Put credentials
-in the environment rather than committing them to `dsui.yaml`.
+## A complete example
 
 ```yaml
 adapters:
@@ -120,57 +21,127 @@ adapters:
     repository: "git+https://github.com/northgraindata/dsui"
     ref: main
     path: packages/adapter-postgresql
-  airflow:
-    source: git
-    repository: "git+https://github.com/northgraindata/dsui"
-    ref: main
-    path: packages/adapter-airflow
 
 services:
-  - id: postgres
+  - id: app-database
     adapter: postgresql
     name: Application database
     connection:
-      method: postgresql
       host: postgres
       database: app
       username: ${POSTGRES_USER}
       password: ${POSTGRES_PASSWORD}
 
-  - id: airflow
-    adapter: airflow
-    name: Airflow
-    connection:
-      method: airflow
-      baseUrl: http://airflow:8080
-      username: ${AIRFLOW_USERNAME}
-      password: ${AIRFLOW_PASSWORD}
+plugins:
+  health:
+    package: "@northgraindata/dsui-plugin-health"
+
+settings:
+  name: Analytics production
+  environment: production
+  timeZone: UTC
+
+telemetry:
+  enabled: false
 ```
 
-Each service gets its own adapter context and appears as a separate service in
-the DSUI workspace. Adding a service here does not start that service; it tells
-DSUI how to connect to one that is already running.
+## Environment variables in values
 
-## Secrets
+Any string value can contain `${NAME}`. DSUI replaces it with the value of the environment variable `NAME` when it reads the file. A name uses uppercase letters, digits, and underscores, and starts with a letter or an underscore. If the variable isn't set, DSUI stops with `Configuration requires environment variable NAME`.
 
-Use environment variables for credentials.
+## Top-level keys
 
-```yaml
-connection:
-  baseUrl: http://airflow:8080
-  username: ${AIRFLOW_USERNAME}
-  password: ${AIRFLOW_PASSWORD}
-```
+| Key | Meaning |
+| --- | --- |
+| `services` | The services that DSUI connects to |
+| `adapters` | Where DSUI gets each adapter |
+| `plugins` | The plugins that DSUI loads |
+| `settings` | Installation settings that you want to manage in the file |
+| `telemetry` | Whether DSUI sends anonymous usage data |
+| `auth` | Accepted for compatibility. `auth.mode` can be `none`, `local`, or `enterprise`, but DSUI doesn't read it |
 
-Missing variables stop startup. Never commit credentials. Services declared in `dsui.yaml` are read-only in the DSUI service manager.
+DSUI ignores any other top-level key. Inside `adapters` and `plugins`, an entry that has an unknown key is an error.
 
-## Add an adapter source
+## services
 
-Adapters are loaded only from explicit sources in `adapters:`. A local checkout can use `source: local` with a package directory; the examples above use GitHub sources. The current startup loader builds local and GitHub sources. A bare `package:` entry is accepted by the configuration schema but is not supported by that source-building startup path.
+A list. Each entry describes one service.
 
-```yaml
-adapters:
-  example:
-    source: local
-    path: ./my-adapter
-```
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `id` | Yes | Lowercase letters, digits, and hyphens, starting with a letter. Must be unique |
+| `adapter` | Yes | A key under `adapters` |
+| `name` | No | Display name, 1 to 120 characters |
+| `connection` | No | The fields that the adapter defines. Defaults to an empty object |
+
+An adapter with several connection methods needs `method` in `connection`. The page for each [integration](/docs/integrations) lists its fields. A service ID can't also belong to a service that you added in the workspace.
+
+## adapters
+
+A map from adapter ID to a source. The key must equal the ID that the adapter declares. DSUI builds every adapter from source, so only these two sources load:
+
+### source: git
+
+Builds an adapter from a GitHub repository.
+
+| Field | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `source` | Yes | | `git` |
+| `repository` | Yes | | `git+https://github.com/owner/repository` |
+| `ref` | No | `main` | A branch, tag, or commit SHA. It can contain letters, digits, `.`, `_`, `/`, and `-` |
+| `path` | No | Repository root | Directory of the adapter package |
+
+To pin an adapter, set `ref` to a commit SHA that you reviewed. The schema also accepts `commit` together with `integrity`, but DSUI uses the commit as the `ref` and doesn't verify the digest.
+
+### source: local
+
+Builds an adapter from a directory on the machine that runs DSUI.
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `source` | Yes | `local` |
+| `path` | Yes | Absolute, or relative to the directory where DSUI started |
+
+### Entries that don't load
+
+- **`package`**: a bare package name, or a package with `version` and `integrity`. The schema accepts these, but DSUI can't load them
+- **`name`, `description`, `iconUrl`**: a presentation override. The schema accepts it, but nothing reads it
+
+## plugins
+
+A map from plugin ID to a source. The key must equal the ID that the plugin declares. Every entry also takes `enabled`, `critical`, and `config`.
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `true` | `false` keeps the entry without loading the plugin |
+| `critical` | Off | `true` makes DSUI refuse to start if the plugin can't load. A plugin that declares `security: true` must set it |
+| `config` | `{}` | Options that the plugin defines |
+
+Choose one source:
+
+| Source | Fields | Meaning |
+| --- | --- | --- |
+| Installed package | `package`, optional `browserBundle` | A package name. The first-party plugins are bundled with the npm package and the Docker image. `browserBundle` names the plugin's browser module |
+| `source: local` | `path` | Builds from a directory |
+| `source: git` | `repository`, optional `ref`, `path`, `token` | Builds from a GitHub repository, as `owner/name` or `git+https://github.com/owner/name`. `ref` defaults to `main`, and `token` is for private repositories |
+
+## settings
+
+Installation settings that you manage in the file. Each one is read-only in the workspace while it's set. See [workspace settings](/docs/guides/workspace-settings#manage-general-settings-in-dsuiyaml).
+
+| Key | Values |
+| --- | --- |
+| `name` | 1 to 80 characters |
+| `environment` | `local`, `development`, `staging`, or `production` |
+| `timeZone` | `browser`, or an IANA time zone such as `Europe/Warsaw` |
+
+## telemetry
+
+| Key | Meaning |
+| --- | --- |
+| `enabled` | `false` turns telemetry off. See [telemetry](/docs/reference/telemetry) |
+
+## When a change takes effect
+
+- **`services`, `adapters`, `settings`**: DSUI re-reads the file when the workspace loads its services, so these apply without a restart. When the `adapters` section changes, DSUI builds the adapters again
+- **`plugins`**: DSUI loads plugins once, when it starts, so restart DSUI
+- **`telemetry`**: DSUI reads it at startup, so restart DSUI

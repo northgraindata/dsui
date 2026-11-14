@@ -1,45 +1,67 @@
 ---
 title: PostgreSQL
-description: Inspect PostgreSQL databases and run SQL queries.
+description: Connect DSUI to a PostgreSQL server to browse databases, schemas, and tables, run SQL, and watch and cancel running queries.
+contentType: reference
 ---
 
-## Setup
+The PostgreSQL adapter connects to a PostgreSQL server with structured settings. It has a single connection method, so you don't set `method`.
 
-```yaml
+## Add a PostgreSQL service
+
+Declare the adapter and the service in `dsui.yaml`:
+
+```yaml {15-16}
+adapters:
+  postgresql:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-postgresql
+
 services:
-  - id: postgres
+  - id: app-database
     adapter: postgresql
-    name: Local Postgres
+    name: Application database
     connection:
       host: postgres
       port: 5432
       database: app
-      databaseScope: all
       username: ${POSTGRES_USER}
       password: ${POSTGRES_PASSWORD}
 ```
 
-Use the Compose service name as `host` when DSUI and PostgreSQL run in the same project.
+In Docker Compose, use the service name of the PostgreSQL container as `host`. `localhost` is the DSUI container itself. See [connect a service](/docs/guides/connect-a-service) for how credentials work.
 
-`databaseScope` controls whether DSUI shows all accessible databases or only the connection database.
+## Connection fields
 
-## Available
+| Field | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `host` | Yes | | Host name or address of the server |
+| `port` | No | `5432` | Port of the server |
+| `database` | Yes | | The database DSUI connects to first |
+| `databaseScope` | No | `all` | `all` lists every database the user can access. `selected` shows only `database` |
+| `username` | Yes | | Role to sign in with |
+| `password` | No | None | Password of the role |
+| `sslMode` | No | `prefer` | `disable`, `prefer`, `require`, `verify-ca`, or `verify-full`. The two `verify` modes check the server certificate |
+| `sslRootCert` | No | None | Certificate authority certificate, as PEM text |
+| `sslCert` | No | None | Client certificate, as PEM text |
+| `sslKey` | No | None | Client private key, as PEM text |
+| `connectTimeout` | No | `10` | Seconds to wait for a connection |
+| `statementTimeout` | No | `60000` | Milliseconds before the server stops a statement |
+| `applicationName` | No | `dsui` | Name that DSUI reports to PostgreSQL, visible in `pg_stat_activity` |
 
-- Server info and overview metrics
-- Databases, schemas, relations, columns, indexes, and constraints
-- Relation previews
-- Run and cancel SQL queries, including database-aware queries
-- Activity and connection usage
+The certificate fields take the certificate text itself, not a file path.
+
+## What you can do
+
+- **Overview**: database size, and counts of schemas, tables, views, indexes, and active connections
+- **Data**: browse databases, schemas, and relations, and open a relation to see its columns, indexes, constraints, and a preview of its rows
+- **Query**: write and run SQL against any database that the scope allows. A query returns at most 1,000 rows by default, and never more than 10,000
+- **Activity**: see running queries and connection usage, and cancel a query after you confirm
 
 ## Signals
 
-Running a query from DSUI emits `postgresql.query-succeeded` or
-`postgresql.query-failed`. Payloads include the SQL operation, target database,
-duration, and row count or database error code. Query text is not included.
-These signals cover queries launched through DSUI; the Activity page can also
-observe some queries from other clients while they are running.
+Running a query in DSUI emits the signal `query-succeeded` or `query-failed`. The payload holds the operation, the database, the duration in milliseconds, and the row count or the error code. It never includes the query text. Plugins can react to these signals. Queries that other clients run don't emit signals, although **Activity** can show some of them while they run.
 
-## Not yet available
+## Use with a DSUI Agent
 
-- Schema and data editing
-- Full administrative parity with PostgreSQL tooling
+The adapter connects through a DSUI Agent. Choose **Via DSUI Agent** in the connection dialog, and enter the host and port as the agent sees them. See [private networks](/docs/guides/private-networks).

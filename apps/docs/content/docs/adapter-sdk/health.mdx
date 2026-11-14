@@ -1,0 +1,96 @@
+---
+title: Health checks
+description: Reference for the required health function, the report that it returns, and the helpers that turn checks into a score and a status.
+contentType: reference
+---
+
+Every adapter must say what a healthy service looks like, because only the adapter knows. `defineAdapter` rejects a definition without a `health` function. DSUI calls it to decide whether to show a service as healthy, slow, or unavailable.
+
+## Write a health function
+
+`health` receives the adapter's context and a runtime, and returns a promise of a report. The runtime gives you `blobs`, which is binary storage that belongs to the service.
+
+```ts
+import {
+  healthReport,
+  reachabilityCheck,
+} from "@northgraindata/dsui-adapter-sdk";
+
+export async function health(ctx: HelloContext) {
+  const { reachable, latencyMs } = await ctx.probe();
+  return healthReport({
+    checks: [reachabilityCheck(reachable, latencyMs)],
+    weights: { reachability: 1 },
+    latencyMs,
+  });
+}
+```
+
+If DSUI can't build the context, or `health` throws, DSUI reports the service as `unavailable` with a score of `0` and a failed `reachability` check that carries the error message. DSUI also adds `checkedAt`, and it fills in `latencyMs` with the time the probe took when you don't.
+
+## The report
+
+| Field | Meaning |
+| --- | --- |
+| `status` | `healthy`, `warning`, `unavailable`, or `unknown` |
+| `score` | Overall health from 0 to 100 |
+| `latencyMs` | Round-trip time of the probe, when you measured it |
+| `checks` | The signals behind the score. Can be empty |
+
+Each check has an `id` in kebab-case that is unique within the adapter, a short `label`, an `ok` value, and an optional `detail` with a measured value or an explanation.
+
+## Helpers
+
+| Helper | What it does |
+| --- | --- |
+| `reachabilityCheck(reachable, latencyMs?)` | Builds a check with the ID `reachability`. With `latencyMs`, its detail reads `<n> ms response time` |
+| `scoreChecks(checks, weights)` | Returns 100 minus the penalty of every failing check, rounded and kept between 0 and 100 |
+| `statusFor(score, checks)` | Chooses a status from a score and the checks |
+| `healthReport({ checks, weights, latencyMs?, status? })` | Builds a complete report. It scores the checks, and it derives `status` unless you pass one |
+
+A weight is a number from 0 to 1, or an object with a `penalty` in that range. It's the fraction of the score that a failing check removes. A check without a weight is shown but never changes the score. A weight outside the range throws an error when the report is built.
+
+### How the status is chosen
+
+`statusFor` follows these rules, in order:
+
+1. A failing check and a score of `0` give `unavailable`
+2. A score of `100` gives `healthy`
+3. A failing check gives `warning`
+4. Anything else gives `unknown`, because a low score that nothing explains is not a finding
+
+DSUI never infers `unavailable` from a score alone. Pass `status: "unavailable"` when you know that the service can't be used.
+
+### Example with two checks
+
+A failing reachability check with a weight of `1` takes the score to `0`, so the status is `unavailable`. A disk check with a weight of `0.25` lowers the score to `75` and gives `warning`:
+
+```ts
+const checks = [
+  reachabilityCheck(reachable, latencyMs),
+  {
+    id: "disk",
+    label: "Disk space",
+    ok: usedShare < 0.85,
+    detail: `${Math.round(usedShare * 100)} % used`,
+  },
+];
+
+return healthReport({
+  checks,
+  weights: { reachability: 1, disk: 0.25 },
+  latencyMs,
+});
+```
+
+## Set a latency budget
+
+`latencyBudgetMs` is the response time above which DSUI treats the service as slow. Set it to what is normal for the system you integrate with. A local file answers in a few milliseconds, and a remote API takes far longer, so one limit for every service would misjudge both.
+
+```ts
+export default defineAdapter({
+  // …
+  latencyBudgetMs: 1_000,
+  health,
+});
+```

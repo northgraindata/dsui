@@ -1,0 +1,14 @@
+---
+import DocsLayout from "@/layouts/DocsLayout.astro";
+import { source } from "@/lib/source";
+---
+<DocsLayout
+  title="Page not found"
+  description="This page doesn't exist or has moved. Search the docs or pick a section from the sidebar."
+  tree={source.getPageTree()}
+  toc={[]}
+>
+  <p>
+    Press <kbd>⌘&nbsp;K</kbd> to search, or start from the <a href="/docs">documentation home</a>.
+  </p>
+</DocsLayout>

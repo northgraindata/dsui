@@ -1,0 +1,88 @@
+---
+title: AI assistant
+description: Add the AI assistant plugin to chat with your workspace, inspect services, and run actions with your own model provider.
+contentType: how-to
+---
+
+The AI assistant is a plugin that adds a chat drawer to the workspace. You ask a question, and the assistant reads your services' resources, checks their health, and, when you ask and your role allows it, runs their actions. It calls a model from the provider you configure, with your API key.
+
+<Callout title="Name in the workspace">
+The plugin has the ID `ai-agent`, and the workspace currently shows it as "DSUI Agent". It's a different feature from the [DSUI Agent that tunnels into private networks](/docs/guides/private-networks).
+</Callout>
+
+## Install the plugin
+
+The official Docker image and the npm package don't include this plugin, so DSUI builds it from source when it starts. Add it under `plugins` in `dsui.yaml`:
+
+```yaml {3-5,10}
+plugins:
+  ai-agent:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/plugin-ai-agent
+    config:
+      model:
+        provider: openai
+        id: gpt-6-sol
+        apiKey: "${DSUI_AGENT_API_KEY}"
+```
+
+Set `DSUI_AGENT_API_KEY` in the environment of the DSUI process, then restart DSUI. The first start takes longer while DSUI builds the plugin. From a repository checkout, use `source: local` and `path: packages/plugin-ai-agent` instead.
+
+Without an API key, the drawer still opens and asks you to finish the setup. DSUI never sends the key to the browser, and it reports only whether a key is set.
+
+## Choose a model
+
+Each model entry has a provider, a model ID, and an API key:
+
+| Field | Meaning |
+| --- | --- |
+| `provider` | `openai`, `anthropic`, `gateway`, or `openrouter`. The default is `openai` |
+| `id` | A model ID that your provider offers. Gateway IDs include the provider prefix |
+| `apiKey` | The key for that provider. Use `${NAME}` to read it from an environment variable |
+
+To let people pick a model per message, list named entries under `models`. You can add up to 20. The first entry with an API key is the default.
+
+```yaml {8,13}
+plugins:
+  ai-agent:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/plugin-ai-agent
+    config:
+      models:
+        - key: fast
+          label: Fast
+          provider: openai
+          id: gpt-6-luna
+          apiKey: "${DSUI_AGENT_API_KEY}"
+        - key: detailed
+          label: Detailed
+          provider: anthropic
+          id: claude-opus-5-5
+          apiKey: "${ANTHROPIC_API_KEY}"
+```
+
+A `key` is 1 to 64 letters, digits, `_`, or `-`, and it can't be `default`. DSUI skips entries without an API key. The browser receives only each model's key, label, provider, and ID.
+
+## Tune the limits
+
+All of these are optional settings under `config`:
+
+| Setting | Default | Allowed range | Effect |
+| --- | --- | --- | --- |
+| `maxToolCalls` | 20 | 1 to 100 | Tool calls per answer. After the budget is used, the next generation is text only |
+| `timeoutSeconds` | 120 | 10 to 600 | Time limit for one answer |
+| `requestsPerMinute` | 5 | 1 to 60 | Requests per person each minute. Over the limit, the assistant asks the person to wait |
+| `allowActionExecution` | `true` | `true` or `false` | Set to `false` so the assistant can read but never run actions |
+| `sensitiveColumns` | A list of personal data names, such as `email` and `phone` | Any list of names | Field names whose values are redacted from tool results |
+
+## What the assistant can do
+
+The assistant uses the same catalogs that the rest of DSUI uses. It can list services and plugins, read their resources, check service health, read recorded events, and run declared actions. Every call checks the permissions of the person who is chatting, so a viewer's assistant can read but not run actions.
+
+In the chat, type `@` to mention a service. A mention tells the assistant where to start. It doesn't limit what else the assistant can reach. You can also attach files, such as screenshots, PDFs, and text files, up to 5 files and 10 MB in total per message.
+
+## What data leaves your installation
+
+Your messages, tool results, and attachments go to the model provider you configured. DSUI limits the size of tool results and redacts the fields named in `sensitiveColumns`, plus known credential fields. That redaction can't find every sensitive value in free text or nested data. Use a model provider that you trust with the data your services hold.

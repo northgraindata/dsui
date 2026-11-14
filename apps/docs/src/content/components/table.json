@@ -1,0 +1,40 @@
+{
+  "name": "Table",
+  "description": "Data table with rows, actions, and filters.",
+  "props": {
+    "source": {
+      "description": "Resource binding to fetch rows from"
+    },
+    "data": {
+      "description": "Inline data (alternative to `source`)"
+    },
+    "columns": {
+      "description": "Column definitions"
+    },
+    "variant": {
+      "description": "Visual style"
+    },
+    "rowLink": {
+      "description": "Link each row to a route"
+    },
+    "rowActions": {
+      "description": "Per-row action buttons"
+    },
+    "actions": {
+      "description": "Table-level menu actions"
+    },
+    "searchable": {
+      "description": "Show search input"
+    },
+    "filters": {
+      "description": "Column filter dropdowns"
+    },
+    "pageSize": {
+      "description": "Rows per page"
+    },
+    "columnsSource": {
+      "description": "Resource binding that supplies the column definitions at run time"
+    }
+  },
+  "example": "Table({\n  source: warehouses(),\n  columns: [\n    { id: \"name\", label: \"Name\" },\n    { id: \"status\", label: \"Status\" },\n  ],\n  rowActions: [\n    {\n      label: \"Suspend\",\n      action: suspendWarehouse,\n      input: { warehouse: \"name\" },\n      when: { field: \"status\", equals: \"RUNNING\" },\n    },\n  ],\n  searchable: true,\n})"
+}

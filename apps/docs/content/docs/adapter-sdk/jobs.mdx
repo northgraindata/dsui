@@ -1,42 +1,76 @@
 ---
 title: Jobs
-description: Run scheduled background work for each configured adapter service.
+description: Reference for defineJob, which declares background work that DSUI runs on a schedule for every configured service of your adapter.
+contentType: reference
 ---
 
-Adapter jobs run in the DSUI server for every configured service instance.
-They do not depend on a user opening a page. Use them to poll an external API
-and report changes that DSUI would otherwise only see on the next page visit.
+A job is background work that runs without anyone opening a page. Use one to watch a service and publish a [signal](/docs/adapter-sdk/signals) when something happens, such as a finished run or a failed check. DSUI runs a job once for every service that uses your adapter.
 
-Declare a job with `defineJob` and add it to the adapter's `jobs` list:
+## Define a job
+
+A job needs an `id` and exactly one trigger: `intervalMs` for a fixed interval, or `schedule` for a cron expression.
 
 ```ts
-import { defineAdapter, defineJob } from "@northgraindata/dsui-adapter-sdk";
+import { defineJob } from "@northgraindata/dsui-adapter-sdk";
+import type { MyContext } from "./context.js";
 
-export default defineAdapter({
-  metadata: { id: "airflow", name: "Airflow", version: "1.0.0" },
-  context: (config) => ({ client: createAirflowClient(config) }),
-  health: async () => ({ status: "healthy", score: 100, checks: [] }),
-  jobs: [
-    defineJob({
-      id: "poll-dag-runs",
-      intervalMs: 30_000,
-      retry: { maxAttempts: 3, backoffMs: 2_000 },
-      run: async ({ context, runId, signal }) => {
-        const failures = await context.client.listRecentFailures({ signal });
-        console.info(`Airflow poll ${runId} found ${failures.length} failures`);
-      },
-    }),
-  ],
+export const monitorRuns = defineJob<MyContext>({
+  id: "monitor-runs",
+  intervalMs: 60_000,
+  run: async ({ context, signal, emit, store }) => {
+    // read from the service, then emit a signal
+  },
 });
 ```
 
-Intervals have a minimum of 250 ms. Use a five-field UTC cron `schedule`
-instead of `intervalMs` for calendar-based schedules. A job receives the
-adapter instance's `context`, an abort `signal`, and a stable `runId`. Respect
-the abort signal when calling external services so DSUI can stop work on
-shutdown or timeout.
+Register the job in `jobs` of `defineAdapter`, and register the signals it emits in `signals`.
 
-Jobs use the same durable queue and retry policy as plugin jobs. Their
-definitions are installed and removed as adapter services enter or leave the
-active configuration. To publish an event from a job, declare a
-[signal](/docs/adapter-sdk/signals) and call `emit` from the job handler.
+## Options
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `id` | Required | Kebab-case, such as `monitor-runs` |
+| `intervalMs` | | Run every this many milliseconds. An integer of at least 250 |
+| `schedule` | | A five-field cron expression, evaluated in UTC |
+| `concurrency` | `singleton` | `singleton` never overlaps, with one run at a time. `per-key` lets runs with different input overlap, and never overlaps runs with the same input |
+| `timeoutMs` | `300000` | Milliseconds that a run may take before DSUI stops it |
+| `retry.maxAttempts` | `1` | Attempts for a run, including the first |
+| `retry.backoffMs` | `1000` | Milliseconds to wait between attempts. A job that retries needs a positive value |
+| `inputSchema` | None | A Zod schema for the input that DSUI passes to `run` |
+
+Setting both `intervalMs` and `schedule`, or neither, is an error when the adapter loads.
+
+## What run receives
+
+| Field | Meaning |
+| --- | --- |
+| `context` | The adapter context for the service |
+| `input` | The validated input, when you set `inputSchema` |
+| `runId` | An ID for this run |
+| `signal` | An `AbortSignal` that fires when the run times out or DSUI stops it |
+| `store(definition)` | The live instance of an adapter store |
+| `blobs` | Binary storage private to the service |
+| `emit(signal, payload, options?)` | Publishes a declared signal |
+
+## Keep progress in a persistent store
+
+A job runs in a short-lived process, so nothing in memory survives to the next run. Keep what the next run needs, such as the time of the last event you saw, in a [persistent store](/docs/adapter-sdk/stores#choose-persistence):
+
+```ts
+run: ({ store, emit }) => {
+  const counter = store(counterStore);
+  const next = counter.get().count + 1;
+  counter.actions.setCount(next);
+  emit(greeted, { name: `tick-${next}` }, { idempotencyKey: `tick-${next}` });
+},
+```
+
+This job emitted `tick-1`, `tick-2`, and so on, once every 500 milliseconds, and the counter kept counting between runs.
+
+## Emit each event once
+
+Pass an `idempotencyKey` to `emit`, such as the ID of the run or event that you report. If a poll sees the same thing twice, DSUI records one event. A job that emits a signal it didn't declare in `signals` fails with `Adapter job emitted undeclared signal`.
+
+## Start from now
+
+A job that reports changes should not report everything that happened before it started. The first time it runs, save the current time as the cursor and emit only for events after it. The official Airflow and dbt adapters work this way.

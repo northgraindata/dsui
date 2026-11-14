@@ -1,0 +1,16 @@
+{
+  "name": "CodeEditor",
+  "description": "Editable code editor (browser only).",
+  "props": {
+    "language": {
+      "description": "Syntax language"
+    },
+    "value": {
+      "description": "Current content"
+    },
+    "onChange": {
+      "description": "Edit callback"
+    }
+  },
+  "example": "CodeEditor({ language: \"sql\", value: query, onChange: setQuery })"
+}
