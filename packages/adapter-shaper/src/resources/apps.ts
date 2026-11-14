@@ -94,6 +94,15 @@ export const app = defineResource({
       createdAt: formatTimestamp(found.createdAt),
       updatedBy: found.updatedBy ?? "",
       visibility: found.visibility ?? "private",
+      navigation: [
+        {
+          label: `Open ${found.name} in DSUI`,
+          path:
+            found.type === "dashboard"
+              ? `/dashboards/${encodeURIComponent(found.id)}`
+              : `/tasks/${encodeURIComponent(found.id)}/edit`,
+        },
+      ],
     };
   },
 });

@@ -16,6 +16,9 @@ services:
       method: api
       baseUrl: http://shaper:5454
       apiKey: ${SHAPER_API_KEY}
+      # Optional, needed to share dashboards. See "Sharing" below.
+      userEmail: ${SHAPER_USER_EMAIL}
+      userPassword: ${SHAPER_USER_PASSWORD}
 ```
 
 Use the Compose service name when DSUI and Shaper run in the same Compose project.
@@ -42,11 +45,26 @@ The adapter works with a partial key and reports the missing permission when a f
 - View dashboards natively in DSUI, with Shaper's tables, values, line, bar, pie, donut and gauge views and its dropdown, text and date controls
 - Create, edit, validate, and delete dashboards and tasks as SQL
 - Export a dashboard as PDF, PNG, CSV, or XLSX
+- Share a dashboard publicly or behind a password and get the link to send
 - Run single SQL statements with a DuckDB schema explorer
 - AI agents can read a dashboard's values with `dashboard-summary` and run read-only queries with `sql-preview`, which only accepts allowlisted statements
 
 The adapter polls tasks every minute and emits `shaper.task-failed` and `shaper.task-succeeded` signals when a task's last run changes.
 The first poll only records history, so existing runs are not announced.
+
+## Sharing
+
+Shaper lets only signed-in users change a dashboard's visibility or password.
+An API key cannot do it, and neither can the dashboard tokens minted from one.
+To share dashboards, add the email and password of a Shaper user to the connection.
+DSUI signs in as that user only when you share a dashboard.
+
+The `share-dashboard` action sets a dashboard to `private`, `public`, or `password-protected` and returns the link.
+For a password-protected dashboard you can choose the password.
+If you do not, DSUI generates one and returns it once, because Shaper stores only a hash and never shows it again.
+Sharing fails with a clear message when the Shaper server has disabled public or password-protected sharing.
+
+Use a dedicated Shaper user for this connection and give it only the access it needs.
 
 ## Limits
 
@@ -59,7 +77,7 @@ The first poll only records history, so existing runs are not announced.
 
 ## Not yet available
 
-- Folders, dashboard visibility, and share passwords, which Shaper only allows for signed-in users
+- Folders, which Shaper only allows for signed-in users
 - Users, invitations, and API key management
 - Running a saved task on demand
 - Embedding the original Shaper page, because Shaper sends `X-Frame-Options: SAMEORIGIN`

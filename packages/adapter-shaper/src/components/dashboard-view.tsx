@@ -14,6 +14,7 @@ import {
 } from "../dashboard-model.js";
 import { formatNumber, formatTime } from "./chart-utils.js";
 import { BarChart, GaugeChart, LineChart, PieChart } from "./charts.js";
+import { SharePanel, type Visibility } from "./share-panel.js";
 import {
   buttonStyle,
   cardStyle,
@@ -330,20 +331,31 @@ export default function ShaperDashboardView({
     variables,
   );
   const [notice, setNotice] = useState<string>();
-  const [app, setApp] = useState<{ name: string; path: string }>();
+  const [app, setApp] = useState<{
+    name: string;
+    path: string;
+    visibility?: Visibility;
+  }>();
+  const [sharing, setSharing] = useState(false);
+  const [appVersion, setAppVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
+    // appVersion re-reads the dashboard's visibility after it is shared.
+    void appVersion;
     client
       .executeResource({ resourceId: "app", input: { id: props.id } })
       .then((result) => {
-        if (active) setApp(result as { name: string; path: string });
+        if (active)
+          setApp(
+            result as { name: string; path: string; visibility?: Visibility },
+          );
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [client, props.id]);
+  }, [client, props.id, appVersion]);
 
   const controls = useMemo(
     () =>
@@ -396,6 +408,17 @@ export default function ShaperDashboardView({
           >
             {loading ? "Loading…" : "Refresh"}
           </button>
+          <button
+            type="button"
+            style={buttonStyle}
+            aria-expanded={sharing}
+            onClick={() => setSharing((open) => !open)}
+          >
+            Share
+            {app?.visibility && app.visibility !== "private"
+              ? ` · ${app.visibility === "public" ? "Public" : "Password"}`
+              : ""}
+          </button>
           {EXPORT_FORMATS.map((format) => (
             <button
               key={format}
@@ -419,6 +442,15 @@ export default function ShaperDashboardView({
           </button>
         </div>
       </header>
+      {sharing ? (
+        <SharePanel
+          client={client}
+          id={props.id}
+          visibility={app?.visibility ?? "private"}
+          onChanged={() => setAppVersion((version) => version + 1)}
+          onClose={() => setSharing(false)}
+        />
+      ) : null}
       <div style={toolbarStyle}>
         {controls.map((control) => (
           <Control

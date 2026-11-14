@@ -8,6 +8,14 @@ export const shaperConnectionSchema = z.object({
     .refine((value) => value.startsWith("shaperkey."), {
       message: "Shaper API keys start with shaperkey.",
     }),
+  /**
+   * Optional Shaper user. Shaper only lets signed-in users change a
+   * dashboard's visibility and share password, never an API key, so sharing
+   * needs both of these. Connection schemas must be plain objects, so the
+   * pair is checked where it is used.
+   */
+  userEmail: z.string().trim().min(1).optional(),
+  userPassword: z.string().min(1).optional(),
 });
 
 export type ShaperHttpConfig = z.output<typeof shaperConnectionSchema>;
@@ -133,6 +141,12 @@ export type ShaperDeployOperation =
     }
   | { operation: "delete"; type: "dashboard" | "task"; data: { id: string } };
 
+export interface ShaperShareInput {
+  visibility: ShaperVisibility;
+  /** Required when the visibility is password-protected. */
+  password?: string;
+}
+
 export interface ShaperDeployResult {
   operation: string;
   type: string;
@@ -160,6 +174,14 @@ export interface ShaperClient {
     variables: Record<string, string | string[]>,
     signal?: AbortSignal,
   ): Promise<ShaperDashboard>;
+  /** Whether DSUI holds a Shaper user login, which sharing needs. */
+  canShare: boolean;
+  /** Sets a dashboard's visibility and share password as the configured user. */
+  shareDashboard(
+    id: string,
+    input: ShaperShareInput,
+    signal?: AbortSignal,
+  ): Promise<void>;
   /** Returns a one-time, unauthenticated download URL for a dashboard file. */
   requestDownloadUrl(
     id: string,

@@ -143,6 +143,8 @@ const validateSchema = z.object({
   error: z.string().optional(),
 });
 const tokenSchema = z.object({ jwt: z.string().min(1) });
+const sessionSchema = z.object({ token: z.string().min(1) });
+const okSchema = z.object({ ok: z.boolean() });
 const downloadUrlSchema = z.object({ url: z.string().min(1) });
 
 /** Normalises a user-supplied address to a base URL ending in one slash. */
@@ -298,8 +300,65 @@ export function createShaperClient(
     return jwt;
   }
 
+  /**
+   * A token for the configured Shaper user. Shaper's visibility and password
+   * routes reject API keys and dashboard-scoped tokens, so this signs in and
+   * exchanges the session for an unscoped user token.
+   */
+  async function userToken(signal?: AbortSignal): Promise<string> {
+    if (config.userEmail === undefined || config.userPassword === undefined)
+      throw new Error(
+        "Sharing needs a Shaper user. Add userEmail and userPassword to the Shaper connection.",
+      );
+    const { token } = await json("api/login", sessionSchema, {
+      signal,
+      init: {
+        method: "POST",
+        body: JSON.stringify({
+          email: config.userEmail,
+          password: config.userPassword,
+        }),
+      },
+    });
+    const { jwt } = await json("api/auth/token", tokenSchema, {
+      signal,
+      init: { method: "POST", body: JSON.stringify({ token }) },
+    });
+    return jwt;
+  }
+
   return {
     dispose: () => lifetime.abort(),
+    canShare:
+      config.userEmail !== undefined && config.userPassword !== undefined,
+
+    async shareDashboard(id, input, signal) {
+      if (input.visibility === "password-protected" && !input.password)
+        throw new Error(
+          "A password is required for password-protected sharing",
+        );
+      const authorization = await userToken(signal);
+      const path = `api/dashboards/${encodeURIComponent(id)}`;
+      // The password goes first so the dashboard is never reachable without it.
+      if (input.visibility === "password-protected") {
+        await json(`${path}/password`, okSchema, {
+          signal,
+          authorization,
+          init: {
+            method: "POST",
+            body: JSON.stringify({ password: input.password }),
+          },
+        });
+      }
+      await json(`${path}/visibility`, okSchema, {
+        signal,
+        authorization,
+        init: {
+          method: "POST",
+          body: JSON.stringify({ visibility: input.visibility }),
+        },
+      });
+    },
 
     async health(signal) {
       const { response, signal: combined } = await send(
