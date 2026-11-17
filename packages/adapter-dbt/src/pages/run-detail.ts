@@ -7,6 +7,7 @@ import {
   Resource,
   Section,
   Table,
+  Tabs,
 } from "@northgraindata/dsui-adapter-sdk";
 import { DependencyGraph } from "../components/dependency-graph.js";
 import { runGraph } from "../resources/artifacts.js";
@@ -35,7 +36,7 @@ export const runDetailPage = definePage({
     return [
       PageHeader({
         title: `Run ${params.runId}`,
-        description: "dbt Cloud run details and generated artifacts.",
+        description: "Execution details, output and model dependencies.",
       }),
       Columns({
         columns: [
@@ -48,42 +49,6 @@ export const runDetailPage = definePage({
                 content: summary
                   ? KeyValue({ title: "Run", data: summary })
                   : KeyValue({ title: "Run", source: runDetail(input) }),
-              }),
-              Section({
-                title: "Logs",
-                description: "Process output and dbt diagnostic logs.",
-                content: archived
-                  ? CodeBlock({
-                      label: "dbt output",
-                      value: { field: "content" },
-                      language: "text",
-                      data: {
-                        content: [archived.stdout, archived.stderr]
-                          .filter(Boolean)
-                          .join("\n\n"),
-                      },
-                    })
-                  : Resource({
-                      source: runLogs(input),
-                      content: CodeBlock({
-                        label: "dbt output",
-                        value: { field: "content" },
-                        language: "text",
-                      }),
-                    }),
-              }),
-              Section({
-                title: "Lineage",
-                description:
-                  "Model dependencies and execution state for this run.",
-                content: DependencyGraph({
-                  source: runGraph(input),
-                  idField: "graphId",
-                  dependsOnField: "upstreamGraphIds",
-                  labelField: "name",
-                  detailField: "detail",
-                  stateField: "state",
-                }),
               }),
             ],
           },
@@ -116,6 +81,52 @@ export const runDetailPage = definePage({
                       { id: "size", label: "Size" },
                     ],
                   }),
+            }),
+          },
+        ],
+      }),
+      Tabs({
+        items: [
+          {
+            label: "Logs",
+            content: Section({
+              title: "Logs",
+              description: "Process output and dbt diagnostic logs.",
+              content: archived
+                ? CodeBlock({
+                    label: "dbt output",
+                    value: { field: "content" },
+                    language: "text",
+                    data: {
+                      content: [archived.stdout, archived.stderr]
+                        .filter(Boolean)
+                        .join("\n\n"),
+                    },
+                  })
+                : Resource({
+                    source: runLogs(input),
+                    content: CodeBlock({
+                      label: "dbt output",
+                      value: { field: "content" },
+                      language: "text",
+                    }),
+                  }),
+            }),
+          },
+          {
+            label: "Lineage",
+            content: Section({
+              title: "Lineage",
+              description:
+                "Model dependencies and execution state for this run.",
+              content: DependencyGraph({
+                source: runGraph(input),
+                idField: "graphId",
+                dependsOnField: "upstreamGraphIds",
+                labelField: "name",
+                detailField: "detail",
+                stateField: "state",
+              }),
             }),
           },
         ],

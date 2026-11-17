@@ -99,7 +99,8 @@ export interface TableProps {
   columnsSource?: DataSource;
   data?: readonly Record<string, unknown>[];
   columns?: readonly TableColumn[];
-  variant?: "default" | "data";
+  /** Plain display table without interactive sort/filter controls. */
+  variant?: "default" | "data" | "plain";
   rowLink?: TableRowLink;
   rowActions?: readonly TableRowAction[];
   actions?: readonly TableRowMenuAction[];

@@ -61,6 +61,30 @@
         "@types/react-dom": "^19.2.0",
       },
     },
+    "apps/ui-lab": {
+      "name": "@northgraindata/dsui-ui-lab",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-plugin-sdk": "workspace:*",
+        "@northgraindata/dsui-renderer": "workspace:*",
+        "@northgraindata/dsui-ui": "workspace:*",
+        "@tailwindcss/vite": "^4.1.13",
+        "@vitejs/plugin-react": "^5.0.2",
+        "highlight.js": "11.12.0",
+        "lucide": "1.66.0",
+        "react": "^19.1.1",
+        "react-dom": "^19.1.1",
+        "tailwindcss": "^4.1.13",
+        "vite": "^7.1.7",
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "typescript": "^5.9.2",
+      },
+    },
     "apps/web": {
       "name": "@northgraindata/dsui-web",
       "version": "0.0.0",
@@ -142,6 +166,7 @@
       },
       "devDependencies": {
         "@types/react": "^19.2.0",
+        "react-dom": "^19.1.1",
       },
     },
     "packages/adapter-duckdb": {
@@ -780,6 +805,8 @@
 
     "@northgraindata/dsui-ui": ["@northgraindata/dsui-ui@workspace:packages/ui"],
 
+    "@northgraindata/dsui-ui-lab": ["@northgraindata/dsui-ui-lab@workspace:apps/ui-lab"],
+
     "@northgraindata/dsui-web": ["@northgraindata/dsui-web@workspace:apps/web"],
 
     "@number-flow/react": ["@number-flow/react@0.6.2", "", { "dependencies": { "esm-env": "^1.1.4", "number-flow": "0.6.2" }, "peerDependencies": { "react": "^18 || ^19", "react-dom": "^18 || ^19" } }, "sha512-WjZuV4aA+vhRCgCF+adGLgFVVAJ8vdvq6EchRT2FiBIgElTXtDOA3YgkcMr9UHpvpS9v4H70AB5wZv0D9jc3QA=="],
@@ -1304,6 +1331,8 @@
 
     "hastscript": ["hastscript@9.0.1", "", { "dependencies": { "@types/hast": "^3.0.0", "comma-separated-tokens": "^2.0.0", "hast-util-parse-selector": "^4.0.0", "property-information": "^7.0.0", "space-separated-tokens": "^2.0.0" } }, "sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w=="],
 
+    "highlight.js": ["highlight.js@11.12.0", "", {}, "sha512-nbfWpyRMcMrPMmDwJB+dhX/eiaPKtc2RB+0QZskqJ3WjRA/FDS0e9hZrx8EC/lbEv8gXy98FcDbNa/dspAaJMg=="],
+
     "hono": ["hono@4.13.3", "", {}, "sha512-r8AO2mYHoLxSHkgafNeC/BXyb2vWRxD3jem4Ts+ptav8oTG5FIRifAjuJEmZI4bSvvc2ns0GxmIYiZnHqN3mMw=="],
 
     "html-escaper": ["html-escaper@3.0.3", "", {}, "sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ=="],
@@ -1415,6 +1444,8 @@
     "longest-streak": ["longest-streak@3.1.0", "", {}, "sha512-9Ri+o0JYgehTaVBBDoMqIl8GXtbWg711O3srftcHhZ0dqnETqLaoIK0x17fUw9rFSlK/0NlsKe0Ahhyl5pXE2g=="],
 
     "lru-cache": ["lru-cache@11.5.2", "", {}, "sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g=="],
+
+    "lucide": ["lucide@1.66.0", "", {}, "sha512-Ngq8coV3XJ9S/DLTNnIWk9lmdJusoSnuuoO1rK7C0H9/VaV93LoWkv/u5GyUAJhL+rFesAd4gL3YG544bnH6gQ=="],
 
     "lucide-react": ["lucide-react@1.33.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-MTRwMy0ZlL8Ur/vOAiJ9XGHE+kFPC7brq6MxAm0GiGXEBj0qy0jA/pG4N675oSzciO/UCdX8T+5yUQdmDeTLxg=="],
 

@@ -17,6 +17,8 @@ export interface ComponentClient {
     | { status: "error"; message?: string }
   >;
   navigate(path: string): void;
+  /** Resolve an adapter path to a host URL for native links and new tabs. */
+  resolveHref?(path: string): string;
   /** Open an overlay contributed by the calling plugin, when supported. */
   openOverlay?(overlayId: string): void;
   closeOverlay?(): void;

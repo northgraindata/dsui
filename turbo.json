@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["DSUI_WEB_BASE_PATH"],
+  "globalEnv": ["DSUI_WEB_BASE_PATH", "DSUI_PRO_DIR"],
   "envMode": "loose",
   "globalPassThroughEnv": [
     "DSUI_VERSION",

@@ -223,6 +223,8 @@ export function ServiceScreen({
                 ? { status: "success" as const, data: result.data }
                 : { status: "error" as const, message: result.message };
             },
+            resolveHref: (destination) =>
+              `/services/${encodeURIComponent(service.id)}${destination}`,
             navigate: (destination) => {
               const [destinationPath = "/", query = ""] = destination.split(
                 "?",

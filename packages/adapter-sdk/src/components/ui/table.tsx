@@ -70,85 +70,87 @@ export function Table({ client, node, renderNode }: ComponentProps) {
   const rowLink = props.rowLink;
   const rowActions = props.rowActions;
   const actions = props.actions;
-
+  const renderTable = (
+    visibleRows: Record<string, unknown>[],
+    renderHeader?: (column: TableColumn) => ReactNode,
+  ) => (
+    <DataTable
+      columns={columns}
+      rows={visibleRows}
+      renderHeader={renderHeader}
+      renderCell={(columnId, value, row) => {
+        const column = columns.find((candidate) => candidate.id === columnId);
+        if (column?.format === "duration")
+          return (
+            <LiveDuration
+              startedAt={row.queryStart}
+              active={row.state === "active"}
+            />
+          );
+        if (column?.format === "eta")
+          return <LiveEta etaSeconds={row.etaSeconds} />;
+        if (column?.format === "progress")
+          return (
+            <LiveProgress
+              active={row.state === "active"}
+              percent={row.progressPercent}
+            />
+          );
+        if (!column?.renderCell) return formatCell(value);
+        const cells = Array.isArray(column.renderCell)
+          ? column.renderCell
+          : [column.renderCell];
+        return cells.map((cell) => (
+          <span key={JSON.stringify(cell)}>
+            {renderNode(client, cell, row) as ReactNode}
+          </span>
+        ));
+      }}
+      onRowClick={
+        rowLink
+          ? (row) => {
+              const href = resolveLink(rowLink.path, rowLink.params, row);
+              if (href) client.navigate(href);
+            }
+          : undefined
+      }
+      renderRowActions={
+        rowActions?.length
+          ? (row) =>
+              rowActions.map((spec) => (
+                <RowAction
+                  key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
+                  client={client}
+                  row={row}
+                  spec={spec}
+                  onDone={reload}
+                />
+              ))
+          : undefined
+      }
+      renderRowMenu={
+        actions?.length
+          ? (row) =>
+              actions.map((spec) => (
+                <RowMenuAction
+                  key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
+                  client={client}
+                  row={row}
+                  spec={spec}
+                />
+              ))
+          : undefined
+      }
+    />
+  );
+  if (props.variant === "plain") return renderTable(rows);
   return (
     <TableExplorer
       columns={columns}
       rows={rows}
       filters={props.filters}
       insights={props.variant === "data"}
-      renderTable={(visibleRows, renderHeader) => (
-        <DataTable
-          columns={columns}
-          rows={visibleRows}
-          renderHeader={renderHeader}
-          renderCell={(columnId, value, row) => {
-            const column = columns.find(
-              (candidate) => candidate.id === columnId,
-            );
-            if (column?.format === "duration")
-              return (
-                <LiveDuration
-                  startedAt={row.queryStart}
-                  active={row.state === "active"}
-                />
-              );
-            if (column?.format === "eta")
-              return <LiveEta etaSeconds={row.etaSeconds} />;
-            if (column?.format === "progress")
-              return (
-                <LiveProgress
-                  active={row.state === "active"}
-                  percent={row.progressPercent}
-                />
-              );
-            if (!column?.renderCell) return formatCell(value);
-            const cells = Array.isArray(column.renderCell)
-              ? column.renderCell
-              : [column.renderCell];
-            return cells.map((cell) => (
-              <span key={JSON.stringify(cell)}>
-                {renderNode(client, cell, row) as ReactNode}
-              </span>
-            ));
-          }}
-          onRowClick={
-            rowLink
-              ? (row) => {
-                  const href = resolveLink(rowLink.path, rowLink.params, row);
-                  if (href) client.navigate(href);
-                }
-              : undefined
-          }
-          renderRowActions={
-            rowActions?.length
-              ? (row) =>
-                  rowActions.map((spec) => (
-                    <RowAction
-                      key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
-                      client={client}
-                      row={row}
-                      spec={spec}
-                      onDone={reload}
-                    />
-                  ))
-              : undefined
-          }
-          renderRowMenu={
-            actions?.length
-              ? (row) =>
-                  actions.map((spec) => (
-                    <RowMenuAction
-                      key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
-                      client={client}
-                      row={row}
-                      spec={spec}
-                    />
-                  ))
-              : undefined
-          }
-        />
-      )}
+      renderTable={renderTable}
     />
   );
 }
@@ -255,5 +257,6 @@ function RowMenuAction({
 
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return value.toLocaleString();
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 }

@@ -49,3 +49,12 @@ test("package README and banner changes avoid runtime pipelines", () => {
       ).run,
     ).toBe(false);
 });
+
+test("UI Lab changes run product validation", () => {
+  expect(scopeForPaths(["apps/ui-lab/src/catalog.ts"], "product").run).toBe(
+    true,
+  );
+  expect(scopeForPaths(["apps/ui-lab/src/catalog.ts"], "adapter-sdk").run).toBe(
+    false,
+  );
+});

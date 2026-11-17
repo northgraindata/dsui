@@ -14,6 +14,7 @@ export function QueryResults({
   running: boolean;
 }) {
   const [tab, setTab] = useState("results");
+  const [profilesVisible, setProfilesVisible] = useState(false);
   const [displayError, setDisplayError] = useState<string>();
   const container = useRef<HTMLElement>(null);
   const exportCsv = () => {
@@ -65,6 +66,16 @@ export function QueryResults({
                 : "Ready to run"}
           {result && !error && !running && <i />}
         </span>
+        <Button
+          variant="ghost"
+          size="small"
+          aria-pressed={profilesVisible}
+          disabled={!result?.rows.length || !!error || running}
+          onClick={() => setProfilesVisible((value) => !value)}
+          title="Show column distributions"
+        >
+          Profiles
+        </Button>
         <Button
           variant="secondary"
           className="export-query"
@@ -121,29 +132,39 @@ export function QueryResults({
           role="tabpanel"
           aria-labelledby="query-results-tab"
         >
-          <div className="query-table-scroll">
-            {result && !error ? (
-              <DataTable columns={result.columns} rows={result.rows} />
-            ) : (
-              <div className="query-empty">
-                <WorkbenchIcon name="play" size={28} />
-                <h2>{error ? "Review your query" : "Ready when you are"}</h2>
-                <p>
-                  {error
+          {result && !error ? (
+            <DataTable
+              columns={result.columns}
+              rows={result.rows}
+              profilesVisible={profilesVisible}
+            />
+          ) : (
+            <div className="query-empty">
+              <WorkbenchIcon name="play" size={28} />
+              <h2>
+                {running
+                  ? "Running your query…"
+                  : error
+                    ? "Review your query"
+                    : "Ready when you are"}
+              </h2>
+              <p>
+                {running
+                  ? "Results will appear here when the query finishes."
+                  : error
                     ? "Update your SQL and run it again."
                     : "Run a query to explore your results."}
-                </p>
-                {!error && <kbd>⌘ / Ctrl + Enter</kbd>}
-              </div>
-            )}
-            {result && !error && !result.rows.length && (
-              <p className="query-empty-message">
-                {result.rowsChanged !== undefined
-                  ? `${result.rowsChanged} rows changed.`
-                  : "Query completed. No rows returned."}
               </p>
-            )}
-          </div>
+              {!error && !running && <kbd>⌘ / Ctrl + Enter</kbd>}
+            </div>
+          )}
+          {result && !error && !result.rows.length && (
+            <p className="query-empty-message">
+              {result.rowsChanged !== undefined
+                ? `${result.rowsChanged} rows changed.`
+                : "Query completed. No rows returned."}
+            </p>
+          )}
         </div>
       )}
     </section>

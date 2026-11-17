@@ -1,64 +1,15 @@
-import {
-  CodeBlock,
-  definePage,
-  KeyValue,
-  PageHeader,
-  Resource,
-  Table,
-  Target,
-} from "@northgraindata/dsui-adapter-sdk";
-import { DependencyGraph } from "../components/dependency-graph.js";
-import {
-  modelColumns,
-  modelDetail,
-  modelLineage,
-} from "../resources/artifacts.js";
-
+import { definePage, Target } from "@northgraindata/dsui-adapter-sdk";
+import { ModelWorkspace } from "../components/workspace.js";
+import { modelDetail, modelLineage } from "../resources/artifacts.js";
 export const modelDetailPage = definePage({
   path: "/models/:modelId",
-  render: ({ params }) => {
-    const input = { modelId: params.modelId };
-    return [
-      PageHeader({
-        title: params.modelId,
-        description: "Model metadata from manifest.json.",
+  render: ({ params }) =>
+    Target({
+      id: "dbt.model.source",
+      content: ModelWorkspace({
+        modelId: params.modelId,
+        source: modelDetail({ modelId: params.modelId }),
+        lineageSource: modelLineage({ modelId: params.modelId }),
       }),
-      KeyValue({ title: "Model", source: modelDetail(input) }),
-      DependencyGraph({
-        source: modelLineage(input),
-        idField: "graphId",
-        dependsOnField: "upstreamGraphIds",
-        labelField: "name",
-        detailField: "detail",
-        stateField: "state",
-      }),
-      Table({
-        source: modelColumns(input),
-        columns: [
-          { id: "name", label: "Column" },
-          { id: "dataType", label: "Data type" },
-          { id: "description", label: "Description" },
-        ],
-      }),
-      Target({
-        id: "dbt.model.source",
-        // Keep the tour anchor present while the model loads or reports an error.
-        content: Resource({
-          source: modelDetail(input),
-          content: [
-            CodeBlock({
-              label: "Model source SQL",
-              value: { field: "rawCode" },
-              language: "sql",
-            }),
-            CodeBlock({
-              label: "Compiled SQL",
-              value: { field: "compiledCode" },
-              language: "sql",
-            }),
-          ],
-        }),
-      }),
-    ];
-  },
+    }),
 });

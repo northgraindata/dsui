@@ -26,6 +26,7 @@ export function layerPaths(layer: Layer): string[] {
     "packages/core",
     "packages/renderer",
     "apps/web",
+    "apps/ui-lab",
     "scripts",
   ];
 }

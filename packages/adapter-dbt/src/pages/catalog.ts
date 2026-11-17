@@ -45,7 +45,7 @@ export const testsPage = definePage({
         title: "name",
         description: "attachedTo",
         meta: ["message"],
-        status: { label: "status" },
+        status: { label: "status", tone: "tone" },
       },
     }),
   ],

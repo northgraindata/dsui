@@ -153,3 +153,11 @@
 .query-column-no-data {
   padding: 10px;
 }
+
+.data-table th.query-profile-header--compact {
+  height: 36px;
+}
+.query-profile-header--compact .query-column-heading {
+  height: 36px;
+  padding-block: 5px;
+}

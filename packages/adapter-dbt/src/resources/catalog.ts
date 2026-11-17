@@ -79,9 +79,23 @@ export const tests = defineResource({
             typeof test.attached_node === "string" ? test.attached_node : "",
           status:
             typeof result?.status === "string" ? result.status : "not run",
+          tone: testStatusTone(
+            typeof result?.status === "string" ? result.status : "not run",
+          ),
           message: typeof result?.message === "string" ? result.message : "",
         },
       ];
     });
   },
 });
+
+function testStatusTone(
+  status: string,
+): "healthy" | "warning" | "unavailable" | "muted" {
+  const normalized = status.toLowerCase().replaceAll("_", " ");
+  if (/\b(error|errored|fail|failed|failure)\b/.test(normalized))
+    return "unavailable";
+  if (/\b(pass|passed|success|succeeded)\b/.test(normalized)) return "healthy";
+  if (/\b(skip|skipped|not run)\b/.test(normalized)) return "muted";
+  return "warning";
+}

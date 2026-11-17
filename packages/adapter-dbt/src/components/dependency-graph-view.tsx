@@ -100,9 +100,12 @@ function useCanvasSize(element: HTMLElement | null) {
     const measure = () => {
       const height = Math.max(
         MIN_CANVAS_HEIGHT,
-        window.innerHeight -
-          element.getBoundingClientRect().top -
-          CANVAS_BOTTOM_GUTTER,
+        Math.min(
+          600,
+          window.innerHeight -
+            element.getBoundingClientRect().top -
+            CANVAS_BOTTOM_GUTTER,
+        ),
       );
       const width = element.clientWidth;
       setSize((current) =>
