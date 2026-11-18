@@ -121,19 +121,56 @@ export async function executeServiceAction(
   input: unknown,
   signal: AbortSignal,
   auditActor: string,
-  options: { origin?: { pluginId: string; runId?: string } } = {},
+  options: {
+    origin?: { pluginId: string; runId?: string };
+    /** Principal id of the person who asked for this, recorded on the signals it causes. */
+    actor?: string;
+  } = {},
 ) {
   await deps.refreshConfig();
   const source = serviceSource(deps.getConfig(), deps.database, serviceId);
   if (!source) throw new Error("Service not found");
   const adapter = deps.registry.get(source.service.adapter);
-  const result = await adapter.backend.executeAction(
-    actionId,
-    connectionFor(deps.cipher, source),
-    input,
-    signal,
-    { persistenceNamespace: serviceId },
-  );
+  const actor = options.actor ? { actor: options.actor } : {};
+  // One signal per run, so a timeline can show who ran what. When the
+  // adapter reports the run itself (a query, an upload), its signals carry
+  // the actor and are that record; otherwise the host records the run. The
+  // host record carries the action id and outcome, never the input, and is
+  // `info` even on failure: the failure is the caller's to report, not an
+  // alert for notification or diagnosis plugins.
+  const recordRun = (
+    outcome: { status: "success" } | { status: "error"; message: string },
+  ) =>
+    deps.signalBus.publish({
+      signalId: "dsui.action-executed",
+      type: "info",
+      sourceType: "host",
+      sourceId: "dsui",
+      serviceId,
+      payload: {
+        action: actionId,
+        adapter: adapter.id,
+        ...outcome,
+        ...(options.origin ? { plugin: options.origin.pluginId } : {}),
+      },
+      ...actor,
+    });
+  let result: Awaited<ReturnType<typeof adapter.backend.executeAction>>;
+  try {
+    result = await adapter.backend.executeAction(
+      actionId,
+      connectionFor(deps.cipher, source),
+      input,
+      signal,
+      { persistenceNamespace: serviceId },
+    );
+  } catch (error) {
+    recordRun({
+      status: "error",
+      message: error instanceof Error ? error.message : "Action failed",
+    });
+    throw error;
+  }
   for (const emission of result.emissions) {
     const declared = adapter.catalog.signals.find(
       (signalDefinition) => signalDefinition.id === emission.signalId,
@@ -152,8 +189,15 @@ export async function executeServiceAction(
       ...(emission.idempotencyKey
         ? { idempotencyKey: emission.idempotencyKey }
         : {}),
+      ...actor,
     });
   }
+  if (!result.emissions.length)
+    recordRun(
+      result.result.status === "success"
+        ? { status: "success" }
+        : { status: "error", message: result.result.message },
+    );
   deps.audit(auditActor, "action.execute", serviceId, {
     action: actionId,
     ...(options.origin?.runId ? { runId: options.origin.runId } : {}),

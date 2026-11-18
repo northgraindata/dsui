@@ -14,6 +14,8 @@ export interface PublishSignalInput {
   readonly serviceId?: string;
   readonly payload: unknown;
   readonly idempotencyKey?: string;
+  /** Principal id of the person whose request caused this signal. */
+  readonly actor?: string;
 }
 
 function toEvent(row: Record<string, unknown>): SignalEvent {
@@ -24,6 +26,9 @@ function toEvent(row: Record<string, unknown>): SignalEvent {
     sourceType: String(row.source_type),
     sourceId: String(row.source_id),
     ...(row.service_id === null ? {} : { serviceId: String(row.service_id) }),
+    ...(row.actor_id === null || row.actor_id === undefined
+      ? {}
+      : { actor: String(row.actor_id) }),
     payload: JSON.parse(String(row.payload_json)),
     occurredAt: String(row.occurred_at),
   };
@@ -47,8 +52,8 @@ export class SignalBus {
       .query(
         `INSERT INTO events
            (id, signal_id, type, source_type, source_id, service_id, payload_json,
-            idempotency_key, occurred_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            idempotency_key, occurred_at, actor_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT DO NOTHING`,
       )
       .run(
@@ -61,12 +66,13 @@ export class SignalBus {
         payloadJson,
         input.idempotencyKey ?? null,
         occurredAt,
+        input.actor ?? null,
       );
     const row = input.idempotencyKey
       ? (this.db
           .query(
             `SELECT id, signal_id, type, source_type, source_id, service_id,
-                    payload_json, occurred_at
+                    payload_json, occurred_at, actor_id
                FROM events
               WHERE source_type = ? AND source_id = ? AND signal_id = ?
                 AND idempotency_key = ?`,
@@ -80,7 +86,7 @@ export class SignalBus {
       : (this.db
           .query(
             `SELECT id, signal_id, type, source_type, source_id, service_id,
-                    payload_json, occurred_at
+                    payload_json, occurred_at, actor_id
                FROM events WHERE id = ?`,
           )
           .get(id) as Record<string, unknown> | undefined);
@@ -135,7 +141,7 @@ export class SignalBus {
       this.db
         .query(
           `SELECT id, signal_id, type, source_type, source_id, service_id,
-                  payload_json, occurred_at
+                  payload_json, occurred_at, actor_id
              FROM events ${where}
             ORDER BY occurred_at DESC, id DESC LIMIT ?`,
         )

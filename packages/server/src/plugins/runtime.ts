@@ -1217,6 +1217,19 @@ export class PluginRuntime {
       throw new PluginRequestError("Insufficient service permission", 403);
   }
 
+  /**
+   * The person the current plugin call acts for, to record on the signals it
+   * causes. None in background work, where no person is asking, and none in
+   * local single-user mode, where every request is the same anonymous owner.
+   */
+  actingPrincipalId(): string | undefined {
+    if (this.backgroundContext.getStore()) return undefined;
+    const principal = this.principalContext.getStore();
+    return principal && principal.id !== LOCAL_PRINCIPAL_ID
+      ? principal.id
+      : undefined;
+  }
+
   async canAccessGlobalEvents(): Promise<boolean> {
     if (this.backgroundContext.getStore()) return true;
     const principal = this.principalContext.getStore();
