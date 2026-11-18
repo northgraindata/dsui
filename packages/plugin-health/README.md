@@ -13,12 +13,12 @@ This is currently a private workspace package.
 
 ## What you get
 
-- **Overview** with the current state of every service, 7-day uptime, response time and an hourly history strip.
-- **Service pages** with uptime for 24 hours, 7, 30 and 90 days, response time percentiles, the checks each adapter reports, recent changes and outages.
+- **Overview** with the current state of every service, response time and an hourly history strip with 7-day uptime.
+- **Status pages** that tell a team how the services they rely on are doing, with notices people post during a problem.
 - **Objectives** with an availability target per service and the error budget that is left.
 - **Outages** that start when a service stays unhealthy and end when it recovers.
 - **Maintenance windows and silences** so planned work does not count as downtime or raise signals.
-- **Reliability** on the overview: the last 7 or 30 days against the period before, with uptime, outages and mean time to recover.
+- **Reliability** as the `report` resource: the last 7 or 30 days against the period before, with uptime, outages and mean time to recover.
 - **Signals** that other plugins and the host can react to when a service changes state, plus a weekly summary.
 - **Dashboard score** on each service card.
 

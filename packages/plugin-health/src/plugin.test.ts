@@ -67,7 +67,6 @@ test("the plugin registers its jobs, signals, resources, actions and pages", () 
   expect(registered.actions).toContain("check-now");
   expect(registered.pages.sort()).toEqual([
     "overview",
-    "service",
     "settings",
     "status-page",
     "status-pages",

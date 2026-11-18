@@ -11,10 +11,6 @@ const Overview = defineComponent({
   id: "health/overview",
   path: "./browser.tsx",
 });
-const Service = defineComponent<{ serviceId: string }>({
-  id: "health/service",
-  path: "./browser.tsx",
-});
 const StatusPages = defineComponent({
   id: "health/status-pages",
   path: "./browser.tsx",
@@ -27,14 +23,6 @@ const StatusPage = defineComponent<{ slug: string }>({
 export const overviewPage = definePage<"/health", HealthContext>({
   path: "/health",
   render: () => [Overview()],
-});
-
-export const servicePage = definePage<
-  "/health/services/:serviceId",
-  HealthContext
->({
-  path: "/health/services/:serviceId",
-  render: ({ params }) => [Service({ serviceId: params.serviceId })],
 });
 
 export const statusPagesPage = definePage<

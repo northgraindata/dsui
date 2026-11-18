@@ -21,7 +21,6 @@ import { openHealthDb } from "./db.js";
 import { emitWeeklyReport } from "./digest.js";
 import {
   overviewPage,
-  servicePage,
   statusPagesPage,
   statusPageView,
 } from "./pages/index.js";
@@ -147,10 +146,6 @@ export function createHealthPlugin() {
         id: "overview",
         title: "Service health",
         description: "Current status, uptime and outages for every service.",
-      });
-      registry.page(servicePage, {
-        id: "service",
-        title: "Service health",
       });
       registry.page(statusPagesPage, {
         id: "status-pages",
