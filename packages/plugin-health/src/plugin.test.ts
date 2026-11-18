@@ -60,10 +60,28 @@ test("the plugin registers its jobs, signals, resources, actions and pages", () 
     "report",
     "service-detail",
     "service-health",
+    "status-page",
+    "status-pages",
     "suppressions",
   ]);
   expect(registered.actions).toContain("check-now");
-  expect(registered.pages.sort()).toEqual(["overview", "service", "settings"]);
+  expect(registered.pages.sort()).toEqual([
+    "overview",
+    "service",
+    "settings",
+    "status-page",
+    "status-pages",
+  ]);
+  expect(registered.actions).toEqual(
+    expect.arrayContaining([
+      "create-status-page",
+      "update-status-page",
+      "delete-status-page",
+      "post-notice",
+      "update-notice",
+      "resolve-notice",
+    ]),
+  );
   expect(registered.slots.sort()).toEqual(["service-card-status"]);
 });
 

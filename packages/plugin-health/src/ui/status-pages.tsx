@@ -1,0 +1,908 @@
+import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
+import {
+  type ComponentStatusView,
+  fleetSchema,
+  type NoticeView,
+  type StatusComponentView,
+  type StatusPageDetail,
+  statusPageDetailSchema,
+  statusPageListSchema,
+} from "../contract";
+import { React } from "../react";
+import { styles } from "../styles";
+import { ago, dateTime, pagePath, percent } from "./format";
+import { useAction, useNow, useResource } from "./hooks";
+import { Empty, Notice, PageLink } from "./parts";
+import { statusStyles } from "./status-styles";
+
+type Client = ComponentProps["client"];
+type Impact = Exclude<ComponentStatusView, "unknown">;
+type NoticeStatus = NoticeView["status"];
+
+export const componentLabel: Record<ComponentStatusView, string> = {
+  operational: "Operational",
+  maintenance: "Under maintenance",
+  degraded: "Degraded performance",
+  "partial-outage": "Partial outage",
+  "major-outage": "Major outage",
+  unknown: "No data yet",
+};
+
+const headline: Record<ComponentStatusView, string> = {
+  operational: "All systems operational",
+  maintenance: "Scheduled maintenance in progress",
+  degraded: "Some systems are degraded",
+  "partial-outage": "Partial outage",
+  "major-outage": "Major outage",
+  unknown: "Waiting for the first checks",
+};
+
+const noticeStatusLabel: Record<NoticeStatus, string> = {
+  investigating: "Investigating",
+  identified: "Identified",
+  monitoring: "Monitoring",
+  resolved: "Resolved",
+};
+
+const IMPACTS: readonly Impact[] = [
+  "degraded",
+  "partial-outage",
+  "major-outage",
+  "maintenance",
+  "operational",
+];
+
+function StatusDot({ status }: { status: ComponentStatusView }) {
+  return <i className="sp-dot" data-status={status} aria-hidden="true" />;
+}
+
+function StatusText({ status }: { status: ComponentStatusView }) {
+  return (
+    <span className="sp-status" data-status={status}>
+      <StatusDot status={status} />
+      {componentLabel[status]}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ list */
+
+export function StatusPagesPage({ client }: ComponentProps) {
+  const { useState } = React;
+  const list = useResource(client, "status-pages", {}, statusPageListSchema);
+  const [creating, setCreating] = useState(false);
+  const data = list.data;
+
+  return (
+    <div className="h-page sp-page">
+      <style>{styles}</style>
+      <style>{statusStyles}</style>
+
+      {data?.canCreate && !creating && (
+        <div className="sp-toolbar">
+          <button
+            type="button"
+            className="h-button"
+            data-variant="primary"
+            onClick={() => setCreating(true)}
+          >
+            New status page
+          </button>
+        </div>
+      )}
+
+      {list.error && <Notice tone="error">{list.error}</Notice>}
+
+      {creating && (
+        <PageEditor
+          client={client}
+          onCancel={() => setCreating(false)}
+          onSaved={(slug) => client.navigate(pagePath.statusPage(slug))}
+        />
+      )}
+
+      {data && data.items.length === 0 && !creating && (
+        <Empty>
+          {data.canCreate
+            ? "No status pages yet. Create one for a team, with the services they care about."
+            : "No status pages you can see yet."}
+        </Empty>
+      )}
+
+      {data && data.items.length > 0 && (
+        <ul className="sp-cards">
+          {data.items.map((page) => (
+            <li key={page.id}>
+              <PageLink
+                client={client}
+                to={pagePath.statusPage(page.slug)}
+                className="sp-card"
+              >
+                <span className="sp-card-band" data-status={page.status} />
+                <span className="sp-card-body">
+                  <strong>{page.name}</strong>
+                  <span className="sp-card-description">
+                    {page.description ?? `/${page.slug}`}
+                  </span>
+                  <span className="sp-card-foot">
+                    <StatusText status={page.status} />
+                    <span className="h-muted">
+                      {page.components}{" "}
+                      {page.components === 1 ? "component" : "components"}
+                      {page.activeNotices > 0
+                        ? ` · ${page.activeNotices} active ${page.activeNotices === 1 ? "notice" : "notices"}`
+                        : ""}
+                    </span>
+                  </span>
+                </span>
+              </PageLink>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!data && !list.error && (
+        <ul className="sp-cards" aria-busy="true">
+          {[0, 1, 2].map((key) => (
+            <li key={key}>
+              <div className="sp-card sp-card-loading">
+                <span className="h-skeleton" />
+                <span className="h-skeleton" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- detail */
+
+export function StatusPageView({ client, node }: ComponentProps) {
+  const { useState } = React;
+  const props = (node.kind === "custom" ? node.props.props : undefined) as
+    | { slug?: string }
+    | undefined;
+  const slug = props?.slug ?? "";
+  const detail = useResource(
+    client,
+    "status-page",
+    { slug },
+    statusPageDetailSchema,
+  );
+  const now = useNow();
+  const [mode, setMode] = useState<"view" | "edit" | "notice">("view");
+  const data = detail.data;
+
+  return (
+    <div className="h-page sp-page">
+      <style>{styles}</style>
+      <style>{statusStyles}</style>
+
+      <nav className="h-breadcrumb" aria-label="Breadcrumb">
+        <PageLink client={client} to={pagePath.statusPages}>
+          Status pages
+        </PageLink>
+        {data ? ` / ${data.page.name}` : ""}
+      </nav>
+
+      {detail.error && <Notice tone="error">{detail.error}</Notice>}
+      {!data && !detail.error && <PageSkeleton />}
+
+      {data && mode === "edit" && (
+        <PageEditor
+          client={client}
+          page={data}
+          onCancel={() => setMode("view")}
+          onSaved={(next) => {
+            setMode("view");
+            if (next === data.page.slug) detail.reload();
+            else client.navigate(pagePath.statusPage(next));
+          }}
+          onDeleted={() => client.navigate(pagePath.statusPages)}
+        />
+      )}
+
+      {data && mode !== "edit" && (
+        <>
+          <header className="sp-head">
+            <div>
+              <h1>{data.page.name}</h1>
+              {data.page.description && <p>{data.page.description}</p>}
+            </div>
+            <div className="h-section-actions">
+              {data.can.post && mode === "view" && (
+                <button
+                  type="button"
+                  className="h-button"
+                  data-variant="primary"
+                  onClick={() => setMode("notice")}
+                >
+                  Post notice
+                </button>
+              )}
+              {data.can.edit && (
+                <button
+                  type="button"
+                  className="h-button"
+                  onClick={() => setMode("edit")}
+                >
+                  Edit page
+                </button>
+              )}
+            </div>
+          </header>
+
+          <div className="sp-banner" data-status={data.status} role="status">
+            <StatusDot status={data.status} />
+            <strong>{headline[data.status]}</strong>
+            <span>Updated {ago(data.generatedAt, now)}</span>
+          </div>
+
+          {mode === "notice" && (
+            <NoticeForm
+              client={client}
+              page={data}
+              onDone={() => {
+                setMode("view");
+                detail.reload();
+              }}
+            />
+          )}
+
+          {data.active.length > 0 && (
+            <section className="sp-notices" aria-label="Active notices">
+              {data.active.map((notice) => (
+                <NoticeCard
+                  key={notice.id}
+                  client={client}
+                  notice={notice}
+                  components={data.components}
+                  canPost={data.can.post}
+                  onChange={detail.reload}
+                />
+              ))}
+            </section>
+          )}
+
+          <ComponentList components={data.components} />
+
+          <section className="h-section">
+            <header>
+              <div>
+                <h2>Past notices</h2>
+                <p>Resolved in the last 30 days.</p>
+              </div>
+            </header>
+            {data.history.length === 0 ? (
+              <Empty>No notices in the last 30 days.</Empty>
+            ) : (
+              <div className="sp-notices">
+                {data.history.map((notice) => (
+                  <NoticeCard
+                    key={notice.id}
+                    client={client}
+                    notice={notice}
+                    components={data.components}
+                    canPost={false}
+                    onChange={detail.reload}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div className="sp-components" aria-busy="true">
+      {[0, 1, 2].map((key) => (
+        <div key={key} className="sp-component">
+          <span className="h-skeleton" />
+          <span className="h-skeleton" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ components */
+
+function ComponentList({
+  components,
+}: {
+  components: readonly StatusComponentView[];
+}) {
+  if (components.length === 0)
+    return <Empty>This page has no components yet.</Empty>;
+  return (
+    <section className="sp-components" aria-label="Components">
+      {components.map((component) => (
+        <article key={component.id} className="sp-component">
+          <header>
+            <div>
+              <h3>{component.name}</h3>
+              {component.description && <p>{component.description}</p>}
+            </div>
+            <StatusText status={component.status} />
+          </header>
+          <UptimeBars component={component} />
+          <footer>
+            <span>{component.days.length} days ago</span>
+            <span className="sp-rule" aria-hidden="true" />
+            <span>{percent(component.availability)} uptime</span>
+            <span className="sp-rule" aria-hidden="true" />
+            <span>Today</span>
+          </footer>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function dayTitle(day: StatusComponentView["days"][number]): string {
+  const date = new Date(day.time).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+  });
+  if (day.status === null) return `${date}: no data`;
+  return `${date}: ${componentLabel[day.status]}, ${percent(day.availability)} uptime`;
+}
+
+function UptimeBars({ component }: { component: StatusComponentView }) {
+  const width = 4;
+  const gap = 2;
+  const height = 30;
+  const total = component.days.length * (width + gap) - gap;
+  return (
+    <svg
+      className="sp-bars"
+      viewBox={`0 0 ${total} ${height}`}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={`${component.name}, daily status for the last ${component.days.length} days`}
+    >
+      {component.days.map((day, index) => (
+        <rect
+          key={day.time}
+          x={index * (width + gap)}
+          y={0}
+          width={width}
+          height={height}
+          rx={1.5}
+          data-status={day.status ?? "missing"}
+        >
+          <title>{dayTitle(day)}</title>
+        </rect>
+      ))}
+    </svg>
+  );
+}
+
+/* --------------------------------------------------------------- notices */
+
+function NoticeCard({
+  client,
+  notice,
+  components,
+  canPost,
+  onChange,
+}: {
+  client: Client;
+  notice: NoticeView;
+  components: readonly StatusComponentView[];
+  canPost: boolean;
+  onChange: () => void;
+}) {
+  const { useState } = React;
+  const [open, setOpen] = useState(false);
+  const affected = components
+    .filter((component) => notice.componentIds.includes(component.id))
+    .map((component) => component.name);
+  return (
+    <article
+      className="sp-notice"
+      data-impact={notice.impact}
+      data-resolved={notice.resolvedAt !== null}
+    >
+      <header>
+        <div>
+          <h3>{notice.title}</h3>
+          <p className="h-muted">
+            {affected.length > 0 ? affected.join(", ") : "Whole page"}
+            {notice.source ? ` · posted by ${notice.source}` : ""}
+          </p>
+        </div>
+        <StatusText
+          status={notice.resolvedAt === null ? notice.impact : "operational"}
+        />
+      </header>
+      <ol className="sp-updates">
+        {notice.updates.map((update) => (
+          <li key={update.id} data-status={update.status}>
+            <strong>{noticeStatusLabel[update.status]}</strong>
+            <p>{update.message}</p>
+            <time dateTime={new Date(update.time).toISOString()}>
+              {dateTime(update.time)}
+            </time>
+          </li>
+        ))}
+      </ol>
+      {canPost && notice.resolvedAt === null && !open && (
+        <div className="h-section-actions">
+          <button
+            type="button"
+            className="h-button"
+            onClick={() => setOpen(true)}
+          >
+            Add update
+          </button>
+        </div>
+      )}
+      {open && (
+        <UpdateForm
+          client={client}
+          notice={notice}
+          onDone={() => {
+            setOpen(false);
+            onChange();
+          }}
+        />
+      )}
+    </article>
+  );
+}
+
+function UpdateForm({
+  client,
+  notice,
+  onDone,
+}: {
+  client: Client;
+  notice: NoticeView;
+  onDone: () => void;
+}) {
+  const { useState } = React;
+  const action = useAction(client, onDone);
+  const [status, setStatus] = useState<NoticeStatus>(
+    notice.status === "investigating" ? "identified" : "monitoring",
+  );
+  const [message, setMessage] = useState("");
+  return (
+    <form
+      className="h-form sp-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void action.run("update-notice", {
+          noticeId: notice.id,
+          status,
+          message,
+        });
+      }}
+    >
+      <label className="h-field">
+        Status
+        <select
+          value={status}
+          onChange={(event) =>
+            setStatus(event.currentTarget.value as NoticeStatus)
+          }
+        >
+          {(Object.keys(noticeStatusLabel) as NoticeStatus[]).map((value) => (
+            <option key={value} value={value}>
+              {noticeStatusLabel[value]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="h-field h-grow">
+        Message
+        <textarea
+          required
+          maxLength={2000}
+          value={message}
+          placeholder="What changed since the last update?"
+          onChange={(event) => setMessage(event.currentTarget.value)}
+        />
+      </label>
+      <div className="h-section-actions">
+        <button type="button" className="h-button" onClick={onDone}>
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="h-button"
+          data-variant="primary"
+          disabled={action.pending || message.trim() === ""}
+        >
+          {status === "resolved" ? "Resolve" : "Post update"}
+        </button>
+      </div>
+      {action.error && <Notice tone="error">{action.error}</Notice>}
+    </form>
+  );
+}
+
+function NoticeForm({
+  client,
+  page,
+  onDone,
+}: {
+  client: Client;
+  page: StatusPageDetail;
+  onDone: () => void;
+}) {
+  const { useState } = React;
+  const action = useAction(client, onDone);
+  const [title, setTitle] = useState("");
+  const [impact, setImpact] = useState<Impact>("degraded");
+  const [message, setMessage] = useState("");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  return (
+    <form
+      className="h-card sp-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void action.run("post-notice", {
+          pageId: page.page.id,
+          title,
+          impact,
+          message,
+          componentIds: [...selected],
+        });
+      }}
+    >
+      <h2>New notice</h2>
+      <div className="sp-form-row">
+        <label className="h-field h-grow">
+          Title
+          <input
+            required
+            maxLength={160}
+            value={title}
+            placeholder="Dashboards load slowly"
+            onChange={(event) => setTitle(event.currentTarget.value)}
+          />
+        </label>
+        <label className="h-field">
+          Impact
+          <select
+            value={impact}
+            onChange={(event) => setImpact(event.currentTarget.value as Impact)}
+          >
+            {IMPACTS.map((value) => (
+              <option key={value} value={value}>
+                {componentLabel[value]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <fieldset className="sp-choices">
+        <legend>Affected components</legend>
+        {page.components.map((component) => (
+          <label key={component.id}>
+            <input
+              type="checkbox"
+              checked={selected.has(component.id)}
+              onChange={() => toggle(component.id)}
+            />
+            {component.name}
+          </label>
+        ))}
+        <span className="h-muted">None selected means the whole page.</span>
+      </fieldset>
+      <label className="h-field">
+        Message
+        <textarea
+          required
+          maxLength={2000}
+          value={message}
+          placeholder="What is happening, and what should people expect?"
+          onChange={(event) => setMessage(event.currentTarget.value)}
+        />
+      </label>
+      <div className="h-section-actions">
+        <button type="button" className="h-button" onClick={onDone}>
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="h-button"
+          data-variant="primary"
+          disabled={
+            action.pending || title.trim() === "" || message.trim() === ""
+          }
+        >
+          Post notice
+        </button>
+      </div>
+      {action.error && <Notice tone="error">{action.error}</Notice>}
+    </form>
+  );
+}
+
+/* ---------------------------------------------------------------- editor */
+
+type DraftComponent = {
+  key: string;
+  id?: string;
+  name: string;
+  serviceIds: string[];
+};
+
+let draftKey = 0;
+const nextKey = () => `draft-${++draftKey}`;
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+function PageEditor({
+  client,
+  page,
+  onCancel,
+  onSaved,
+  onDeleted,
+}: {
+  client: Client;
+  page?: StatusPageDetail;
+  onCancel: () => void;
+  onSaved: (slug: string) => void;
+  onDeleted?: () => void;
+}) {
+  const { useState } = React;
+  const services = useResource(client, "service-health", {}, fleetSchema);
+  const [name, setName] = useState(page?.page.name ?? "");
+  const [slug, setSlug] = useState(page?.page.slug ?? "");
+  const [slugTouched, setSlugTouched] = useState(Boolean(page));
+  const [description, setDescription] = useState(page?.page.description ?? "");
+  const [components, setComponents] = useState<DraftComponent[]>(
+    page?.components.map((component) => ({
+      key: component.id,
+      id: component.id,
+      name: component.name,
+      serviceIds: [...component.serviceIds],
+    })) ?? [{ key: nextKey(), name: "", serviceIds: [] }],
+  );
+  const save = useAction(client);
+  const remove = useAction(client, onDeleted);
+
+  const update = (key: string, change: Partial<DraftComponent>) =>
+    setComponents((current) =>
+      current.map((item) => (item.key === key ? { ...item, ...change } : item)),
+    );
+  const move = (index: number, by: number) =>
+    setComponents((current) => {
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      if (item) next.splice(index + by, 0, item);
+      return next;
+    });
+
+  const valid =
+    name.trim() !== "" &&
+    slug.length >= 2 &&
+    components.every(
+      (component) =>
+        component.name.trim() !== "" && component.serviceIds.length > 0,
+    );
+
+  return (
+    <form
+      className="h-card sp-editor"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const input = {
+          name: name.trim(),
+          slug,
+          ...(description.trim() ? { description: description.trim() } : {}),
+          components: components.map((component) => ({
+            ...(component.id ? { id: component.id } : {}),
+            name: component.name.trim(),
+            serviceIds: component.serviceIds,
+          })),
+        };
+        void save
+          .run(
+            page ? "update-status-page" : "create-status-page",
+            page ? { id: page.page.id, ...input } : input,
+          )
+          .then((ok) => {
+            if (ok) onSaved(slug);
+          });
+      }}
+    >
+      <h2>{page ? "Edit status page" : "New status page"}</h2>
+      <div className="sp-form-row">
+        <label className="h-field h-grow">
+          Name
+          <input
+            required
+            maxLength={80}
+            value={name}
+            placeholder="Finance reporting"
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setName(value);
+              if (!slugTouched) setSlug(slugify(value));
+            }}
+          />
+        </label>
+        <label className="h-field">
+          Address
+          <input
+            required
+            maxLength={60}
+            value={slug}
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            onChange={(event) => {
+              setSlugTouched(true);
+              setSlug(slugify(event.currentTarget.value));
+            }}
+          />
+        </label>
+      </div>
+      <label className="h-field">
+        Description
+        <input
+          maxLength={500}
+          value={description}
+          placeholder="Who this page is for and what it covers"
+          onChange={(event) => setDescription(event.currentTarget.value)}
+        />
+      </label>
+
+      <fieldset className="sp-editor-components">
+        <legend>Components</legend>
+        <p className="h-muted">
+          A component is something people recognise, backed by one or more
+          services. Its status is the worst of its services.
+        </p>
+        {components.map((component, index) => (
+          <div key={component.key} className="sp-editor-component">
+            <div className="sp-form-row">
+              <label className="h-field h-grow">
+                Component name
+                <input
+                  required
+                  maxLength={80}
+                  value={component.name}
+                  placeholder="Revenue dashboards"
+                  onChange={(event) =>
+                    update(component.key, { name: event.currentTarget.value })
+                  }
+                />
+              </label>
+              <div className="sp-editor-tools">
+                <button
+                  type="button"
+                  className="h-button"
+                  aria-label={`Move ${component.name || "component"} up`}
+                  disabled={index === 0}
+                  onClick={() => move(index, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="h-button"
+                  aria-label={`Move ${component.name || "component"} down`}
+                  disabled={index === components.length - 1}
+                  onClick={() => move(index, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="h-button"
+                  data-variant="danger"
+                  disabled={components.length === 1}
+                  onClick={() =>
+                    setComponents((current) =>
+                      current.filter((item) => item.key !== component.key),
+                    )
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+            <fieldset className="sp-choices">
+              <legend className="sp-visually-hidden">Services</legend>
+              {(services.data?.items ?? []).map((service) => (
+                <label key={service.id}>
+                  <input
+                    type="checkbox"
+                    checked={component.serviceIds.includes(service.id)}
+                    onChange={(event) =>
+                      update(component.key, {
+                        serviceIds: event.currentTarget.checked
+                          ? [...component.serviceIds, service.id]
+                          : component.serviceIds.filter(
+                              (id) => id !== service.id,
+                            ),
+                      })
+                    }
+                  />
+                  {service.name}
+                  <span className="h-muted">{service.adapter}</span>
+                </label>
+              ))}
+              {services.data?.items.length === 0 && (
+                <span className="h-muted">No services to choose from.</span>
+              )}
+            </fieldset>
+          </div>
+        ))}
+        <div>
+          <button
+            type="button"
+            className="h-button"
+            onClick={() =>
+              setComponents((current) => [
+                ...current,
+                { key: nextKey(), name: "", serviceIds: [] },
+              ])
+            }
+          >
+            Add component
+          </button>
+        </div>
+      </fieldset>
+
+      {save.error && <Notice tone="error">{save.error}</Notice>}
+      {remove.error && <Notice tone="error">{remove.error}</Notice>}
+
+      <div className="sp-editor-actions">
+        {page && (
+          <button
+            type="button"
+            className="h-button"
+            data-variant="danger"
+            disabled={remove.pending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Delete "${page.page.name}" and its notices? This cannot be undone.`,
+                )
+              )
+                void remove.run("delete-status-page", { id: page.page.id });
+            }}
+          >
+            Delete page
+          </button>
+        )}
+        <span className="sp-spacer" />
+        <button type="button" className="h-button" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="h-button"
+          data-variant="primary"
+          disabled={!valid || save.pending}
+        >
+          {page ? "Save changes" : "Create page"}
+        </button>
+      </div>
+    </form>
+  );
+}

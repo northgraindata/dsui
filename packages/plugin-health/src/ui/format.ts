@@ -77,6 +77,9 @@ export function fromInputValue(value: string): number {
 export const pagePath = {
   service: (id: string) => `health/services/${encodeURIComponent(id)}`,
   overview: "health",
+  statusPages: "health/status-pages",
+  statusPage: (slug: string) =>
+    `health/status-pages/${encodeURIComponent(slug)}`,
 };
 
 /** Change between two percentages, in percentage points. */

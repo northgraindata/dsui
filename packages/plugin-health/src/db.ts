@@ -106,6 +106,57 @@ export const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    name: "status-pages",
+    up(db) {
+      db.exec(`
+        CREATE TABLE status_pages (
+          id TEXT PRIMARY KEY,
+          slug TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          description TEXT,
+          created_by TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE status_page_components (
+          id TEXT PRIMARY KEY,
+          page_id TEXT NOT NULL REFERENCES status_pages(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          description TEXT,
+          position INTEGER NOT NULL,
+          service_ids_json TEXT NOT NULL
+        );
+        CREATE INDEX status_page_components_page ON status_page_components(page_id, position);
+
+        CREATE TABLE notices (
+          id TEXT PRIMARY KEY,
+          page_id TEXT NOT NULL REFERENCES status_pages(id) ON DELETE CASCADE,
+          title TEXT NOT NULL,
+          impact TEXT NOT NULL,
+          status TEXT NOT NULL,
+          component_ids_json TEXT NOT NULL,
+          source TEXT,
+          created_by TEXT,
+          created_at INTEGER NOT NULL,
+          resolved_at INTEGER
+        );
+        CREATE INDEX notices_page ON notices(page_id, created_at);
+
+        CREATE TABLE notice_updates (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          notice_id TEXT NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
+          time INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          message TEXT NOT NULL,
+          author TEXT
+        );
+        CREATE INDEX notice_updates_notice ON notice_updates(notice_id, time);
+      `);
+    },
+  },
 ];
 
 /**
