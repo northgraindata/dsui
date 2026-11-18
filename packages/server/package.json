@@ -28,6 +28,7 @@
     "@northgraindata/dsui-adapter-postgresql": "workspace:*",
     "@northgraindata/dsui-adapter-s3": "workspace:*",
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "@northgraindata/dsui-adapter-shaper": "workspace:*",
     "@northgraindata/dsui-core": "workspace:*",
     "@northgraindata/dsui-plugin-sdk": "workspace:*",
     "hono": "^4.11.7",
