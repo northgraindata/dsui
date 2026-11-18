@@ -647,6 +647,32 @@ export class JobQueue {
     return reclaimed;
   }
 
+  /** Remove a bounded batch of successful scheduled runs and their attempts. */
+  pruneScheduledSuccesses(retentionMs: number): number {
+    const cutoff = new Date(this.now().getTime() - retentionMs).toISOString();
+    return this.db.transaction(() => {
+      const rows = this.db
+        .query<{ run_id: string }, [string]>(
+          `SELECT run_id FROM plugin_job_runs
+          WHERE status = 'succeeded' AND scheduled_for IS NOT NULL
+            AND idempotency_key IS NULL AND finished_at < ?
+          ORDER BY finished_at LIMIT 500`,
+        )
+        .all(cutoff);
+      const deleteAttempts = this.db.query(
+        "DELETE FROM plugin_job_attempts WHERE run_id = ?",
+      );
+      const deleteRun = this.db.query(
+        "DELETE FROM plugin_job_runs WHERE run_id = ?",
+      );
+      for (const { run_id } of rows) {
+        deleteAttempts.run(run_id);
+        deleteRun.run(run_id);
+      }
+      return rows.length;
+    })();
+  }
+
   /** Purges finished runs older than the retention window. */
   prune(retentionMs: number): number {
     const cutoff = new Date(this.now().getTime() - retentionMs).toISOString();

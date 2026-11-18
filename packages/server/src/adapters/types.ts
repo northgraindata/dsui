@@ -121,7 +121,7 @@ export interface AdapterExecutionContext {
  */
 export interface AdapterBackend {
   /** Release isolated hosts during runtime shutdown or adapter replacement. */
-  close?(): Promise<void>;
+  close?(drain?: boolean): Promise<void>;
   /** Release the host for a removed or reconfigured service. */
   invalidateService?(namespace: string): Promise<void>;
   /** Validate a connection object; returns the parsed value. */

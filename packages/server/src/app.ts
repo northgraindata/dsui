@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
@@ -485,6 +486,26 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
   let adapterSync: Promise<void> | undefined;
   let adaptersLoaded = false;
   let adapterSignature = "";
+  const loadedSources = new Map<string, string>();
+  const stagedBuilds = new Map<LoadedAdapter["backend"], string>();
+  const sourceMetadata = new Map<string, LoadedAdapter["metadata"]>();
+  const removeStagedBuild = async (directory: string) => {
+    await rm(directory, { recursive: true, force: true }).catch((error) => {
+      console.warn("Could not remove retired adapter build", error);
+    });
+  };
+  const retireAdapter = async (
+    backend: LoadedAdapter["backend"],
+    drain: boolean,
+  ) => {
+    await backend.close?.(drain);
+    const directory = stagedBuilds.get(backend);
+    if (directory) {
+      await removeStagedBuild(directory);
+      stagedBuilds.delete(backend);
+    }
+  };
+  const retiringAdapters = new Set<Promise<unknown>>();
   const loaderOptions: AdapterLoadOptions = {
     dataDir: options.adaptersDataDir ?? dataDir,
     fetch: options.adapterFetch,
@@ -496,35 +517,24 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     persistenceBlobRoot: blobRoot,
   };
 
-  /**
-   * Loads every configured adapter through the uniform loader and
-   * records per-adapter readiness. One bad entry marks itself
-   * unavailable instead of blocking startup; unknown override ids
-   * are ignored by the registry. No `adapters:` section means no
-   * adapters: nothing is implied, so every adapter needs an explicit
-   * source in configuration.
-   */
-  /**
-   * Builds every configured adapter, once.
-   *
-   * Each adapter is a `bun install`, two `bun build`s and a spawned host, so
-   * re-running this per request cost seconds and, because `registry.reset`
-   * empties the registry first, any request landing mid-rebuild failed with
-   * "Unknown adapter". Concurrent callers await the same build, and once it has
-   * succeeded the loaded adapters are kept unless the config's adapter set
-   * changes.
-   */
+  /** Stage changed adapters before replacing any live registry entries. */
   const syncAdapters = async (loaded: DsuiConfig) => {
     if (adapterSync !== undefined) return adapterSync;
     const signature = JSON.stringify(
-      Object.entries(loaded.adapters ?? {})
-        .filter(([, entry]) => isAdapterSource(entry))
-        .sort(([left], [right]) => left.localeCompare(right)),
+      Object.entries(loaded.adapters ?? {}).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
     );
     if (adaptersLoaded && signature === adapterSignature) return;
     adapterSync = (async () => {
       const next: LoadedAdapter[] = [];
-      readiness.clear();
+      const previous = new Map(
+        registry.list().map((adapter) => [adapter.id, adapter]),
+      );
+      for (const id of readiness.keys()) {
+        const entry = loaded.adapters?.[id];
+        if (!entry || !isAdapterSource(entry)) readiness.delete(id);
+      }
       const entries = Object.entries(loaded.adapters ?? {});
       if (!entries.length)
         console.warn(
@@ -534,14 +544,36 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         ([id, entry]) => (isAdapterSource(entry) ? [[id, entry] as const] : []),
       );
       for (const [id, source] of sources) {
+        const old = previous.get(id);
+        const sourceSignature = JSON.stringify(source);
+        const metadata = sourceMetadata.get(id);
+        const retained = old && metadata ? { ...old, metadata } : old;
+        if (retained && loadedSources.get(id) === sourceSignature) {
+          next.push(retained);
+          continue;
+        }
+        let buildDirectory: string | undefined;
         options.onAdapterLoad?.({ phase: "start", id });
         const started = performance.now();
         try {
+          if (adaptersLoaded && !loaderOptions.offline) {
+            const root = join(
+              loaderOptions.dataDir ?? dataDir,
+              "adapters",
+              "staged",
+            );
+            await mkdir(root, { recursive: true });
+            buildDirectory = await mkdtemp(join(root, "build-"));
+          }
           const loadedAdapter = await loadAdapter(
             id,
             toAdapterSourceLocation(source, process.cwd()),
-            loaderOptions,
+            { ...loaderOptions, buildDirectory },
           );
+          if (buildDirectory)
+            stagedBuilds.set(loadedAdapter.backend, buildDirectory);
+          loadedSources.set(id, sourceSignature);
+          sourceMetadata.set(id, loadedAdapter.metadata);
           next.push(loadedAdapter);
           readiness.set(id, {
             status: "ok",
@@ -555,12 +587,19 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ms: performance.now() - started,
           });
         } catch (error) {
+          if (buildDirectory) await removeStagedBuild(buildDirectory);
+          if (retained) next.push(retained);
           errors.record("adapter_load_failed", id);
           const detail = error instanceof Error ? error.message : "Load failed";
           // Reported through onAdapterLoad rather than logged here: a failed
           // adapter is a startup state the CLI already renders, and printing an
           // Error object also printed its stack.
-          readiness.set(id, { status: "unavailable", detail });
+          readiness.set(id, {
+            status: retained ? "ok" : "unavailable",
+            detail: retained
+              ? `Still serving the previous build: ${detail}`
+              : detail,
+          });
           options.onAdapterLoad?.({
             phase: "done",
             id,
@@ -574,9 +613,21 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       // The previous registry is only replaced once every adapter has been
       // attempted, so a failed adapter leaves its working siblings in place
       // instead of clearing the registry and reporting them all as unknown.
-      const previous = registry.list();
+      const activeBackends = new Set(next.map((adapter) => adapter.backend));
       registry.reset(next);
-      await Promise.all(previous.map((adapter) => adapter.backend.close?.()));
+      for (const id of previous.keys()) {
+        if (!registry.has(id)) {
+          loadedSources.delete(id);
+          sourceMetadata.delete(id);
+        }
+      }
+      for (const { backend } of previous.values()) {
+        if (activeBackends.has(backend)) continue;
+        const retirement = retireAdapter(backend, true)
+          .catch((error) => console.warn("Could not retire adapter", error))
+          .finally(() => retiringAdapters.delete(retirement));
+        retiringAdapters.add(retirement);
+      }
       for (const [id, override] of Object.entries(loaded.adapters ?? {}))
         if (!isAdapterSource(override)) registry.applyMetadata(id, override);
       adapterSignature = signature;
@@ -746,9 +797,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       unsubscribeSignalJobs();
       await pluginJobs.close();
       await pluginRuntime.close();
-      await Promise.all(
-        registry.list().map((adapter) => adapter.backend.close?.()),
-      );
+      await adapterSync;
+      await Promise.all([
+        ...retiringAdapters,
+        ...registry.list().map(({ backend }) => retireAdapter(backend, false)),
+      ]);
       database.close();
     },
   };
