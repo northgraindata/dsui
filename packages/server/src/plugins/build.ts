@@ -21,8 +21,7 @@ import {
   bundleWithExtras,
   copyTree,
   defaultRun,
-  extractTar,
-  gunzip,
+  extractGzipTar,
   MAX_ARCHIVE_BYTES,
   readResponseBytes,
   repository,
@@ -192,8 +191,8 @@ export async function buildPlugin(
       MAX_ARCHIVE_BYTES,
       "Plugin source",
     );
-    const files = extractTar(
-      await gunzip(archive),
+    const files = await extractGzipTar(
+      archive,
       location.repository,
       location.path,
     );

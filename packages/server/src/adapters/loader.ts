@@ -12,7 +12,6 @@ import {
   type AdapterSourceLocation,
   buildAdapter,
 } from "./build.js";
-import { assertAdapterDefinition } from "./definition.js";
 import type { AdapterFetch } from "./fetch.js";
 import { AdapterHostClient, type HostMethod } from "./host.js";
 import { resolveSdkRoot } from "./sdk.js";
@@ -32,6 +31,7 @@ import { AdapterExecutionError, AdapterLoadError } from "./types.js";
 
 export interface AdapterLoadOptions {
   dataDir?: string;
+  buildDirectory?: string;
   fetch?: AdapterFetch;
   /** Reuse the stored bundle and never open the network. */
   offline?: boolean;
@@ -48,7 +48,7 @@ export interface AdapterLoadOptions {
       timeoutMs?: number;
       hostIdleTimeoutMs?: number;
     }): Promise<unknown>;
-    close?(): Promise<void>;
+    close?(drain?: boolean): Promise<void>;
     invalidateService?(namespace: string): Promise<void>;
   };
   /** Host call budget in ms (actions run long). */
@@ -66,14 +66,6 @@ export interface AdapterLoadOptions {
 }
 
 export { assertAdapterDefinition } from "./definition.js";
-
-function healthy(started: number): HealthStatus {
-  return {
-    status: "healthy",
-    checkedAt: new Date().toISOString(),
-    latencyMs: Date.now() - started,
-  };
-}
 
 function unhealthy(started: number, error: unknown): HealthStatus {
   return {
@@ -273,7 +265,7 @@ type RemoteHostRequest = {
 
 type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
-  close?(): Promise<void>;
+  close?(drain?: boolean): Promise<void>;
   invalidateService?(namespace: string): Promise<void>;
 };
 
@@ -298,8 +290,8 @@ function queueSerialRequest(
 }
 
 export class RemoteBackend implements AdapterBackend {
-  async close(): Promise<void> {
-    await this.host.close?.();
+  async close(drain = false): Promise<void> {
+    await this.host.close?.(drain);
   }
 
   async invalidateService(namespace: string): Promise<void> {
@@ -677,6 +669,7 @@ export async function loadAdapter(
 
   const built = await buildAdapter(id, source, {
     dataDir,
+    buildDirectory: options.buildDirectory,
     sdkPackageRoot: await resolveSdkRoot({
       dataDir,
       version: options.version ?? process.env.DSUI_VERSION ?? "0.0.0",
@@ -705,50 +698,55 @@ export async function loadAdapter(
       });
     });
   const host = spawn(built.bundlePath);
-  const described = (await host
-    .request({ method: "describe" })
-    .catch((error: unknown) => {
+  try {
+    const described = (await host
+      .request({ method: "describe" })
+      .catch((error: unknown) => {
+        throw new AdapterLoadError(
+          `Adapter host describe failed for "${id}": ${error instanceof Error ? error.message : "unknown error"}`,
+        );
+      })) as {
+      metadata?: AdapterInfo;
+      connectionSchema?: LoadedAdapter["connectionSchema"];
+      connectionMethods?: unknown;
+      resources?: AdapterCatalog["resources"];
+      actions?: AdapterCatalog["actions"];
+      pages?: AdapterCatalog["pages"];
+      components?: AdapterCatalog["components"];
+      jobs?: JobCatalogEntry[];
+      signals?: SignalCatalogEntry[];
+      routes?: unknown;
+    };
+    const catalog = assertCatalog(described, built.bundlePath);
+    const metadata = described.metadata;
+    if (!metadata || metadata.id !== id)
       throw new AdapterLoadError(
-        `Adapter host describe failed for "${id}": ${error instanceof Error ? error.message : "unknown error"}`,
+        `Adapter declares id "${metadata?.id ?? "?"}" but is registered as "${id}"`,
       );
-    })) as {
-    metadata?: AdapterInfo;
-    connectionSchema?: LoadedAdapter["connectionSchema"];
-    connectionMethods?: unknown;
-    resources?: AdapterCatalog["resources"];
-    actions?: AdapterCatalog["actions"];
-    pages?: AdapterCatalog["pages"];
-    components?: AdapterCatalog["components"];
-    jobs?: JobCatalogEntry[];
-    signals?: SignalCatalogEntry[];
-    routes?: unknown;
-  };
-  const catalog = assertCatalog(described, built.bundlePath);
-  const metadata = described.metadata;
-  if (!metadata || metadata.id !== id)
-    throw new AdapterLoadError(
-      `Adapter declares id "${metadata?.id ?? "?"}" but is registered as "${id}"`,
-    );
-  const connectionMethods = toConnectionMethods(described.connectionMethods);
-  return {
-    id,
-    metadata: { ...metadata },
-    catalog: {
-      resources: catalog.resources,
-      actions: catalog.actions,
-      pages: catalog.pages,
-      components: built.components ?? [],
-      jobs: catalog.jobs,
-      signals: catalog.signals,
-      routes: catalog.routes,
-    },
-    ...(described.connectionSchema
-      ? { connectionSchema: described.connectionSchema }
-      : {}),
-    ...(connectionMethods ? { connectionMethods } : {}),
-    backend: new RemoteBackend(host, id, connectionMethods ?? []),
-    ...(built.browserBundlePath
-      ? { browserBundlePath: built.browserBundlePath }
-      : {}),
-  };
+    const connectionMethods = toConnectionMethods(described.connectionMethods);
+    return {
+      id,
+      metadata: { ...metadata },
+      catalog: {
+        resources: catalog.resources,
+        actions: catalog.actions,
+        pages: catalog.pages,
+        components: built.components ?? [],
+        jobs: catalog.jobs,
+        signals: catalog.signals,
+        routes: catalog.routes,
+      },
+      ...(described.connectionSchema
+        ? { connectionSchema: described.connectionSchema }
+        : {}),
+      ...(connectionMethods ? { connectionMethods } : {}),
+      backend: new RemoteBackend(host, id, connectionMethods ?? []),
+      ...(built.browserBundlePath
+        ? { browserBundlePath: built.browserBundlePath }
+        : {}),
+    };
+  } catch (error) {
+    await host.close?.().catch(() => undefined);
+    throw error;
+  }
 }

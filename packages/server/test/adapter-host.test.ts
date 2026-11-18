@@ -342,3 +342,21 @@ test("isolated actions and jobs do not block reads and their persisted updates a
   );
   expect(await stored()).toEqual({ data: { value: 2 } });
 });
+
+test("retiring a host lets a running action finish", async () => {
+  const database = new DsuiDatabase(join(directory, "state.sqlite"));
+  database.close();
+  const host = client();
+  const action = host.request(
+    request({ method: "action", target: "update", input: { delayMs: 200 } }),
+  );
+
+  const retired = host.close(true);
+  await expect(host.request(request())).rejects.toThrow("client closed");
+  await action;
+  await retired;
+
+  expect(await client().request(request({ target: "stored" }))).toEqual({
+    data: { value: 1 },
+  });
+});
