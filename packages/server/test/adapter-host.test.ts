@@ -317,7 +317,9 @@ test("DuckDB file lock is available to another process after each resource respo
     const stderr = await new Response(external.stderr).text();
     expect(await external.exited, stderr).toBe(0);
   }
-});
+  // Starts the adapter host and two separate DuckDB processes, which takes
+  // longer than the default 5 s when the whole suite runs in parallel.
+}, 30_000);
 
 test("isolated actions and jobs do not block reads and their persisted updates are visible", async () => {
   const database = new DsuiDatabase(join(directory, "state.sqlite"));
