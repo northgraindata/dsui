@@ -56,6 +56,7 @@ export interface AdapterBuildOptions {
   dataDir: string;
   /** Root of the prepared SDK tree holding `node_modules/@northgraindata/*`. */
   sdkPackageRoot: string;
+  /** Build here instead of `<dataDir>/adapters/build/<id>`, so a live build stays intact. */
   buildDirectory?: string;
   fetch?: AdapterFetch;
   /** Reuse a stored bundle instead of rebuilding; never opens the network. */
@@ -237,8 +238,9 @@ export async function extractGzipTar(
       )
         throw new ExternalAdapterError("Truncated adapter source archive");
     }
-    // Drain to validate gzip integrity and enforce the limit even after tar EOF.
-    while (await refill()) {}
+    while (await refill()) {
+      // Drain to validate gzip integrity and enforce the limit even after tar EOF.
+    }
     return files;
   } catch (error) {
     if (error instanceof ExternalAdapterError) throw error;

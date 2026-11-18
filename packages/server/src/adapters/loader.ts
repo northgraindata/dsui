@@ -12,7 +12,6 @@ import {
   type AdapterSourceLocation,
   buildAdapter,
 } from "./build.js";
-import { assertAdapterDefinition } from "./definition.js";
 import type { AdapterFetch } from "./fetch.js";
 import { AdapterHostClient, type HostMethod } from "./host.js";
 import { resolveSdkRoot } from "./sdk.js";
@@ -67,14 +66,6 @@ export interface AdapterLoadOptions {
 }
 
 export { assertAdapterDefinition } from "./definition.js";
-
-function healthy(started: number): HealthStatus {
-  return {
-    status: "healthy",
-    checkedAt: new Date().toISOString(),
-    latencyMs: Date.now() - started,
-  };
-}
 
 function unhealthy(started: number, error: unknown): HealthStatus {
   return {
