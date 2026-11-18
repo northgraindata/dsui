@@ -109,6 +109,11 @@ export function defaultDataDir(): string {
   );
 }
 
+/** Spreads the acting person into a signal or action call, when there is one. */
+function withActor(actor: string | undefined): { actor?: string } {
+  return actor ? { actor } : {};
+}
+
 export function createRuntime(options: CreateRuntimeOptions = {}) {
   const dataDir = options.dataDir ?? defaultDataDir();
   const databasePath = options.databasePath ?? join(dataDir, "dsui.sqlite");
@@ -282,7 +287,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ? AbortSignal.any([options.signal, AbortSignal.timeout(600000)])
             : AbortSignal.timeout(600000),
           options?.origin?.pluginId ?? "plugin",
-          { origin: options?.origin },
+          {
+            origin: options?.origin,
+            ...withActor(pluginRuntime.actingPrincipalId()),
+          },
         );
         if (result.result.status === "error")
           throw new PluginRequestError(result.result.message, 422);
@@ -385,6 +393,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
               sourceId: pluginId,
               serviceId,
               payload,
+              ...withActor(pluginRuntime.actingPrincipalId()),
             });
           },
         },

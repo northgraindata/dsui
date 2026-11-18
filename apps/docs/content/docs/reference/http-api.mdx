@@ -38,11 +38,12 @@ The response is a JSON object with an `items` array. Each item has these fields:
 | `id` | Unique ID of the event |
 | `signalId` | The signal, written as `<source id>.<signal id>` |
 | `type` | `info`, `success`, `warning`, or `error` |
-| `sourceType` | `adapter` or `plugin` |
-| `sourceId` | For an adapter event, the ID of the service that it came from. For a plugin event, the ID of the plugin |
+| `sourceType` | `adapter`, `plugin`, or `host` |
+| `sourceId` | For an adapter event, the ID of the service that it came from. For a plugin event, the ID of the plugin. For a host event, `dsui` |
 | `serviceId` | The service the event is about. Absent when the event isn't about one service |
 | `payload` | The data of the signal. Each signal defines its own fields |
 | `occurredAt` | When the event happened, as an ISO timestamp |
+| `actor` | The principal ID of the person whose request caused the event, such as someone running an action. Absent for background work and in local single-user mode |
 
 To poll for new events, send the `occurredAt` of the newest event you've seen as `after`.
 
