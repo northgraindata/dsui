@@ -43,6 +43,19 @@ export type EnterpriseSsoProviderRow = {
   updated_at: string;
 };
 
+export type ConnectorRow = {
+  id: string;
+  name: string;
+  token_hash: string;
+  created_at: string;
+  created_by: string;
+  revoked_at: string | null;
+  last_connected_at: string | null;
+  last_seen_at: string | null;
+  /** JSON: version, hostname, os, arch, observedIp, localAddrs, targets. */
+  info: string;
+};
+
 export type PersistedStoreState = {
   readonly value: unknown;
   readonly version: number;
@@ -273,6 +286,75 @@ export class DsuiDatabase {
         now,
         now,
       );
+  }
+  listConnectors(): ConnectorRow[] {
+    return this.sqlite
+      .query<ConnectorRow, []>(
+        "SELECT * FROM connectors ORDER BY created_at ASC",
+      )
+      .all();
+  }
+  getConnector(id: string): ConnectorRow | null {
+    return (
+      this.sqlite
+        .query<ConnectorRow, [string]>("SELECT * FROM connectors WHERE id = ?")
+        .get(id) ?? null
+    );
+  }
+  insertConnector(
+    connector: Pick<ConnectorRow, "id" | "name" | "token_hash" | "created_by">,
+  ): void {
+    this.sqlite
+      .query(
+        "INSERT INTO connectors (id, name, token_hash, created_at, created_by) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        connector.id,
+        connector.name,
+        connector.token_hash,
+        new Date().toISOString(),
+        connector.created_by,
+      );
+  }
+  renameConnector(id: string, name: string): void {
+    this.sqlite
+      .query("UPDATE connectors SET name = ? WHERE id = ?")
+      .run(name, id);
+  }
+  /** Replaces the token. The old one stops working immediately. */
+  rotateConnectorToken(id: string, tokenHash: string): void {
+    this.sqlite
+      .query(
+        "UPDATE connectors SET token_hash = ?, revoked_at = NULL WHERE id = ?",
+      )
+      .run(tokenHash, id);
+  }
+  revokeConnector(id: string): void {
+    this.sqlite
+      .query("UPDATE connectors SET revoked_at = ? WHERE id = ?")
+      .run(new Date().toISOString(), id);
+  }
+  deleteConnector(id: string): void {
+    this.sqlite.query("DELETE FROM connectors WHERE id = ?").run(id);
+  }
+  recordConnectorConnected(id: string, info: Record<string, unknown>): void {
+    const now = new Date().toISOString();
+    this.sqlite
+      .query(
+        "UPDATE connectors SET last_connected_at = ?, last_seen_at = ?, info = ? WHERE id = ?",
+      )
+      .run(now, now, JSON.stringify(info), id);
+  }
+  recordConnectorSeen(id: string, info?: Record<string, unknown>): void {
+    const now = new Date().toISOString();
+    if (info)
+      this.sqlite
+        .query("UPDATE connectors SET last_seen_at = ?, info = ? WHERE id = ?")
+        .run(now, JSON.stringify(info), id);
+    else
+      this.sqlite
+        .query("UPDATE connectors SET last_seen_at = ? WHERE id = ?")
+        .run(now, id);
   }
   close(): void {
     this.sqlite.close();

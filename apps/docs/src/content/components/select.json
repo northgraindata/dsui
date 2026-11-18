@@ -1,0 +1,25 @@
+{
+  "name": "Select",
+  "description": "Dropdown input.",
+  "props": {
+    "name": {
+      "description": "Field name"
+    },
+    "label": {
+      "description": "Label text"
+    },
+    "options": {
+      "description": "Available options"
+    },
+    "value": {
+      "description": "Currently selected value"
+    },
+    "onChange": {
+      "description": "Change callback (browser only)"
+    },
+    "placeholder": {
+      "description": "Placeholder text"
+    }
+  },
+  "example": "Select({\n  name: \"warehouse\",\n  label: \"Warehouse\",\n  options: [\n    { label: \"Small\", value: \"SMALL\" },\n    { label: \"Medium\", value: \"MEDIUM\" },\n    { label: \"Large\", value: \"LARGE\" },\n  ],\n  value: \"MEDIUM\",\n})"
+}

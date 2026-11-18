@@ -1,0 +1,106 @@
+---
+title: Private networks
+description: Use the DSUI Agent to reach databases, Airflow, and other sources that sit in a private network, without opening inbound ports.
+contentType: how-to
+---
+
+The DSUI Agent is a small program that runs next to your sources. It makes one outbound connection to DSUI and forwards traffic only to the hosts you allow. Your sources stay private, and their credentials stay in DSUI.
+
+The agent forwards bytes without reading them. TLS, a reverse proxy, Basic auth, JWT, mTLS, and database passwords keep working as they do for a direct connection.
+
+Managing agents needs the admin role. Without an authentication plugin, you are the owner and have it. See [how DSUI works](/docs/getting-started/concepts#access-control).
+
+## Connect a source through an agent
+
+<Steps>
+<Step>
+
+### Add an agent
+
+Open **Settings**, select **Agents**, and add an agent. You can also choose **Via DSUI Agent** in a service's connection dialog and select **Add an agent**.
+
+DSUI shows the agent's token once, with setup commands for Docker, Kubernetes, Linux (systemd), and Windows. Copy the token before you close the dialog.
+
+</Step>
+<Step>
+
+### Run the agent next to your sources
+
+Use the commands DSUI shows. For Docker Compose, add the agent to the same network as the services it should reach:
+
+```yaml {6-7}
+services:
+  dsui-agent:
+    image: ghcr.io/northgraindata/dsui-agent:latest
+    restart: unless-stopped
+    environment:
+      DSUI_URL: https://dsui.example.com
+      DSUI_TOKEN: ${DSUI_TOKEN}
+      DSUI_AGENT_NAME: my-stack
+      DSUI_TARGETS: airflow-api:8080,clickhouse:8123
+```
+
+`DSUI_URL` is the address of your DSUI instance. `DSUI_TARGETS` is the allowlist of hosts the agent may reach. DSUI shows the agent as online, with the address it connects from, once it connects.
+
+</Step>
+<Step>
+
+### Point a service at the agent
+
+Add or edit a service and choose **Via DSUI Agent**. Select the agent, then fill in the adapter's fields as usual.
+
+Enter each host and port as the agent sees them, for example `airflow-api:8080`. One agent can serve many services, each with a different host and port.
+
+</Step>
+<Step>
+
+### Test the connection
+
+Select **Test connection**, then save the service. If the test fails with `not_allowed`, the host and port you entered don't match an entry in the agent's allowlist.
+
+</Step>
+</Steps>
+
+## Allowlist entries
+
+The agent enforces the allowlist. DSUI can't add to it, and an empty list is a configuration error. Each entry uses one of these forms:
+
+| Entry | Matches |
+| --- | --- |
+| `airflow.internal:8080` | That host and port |
+| `db.internal:*` | Any port on that host |
+| `*.corp.local:443` | Any subdomain of `corp.local` on port 443 |
+| `10.20.0.0/16:5432` | IP addresses in that range, on port 5432 |
+
+## Adapter support
+
+DSUI starts the adapter process of a routed service with the standard proxy variables `HTTP_PROXY` and `HTTPS_PROXY`, and with `DSUI_CONNECTOR_PROXY_URL`. A loopback-only proxy then opens a stream to the agent for each connection.
+
+An adapter has to use those variables for its own network clients. The adapter source shows the following:
+
+| Adapter | Reads the proxy variables |
+| --- | --- |
+| PostgreSQL | Yes |
+| ClickHouse | Yes |
+| Airflow | Not explicitly. It calls `fetch` and has no proxy-specific code |
+| DuckDB, dbt, S3 | No |
+
+If you build an adapter that opens network connections, read `DSUI_CONNECTOR_PROXY_URL` in its client so the adapter works through an agent.
+
+## Manage agents
+
+Use the buttons on an agent in **Settings**, then **Agents**:
+
+- **Rotate token**: disconnects the running agent until you restart it with the new token
+- **Revoke**: disconnects the agent now and stops it from reconnecting
+- **Delete**: removes the agent permanently. DSUI refuses while a service still uses it, and names those services
+
+## Run DSUI behind a reverse proxy
+
+The agent connects over a WebSocket. If a reverse proxy such as Caddy sits in front of DSUI, set `DSUI_TRUST_PROXY=1` so DSUI shows the agent's real address instead of the proxy's.
+
+Keep idle WebSocket timeouts on proxies and load balancers above 60 seconds. A shorter timeout causes frequent reconnects.
+
+## Install and configure the agent
+
+The agent is a separate project with packages for Docker, Kubernetes, AWS, Linux, and Windows, plus a `check` command that tests your configuration and each target. See the [dsui-agent repository](https://github.com/northgraindata/dsui-agent).

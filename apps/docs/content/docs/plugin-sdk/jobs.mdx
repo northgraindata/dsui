@@ -1,40 +1,78 @@
 ---
 title: Jobs
-description: Schedule and enqueue durable plugin work.
+description: Reference for defineJob in a plugin, which declares durable background work that runs on a schedule, on demand, or when a signal arrives.
+contentType: reference
 ---
 
-Define work with `defineJob`, then register it with `registry.job(job)`.
-A job can run on demand, on an interval, on a five-field UTC cron schedule or
-in response to declared signal subscriptions.
+A job is background work that runs without an open page. A plugin job can run on a fixed interval, on a cron schedule, on demand, or when a signal is published. DSUI queues jobs durably, so a run survives a restart.
+
+## Define and register a job
 
 ```ts
 import { defineJob } from "@northgraindata/dsui-plugin-sdk";
 
 const refresh = defineJob({
   id: "refresh",
-  intervalMs: 60000,
-  timeoutMs: 5000,
-  retry: { maxAttempts: 2, backoffMs: 1000 },
+  intervalMs: 60_000,
+  timeoutMs: 5_000,
+  retry: { maxAttempts: 2, backoffMs: 1_000 },
   run: async ({ context }) => {
     context.signal.throwIfAborted();
     context.logger.info("Refreshing plugin data");
   },
 });
+
+// Inside setup(registry):
+registry.job(refresh);
 ```
 
-`await context.jobs.enqueue(jobId, input)` enqueues a job owned by the calling
-plugin and returns its `runId`. The input is checked against the job definition.
-Identical queued/running inputs are coalesced atomically; a completed run does
-not prevent another refresh with the same input. Scheduled work uses `defineJob`
-with an interval or cron. Background jobs are trusted plugin operations and run
-outside request identity; they can access the host service catalog even when an
-authorization provider is installed. Job handlers must respect the provided
-abort signal and recheck mutable state before publishing results.
+DSUI checks a job when the plugin loads. It rejects a duplicate ID, an invalid cron expression, and a definition that sets both `intervalMs` and `schedule`.
 
-Choose `singleton` for work that must not overlap, or `per-key` for independent
-inputs. `maxAttempts` includes the first attempt. Call `context.reportSideEffect()`
-before an irreversible effect so lease loss or timeout does not cause an unsafe
-automatic retry. Cancellation is cooperative; a handler must honor its abort signal.
+## Options
 
-The [Monitoring plugin](https://github.com/northgraindata/dsui/blob/main/packages/plugin-monitoring/src/plugin.ts)
-shows sampling that runs without an open dashboard.
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `id` | Required | Kebab-case |
+| `intervalMs` | | Run every this many milliseconds. Use it for work that repeats more often than once a minute |
+| `schedule` | | A five-field cron expression, in UTC |
+| `onSignals` | | Run when one of these signals is published. Write each as `<source id>.<signal id>` |
+| `inputSchema` | None | A Zod schema for the input of a run |
+| `concurrency` | `singleton` | `singleton` never overlaps. `per-key` lets runs with different input overlap |
+| `timeoutMs` | `300000` | Milliseconds before DSUI aborts the run |
+| `retry.maxAttempts` | `1` | Attempts, including the first |
+| `retry.backoffMs` | | Delay before the first retry. Later retries wait longer and vary a little |
+
+A job with none of `intervalMs`, `schedule`, and `onSignals` runs only when something enqueues it.
+
+## What run receives
+
+`run` receives `input`, a `runId`, and a `context` with the plugin's capabilities. The job context adds these:
+
+- **`signal`**: an `AbortSignal` that fires on timeout and on cancel. Nothing forces a job to stop, so check it during long work
+- **`logger`**: records output against the run
+- **`reportSideEffect()`**: call it before an effect that can't be undone. A run that times out after that point isn't retried automatically, because a retry could repeat the effect
+
+## Run a job on demand
+
+`await context.jobs.enqueue("refresh", input)` queues a job that your plugin owns and returns its `runId`. DSUI checks the input against the job's schema. If an identical run is already queued or running, DSUI coalesces them. A finished run doesn't prevent another run with the same input.
+
+## Run a job when a signal arrives
+
+List the fully qualified signal IDs in `onSignals`. A signal that an adapter publishes has the ID `<adapter id>.<signal id>`, such as `airflow.dag-failed`. A signal that a plugin publishes has the ID `<plugin id>.<signal id>`:
+
+```ts
+const react = defineJob({
+  id: "react",
+  onSignals: ["airflow.dag-failed"],
+  run: ({ context }) => {
+    context.logger.info("A DAG failed");
+  },
+});
+```
+
+## Things to know
+
+- A job runs outside any request, so it has no signed-in person. It can read the service catalog even when an authorization plugin is installed. Recheck state that can change before you publish results
+- Keep progress in a persistent store, as described in [stores and storage](/docs/plugin-sdk/stores)
+- Respect the abort signal. Cancellation depends on your code
+

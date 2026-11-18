@@ -16,6 +16,12 @@ import {
   loadConfig,
   toAdapterSourceLocation,
 } from "./config.js";
+import { TunnelManager } from "./connectors/manager";
+import { ConnectorProxy } from "./connectors/proxy";
+import {
+  createConnectorRouting,
+  setConnectorRouting,
+} from "./connectors/routing";
 import { removeServiceBlobs } from "./db/blob-storage.js";
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
@@ -30,6 +36,7 @@ import { createPluginStorage, createPluginStores } from "./plugins/storage.js";
 import { registerAdapterRouteEndpoints } from "./routes/adapter-routes.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerConnectorRoutes } from "./routes/connectors";
 import { registerExecuteRoutes } from "./routes/execute.js";
 import {
   connectionFor,
@@ -697,6 +704,19 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     registry,
     readiness: () => readiness,
   });
+  // DSUI agents: customer-side connectors that carry traffic into private networks.
+  const tunnel = new TunnelManager({
+    database,
+    trustProxyHeaders: process.env.DSUI_TRUST_PROXY === "1",
+  });
+  const connectorProxy = new ConnectorProxy(tunnel);
+  registerConnectorRoutes(app, {
+    database,
+    cipher,
+    tunnel,
+    pluginRuntime,
+    audit,
+  });
   registerServiceRoutes(app, serviceDeps);
   registerExecuteRoutes(app, serviceDeps);
   registerAdapterRouteEndpoints(app, {
@@ -713,7 +733,16 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     pluginJobs,
     signalBus,
     refreshConfig,
+    tunnel,
+    /** Starts the loopback proxy that routes services through DSUI agents. */
+    startConnectors: async () => {
+      await connectorProxy.start();
+      setConnectorRouting(createConnectorRouting(database, connectorProxy));
+    },
     close: async () => {
+      tunnel.close();
+      setConnectorRouting(undefined);
+      await connectorProxy.close();
       unsubscribeSignalJobs();
       await pluginJobs.close();
       await pluginRuntime.close();

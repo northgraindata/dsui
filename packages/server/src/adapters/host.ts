@@ -23,6 +23,8 @@ export interface AdapterHostRequest {
   timeoutMs?: number;
   /** Parent-only override; long context retention must not be cut short by host idle. */
   hostIdleTimeoutMs?: number;
+  /** Extra environment for the host process, for example proxy settings of a routed service. */
+  env?: Record<string, string>;
 }
 
 interface JsonRpcResponse {
@@ -58,13 +60,17 @@ class HostSession {
   private stderr = "";
   private closed = false;
 
-  constructor(private readonly options: AdapterHostClientOptions) {
+  constructor(
+    private readonly options: AdapterHostClientOptions,
+    env?: Record<string, string>,
+  ) {
     this.child = Bun.spawn(
       [options.command, ...(options.args ?? []), "--persistent"],
       {
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",
+        ...(env ? { env: { ...process.env, ...env } } : {}),
       },
     );
     this.reader = this.child.stdout.getReader();
@@ -250,7 +256,7 @@ export class AdapterHostClient {
         throw new AdapterHostError("Adapter service host invalidated");
       request.signal?.throwIfAborted();
       const fingerprint = createHash("sha256")
-        .update(JSON.stringify(request.connection ?? {}))
+        .update(JSON.stringify([request.connection ?? {}, request.env ?? {}]))
         .digest("hex");
       if (current.session && current.fingerprint !== fingerprint) {
         await current.session.close();
@@ -261,7 +267,7 @@ export class AdapterHostClient {
           if (this.closed)
             throw new AdapterHostError("Adapter host client closed");
           if (!(await this.makeRoom(current))) return false;
-          current.session = new HostSession(this.options);
+          current.session = new HostSession(this.options, request.env);
           current.fingerprint = fingerprint;
           return true;
         });
@@ -318,7 +324,7 @@ export class AdapterHostClient {
 
   private async ephemeral(request: AdapterHostRequest): Promise<unknown> {
     if (this.closed) throw new AdapterHostError("Adapter host client closed");
-    const session = new HostSession(this.options);
+    const session = new HostSession(this.options, request.env);
     this.ephemeralSessions.add(session);
     try {
       return await session.request(request);

@@ -1,0 +1,13 @@
+{
+  "name": "Icon",
+  "description": "Named icon renderer.",
+  "props": {
+    "name": {
+      "description": "Icon name"
+    },
+    "size": {
+      "description": "Size in pixels"
+    }
+  },
+  "example": "Icon({ name: \"database\", size: 16 })\nIcon({ name: row.icon })"
+}

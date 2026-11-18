@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getPluginCatalog, getSettingsSystem } from "../../api";
 import { Icon } from "../../components/icon";
 import { PageHeading, pageClass } from "../../components/page";
+import { AgentSettings } from "./settings-agents";
 import { useSettings } from "./settings-context";
 import { SettingsDrafts } from "./settings-drafts";
 import { ExtensionSettings } from "./settings-extensions";
@@ -17,6 +18,7 @@ import "./settings.css";
 const sections = [
   { id: "general", label: "General", icon: "grid" },
   { id: "preferences", label: "Preferences", icon: "format" },
+  { id: "agents", label: "Agents", icon: "plug", admin: true },
   { id: "extensions", label: "Extensions", icon: "plug", admin: true },
   { id: "system", label: "System", icon: "cpu", admin: true },
 ];
@@ -162,6 +164,7 @@ function SettingsContent() {
           <div hidden={selected !== "preferences"}>
             <PreferenceSettings key={snapshot.principalId} />
           </div>
+          {selected === "agents" && <AgentSettings />}
           {selected === "extensions" && system && (
             <ExtensionSettings system={system} catalog={catalog} />
           )}

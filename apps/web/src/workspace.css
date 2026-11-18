@@ -876,6 +876,7 @@
   }
 }
 .home-dashboard {
+  container: home-dashboard / inline-size;
   padding: var(--app-page-padding);
 }
 .home-heading {
@@ -1350,7 +1351,11 @@
 .activity-page-empty p {
   color: var(--color-muted);
 }
-@media (max-width: 1350px) {
+/*
+ * Size the dashboard to its own width, not the viewport: the AI chat panel
+ * and sidebar shrink the content area without changing the viewport.
+ */
+@container home-dashboard (max-width: 1050px) {
   .home-panels {
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 16px;
@@ -1365,11 +1370,7 @@
     padding: 16px;
   }
 }
-@media (max-width: 1050px) {
-  .app-chrome {
-    --app-page-padding: 24px 20px;
-    --app-page-title-size: 24px;
-  }
+@container home-dashboard (max-width: 780px) {
   .home-panels {
     grid-template-columns: 1fr;
   }
@@ -1387,11 +1388,7 @@
     min-height: 380px;
   }
 }
-@media (max-width: 640px) {
-  .app-chrome {
-    --app-page-padding: 20px 12px;
-    --app-page-title-size: 22px;
-  }
+@container home-dashboard (max-width: 520px) {
   .home-greeting {
     gap: 10px;
   }
@@ -1421,6 +1418,18 @@
     flex-wrap: wrap;
   }
 }
+@media (max-width: 1050px) {
+  .app-chrome {
+    --app-page-padding: 24px 20px;
+    --app-page-title-size: 24px;
+  }
+}
+@media (max-width: 640px) {
+  .app-chrome {
+    --app-page-padding: 20px 12px;
+    --app-page-title-size: 22px;
+  }
+}
 
 .workspace-environment {
   padding: 7px 24px;
@@ -1433,7 +1442,7 @@
   color: var(--color-warning);
   background: color-mix(in srgb, var(--color-warning) 5%, transparent);
 }
-/* Docked plugin drawer (AI agent): the workspace shrinks beside it. */
+/* Docked plugin drawer (AI assistant): the workspace shrinks beside it. */
 .app-chrome {
   padding-right: var(--plugin-drawer-width, 0px);
   transition: padding-right 0.22s ease;

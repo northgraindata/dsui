@@ -1,0 +1,32 @@
+{
+  "name": "PageHeader",
+  "description": "Page-level header with title, badge, and actions.",
+  "props": {
+    "title": {
+      "description": "Page title"
+    },
+    "description": {
+      "description": "Subtitle"
+    },
+    "icon": {
+      "description": "Icon name"
+    },
+    "badge": {
+      "description": "Status badge"
+    },
+    "meta": {
+      "description": "Metadata text"
+    },
+    "variant": {
+      "description": "Visual style",
+      "default": "\"default\""
+    },
+    "tags": {
+      "description": "Tag slot (badges, etc.)"
+    },
+    "actions": {
+      "description": "Action buttons"
+    }
+  },
+  "example": "PageHeader({\n  title: \"Warehouses\",\n  description: \"Manage compute resources\",\n  badge: { label: \"5 active\", tone: \"healthy\" },\n  actions: [Button({ label: \"Refresh\", action: flush() })],\n})"
+}

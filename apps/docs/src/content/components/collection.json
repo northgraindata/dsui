@@ -1,0 +1,16 @@
+{
+  "name": "Collection",
+  "description": "Iterate over a data source.",
+  "props": {
+    "source": {
+      "description": "Resource binding to iterate over"
+    },
+    "field": {
+      "description": "Field name to iterate over"
+    },
+    "content": {
+      "description": "Template rendered per item"
+    }
+  },
+  "example": "Collection({\n  source: items(),\n  content: Card({ content: Value({ field: \"name\" }) }),\n})"
+}

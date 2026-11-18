@@ -1,0 +1,76 @@
+---
+interface Item {
+  depth: number;
+  title: string;
+  url: string;
+}
+
+interface Props {
+  items: Item[];
+  inline?: boolean;
+}
+
+const { items, inline = false } = Astro.props;
+const shown = items.filter((item) => item.depth === 2 || item.depth === 3);
+---
+{shown.length > 0 && !inline && (
+  <aside class="toc" aria-label="On this page">
+    <p class="toc-title">On this page</p>
+    <ul data-toc>
+      {shown.map((item) => (
+        <li><a href={item.url} data-depth={item.depth}>{item.title}</a></li>
+      ))}
+    </ul>
+  </aside>
+)}
+{shown.length > 0 && inline && (
+  <details class="toc-inline">
+    <summary>On this page</summary>
+    <nav aria-label="On this page">
+      <ul class="toc" style="display:block;list-style:none;margin:0;padding:0">
+        {shown.map((item) => (
+          <li><a href={item.url} data-depth={item.depth}>{item.title}</a></li>
+        ))}
+      </ul>
+    </nav>
+  </details>
+)}
+<script>
+  // Marks the section being read: the last heading that has scrolled past
+  // the top of the content, or the first one before any has.
+  const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-toc] a")];
+  const entries = links
+    .map((link) => ({
+      link,
+      heading: document.getElementById(decodeURIComponent(link.hash.slice(1))),
+    }))
+    .filter((entry): entry is { link: HTMLAnchorElement; heading: HTMLElement } =>
+      Boolean(entry.heading),
+    );
+  if (entries.length > 0) {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const offset = 96;
+      let active = entries[0];
+      for (const entry of entries) {
+        if (entry.heading.getBoundingClientRect().top - offset <= 0) active = entry;
+        else break;
+      }
+      // At the bottom of the page, the last heading may never reach the top.
+      const atEnd =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+      if (atEnd) active = entries[entries.length - 1];
+      for (const entry of entries) {
+        if (entry === active) entry.link.setAttribute("aria-current", "true");
+        else entry.link.removeAttribute("aria-current");
+      }
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", schedule);
+    update();
+  }
+</script>

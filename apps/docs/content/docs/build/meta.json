@@ -1,0 +1,10 @@
+{
+  "title": "Build",
+  "pages": [
+    "overview",
+    "building-blocks",
+    "custom-components",
+    "components",
+    "compatibility"
+  ]
+}

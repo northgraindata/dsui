@@ -1,0 +1,13 @@
+{
+  "title": "Guides",
+  "pages": [
+    "connect-a-service",
+    "production",
+    "access-control",
+    "private-networks",
+    "ai-assistant",
+    "plugins",
+    "workspace-settings",
+    "troubleshooting"
+  ]
+}
