@@ -1,95 +1,36 @@
 ---
-title: DSUI Developer Preview
-description: One workspace for the data and infrastructure services you already run.
+title: DSUI documentation
+description: Connect your data tools, operate them from one workspace, and extend DSUI with adapters and plugins.
+contentType: landing
 ---
 
-> **Developer Preview**
->
-> DSUI is under active development. Expect breaking changes, incomplete adapter coverage, and bugs.
+<Callout type="warning" title="Developer preview">
+DSUI is under active development. Expect breaking changes and incomplete adapter coverage.
+</Callout>
 
-DSUI gives your data stack one workspace. Connect the databases, orchestration tools, transformation services, storage systems, and infrastructure you already run. Inspect what is happening and use the workflows that matter without adding a separate admin UI for every service.
+DSUI is an open-source, AI-native control plane for your data stack. You connect services such as databases, orchestrators, and object storage, and then explore and operate them from one workspace.
 
-![DSUI workspace overview showing connected data and infrastructure services](https://dsui.northgraindata.com/assets/product.png)
+![The DSUI workspace with connected services](https://dsui.northgraindata.com/assets/product.png)
 
-## Start here
+## Choose where to start
 
-[Run DSUI with npx](/docs/getting-started/quickstart) and connect an in-memory
-DuckDB workspace in a few minutes. Choose Docker when you need isolation or are
-already running the rest of your stack in Compose.
-
-![DSUI infrastructure overview showing services converging on one workspace](/docs/assets/dsui-runtime-overview.png)
-
-## Why DSUI
-
-A data stack is often a stack of separate web consoles. Postgres wants pgAdmin, MinIO wants its console, DuckDB wants a SQL client, and Airflow runs its own webserver. Each one adds a container, a port, credentials, and another place for operators to learn.
-
-DSUI brings those workflows into one interface. You still run your services — Postgres, MinIO, Airflow, dbt, and others — but you do not need a separate admin UI for each one.
-
-Before, every service carries its own interface:
-
-```yaml
-services:
-  postgres:
-    image: postgres:16
-  pgadmin:
-    image: dpage/pgadmin4
-    ports: ["5050:80"]
-  minio:
-    image: minio/minio
-    ports: ["9000:9000", "9001:9001"]
-```
-
-After, one container and one file:
-
-```yaml
-services:
-  dsui:
-    image: ghcr.io/northgraindata/dsui:latest
-    ports: ["4192:4192"]
-    volumes:
-      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
-      - dsui-data:/data
-  postgres:
-    image: postgres:16
-  minio:
-    image: minio/minio
-```
-
-```yaml
-# dsui.yaml
-services:
-  - id: warehouse
-    adapter: postgresql
-    name: Postgres
-    connection:
-      host: postgres
-      database: app
-  - id: storage
-    adapter: s3
-    name: MinIO
-    connection:
-      endpoint: http://minio:9000
-      forcePathStyle: true
-```
-
-One port, one place to look. The configuration is declarative, runs the same way every time, and keeps credentials on the server.
-
-## What DSUI provides
-
-- One workspace for multiple services
-- Declarative connections from `dsui.yaml`
-- Server-side execution and credential handling
-- Consistent resources, actions, pages, and workflows
-- Built-in adapters for common data-stack services
-- An Adapter SDK for extending the workspace
-
-If a service is not supported yet, teams can build a private adapter around its
-API and use the same DSUI primitives. This is an extension path, not a
-requirement for using the built-in adapters.
-
-## Current status
-
-- Local-first, self-hosted Developer Preview
-- Partial adapter coverage
-- Breaking changes between preview releases are possible
-- Enterprise features and hosted control planes are not included yet
+<Cards>
+<Card title="Run DSUI" href="/docs/getting-started/quickstart">
+Start a workspace with npx and run your first query.
+</Card>
+<Card title="Learn how it works" href="/docs/getting-started/concepts">
+Services, adapters, plugins, and where your credentials stay.
+</Card>
+<Card title="Connect a service" href="/docs/integrations">
+Set up Airflow, ClickHouse, dbt, DuckDB, PostgreSQL, or S3.
+</Card>
+<Card title="Build an adapter" href="/docs/adapter-sdk/overview">
+Add support for a service that DSUI doesn't cover yet.
+</Card>
+<Card title="Build a plugin" href="/docs/plugin-sdk/overview">
+Add pages, background jobs, and settings across your installation.
+</Card>
+<Card title="Read the telemetry policy" href="/docs/reference/telemetry">
+See what DSUI sends, what it never sends, and how to turn it off.
+</Card>
+</Cards>

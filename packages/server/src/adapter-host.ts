@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
 import {
@@ -8,6 +9,7 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import zodToJsonSchema from "zod-to-json-schema";
 import { assertAdapterDefinition } from "./adapters/definition.js";
+import { blobDirectory, FileBlobStore } from "./db/blob-storage.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
 
@@ -17,7 +19,8 @@ type HostMethod =
   | "page"
   | "resource"
   | "action"
-  | "job";
+  | "job"
+  | "route";
 
 interface HostParams {
   connection?: unknown;
@@ -26,6 +29,21 @@ interface HostParams {
   persistenceNamespace?: string;
   runId?: string;
 }
+
+/** What the server sends for a route call; the body waits in a file, never in the JSON line. */
+interface RouteCallParams {
+  method?: unknown;
+  path?: unknown;
+  params?: unknown;
+  query?: unknown;
+  headers?: unknown;
+  bodyPath?: unknown;
+}
+
+const isStringRecord = (value: unknown): value is Record<string, string> =>
+  typeof value === "object" &&
+  value !== null &&
+  Object.values(value).every((item) => typeof item === "string");
 
 interface HostRequest {
   jsonrpc?: unknown;
@@ -98,6 +116,7 @@ export async function runAdapterHost(): Promise<number> {
   }
   const persistent = process.argv.includes("--persistent");
   const databasePath = argument("--database");
+  const blobRoot = argument("--blobs");
   const database = databasePath ? new DsuiDatabase(databasePath) : undefined;
   type Instance = Awaited<ReturnType<typeof createAdapterInstance>>;
   let retained: Instance | undefined;
@@ -135,7 +154,7 @@ export async function runAdapterHost(): Promise<number> {
     const operation = new AbortController();
     const cancelOperation = () =>
       operation.abort(new Error("Adapter host cancelled"));
-    if (method === "action" || method === "job")
+    if (method === "action" || method === "job" || method === "route")
       process.once("SIGTERM", cancelOperation);
     const connection = params.connection;
     const methodId =
@@ -187,15 +206,23 @@ export async function runAdapterHost(): Promise<number> {
     const respond = (id: unknown, result?: unknown, message?: string): void => {
       response = { id, result, message };
     };
-    const runtimeOptions =
-      params.persistenceNamespace && database
+    const runtimeOptions = {
+      ...(params.persistenceNamespace && database
         ? {
             persistenceProvider: new SqliteStorePersistenceProvider(
               database,
               params.persistenceNamespace,
             ),
           }
-        : {};
+        : {}),
+      ...(params.persistenceNamespace && blobRoot
+        ? {
+            blobStore: new FileBlobStore(
+              blobDirectory(blobRoot, params.persistenceNamespace),
+            ),
+          }
+        : {}),
+    };
     try {
       switch (method) {
         case "describe": {
@@ -256,6 +283,15 @@ export async function runAdapterHost(): Promise<number> {
               timeoutMs: job.timeoutMs,
               retry: { ...job.retry },
             })),
+            routes: definition.routes.map((route) => ({
+              id: route.id,
+              method: route.method,
+              path: route.path,
+              auth: route.auth,
+              permission: route.permission,
+              maxBodyBytes: route.maxBodyBytes,
+              timeoutMs: route.timeoutMs,
+            })),
             signals: definition.signals.map((signal) => ({
               id: signal.id,
               type: signal.type,
@@ -298,7 +334,9 @@ export async function runAdapterHost(): Promise<number> {
           try {
             const report =
               typeof definition.health === "function"
-                ? await definition.health(instance.context)
+                ? await definition.health(instance.context, {
+                    blobs: instance.blobs,
+                  })
                 : {
                     status: "healthy" as const,
                     score: 100,
@@ -410,6 +448,57 @@ export async function runAdapterHost(): Promise<number> {
             signal: operation.signal,
           });
           respond(request.id, emissions);
+          break;
+        }
+        case "route": {
+          const call = (params.input ?? {}) as RouteCallParams;
+          if (
+            typeof params.target !== "string" ||
+            typeof call.method !== "string" ||
+            typeof call.path !== "string" ||
+            !isStringRecord(call.params) ||
+            !isStringRecord(call.query) ||
+            !isStringRecord(call.headers) ||
+            (call.bodyPath !== undefined && typeof call.bodyPath !== "string")
+          )
+            throw new Error("Route execution requires a route id and request");
+          let body = new Uint8Array();
+          if (call.bodyPath) {
+            try {
+              body = new Uint8Array(
+                await Bun.file(call.bodyPath).arrayBuffer(),
+              );
+            } finally {
+              await rm(call.bodyPath, { force: true });
+            }
+          }
+          const instance = await acquire();
+          const { response, emissions } = await instance.runRoute(
+            params.target,
+            {
+              method: call.method as "GET",
+              path: call.path,
+              params: call.params,
+              query: call.query,
+              headers: call.headers,
+              body,
+            },
+            { signal: operation.signal },
+          );
+          respond(request.id, {
+            status: response.status,
+            headers: { ...response.headers },
+            ...(response.body === undefined
+              ? {}
+              : {
+                  body: Buffer.from(
+                    typeof response.body === "string"
+                      ? new TextEncoder().encode(response.body)
+                      : response.body,
+                  ).toString("base64"),
+                }),
+            emissions,
+          });
           break;
         }
         default:

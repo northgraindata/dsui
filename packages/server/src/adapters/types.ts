@@ -55,11 +55,14 @@ export interface LoadedConnectionMethod {
 
 export interface ResourceCatalogEntry {
   id: string;
+  description?: string;
+  policy?: "metadata" | "preview" | "sql";
   inputSchema?: JsonSchema;
   refresh?: { kind: string; intervalMs?: number };
 }
 export interface ActionCatalogEntry {
   id: string;
+  description?: string;
   inputSchema?: JsonSchema;
 }
 export interface PageCatalogEntry {
@@ -78,6 +81,16 @@ export interface JobCatalogEntry {
   timeoutMs: number;
   retry: { maxAttempts: number; backoffMs: number };
 }
+export interface RouteCatalogEntry {
+  id: string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  path: string;
+  /** `principal`, or the connection field holding the shared secret. */
+  auth: "principal" | { token: string };
+  permission: "inspect" | "execute";
+  maxBodyBytes: number;
+  timeoutMs: number;
+}
 export interface SignalCatalogEntry {
   id: string;
   type: SignalType;
@@ -90,6 +103,7 @@ export interface AdapterCatalog {
   components: ComponentCatalogEntry[];
   jobs: JobCatalogEntry[];
   signals: SignalCatalogEntry[];
+  routes: RouteCatalogEntry[];
 }
 
 export interface AdapterHealth extends HealthStatus {}
@@ -157,6 +171,36 @@ export interface AdapterBackend {
   ): Promise<
     readonly { signalId: string; payload: unknown; idempotencyKey?: string }[]
   >;
+  /** Serve one HTTP request for a declared route. */
+  executeRoute(
+    routeId: string,
+    connection: unknown,
+    call: RouteCall,
+    options: { signal: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<RouteReply>;
+}
+
+/** One HTTP request for an adapter route, with its body already on disk. */
+export interface RouteCall {
+  method: RouteCatalogEntry["method"];
+  path: string;
+  params: Record<string, string>;
+  query: Record<string, string>;
+  headers: Record<string, string>;
+  /** File holding the request body. The adapter host reads and deletes it. */
+  bodyPath?: string;
+}
+
+export interface RouteReply {
+  status: number;
+  headers: Record<string, string>;
+  body?: Uint8Array;
+  emissions: readonly {
+    signalId: string;
+    payload: unknown;
+    idempotencyKey?: string;
+  }[];
 }
 
 /** Load outcome per adapter id, served alongside the adapter list. */

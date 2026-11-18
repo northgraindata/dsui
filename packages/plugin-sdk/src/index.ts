@@ -8,6 +8,9 @@ export {
 } from "./events";
 
 import type { PageNode, SignalType } from "@northgraindata/dsui-adapter-sdk";
+
+export type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
+
 import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
 import { z } from "zod";
 
@@ -87,6 +90,7 @@ export {
   NotebookCatalog,
   PageHeader,
   QueryEditor,
+  Resource,
   ResourceTree,
   Section,
   Select,
@@ -137,7 +141,16 @@ export type PluginMetadata = {
   readonly security?: boolean;
 };
 
+/** Explicit opt-in to the host's dynamically composed Settings navigation. */
+export type PluginSettingsEntry = {
+  readonly label?: string;
+  readonly category?: string;
+  readonly order?: number;
+  readonly permission?: PluginPermission;
+};
+
 export type PluginPage = {
+  readonly settings?: PluginSettingsEntry;
   readonly id: string;
   readonly title: string;
   readonly description?: string;
@@ -210,6 +223,7 @@ export type PluginServiceSummary = {
   readonly id: string;
   readonly name: string;
   readonly adapter: string;
+  readonly adapterName?: string;
   readonly managedBy: "configuration" | "ui";
   readonly iconUrl?: string;
 };
@@ -248,7 +262,34 @@ export type PluginServiceProbe = {
   readonly checks?: readonly PluginServiceHealthCheck[];
 };
 
+export type PluginServiceResource = {
+  readonly id: string;
+  readonly description?: string;
+  readonly inputSchema?: Record<string, unknown>;
+};
+export type PluginServiceAction = {
+  readonly id: string;
+  readonly description?: string;
+  readonly inputSchema?: Record<string, unknown>;
+};
+export type PluginInvocationOptions = {
+  signal?: AbortSignal;
+  origin?: { pluginId: string; runId?: string };
+};
 export interface PluginServiceCatalog {
+  listActions(id: string): Promise<readonly PluginServiceAction[] | null>;
+  listResources(id: string): Promise<readonly PluginServiceResource[] | null>;
+  queryResource(
+    id: string,
+    resourceId: string,
+    input: unknown,
+  ): Promise<unknown>;
+  executeAction(
+    id: string,
+    actionId: string,
+    input: unknown,
+    options?: PluginInvocationOptions,
+  ): Promise<unknown>;
   list(input?: { readonly cursor?: string; readonly limit?: number }): Promise<{
     readonly items: PluginServiceSummary[];
     readonly nextCursor?: string;
@@ -271,6 +312,39 @@ export interface PluginServiceCatalog {
     id: string,
     options?: { readonly timeoutMs?: number },
   ): Promise<PluginServiceProbe | null>;
+}
+
+export type PluginCapabilitySummary = {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly status: PluginReadinessStatus;
+};
+export type PluginActionSummary = {
+  readonly id: string;
+  readonly permission: PluginPermission;
+  readonly inputSchema?: unknown;
+};
+export type PluginResourceSummary = {
+  readonly id: string;
+  readonly inputSchema?: unknown;
+};
+export interface PluginCapabilityCatalog {
+  list(): Promise<readonly PluginCapabilitySummary[]>;
+  get(id: string): Promise<PluginCapabilitySummary | null>;
+  listActions(id: string): Promise<readonly PluginActionSummary[] | null>;
+  listResources(id: string): Promise<readonly PluginResourceSummary[] | null>;
+  queryResource(
+    id: string,
+    resourceId: string,
+    input: unknown,
+  ): Promise<unknown>;
+  executeAction(
+    id: string,
+    actionId: string,
+    input: unknown,
+    options?: PluginInvocationOptions,
+  ): Promise<unknown>;
 }
 
 export type PluginReadinessStatus = "ready" | "disabled" | "unavailable";
@@ -329,9 +403,17 @@ export type PluginPermission = "inspect" | "execute" | "manage";
 export type PluginResource = {
   type: "service" | "plugin";
   id: string;
+  /** Present when authorizing one service action rather than all execution. */
+  actionId?: string;
+  /** Untrusted request input for action-specific authorization checks. */
+  actionInput?: unknown;
 };
 
 export interface PluginAuthenticationProvider {
+  /** Resolve current identity/teams for delegated background authorization; never reuse a session snapshot. */
+  resolvePrincipal?(
+    id: string,
+  ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
   authenticate(
     request: Request,
   ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
@@ -467,6 +549,7 @@ export interface PluginRegistry<TConfig = unknown> {
       description?: string;
       public?: boolean;
       shell?: "app" | "bare";
+      settings?: PluginSettingsEntry;
     },
   ): void;
   navigation(item: PluginNavigationItem): void;
@@ -476,7 +559,9 @@ export interface PluginRegistry<TConfig = unknown> {
     procedure: PluginProcedure<PluginContext<TConfig>, TInput, TOutput>,
   ): void;
   /** Binds a `defineAction` declaration. */
-  action(action: PluginActionDefinition<PluginContext<TConfig>>): void;
+  action<TInput = undefined, TOutput = unknown>(
+    action: PluginActionDefinition<PluginContext<TConfig>, TInput, TOutput>,
+  ): void;
   /** Binds a `defineResource` declaration and its freshness policy. */
   resource(resource: AnyPluginResource): void;
   /**
@@ -493,8 +578,21 @@ export interface PluginRegistry<TConfig = unknown> {
 
 export interface PluginCapabilities {
   readonly access: {
+    /** Identity of the authenticated request; absent in background work. */
+    principal?(): PluginPrincipal | null;
     requireAdmin?(): Promise<void>;
-    require(serviceId: string, permission: PluginPermission): Promise<void>;
+    /** Rechecks the current identity's permission without changing the job's execution identity. */
+    requirePrincipal?(
+      principalId: string,
+      serviceId: string,
+      permission: PluginPermission,
+      action?: Pick<PluginResource, "actionId" | "actionInput">,
+    ): Promise<void>;
+    require(
+      serviceId: string,
+      permission: PluginPermission,
+      action?: Pick<PluginResource, "actionId" | "actionInput">,
+    ): Promise<void>;
   };
   readonly jobs: {
     enqueue(jobId: string, input: unknown): Promise<{ runId: string }>;
@@ -525,6 +623,7 @@ export interface PluginContext<TConfig = unknown> extends PluginCapabilities {
   readonly pluginId: string;
   readonly config: Readonly<TConfig>;
   readonly services: PluginServiceCatalog;
+  readonly plugins: PluginCapabilityCatalog;
   /**
    * Relational storage in this plugin's own directory.
    *
@@ -610,7 +709,7 @@ export interface RuntimePluginDefinition {
     config: unknown,
     host: Pick<
       PluginContext<unknown>,
-      "services" | "storage" | "stores" | "logger"
+      "services" | "plugins" | "storage" | "stores" | "logger"
     > &
       Partial<PluginCapabilities>,
   ) => PreparedPlugin;
@@ -629,7 +728,32 @@ export function definePlugin<TConfig>(
       const context: PluginContext<TConfig> = {
         pluginId: definition.metadata.id,
         config,
-        services: host.services,
+        services: {
+          ...host.services,
+          executeAction: (id, actionId, input, options) =>
+            host.services.executeAction(id, actionId, input, {
+              ...options,
+              origin: {
+                pluginId: definition.metadata.id,
+                ...(options?.origin?.runId
+                  ? { runId: options.origin.runId }
+                  : {}),
+              },
+            }),
+        },
+        plugins: {
+          ...host.plugins,
+          executeAction: (id, actionId, input, options) =>
+            host.plugins.executeAction(id, actionId, input, {
+              ...options,
+              origin: {
+                pluginId: definition.metadata.id,
+                ...(options?.origin?.runId
+                  ? { runId: options.origin.runId }
+                  : {}),
+              },
+            }),
+        },
         storage: host.storage,
         stores: {
           // `get` must go through the host's own `get`: the host caches one
@@ -685,6 +809,9 @@ export function definePlugin<TConfig>(
                   ? { description: presentation.description }
                   : {}),
                 ...(presentation.public ? { public: presentation.public } : {}),
+                ...(presentation.settings
+                  ? { settings: presentation.settings }
+                  : {}),
                 ...(presentation.shell ? { shell: presentation.shell } : {}),
                 render: async (params) =>
                   serializeNodes(
@@ -750,6 +877,7 @@ export function definePlugin<TConfig>(
                       pluginId: definition.metadata.id,
                       config: context.config,
                       services: context.services,
+                      plugins: context.plugins,
                       storage: context.storage,
                       stores: context.stores,
                       access: context.access,

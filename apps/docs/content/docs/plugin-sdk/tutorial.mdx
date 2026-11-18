@@ -1,0 +1,190 @@
+---
+title: Build your first plugin
+description: Build a plugin that adds a page and a navigation entry to the workspace, takes a setting from dsui.yaml, and exposes a procedure that you can call over HTTP.
+contentType: tutorial
+---
+
+In this tutorial, you build a plugin named `hello-plugin`. It adds a **Services** page that lists the services of your installation, a link to that page in the navigation, and a `greet` procedure. You write about 80 lines of TypeScript, and DSUI builds and loads them for you.
+
+You need the workspace from the [quickstart](/docs/getting-started/quickstart) with at least one service, Node.js 18 or later, and network access. DSUI downloads the Plugin SDK from npm when it builds your plugin. A plugin runs inside the DSUI server, so only load plugins that you trust.
+
+<Steps>
+<Step>
+
+### Create the project
+
+Create a `hello-plugin` directory next to your `dsui.yaml`. Inside it, add `package.json`:
+
+```json {6-8}
+{
+  "name": "hello-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-plugin-sdk": "0.3.0",
+    "zod": "^3.25.76"
+  }
+}
+```
+
+DSUI reads the entry file from `exports`, and the entry must be a TypeScript file. Pin the SDK to an exact version.
+
+</Step>
+<Step>
+
+### Define the settings
+
+A plugin declares its settings with a Zod schema. DSUI validates the `config` that a person writes in `dsui.yaml` against it, and it fills in defaults. Create `src/config.ts`:
+
+```ts
+import { z } from "zod";
+
+export const configSchema = z.object({
+  greeting: z.string().default("Hello"),
+});
+
+export type HelloConfig = z.output<typeof configSchema>;
+```
+
+</Step>
+<Step>
+
+### Build a page
+
+A page returns a tree of builtin components, the same ones that adapters use. `context` gives the page the plugin's settings and the host's capabilities. Here `context.services.list` returns the connected services without their credentials. Create `src/page.ts`:
+
+```ts
+import {
+  Card,
+  definePage,
+  Grid,
+  PageHeader,
+  type PluginContext,
+  Section,
+} from "@northgraindata/dsui-plugin-sdk";
+import type { HelloConfig } from "./config.js";
+
+export const servicesPage = definePage<
+  "/services",
+  PluginContext<HelloConfig>
+>({
+  path: "/services",
+  render: async ({ context }) => {
+    const { items } = await context.services.list({ limit: 24 });
+    return [
+      PageHeader({ title: context.config.greeting }),
+      Section({
+        title: "Services",
+        content: Grid({
+          columns: 2,
+          content: items.map((service) =>
+            Card({ title: service.name, description: service.adapter }),
+          ),
+        }),
+      }),
+    ];
+  },
+});
+```
+
+</Step>
+<Step>
+
+### Define the plugin
+
+`definePlugin` takes the plugin's identity, its settings schema, and a `setup` function. In `setup`, you register everything that the plugin adds. Create `src/index.ts`:
+
+```ts {8,11,14}
+import { definePlugin } from "@northgraindata/dsui-plugin-sdk";
+import { z } from "zod";
+import { configSchema } from "./config.js";
+import { servicesPage } from "./page.js";
+
+export default definePlugin({
+  metadata: {
+    id: "hello-plugin",
+    name: "Hello plugin",
+    version: "0.1.0",
+    apiVersion: 1,
+  },
+  configSchema,
+  setup(registry) {
+    registry.page(servicesPage, {
+      id: "services",
+      title: "Services",
+      description: "Lists the services that this installation connects to.",
+    });
+    registry.navigation({
+      id: "services-link",
+      area: "primary",
+      label: "Services",
+      pageId: "services",
+      order: 100,
+    });
+    registry.procedure({
+      id: "greet",
+      permission: "inspect",
+      input: z.object({ name: z.string().min(1) }),
+      output: z.string(),
+      handler: (context, input) => `${context.config.greeting}, ${input.name}`,
+    });
+  },
+});
+```
+
+The `id` must match the key that you use under `plugins` in `dsui.yaml`. `apiVersion` is the plugin API that you built against. A procedure is a validated operation with a permission. Anyone who has that permission can call it.
+
+</Step>
+<Step>
+
+### Load the plugin
+
+Add the plugin to `dsui.yaml`. The `path` is relative to the directory where you start DSUI, and `config` sets the plugin's options:
+
+```yaml {2-3}
+plugins:
+  hello-plugin:
+    source: local
+    path: ./hello-plugin
+    config:
+      greeting: Hi
+```
+
+DSUI loads plugins once, when it starts, so restart DSUI. The first start takes a moment while DSUI builds the plugin. Open **Settings**, then **Extensions**, and check that **Hello plugin** shows **Loaded**. If it shows **Unavailable**, the panel names the reason.
+
+</Step>
+<Step>
+
+### Open the page and call the procedure
+
+Select **Services** in the navigation. The page lists your services under the greeting from your settings.
+
+Call the procedure over HTTP. The body is the procedure's input:
+
+```bash
+curl --request POST \
+  --header "Content-Type: application/json" \
+  --data '{"name": "Ada"}' \
+  http://localhost:4192/api/v1/plugins/hello-plugin/procedures/greet
+```
+
+DSUI answers `{"data":"Hi, Ada"}`. An empty `name` is rejected with a `422`, because it doesn't match the input schema.
+
+</Step>
+</Steps>
+
+## How DSUI loads your plugin
+
+DSUI builds a `source: local` or `source: git` plugin the same way it builds an adapter. It copies the source, installs dependencies, and bundles the entry file. It then imports the bundle into the server process. If the build fails, DSUI starts without the plugin and shows it as **Unavailable**. Add `critical: true` to refuse to start instead. See [plugins](/docs/guides/plugins).
+
+## Next steps
+
+- Read data and run work in [resources](/docs/plugin-sdk/resources), [actions and procedures](/docs/plugin-sdk/actions), and [jobs](/docs/plugin-sdk/jobs)
+- Keep state in [stores and storage](/docs/plugin-sdk/stores)
+- Read services and other plugins with [host capabilities](/docs/plugin-sdk/host-capabilities)
+- Add to the host's interface with [pages and navigation](/docs/plugin-sdk/pages) and [slots and overlays](/docs/plugin-sdk/slots-and-overlays)
+- Share your plugin as described in [release](/docs/plugin-sdk/release)

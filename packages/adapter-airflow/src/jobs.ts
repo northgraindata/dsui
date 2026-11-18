@@ -1,4 +1,9 @@
-import { defineJob, defineSignal, defineStore, z } from "@northgraindata/dsui-adapter-sdk";
+import {
+  defineJob,
+  defineSignal,
+  defineStore,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext, DagRun } from "./context.js";
 
 const dagRunSignalSchema = z.object({
@@ -39,8 +44,7 @@ function terminalRun(run: DagRun): boolean {
   const state = run.state.toLowerCase();
   const endedAt = Date.parse(run.endDate);
   return (
-    (state === "failed" || state === "success") &&
-    Number.isFinite(endedAt)
+    (state === "failed" || state === "success") && Number.isFinite(endedAt)
   );
 }
 
@@ -83,12 +87,21 @@ export const monitorDagRuns = defineJob<AirflowContext>({
     });
     if (firstPoll) cursorStore.actions.advance(previous);
 
-    const candidates = recentRuns.flat().sort((a, b) =>
-      a.endDate.localeCompare(b.endDate) || a.dagRunId.localeCompare(b.dagRunId),
-    );
+    const candidates = recentRuns
+      .flat()
+      .sort(
+        (a, b) =>
+          a.endDate.localeCompare(b.endDate) ||
+          a.dagRunId.localeCompare(b.dagRunId),
+      );
     const unseen = candidates.filter((run) => {
-      const comparison = Date.parse(run.endDate) - Date.parse(previous!.completedAt);
-      return comparison > 0 || (comparison === 0 && !previous!.runIds.includes(`${run.dagId}:${run.dagRunId}`));
+      const comparison =
+        Date.parse(run.endDate) - Date.parse(previous!.completedAt);
+      return (
+        comparison > 0 ||
+        (comparison === 0 &&
+          !previous!.runIds.includes(`${run.dagId}:${run.dagRunId}`))
+      );
     });
     for (const run of unseen) {
       const definition =

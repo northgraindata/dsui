@@ -1,0 +1,19 @@
+{
+  "name": "KeyValue",
+  "description": "Key-value pairs from a resource or inline data.",
+  "props": {
+    "source": {
+      "description": "Resource binding"
+    },
+    "data": {
+      "description": "Inline data (alternative to `source`)"
+    },
+    "title": {
+      "description": "Heading text"
+    },
+    "field": {
+      "description": "Field of the resource result that holds the key-value object"
+    }
+  },
+  "example": "KeyValue({ source: config(), title: \"Configuration\" })\nKeyValue({ data: { host: \"localhost\", port: 5432 }, title: \"Connection\" })"
+}

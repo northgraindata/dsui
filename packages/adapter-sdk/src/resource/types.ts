@@ -1,11 +1,19 @@
 import type { z } from "zod";
 import type { StoreActionAccessor } from "../action/types";
+import type { BlobStore } from "../blob";
 import type { RefreshStrategy } from "../refresh/types";
+
+/** Optional generic discovery metadata for a declared resource. */
+export interface ResourceMetadata {
+  readonly description?: string;
+}
 
 /** Runtime helpers available to resource queries. */
 export interface ResourceRuntimeContext {
   /** Access to adapter-scoped stores, including persistent stores. */
   readonly stores: StoreActionAccessor;
+  /** Binary storage private to this service. */
+  readonly blobs: BlobStore;
 }
 
 /**
@@ -57,7 +65,8 @@ export interface ResourceBinding<TInput, TOutput, TContext = unknown>
  *
  * Created by {@link defineResource}; never constructed by hand.
  */
-export interface ResourceDefinition<TInput, TOutput, TContext = unknown> {
+export interface ResourceDefinition<TInput, TOutput, TContext = unknown>
+  extends ResourceMetadata {
   /** Discriminant: always `"resource"`. */
   readonly kind: "resource";
   /** Unique within the adapter, e.g. `"schemas"`. */
@@ -77,7 +86,7 @@ export interface ResourceDefinition<TInput, TOutput, TContext = unknown> {
  * Structural subset for heterogeneous resource collections
  * (adapter definitions, invalidation targets).
  */
-export interface AnyResourceDefinition {
+export interface AnyResourceDefinition extends ResourceMetadata {
   /** Discriminant: always `"resource"`. */
   readonly kind: "resource";
   /** Unique within the adapter. */
@@ -99,7 +108,10 @@ export interface AnyResourceDefinition {
  * const binding = warehouses();
  * ```
  */
-export type InputlessResource<TOutput, TContext = unknown> = {
+export type InputlessResource<
+  TOutput,
+  TContext = unknown,
+> = ResourceMetadata & {
   /** Creates a binding without executing the query. */
   (): ResourceBinding<undefined, TOutput, TContext>;
   /** Discriminant: always `"resource"`. */
@@ -126,7 +138,11 @@ export type InputlessResource<TOutput, TContext = unknown> = {
  * const binding = schemas({ database: "ANALYTICS" });
  * ```
  */
-export type InputResource<TInput, TOutput, TContext = unknown> = {
+export type InputResource<
+  TInput,
+  TOutput,
+  TContext = unknown,
+> = ResourceMetadata & {
   /**
    * Validates input and creates a binding without executing the query.
    *

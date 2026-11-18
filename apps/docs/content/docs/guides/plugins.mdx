@@ -1,0 +1,97 @@
+---
+title: Plugins
+description: Load the first-party plugins for health checks, host monitoring, and code repositories, or add your own, from dsui.yaml.
+contentType: how-to
+---
+
+Plugins extend the whole installation with pages, background jobs, and settings. You declare each plugin under `plugins` in `dsui.yaml`, and DSUI loads it when it starts. Plugins run inside the DSUI server, so only load code that you trust.
+
+## Declare a plugin
+
+The key under `plugins` is the plugin's ID, and it must match the ID the plugin declares. DSUI refuses a plugin that is configured under a different ID.
+
+Every entry takes these settings, plus one way to find the plugin:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `true` | Set to `false` to keep the entry but not load the plugin |
+| `critical` | Off | When `true`, DSUI refuses to start if the plugin can't load |
+| `config` | Empty | Options that the plugin defines |
+
+DSUI loads plugins once, when it starts, so restart DSUI after you change `plugins`. Without `critical`, a plugin that fails to load is shown as **Unavailable** under **Settings**, then **Extensions**, and DSUI starts without it.
+
+### Find a plugin
+
+Use one of these forms:
+
+- **`package`**: an installed package. The official Docker image and npm package include the first-party plugins below, so use their package names
+- **`source: git`**: a plugin that DSUI downloads from a GitHub repository and builds on start. Set `repository`, and optionally `ref` (default `main`), `path`, and `token` for a private repository
+- **`source: local`**: a plugin that DSUI builds from a directory on the machine. Set `path`
+
+## First-party plugins
+
+### Service health
+
+Checks the health of your services on a schedule, and adds an overview page and a health badge on each service card.
+
+```yaml
+plugins:
+  health:
+    package: "@northgraindata/dsui-plugin-health"
+    config:
+      checkIntervalMs: 600000
+```
+
+| Option | Default | Allowed range |
+| --- | --- | --- |
+| `checkIntervalMs` | 3600000 | 10000 to 3600000 |
+| `timeoutMs` | 30000 | 1 to 60000 |
+| `maxServices` | 100 | 1 to 500 |
+
+`checkIntervalMs` is the time between checks, in milliseconds. `timeoutMs` limits one probe, and `maxServices` limits how many services DSUI probes in one batch.
+
+### Host monitoring
+
+Shows CPU load, memory, and free disk space for the machine that runs DSUI.
+
+```yaml
+plugins:
+  monitoring:
+    package: "@northgraindata/dsui-plugin-monitoring"
+    config:
+      paths:
+        - path: /data
+          mount: /data
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `paths` | The temporary directory and your home directory | Directories to sample for free space. Each entry has a `path` and the `mount` label shown in the workspace |
+| `maxVolumes` | 16 | Most volumes sampled per request, up to 32 |
+
+### Code repositories
+
+Attaches GitHub, GitLab, or local repositories to your services, with a code explorer.
+
+```yaml
+plugins:
+  code-repository:
+    package: "@northgraindata/dsui-plugin-code-repository"
+    config:
+      connections:
+        - key: analytics-models
+          serviceId: analytics
+          provider: github
+          repository: your_org/your_repository
+          branch: main
+```
+
+Each connection needs a unique `key`, the `serviceId` of the service it belongs to, a `provider` (`github`, `gitlab`, or `local`), and a `repository`. A remote connection also needs a `branch`. Optional fields are `name`, `instance` (the GitLab host, default `gitlab`), `folder`, and `instructions`.
+
+### AI assistant
+
+The AI assistant plugin isn't bundled. See [AI assistant](/docs/guides/ai-assistant) for how to add it.
+
+## Build your own plugin
+
+To write a plugin, follow the [Plugin SDK](/docs/plugin-sdk/overview).

@@ -17,6 +17,7 @@ import {
   s3ConnectionSchema,
 } from "./context.js";
 import { s3Health } from "./health.js";
+import { s3IconUrl } from "./logo.js";
 import { browserPage } from "./pages/browser.js";
 import { fileBrowserPage } from "./pages/buckets.js";
 import {
@@ -38,8 +39,7 @@ export function createS3Adapter(
       name: "S3",
       version: "0.1.0",
       author: "DSUI",
-      iconUrl:
-        "https://icon.icepanel.io/AWS/svg/Storage/Simple-Storage-Service.svg",
+      iconUrl: s3IconUrl,
       description: "Browse and manage S3-compatible object storage.",
     },
     connectionMethods: {

@@ -1,0 +1,10 @@
+{
+  "name": "Columns",
+  "description": "Multi-column weighted layout.",
+  "props": {
+    "columns": {
+      "description": "Column definitions. Each has `weight?` (relative width) and `content`."
+    }
+  },
+  "example": "Columns({\n  columns: [\n    { weight: 2, content: Table({ source: left() }) },\n    { weight: 1, content: Card({ content: Value({ source: right(), field: \"x\" }) }) },\n  ],\n})"
+}

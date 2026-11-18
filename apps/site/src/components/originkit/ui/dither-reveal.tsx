@@ -136,7 +136,8 @@ export default function DitherReveal(props: DitherRevealProps) {
       console.warn("DitherReveal link:", gl.getProgramInfoLog(program));
       return;
     }
-    gl.useProgram(program);
+    const activateProgram = gl.useProgram.bind(gl);
+    activateProgram(program);
     gl.deleteShader(vs);
     gl.deleteShader(fs);
 

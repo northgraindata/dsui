@@ -1,8 +1,9 @@
-import { Button, Input } from "@northgraindata/dsui-ui";
+import { Button, Input, OptionSelect } from "@northgraindata/dsui-ui";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   type Adapter,
+  CONNECTOR_KEY,
   connectionTopEntries,
   createService,
   firstLeaf,
@@ -12,12 +13,15 @@ import {
 import { connectionTestMessage } from "../service-pages";
 import { ConnectionAbout } from "./connection-about";
 import { ConnectionFields } from "./connection-fields";
+import { ConnectorRoute, type Route } from "./connector-route";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
 
 type TestResult =
   | { kind: "health"; health: HealthStatus }
   | { kind: "error"; message: string };
+// Adapters that read a file on the DSUI server have no network path to route.
+const localOnlyAdapters = new Set(["duckdb"]);
 const steps = [
   { title: "Connection", detail: "Provide connection details" },
   { title: "Test", detail: "Verify connection" },
@@ -59,6 +63,10 @@ export function ConnectionDialog({
   const [values, setValues] = useState<Record<string, string>>({
     name: `My ${adapter.name}`,
   });
+  const [route, setRoute] = useState<Route>("direct");
+  const [connectorId, setConnectorId] = useState<string>();
+  const routable = !localOnlyAdapters.has(adapter.id);
+  const missingAgent = routable && route === "agent" && !connectorId;
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<TestResult>();
@@ -106,10 +114,16 @@ export function ConnectionDialog({
         )
         .map((field) => [field.key, values[field.key]]),
     );
+    const routed =
+      routable && route === "agent" && connectorId
+        ? { [CONNECTOR_KEY]: connectorId }
+        : {};
     return {
       adapter: adapter.id,
       name: values.name || adapter.name,
-      connection: method ? { ...connection, method: method.id } : connection,
+      connection: method
+        ? { ...connection, method: method.id, ...routed }
+        : { ...connection, ...routed },
     };
   }
   async function test(event?: FormEvent) {
@@ -290,19 +304,29 @@ export function ConnectionDialog({
               {top?.kind === "group" && (
                 <div className="connection-field">
                   <label htmlFor="connection-method">Connection method</label>
-                  <select
+                  <OptionSelect
                     id="connection-method"
                     value={methodId}
-                    onChange={(event) => chooseMethod(event.target.value)}
-                  >
-                    {top.methods.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={top.methods.map((candidate) => ({
+                      value: candidate.id,
+                      label: candidate.label,
+                      description: candidate.description,
+                    }))}
+                    onValueChange={chooseMethod}
+                  />
                   <small>{method?.description}</small>
                 </div>
+              )}
+              {routable && (
+                <ConnectorRoute
+                  route={route}
+                  connectorId={connectorId}
+                  onRoute={(next) => {
+                    setRoute(next);
+                    setResult(undefined);
+                  }}
+                  onConnector={setConnectorId}
+                />
               )}
               <ConnectionFields
                 fields={fields.filter((field) => field.required)}
@@ -413,6 +437,7 @@ export function ConnectionDialog({
               type="submit"
               form="connection-form"
               className="connection-primary"
+              disabled={missingAgent}
             >
               Test connection <span aria-hidden="true">→</span>
             </Button>

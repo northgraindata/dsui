@@ -2,8 +2,11 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from "@tanstack/react-router";
+import { authenticationEntry, currentPrincipal, getPluginCatalog } from "./api";
 import { AppShell } from "./app/app-shell";
+import { isPublicPluginPage } from "./auth-routing";
 import {
   ServiceDetail,
   ServiceObjectView,
@@ -18,7 +21,25 @@ import { DashboardScreen } from "./features/dashboard/dashboard-screen";
 import { PluginPageScreen } from "./features/plugins/plugin-page-screen";
 import { SettingsScreen } from "./features/settings/settings-screen";
 
-const rootRoute = createRootRoute({ component: AppShell });
+const rootRoute = createRootRoute({
+  component: AppShell,
+  beforeLoad: async ({ location }) => {
+    if (await currentPrincipal()) return;
+    const entry = await authenticationEntry();
+    if (entry.mode === "none") return;
+    if (entry.mode === "unavailable" || !entry.pageId)
+      throw new Error(
+        "Authentication is unavailable. Contact your administrator.",
+      );
+    const catalog = await getPluginCatalog();
+    if (isPublicPluginPage(location.pathname, catalog.pages)) return;
+    throw redirect({
+      to: "/plugins/$pluginId/$",
+      params: { pluginId: entry.pluginId, _splat: entry.pageId },
+      replace: true,
+    });
+  },
+});
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",

@@ -1,0 +1,34 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Privacy - DSUI" description="How the DSUI website and software handle your data.">
+  <main class="min-h-screen bg-canvas px-6 py-24 text-foreground">
+    <article class="mx-auto max-w-2xl">
+      <a href="/" class="text-sm text-copy-subtle transition-colors hover:text-foreground">← DSUI</a>
+      <h1 class="mt-8 text-4xl font-semibold tracking-tight">Privacy</h1>
+      <p class="mt-4 text-sm text-copy-subtle">Draft - to be reviewed before launch.</p>
+
+      <h2 class="mt-12 text-xl font-semibold tracking-tight">This website</h2>
+      <p class="mt-3 leading-7 text-copy">
+        With your permission we measure which pages are visited and which links are clicked, using PostHog (EU).
+        Nothing is loaded and no cookie is set until you accept measurement in the cookie banner.
+        You can change your choice at any time with "Cookie settings" in the footer.
+      </p>
+
+      <h2 class="mt-12 text-xl font-semibold tracking-tight">Self-hosted DSUI</h2>
+      <p class="mt-3 leading-7 text-copy">
+        The open source server sends a small anonymous event on start and once a day: version, operating system, a random install id and counts of services per adapter type.
+        It never sends hostnames, credentials, queries or your IP address.
+        Turn it off with <code>DSUI_TELEMETRY=off</code> or <code>DO_NOT_TRACK=1</code>.
+        See the <a class="underline" href="/docs/telemetry">telemetry page</a> for the exact fields.
+      </p>
+
+      <h2 class="mt-12 text-xl font-semibold tracking-tight">DSUI Cloud</h2>
+      <p class="mt-3 leading-7 text-copy">
+        The managed product records product usage events against your account to improve it.
+        Its own privacy terms will be linked from the sign-in page.
+      </p>
+    </article>
+  </main>
+</Base>

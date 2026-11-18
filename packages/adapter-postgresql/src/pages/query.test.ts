@@ -22,6 +22,10 @@ test("query deep links fill the editor without executing SQL", () => {
     (node) => node.kind === "custom" && node.props.component === "query-editor",
   );
   expect(editor?.props.props.value).toBe(sql);
+  expect(editor?.props.props.omitDatabaseFromSql).toBe(true);
+  expect(JSON.stringify(editor?.props.props.explorer)).toContain(
+    "database-relations",
+  );
   const empty = serializeNodes(
     queryPage.render({
       params: {},

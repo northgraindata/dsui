@@ -3,6 +3,8 @@ import { basename, join, resolve } from "node:path";
 import * as ts from "typescript";
 
 export interface PrimitivePropDoc {
+  /** First paragraph of the property's JSDoc comment, or an empty string. */
+  description: string;
   name: string;
   required: boolean;
   type: string;
@@ -102,6 +104,7 @@ export function extractPrimitiveDoc(
         return [];
       return [
         {
+          description: jsDocSummary(member),
           name: propertyName(member.name, source),
           required: member.questionToken === undefined,
           type: member.type.getText(source),
@@ -131,6 +134,12 @@ function findComponentId(statement: ts.VariableStatement): string | null {
     if (id && ts.isStringLiteral(id.initializer)) return id.initializer.text;
   }
   return null;
+}
+
+function jsDocSummary(member: ts.PropertySignature): string {
+  const [doc] = ts.getJSDocCommentsAndTags(member).filter(ts.isJSDoc);
+  const text = doc ? ts.getTextOfJSDocComment(doc.comment) : undefined;
+  return (text?.split(/\n\s*\n/)[0] ?? "").replace(/\s+/g, " ").trim();
 }
 
 function propertyName(name: ts.PropertyName, source: ts.SourceFile): string {

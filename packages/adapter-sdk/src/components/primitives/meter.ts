@@ -15,6 +15,8 @@ export interface MeterData {
 }
 
 export interface MeterProps {
+  /** Read meter data from the surrounding Resource context. */
+  field?: string;
   source?: DataSource;
   data?: MeterData;
   format?: "bytes" | "number";

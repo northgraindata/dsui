@@ -1,9 +1,24 @@
 adapters:
+  clickhouse:
+    source: local
+    path: /opt/dsui-adapters/clickhouse
   airflow:
     package: "@northgraindata/dsui-adapter-airflow"
   # Local workspace package, loaded in-process through the uniform loader.
   duckdb:
     package: "@northgraindata/dsui-adapter-duckdb"
+
+plugins:
+  ai-agent:
+    source: local
+    path: packages/plugin-ai-agent
+    enabled: true
+    config:
+      model:
+        provider: openai
+        id: gpt-6-sol
+        # Set your own key here, or use ${DSUI_AGENT_API_KEY}.
+        apiKey: ""
 
 services:
   - id: analytics
@@ -11,3 +26,15 @@ services:
     name: Analytics database
     connection:
       method: memory
+
+  - id: clickhouse
+    adapter: clickhouse
+    name: ClickHouse
+    connection:
+      method: structured
+      host: clickhouse
+      protocol: http
+      port: 8123
+      database: default
+      username: default
+      password: dsui-test

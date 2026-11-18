@@ -40,23 +40,24 @@ export const modelDetailPage = definePage({
           { id: "description", label: "Description" },
         ],
       }),
-      Resource({
-        source: modelDetail(input),
-        content: [
-          Target({
-            id: "dbt.model.source",
-            content: CodeBlock({
+      Target({
+        id: "dbt.model.source",
+        // Keep the tour anchor present while the model loads or reports an error.
+        content: Resource({
+          source: modelDetail(input),
+          content: [
+            CodeBlock({
               label: "Model source SQL",
               value: { field: "rawCode" },
               language: "sql",
             }),
-          }),
-          CodeBlock({
-            label: "Compiled SQL",
-            value: { field: "compiledCode" },
-            language: "sql",
-          }),
-        ],
+            CodeBlock({
+              label: "Compiled SQL",
+              value: { field: "compiledCode" },
+              language: "sql",
+            }),
+          ],
+        }),
       }),
     ];
   },

@@ -1,13 +1,14 @@
 ---
 title: Resources
-description: Read-only data sources managed by the runtime.
+description: Reference for defineResource, which declares a read of data with an input schema and a refresh policy that DSUI runs for your pages.
+contentType: reference
 ---
 
-A resource is a parameterized data source. It describes *what* data is wanted — the runtime controls execution, refreshing, and cleanup.
+A resource describes data that a page wants. You write the query, and DSUI decides when to run it, shares its result with every component that watches it, and refreshes it on the policy you choose. A resource only reads. Put changes in an [action](/docs/adapter-sdk/actions).
 
-## Inputless resource
+## Define a resource without input
 
-No parameters. The query runs with `undefined` input.
+An inputless resource takes no parameters. Its query receives `undefined` and the adapter context:
 
 ```ts
 import { defineResource } from "@northgraindata/dsui-adapter-sdk";
@@ -15,98 +16,85 @@ import type { MyContext } from "./context.js";
 
 export const status = defineResource({
   id: "status",
-  query: async (_input, ctx: MyContext) => ({
+  query: async (_input: undefined, ctx: MyContext) => ({
     url: ctx.config.baseUrl,
     ok: await ctx.client.ping(),
   }),
 });
 ```
 
-Call it without arguments to create a binding:
+The `id` must be unique within the adapter. Call the resource to create a binding that a component can read: `status()`. Creating a binding doesn't run the query.
 
-```ts
-status() // → ResourceBinding
-```
+## Define a resource with input
 
-## Parameterized resource
-
-Add a Zod `input` schema. Binding arguments are validated and typed.
+Add a Zod `input` schema to make a resource that takes parameters. DSUI validates every binding's input against it, and the query receives the parsed value:
 
 ```ts
 import { defineResource, z } from "@northgraindata/dsui-adapter-sdk";
 
-export const schemas = defineResource({
-  id: "schemas",
-  input: z.object({ database: z.string() }),
-  query: ({ database }, ctx: MyContext) => ctx.client.listSchemas(database),
+export const echo = defineResource({
+  id: "echo",
+  input: z.object({ text: z.string().min(1) }),
+  query: ({ text }, ctx: MyContext) => ({ text, from: ctx.config.baseUrl }),
 });
 ```
 
-```ts
-schemas({ database: "ANALYTICS" }) // → ResourceBinding
-```
+Bind it with its input: `echo({ text: "hi" })`. DSUI rejects an input that doesn't match the schema, and the caller gets the Zod issues as the error. The same schema gives your bindings their TypeScript types.
 
-The `input` schema drives both runtime validation and TypeScript inference. The `query` function receives the parsed output, not the raw input.
+## Describe a resource
 
-## Refresh strategies
-
-Resources default to `manual()` — fetched on mount and on explicit invalidation only.
+An optional `description` explains what the resource returns. DSUI publishes it with the input schema, so tools that list the adapter's resources, such as the AI assistant, can tell them apart:
 
 ```ts
-import { manual, poll } from "@northgraindata/dsui-adapter-sdk";
-
 defineResource({
-  id: "warehouses",
-  query: (_, ctx) => ctx.client.listWarehouses(),
-  refresh: poll("5s"),   // re-fetch every 5 seconds while watched
+  id: "sample-orders",
+  description: "Read up to 10 sample orders from the selected region.",
+  input: z.object({ region: z.string() }),
+  query: ({ region }, ctx: MyContext) => ctx.client.sampleOrders(region, 10),
 });
 ```
 
-`poll()` accepts `"500ms"`, `"5s"`, `"2m"`, or a raw number of milliseconds.
+A description is documentation. It doesn't limit what the query can do, so your code must enforce permissions, limits, and timeouts itself.
 
-| Strategy | Behavior |
+## Choose a refresh policy
+
+`refresh` says how a watched resource stays fresh. The default is `manual()`.
+
+| Policy | Behavior |
 | --- | --- |
-| `manual()` | Fetch on mount and on `invalidate()` only |
-| `poll(interval)` | Re-fetch on a fixed interval while the page is mounted |
-
-## Using bindings
-
-Pass resource bindings to DSUI components via `source`:
+| `manual()` | DSUI runs the query when a component starts watching it, and again when an action invalidates it |
+| `poll(interval)` | The same, and DSUI also runs it again on a fixed interval while someone watches it |
 
 ```ts
-import { Table, Value, Card } from "@northgraindata/dsui-adapter-sdk";
+import { defineResource, poll } from "@northgraindata/dsui-adapter-sdk";
 
+export const warehouses = defineResource({
+  id: "warehouses",
+  query: (_input: undefined, ctx: MyContext) => ctx.client.listWarehouses(),
+  refresh: poll("5s"),
+});
+```
+
+`poll` takes `"500ms"`, `"5s"`, `"2m"`, or a number of milliseconds. A value that isn't positive, or text in another format, fails when the adapter loads with `Invalid poll interval`. Polling starts when the first component watches the resource and stops when the last one leaves.
+
+## Show a resource on a page
+
+Pass a binding to a component as its `source`:
+
+```ts
 definePage({
   path: "/",
   render: () => [
-    Table({ source: schemas({ database: "MAIN" }) }),
+    Table({ source: warehouses() }),
     Value({ source: status(), field: "url" }),
-    Card({ content: Value({ source: status(), field: "ok" }) }),
   ],
 });
 ```
 
-The runtime executes the query, manages polling, and delivers results to the component. The resource never runs in the page — it runs in the adapter host.
+The query never runs in the page. It runs in the adapter's process, and the result goes to every component that watches the same binding. See [pages](/docs/adapter-sdk/pages).
 
-## How the runtime executes
+## The context argument
 
-1. A page calls `schemas({ database: "MAIN" })` — produces a `ResourceBinding` (declarative, no execution).
-2. The runtime serializes the binding and schedules execution.
-3. The query function runs with the validated input and the adapter context.
-4. Results flow to every component watching that binding.
-5. On `poll()` resources, the runtime re-executes on the interval. On `manual()` resources, only `invalidate()` triggers a re-fetch.
+The second argument to `query` is the adapter context from `defineAdapter`. DSUI also adds `stores` and `blobs` to it, which give access to the adapter's stores and to binary storage private to the service. Keep UI state out of resources. That belongs in [stores](/docs/adapter-sdk/stores).
 
-## Context
-
-The second argument to `query` is the adapter context — the same object returned by `context()` in `defineAdapter`. Use it to access clients, configuration, and anything built during adapter initialization.
-
-```ts
-export const tables = defineResource({
-  id: "tables",
-  input: z.object({ schema: z.string() }),
-  query: ({ schema }, ctx: MyContext) =>
-    ctx.client.listTables(schema),
-});
-```
-
-If your adapter has no `context`, the second argument is `Record<string, never>`.
+If a query throws, the components that watch it show the error.

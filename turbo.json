@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": ["DSUI_WEB_BASE_PATH"],
+  "envMode": "loose",
   "globalPassThroughEnv": [
     "DSUI_VERSION",
     "DSUI_CONFIG",
@@ -10,12 +11,11 @@
     "DSUI_PORT",
     "DSUI_WEB_ROOT",
     "DSUI_SDK_ROOT",
-    "DSUI_BUN"
+    "DSUI_AGENT_API_KEY"
   ],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".astro/**"] },
     "dev": { "cache": false, "persistent": true },
-    "@northgraindata/dsui-server#dev": { "passThroughEnv": ["*"] },
     "typecheck": { "dependsOn": ["^typecheck"], "outputs": [] },
     "test": { "outputs": [] }
   }

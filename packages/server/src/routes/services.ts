@@ -77,6 +77,90 @@ export function connectionFor(
   return decrypted;
 }
 
+/** Shared adapter operations used by both HTTP routes and trusted plugins. */
+export async function queryServiceResource(
+  deps: Pick<
+    ServiceDeps,
+    "registry" | "database" | "cipher" | "getConfig" | "refreshConfig"
+  >,
+  serviceId: string,
+  resourceId: string,
+  input: unknown,
+) {
+  await deps.refreshConfig();
+  const source = serviceSource(deps.getConfig(), deps.database, serviceId);
+  if (!source) throw new Error("Service not found");
+  const adapter = deps.registry.get(source.service.adapter);
+  return adapter.backend.executeResource(
+    resourceId,
+    connectionFor(deps.cipher, source),
+    input,
+    { persistenceNamespace: serviceId },
+  );
+}
+
+export async function executeServiceAction(
+  deps: Pick<
+    ServiceDeps,
+    | "registry"
+    | "database"
+    | "cipher"
+    | "getConfig"
+    | "refreshConfig"
+    | "signalBus"
+  > & {
+    audit(
+      actor: string,
+      action: string,
+      target: string,
+      metadata?: Record<string, unknown>,
+    ): void;
+  },
+  serviceId: string,
+  actionId: string,
+  input: unknown,
+  signal: AbortSignal,
+  auditActor: string,
+  options: { origin?: { pluginId: string; runId?: string } } = {},
+) {
+  await deps.refreshConfig();
+  const source = serviceSource(deps.getConfig(), deps.database, serviceId);
+  if (!source) throw new Error("Service not found");
+  const adapter = deps.registry.get(source.service.adapter);
+  const result = await adapter.backend.executeAction(
+    actionId,
+    connectionFor(deps.cipher, source),
+    input,
+    signal,
+    { persistenceNamespace: serviceId },
+  );
+  for (const emission of result.emissions) {
+    const declared = adapter.catalog.signals.find(
+      (signalDefinition) => signalDefinition.id === emission.signalId,
+    );
+    if (!declared)
+      throw new Error(
+        `Adapter action emitted undeclared signal "${emission.signalId}"`,
+      );
+    deps.signalBus.publish({
+      signalId: `${adapter.id}.${emission.signalId}`,
+      type: declared.type,
+      sourceType: "adapter",
+      sourceId: serviceId,
+      serviceId,
+      payload: emission.payload,
+      ...(emission.idempotencyKey
+        ? { idempotencyKey: emission.idempotencyKey }
+        : {}),
+    });
+  }
+  deps.audit(auditActor, "action.execute", serviceId, {
+    action: actionId,
+    ...(options.origin?.runId ? { runId: options.origin.runId } : {}),
+  });
+  return result;
+}
+
 export interface ServiceDeps {
   registry: AdapterRegistry;
   pluginRuntime?: PluginRuntime;
@@ -86,6 +170,8 @@ export interface ServiceDeps {
   getConfig(): DsuiConfig;
   refreshConfig(): Promise<DsuiConfig>;
   refreshJobs?(): void;
+  /** Drops what the host keeps for a service besides its row, such as blobs. */
+  removeServiceData?(serviceId: string): Promise<void>;
 }
 
 export async function publicService(
@@ -252,6 +338,7 @@ export function registerServiceRoutes(
           "Configuration-managed services cannot be deleted here",
         );
       deps.database.deleteUiService(source.service.id);
+      await deps.removeServiceData?.(source.service.id);
       await deps.registry
         .list()
         .find((adapter) => adapter.id === source.service.adapter)

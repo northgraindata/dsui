@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { PluginServiceProbe } from "@northgraindata/dsui-plugin-sdk";
+import {
+  PluginRequestError,
+  type PluginServiceProbe,
+} from "@northgraindata/dsui-plugin-sdk";
 import { Hono } from "hono";
 import { type AdapterLoadOptions, loadAdapter } from "./adapters/loader.js";
 import { AdapterRegistry } from "./adapters/registry.js";
@@ -13,6 +16,13 @@ import {
   loadConfig,
   toAdapterSourceLocation,
 } from "./config.js";
+import { TunnelManager } from "./connectors/manager";
+import { ConnectorProxy } from "./connectors/proxy";
+import {
+  createConnectorRouting,
+  setConnectorRouting,
+} from "./connectors/routing";
+import { removeServiceBlobs } from "./db/blob-storage.js";
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
@@ -23,15 +33,21 @@ import { PluginJobService } from "./plugins/job-service.js";
 import { registerPluginRoutes } from "./plugins/routes.js";
 import { type PluginModuleLoader, PluginRuntime } from "./plugins/runtime.js";
 import { createPluginStorage, createPluginStores } from "./plugins/storage.js";
+import { registerAdapterRouteEndpoints } from "./routes/adapter-routes.js";
 import { registerAdapterRoutes } from "./routes/adapters.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerConnectorRoutes } from "./routes/connectors";
 import { registerExecuteRoutes } from "./routes/execute.js";
 import {
   connectionFor,
+  executeServiceAction,
+  queryServiceResource,
   registerServiceRoutes,
   serviceSource,
 } from "./routes/services.js";
+import { registerSettingsRoutes } from "./routes/settings";
 import { registerSystemRoutes } from "./routes/system.js";
+import { createErrorCounter } from "./telemetry/errors";
 
 export type Runtime = ReturnType<typeof createRuntime>;
 
@@ -95,10 +111,12 @@ export function defaultDataDir(): string {
 export function createRuntime(options: CreateRuntimeOptions = {}) {
   const dataDir = options.dataDir ?? defaultDataDir();
   const databasePath = options.databasePath ?? join(dataDir, "dsui.sqlite");
+  const blobRoot = join(dataDir, "blobs");
   const configPath =
     options.configPath ??
     process.env.DSUI_CONFIG ??
     (existsSync("/etc/dsui/dsui.yaml") ? "/etc/dsui/dsui.yaml" : undefined);
+  const errors = createErrorCounter();
   const registry = new AdapterRegistry();
   const readiness = new Map<string, AdapterReadiness>();
   const database = new DsuiDatabase(databasePath);
@@ -123,6 +141,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         id: service.id,
         name,
         adapter: service.adapter,
+        adapterName: registry
+          .list()
+          .find((adapter) => adapter.id === service.adapter)?.metadata.name,
         iconUrl: registry
           .list()
           .find((adapter) => adapter.id === service.adapter)?.metadata.iconUrl,
@@ -145,6 +166,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           id: service.id,
           name,
           adapter: service.adapter,
+          adapterName: registry
+            .list()
+            .find((adapter) => adapter.id === service.adapter)?.metadata.name,
           managedBy: "ui" as const,
           iconUrl: registry
             .list()
@@ -234,15 +258,90 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
               (service) => service.id === id,
             ) ?? null)
           : null,
+      executeAction: async (id, actionId, input, options) => {
+        await pluginRuntime.requireServiceAccess(id, "execute", {
+          actionId,
+          actionInput: input,
+        });
+        const result = await executeServiceAction(
+          {
+            registry,
+            database,
+            cipher,
+            getConfig: () => config,
+            refreshConfig,
+            signalBus,
+            audit: (actor, action, target, metadata) =>
+              database.audit(actor, action, target, metadata),
+          },
+          id,
+          actionId,
+          input,
+          options?.signal
+            ? AbortSignal.any([options.signal, AbortSignal.timeout(600000)])
+            : AbortSignal.timeout(600000),
+          options?.origin?.pluginId ?? "plugin",
+          { origin: options?.origin },
+        );
+        if (result.result.status === "error")
+          throw new PluginRequestError(result.result.message, 422);
+        return result.result.data;
+      },
       signals: async (id) => {
         if (!(await pluginRuntime.canAccessService(id))) return null;
         const source = serviceSource(config, database, id);
         if (!source) return null;
+        if (!registry.has(source.service.adapter)) return null;
         const adapter = registry.get(source.service.adapter);
         return adapter.catalog.signals.map((signal) => ({
           id: `${adapter.id}.${signal.id}`,
           type: signal.type,
         }));
+      },
+      listResources: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.resources.map(({ id, inputSchema, description }) => ({
+            id,
+            ...(description !== undefined ? { description } : {}),
+            ...(inputSchema ? { inputSchema } : {}),
+          }));
+      },
+      listActions: async (id) => {
+        if (!(await pluginRuntime.canAccessService(id))) return null;
+        const source = serviceSource(config, database, id);
+        if (!source) return null;
+        return registry
+          .get(source.service.adapter)
+          .catalog.actions.map(({ id, inputSchema, description }) => ({
+            id,
+            ...(description !== undefined ? { description } : {}),
+            ...(inputSchema ? { inputSchema } : {}),
+          }));
+      },
+      queryResource: async (id, resourceId, input) => {
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error("Insufficient service permission");
+        const result = await queryServiceResource(
+          {
+            registry,
+            database,
+            cipher,
+            getConfig: () => config,
+            refreshConfig,
+          },
+          id,
+          resourceId,
+          input,
+        );
+        if (!(await pluginRuntime.canAccessService(id)))
+          throw new Error(
+            "Service permission was revoked during the resource read",
+          );
+        return result.data;
       },
       probe: async (id, probeOptions) =>
         (await pluginRuntime.canAccessService(id))
@@ -254,6 +353,8 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     {
       storage: (pluginId) => createPluginStorage(dataDir, pluginId),
       stores: (pluginId) => createPluginStores(database, pluginId),
+      plugins: () => pluginRuntime.pluginCapabilities(),
+      audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
         jobs: {
           enqueue: async (jobId, input) => ({
@@ -392,6 +493,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     persistenceProvider: (namespace) =>
       new SqliteStorePersistenceProvider(database, namespace),
     persistenceDatabasePath: databasePath,
+    persistenceBlobRoot: blobRoot,
   };
 
   /**
@@ -453,6 +555,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             ms: performance.now() - started,
           });
         } catch (error) {
+          errors.record("adapter_load_failed", id);
           const detail = error instanceof Error ? error.message : "Load failed";
           // Reported through onAdapterLoad rather than logged here: a failed
           // adapter is a startup state the CLI already renders, and printing an
@@ -545,6 +648,28 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
 
   const app = new Hono();
 
+  // Counts failed actions and resource reads by built-in adapter, for
+  // telemetry. A refusal (4xx) is the server working as designed, not a fault.
+  app.use("/api/v1/services/:id/*", async (context, next) => {
+    await next();
+    if (context.res.status < 500) return;
+    const category = context.req.path.includes("/actions/")
+      ? "action_failed"
+      : context.req.path.includes("/resources/")
+        ? "resource_query_failed"
+        : undefined;
+    if (!category) return;
+    errors.record(
+      category,
+      serviceSource(config, database, context.req.param("id"))?.service.adapter,
+    );
+  });
+  app.onError((error, context) => {
+    errors.record("unhandled_error");
+    console.error(error);
+    return context.text("Internal Server Error", 500);
+  });
+
   const serviceDeps = {
     registry,
     pluginRuntime,
@@ -556,30 +681,68 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     getConfig,
     refreshConfig,
     audit,
+    removeServiceData: (serviceId: string) =>
+      removeServiceBlobs(blobRoot, serviceId),
   };
   registerSystemRoutes(app, {
     pluginRuntime,
     webRoot: options.webRoot,
   });
   registerAuthRoutes(app, { pluginRuntime });
+  registerSettingsRoutes(app, {
+    database,
+    runtime: pluginRuntime,
+    getConfig,
+    registry,
+    readiness: () => readiness,
+    dataDir,
+    configPath,
+  });
   registerPluginRoutes(app, { runtime: pluginRuntime, audit });
   registerEventRoutes(app, { bus: signalBus, runtime: pluginRuntime });
   registerAdapterRoutes(app, {
     registry,
     readiness: () => readiness,
   });
+  // DSUI agents: customer-side connectors that carry traffic into private networks.
+  const tunnel = new TunnelManager({
+    database,
+    trustProxyHeaders: process.env.DSUI_TRUST_PROXY === "1",
+  });
+  const connectorProxy = new ConnectorProxy(tunnel);
+  registerConnectorRoutes(app, {
+    database,
+    cipher,
+    tunnel,
+    pluginRuntime,
+    audit,
+  });
   registerServiceRoutes(app, serviceDeps);
   registerExecuteRoutes(app, serviceDeps);
+  registerAdapterRouteEndpoints(app, {
+    ...serviceDeps,
+    spoolDirectory: join(dataDir, "tmp", "route-bodies"),
+  });
 
   return {
     app,
+    errors,
     database,
     registry,
     pluginRuntime,
     pluginJobs,
     signalBus,
     refreshConfig,
+    tunnel,
+    /** Starts the loopback proxy that routes services through DSUI agents. */
+    startConnectors: async () => {
+      await connectorProxy.start();
+      setConnectorRouting(createConnectorRouting(database, connectorProxy));
+    },
     close: async () => {
+      tunnel.close();
+      setConnectorRouting(undefined);
+      await connectorProxy.close();
       unsubscribeSignalJobs();
       await pluginJobs.close();
       await pluginRuntime.close();

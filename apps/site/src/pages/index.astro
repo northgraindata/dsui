@@ -1,10 +1,16 @@
 ---
+import AdapterRequestDialog from "@/components/adapter-request-dialog.astro";
+import BuildYourOwn from "@/components/build-your-own.astro";
 import Footer from "@/components/footer.astro";
 import HowItWorks from "@/components/how-it-works.astro";
+import ManagedCloud from "@/components/managed-cloud.astro";
+import PluginEcosystem from "@/components/plugin-ecosystem.astro";
+import Pricing from "@/components/pricing.astro";
 import StarOnGithub from "@/components/ui/button-github.astro";
 import IntegrationsSection from "@/components/ui/integrations-3.astro";
 import ShaderBackground from "@/components/ui/line-shader-homlu-ui.astro";
 import WhyDsui from "@/components/why-dsui.astro";
+import { cloudUrl } from "@/lib/cloud-url";
 import Base from "../layouts/Base.astro";
 
 const docsBaseUrl = import.meta.env.DEV
@@ -47,6 +53,14 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
           >
           <a
             class="rounded-lg px-3 py-2 text-sm text-copy transition-colors hover:bg-foreground/8 hover:text-foreground"
+            href="#cloud">Cloud</a
+          >
+          <a
+            class="rounded-lg px-3 py-2 text-sm text-copy transition-colors hover:bg-foreground/8 hover:text-foreground"
+            href="#pricing">Pricing</a
+          >
+          <a
+            class="rounded-lg px-3 py-2 text-sm text-copy transition-colors hover:bg-foreground/8 hover:text-foreground"
             href={docsBaseUrl}>Documentation</a
           >
         </div>
@@ -70,9 +84,14 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
             </svg>
           </a>
           <a
+            class="hidden min-h-10 items-center rounded-lg px-3 text-sm font-medium text-copy transition-colors hover:bg-foreground/8 hover:text-foreground sm:inline-flex"
+            href={cloudUrl("navbar")}
+            data-cloud-link="navbar">Sign in</a
+          >
+          <a
             class="hero-action inline-flex min-h-10 items-center rounded-lg bg-action-primary px-3.5 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover"
             href={gettingStartedUrl}
-            >Get started <span class="ml-2 text-brand-softest" aria-hidden="true"
+            >Get Started <span class="ml-2 text-brand-softest" aria-hidden="true"
               >→</span
             ></a
           >
@@ -91,37 +110,32 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
       </div>
       <div class="relative z-10 w-full max-w-6xl py-32 text-center sm:py-40">
         <div class="mx-auto max-w-4xl">
-          <div class="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-brand-muted/20 bg-brand/8 px-3 py-1.5 text-left text-xs text-copy">
-            <span class="size-1.5 rounded-full bg-warning" aria-hidden="true"></span>
-            Developer Preview · breaking changes and incomplete adapters expected
-          </div>
           <div class="mb-7 flex justify-center"><StarOnGithub /></div>
           <h1
-            class="text-balance text-6xl font-semibold tracking-tighter sm:text-8xl"
+            class="text-balance text-5xl font-semibold tracking-tighter sm:text-7xl"
           >
-            One operational workspace for your stack.
+            The AI-native control plane for your data stack.
           </h1>
           <p
-            class="mx-auto mt-6 max-w-xl text-pretty text-base leading-7 text-copy sm:text-lg"
+            class="mx-auto mt-6 max-w-2xl text-pretty text-sm leading-6 text-copy sm:text-base sm:leading-7"
           >
-            A lightweight, self-hosted interface for the data and infrastructure
-            tools you already run.
+            Connect your data tools and manage them from one place. Explore your infrastructure, run operations, and work across services with AI that understands your stack.
           </p>
           <div
             class="mx-auto mt-8 flex w-full max-w-md flex-col justify-center gap-3 sm:max-w-none sm:flex-row"
           >
             <a
               class="hero-action inline-flex h-12 w-full items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary hover:shadow-action-primary-hover focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none sm:w-auto"
-              href={gettingStartedUrl}
-              >Get started <span
+              href="https://dsui.northgraindata.com/demo"
+              >Try Live Demo <span
                 class="hero-action-icon ml-2 text-brand-softest"
                 aria-hidden="true">→</span
               ></a
             >
             <a
               class="hero-action hero-action--external inline-flex h-12 w-full items-center justify-center rounded-xl border border-brand-muted/15 bg-action-secondary px-6 text-sm font-semibold text-copy shadow-action-secondary hover:border-brand-muted/35 hover:shadow-action-secondary-hover focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas focus-visible:outline-none sm:w-auto"
-              href={docsBaseUrl}
-              >Explore the docs <span
+              href={gettingStartedUrl}
+              >Get Started <span
                 class="hero-action-icon ml-2 text-brand-muted"
                 aria-hidden="true">↗</span
               ></a
@@ -145,14 +159,69 @@ const gettingStartedUrl = `${docsBaseUrl}/getting-started/quickstart`;
         </figure>
       </div>
     </section>
+    <!-- Trusted by: restore LogoStrip once customer logos are ready. -->
+    <!-- <LogoStrip /> -->
     <WhyDsui />
+    <PluginEcosystem />
     <HowItWorks />
     <IntegrationsSection />
+    <AdapterRequestDialog />
+    <BuildYourOwn />
+    <ManagedCloud />
+    <Pricing />
     <Footer />
   </main>
 </Base>
 
 <script>
+  // PostHog exists only after the visitor allows measurement, so capturing is a
+  // no-op until then. Pageviews and referrers come from autocapture.
+  type Capture = { capture(name: string, props?: object): void };
+  const capture = (name: string, props?: object) =>
+    (window as { posthog?: Capture }).posthog?.capture(name, props);
+
+  /** The call to action a link stands for, from where it points. */
+  const ctaFor = (href: string): string | undefined => {
+    const url = new URL(href, location.href);
+    if (url.hostname === "cloud.dsui.northgraindata.com") return "cloud";
+    if (url.pathname.startsWith("/demo")) return "live_demo";
+    if (url.pathname.includes("/docs/getting-started/quickstart"))
+      return "get_started";
+    if (url.pathname.endsWith("/docs") || url.pathname.includes("/docs/"))
+      return "docs";
+    if (url.hostname === "github.com" && url.pathname.endsWith("/discussions"))
+      return "talk_to_us";
+    if (url.hostname === "github.com") return "github";
+    return undefined;
+  };
+
+  document.addEventListener("click", (event) => {
+    const link = (event.target as Element).closest<HTMLAnchorElement>("a[href]");
+    if (!link) return;
+    const cta = ctaFor(link.href);
+    if (!cta) return;
+    capture("cta_clicked", {
+      cta,
+      location: link.dataset.cloudLink ?? link.closest("section")?.id ?? "page",
+    });
+  });
+
+  // Which parts of the page people actually reach, once per section per visit.
+  const seen = new Set<string>();
+  const sections = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting || seen.has(entry.target.id)) continue;
+        seen.add(entry.target.id);
+        capture("section_viewed", { section: entry.target.id });
+      }
+    },
+    { threshold: 0.4 },
+  );
+  document.querySelectorAll("main section[id]").forEach((section) => {
+    sections.observe(section);
+  });
+
   const starLabels = document.querySelectorAll<HTMLElement>("[data-github-stars]");
 
   fetch("https://api.github.com/repos/northgraindata/dsui", {

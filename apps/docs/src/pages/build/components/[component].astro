@@ -1,0 +1,70 @@
+---
+import CodeBlock from "@/components/CodeBlock.astro";
+import DocsLayout from "@/layouts/DocsLayout.astro";
+import { type ComponentPage, getComponentPages } from "@/lib/components";
+import { source } from "@/lib/source";
+
+export async function getStaticPaths() {
+  return (await getComponentPages()).map((comp) => ({
+    params: { component: comp.slug },
+    props: { comp },
+  }));
+}
+
+interface Props {
+  comp: ComponentPage;
+}
+
+const { comp } = Astro.props;
+
+/** Renders `code` spans in short descriptions as inline code. */
+const inline = (text: string) =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+const toc = [
+  { depth: 2, title: "Props", url: "#props" },
+  { depth: 2, title: "Example", url: "#example" },
+  ...(comp.supportingTypes.length > 0
+    ? [{ depth: 2, title: "Supporting types", url: "#supporting-types" }]
+    : []),
+];
+const sourceUrl = `https://github.com/northgraindata/dsui/blob/main/${comp.sourcePath}`;
+---
+<DocsLayout
+  title={comp.name}
+  description={comp.description}
+  tree={source.getPageTree()}
+  toc={toc}
+>
+  <h2 id="props">Props</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {comp.props.map((prop) => (
+          <tr>
+            <td><code>{prop.name}</code>{prop.required && <> <span class="badge">required</span></>}</td>
+            <td><code>{prop.type}</code></td>
+            <td>{prop.default ? <code>{prop.default}</code> : <span class="muted">None</span>}</td>
+            <td set:html={inline(prop.description)} />
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <h2 id="example">Example</h2>
+  <CodeBlock code={comp.example} lang="ts" />
+  {comp.supportingTypes.length > 0 && (
+    <>
+      <h2 id="supporting-types">Supporting types</h2>
+      {comp.supportingTypes.map((type) => (
+        <CodeBlock code={type.declaration} lang="ts" label={type.name} />
+      ))}
+    </>
+  )}
+  <p><a href={sourceUrl}>View the source on GitHub</a></p>
+</DocsLayout>

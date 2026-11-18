@@ -1,30 +1,52 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { Surface } from "@northgraindata/dsui-ui";
 import { Fragment, useEffect, useState } from "react";
+import type { ResourceNode } from "../primitives/resource";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
+import { keyedItems } from "./keyed-items";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
 }
 
-export default function Resource({
+export default function Resource(props: RegistryViewProps) {
+  if (props.node.kind !== "resource") return null;
+  return (
+    <ResourceContent
+      {...props}
+      node={{ kind: "resource", props: props.node.props }}
+    />
+  );
+}
+
+function ResourceContent({
   client,
   node,
   renderNode,
-}: RegistryViewProps) {
-  if (node.kind !== "resource") return null;
+}: RegistryViewProps & {
+  node: ResourceNode;
+}) {
   const [data, setData] = useState<Record<string, unknown>>();
   const [error, setError] = useState<string>();
   useEffect(() => {
     let active = true;
+    const receive = (result: unknown) => {
+      if (!active) return;
+      if (result && typeof result === "object" && !Array.isArray(result)) {
+        setData(result as Record<string, unknown>);
+        setError(undefined);
+      } else setError("Could not load resource");
+    };
+    if (node.props.source.refresh?.kind === "poll" && client.watchResource) {
+      const unsubscribe = client.watchResource(node.props.source, receive);
+      return () => {
+        active = false;
+        unsubscribe();
+      };
+    }
     client
       .executeResource(node.props.source)
-      .then((result) => {
-        if (!active) return;
-        if (result && typeof result === "object" && !Array.isArray(result))
-          setData(result as Record<string, unknown>);
-        else setError("Could not load resource");
-      })
+      .then(receive)
       .catch((cause) => {
         if (active)
           setError(
@@ -49,10 +71,8 @@ export default function Resource({
     );
   return (
     <>
-      {nodes(node.props.content).map((child, index) => (
-        <Fragment key={`${child.kind}-${index}`}>
-          {renderNode(client, child, data)}
-        </Fragment>
+      {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
+        <Fragment key={key}>{renderNode(client, child, data)}</Fragment>
       ))}
     </>
   );

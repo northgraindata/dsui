@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
-import type { PluginSlotResult } from "@northgraindata/dsui-plugin-sdk";
+import {
+  type PluginSlotResult,
+  resolvePluginPage,
+} from "@northgraindata/dsui-plugin-sdk";
 import type { Hono } from "hono";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
@@ -9,7 +12,7 @@ import type { PluginRuntime } from "./runtime.js";
 function publicPluginFailure(
   error: unknown,
   fallback: string,
-): { message: string; status: 400 | 403 | 404 | 409 | 422 | 500 } {
+): { message: string; status: 400 | 403 | 404 | 409 | 422 | 429 | 500 } {
   if (
     error instanceof Error &&
     error.name === "PluginRequestError" &&
@@ -21,7 +24,8 @@ function publicPluginFailure(
       status === 403 ||
       status === 404 ||
       status === 409 ||
-      status === 422
+      status === 422 ||
+      status === 429
     )
       return { message: error.message, status };
   }
@@ -58,9 +62,25 @@ export function registerPluginRoutes(
         })
       )
         visible.add(plugin.id);
+    const pages: typeof catalog.pages = [];
+    for (const page of catalog.pages.filter((page) =>
+      visible.has(page.pluginId),
+    )) {
+      if (!page.settings) {
+        pages.push(page);
+        continue;
+      }
+      const { settings, ...rest } = page;
+      const permitted = await deps.runtime.authorize(
+        principal,
+        settings.permission ?? "manage",
+        { type: "plugin", id: page.pluginId },
+      );
+      pages.push(permitted ? page : rest);
+    }
     return context.json({
       plugins: catalog.plugins.filter((plugin) => visible.has(plugin.id)),
-      pages: catalog.pages.filter((page) => visible.has(page.pluginId)),
+      pages,
       navigation: catalog.navigation.filter((item) =>
         visible.has(item.pluginId),
       ),
@@ -131,6 +151,7 @@ export function registerPluginRoutes(
       slot !== "dashboard.service-card.trailing" &&
       slot !== "service.workspace.after-header" &&
       slot !== "sidebar.profile" &&
+      slot !== "app.shell.actions" &&
       slot !== "overlay"
     )
       return context.json({ message: "Unknown plugin slot" }, 404);
@@ -145,7 +166,9 @@ export function registerPluginRoutes(
     const result: PluginSlotResult[] = [];
     // Global slots carry request identity without requiring visibility of a service.
     const serviceIds =
-      slot === "sidebar.profile" || slot === "overlay"
+      slot === "sidebar.profile" ||
+      slot === "app.shell.actions" ||
+      slot === "overlay"
         ? [""]
         : parsed.data.serviceIds;
     for (const id of new Set(serviceIds)) {
@@ -217,9 +240,16 @@ export function registerPluginRoutes(
     // logged-out browser may reach, so it renders without a principal and
     // without an authorization check. Every other page is authorized as usual.
     const isPublic = deps.runtime.pageIsPublic(pluginId, pageId);
+    const definition = resolvePluginPage(
+      deps.runtime.catalog().pages.filter((page) => page.pluginId === pluginId),
+      pageId,
+    );
+    const permission = definition?.settings
+      ? (definition.settings.permission ?? "manage")
+      : "inspect";
     if (
       !isPublic &&
-      !(await deps.runtime.authorize(context.get("principal"), "inspect", {
+      !(await deps.runtime.authorize(context.get("principal"), permission, {
         type: "plugin",
         id: pluginId,
       }))

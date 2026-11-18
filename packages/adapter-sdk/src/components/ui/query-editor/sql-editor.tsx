@@ -1,25 +1,119 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  type Ref,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { useDisplayPreferences } from "../preferences";
 import { HighlightedSqlInput } from "./highlighted-sql-input";
+import { identifierInsertion, sqlOffset } from "./query-explorer";
+
+export interface SqlEditorHandle {
+  insertText(text: string): void;
+}
+
+type EditorSelection = {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+};
 
 export function SqlEditor({
   value,
   onChange,
   onRun,
   placeholder,
+  ref,
 }: {
   value: string;
   onChange(value: string): void;
   onRun(): void;
   placeholder?: string;
+  ref?: Ref<SqlEditorHandle>;
 }) {
+  const preferences = useDisplayPreferences();
+  const display = useRef(preferences);
+  display.current = preferences;
   const element = useRef<HTMLDivElement>(null);
+  const fallback = useRef<HTMLTextAreaElement>(null);
   const latest = useRef({ value, onChange, onRun });
   latest.current = { value, onChange, onRun };
   const instance = useRef<{
     getValue(): string;
     setValue(value: string): void;
+    getSelection(): EditorSelection | null;
+    executeEdits(
+      source: string,
+      edits: { range: EditorSelection; text: string }[],
+    ): boolean;
+    focus(): void;
+    updateOptions(options: {
+      fontSize: number;
+      wordWrap: "on" | "off";
+      tabSize: number;
+    }): void;
   } | null>(null);
   const [failed, setFailed] = useState(false);
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertText(text) {
+        const editor = instance.current;
+        const sql = latest.current.value;
+        if (editor) {
+          const selection = editor.getSelection();
+          if (selection) {
+            const start = sqlOffset(
+              sql,
+              selection.startLineNumber,
+              selection.startColumn,
+            );
+            const end = sqlOffset(
+              sql,
+              selection.endLineNumber,
+              selection.endColumn,
+            );
+            editor.executeEdits("query-explorer", [
+              {
+                range: selection,
+                text: identifierInsertion(sql, start, end, text),
+              },
+            ]);
+          } else {
+            editor.setValue(
+              sql + identifierInsertion(sql, sql.length, sql.length, text),
+            );
+          }
+          editor.focus();
+          return;
+        }
+        const textarea = fallback.current;
+        if (textarea) {
+          const insertion = identifierInsertion(
+            sql,
+            textarea.selectionStart,
+            textarea.selectionEnd,
+            text,
+          );
+          textarea.setRangeText(
+            insertion,
+            textarea.selectionStart,
+            textarea.selectionEnd,
+            "end",
+          );
+          latest.current.onChange(textarea.value);
+          textarea.focus();
+          return;
+        }
+        latest.current.onChange(
+          sql + identifierInsertion(sql, sql.length, sql.length, text),
+        );
+      },
+    }),
+    [],
+  );
   useEffect(() => {
     let disposed = false;
     let cleanup: (() => void) | undefined;
@@ -64,7 +158,9 @@ export function SqlEditor({
           theme: "dsui",
           ariaLabel: "SQL query",
           fontFamily: "JetBrains Mono, ui-monospace, monospace",
-          fontSize: 13,
+          fontSize: display.current.editorFontSize,
+          wordWrap: display.current.editorWordWrap ? "on" : "off",
+          tabSize: display.current.editorTabSize,
           lineHeight: 20,
           lineNumbersMinChars: 3,
           minimap: { enabled: false },
@@ -102,6 +198,17 @@ export function SqlEditor({
     if (instance.current && instance.current.getValue() !== value)
       instance.current.setValue(value);
   }, [value]);
+  useEffect(() => {
+    instance.current?.updateOptions({
+      fontSize: preferences.editorFontSize,
+      wordWrap: preferences.editorWordWrap ? "on" : "off",
+      tabSize: preferences.editorTabSize,
+    });
+  }, [
+    preferences.editorFontSize,
+    preferences.editorWordWrap,
+    preferences.editorTabSize,
+  ]);
   if (failed)
     return (
       <HighlightedSqlInput
@@ -109,6 +216,7 @@ export function SqlEditor({
         onChange={onChange}
         onRun={onRun}
         placeholder={placeholder}
+        inputRef={fallback}
       />
     );
   return (

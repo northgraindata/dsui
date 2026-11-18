@@ -1,6 +1,7 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { CSSProperties } from "react";
 import type { ComponentProps as RegistryViewProps } from "../../runtime";
+import { keyedItems } from "../keyed-items";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -19,12 +20,12 @@ export function Grid({ client, node, renderNode, context }: RegistryViewProps) {
       data-gap={node.props.gap ?? "md"}
       style={style}
     >
-      {nodes(node.props.content).map((child, index) => (
+      {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
         <div
           className={
             child.kind === "collection" ? "layout-transparent" : undefined
           }
-          key={`${child.kind}-${index}`}
+          key={key}
         >
           {renderNode(client, child, context)}
         </div>

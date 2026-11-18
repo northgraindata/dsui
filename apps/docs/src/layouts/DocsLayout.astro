@@ -1,0 +1,142 @@
+---
+import { getBreadcrumbItems } from "fumadocs-core/breadcrumb";
+import type { Root } from "fumadocs-core/page-tree";
+import { findNeighbour } from "fumadocs-core/page-tree";
+import Header from "@/components/Header.astro";
+import Layout from "@/components/Layout.astro";
+import Sidebar from "@/components/Sidebar.astro";
+import Toc from "@/components/Toc.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+  tree: Root;
+  toc: { depth: number; title: string; url: string }[];
+  editPath?: string;
+  markdownUrl?: string;
+}
+
+const { title, description, tree, toc, editPath, markdownUrl } = Astro.props;
+const pathname = Astro.url.pathname;
+const crumbs = getBreadcrumbItems(pathname.replace(/\/$/, ""), tree, {
+  includePage: false,
+});
+const { previous, next } = findNeighbour(tree, pathname.replace(/\/$/, ""));
+const editUrl = editPath
+  ? `https://github.com/northgraindata/dsui/edit/main/apps/docs/${editPath}`
+  : undefined;
+---
+<Layout title={title} description={description}>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <Header tree={tree} pathname={pathname} />
+  <dialog class="drawer" aria-label="Navigation" data-drawer>
+    <div class="drawer-head">
+      <strong>Documentation</strong>
+      <button type="button" class="icon-button" aria-label="Close navigation" data-close-drawer>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+    </div>
+    <Sidebar tree={tree} pathname={pathname} />
+  </dialog>
+  <div class="shell">
+    <aside class="sidebar" data-sidebar>
+      <Sidebar tree={tree} pathname={pathname} />
+    </aside>
+    <main class="content" id="main">
+      <div class="content-inner">
+        {crumbs.length > 0 && (
+          <nav aria-label="Breadcrumb">
+            <ol class="breadcrumbs">
+              {crumbs.map((crumb) => (
+                <li>{crumb.url ? <a href={crumb.url}>{crumb.name}</a> : crumb.name}</li>
+              ))}
+            </ol>
+          </nav>
+        )}
+        <header class="page-header">
+          <h1>{title}</h1>
+          {description && <p class="page-description">{description}</p>}
+          {markdownUrl && (
+            <div class="page-actions">
+              <button type="button" class="chip" data-copy-markdown={markdownUrl}>
+                <span>Copy page as Markdown</span>
+              </button>
+              <a class="chip" href={markdownUrl}>View as Markdown</a>
+            </div>
+          )}
+        </header>
+        <Toc items={toc} inline />
+        <div class="prose">
+          <slot />
+        </div>
+        <footer class="page-footer">
+          {editUrl && <a class="edit-link" href={editUrl}>Edit this page on GitHub</a>}
+          {(previous || next) && (
+            <nav class="pager" aria-label="Pagination">
+              {previous ? (
+                <a class="prev" href={previous.url}><small>Previous</small>{previous.name}</a>
+              ) : <span />}
+              {next && <a class="next" href={next.url}><small>Next</small>{next.name}</a>}
+            </nav>
+          )}
+        </footer>
+      </div>
+    </main>
+    <Toc items={toc} />
+  </div>
+</Layout>
+<script>
+  const drawer = document.querySelector<HTMLDialogElement>("[data-drawer]");
+  document.querySelector("[data-open-drawer]")?.addEventListener("click", () => {
+    drawer?.showModal();
+  });
+  document.querySelector("[data-close-drawer]")?.addEventListener("click", () => {
+    drawer?.close();
+  });
+  drawer?.addEventListener("click", (event) => {
+    if (event.target === drawer || (event.target as Element).closest("a")) {
+      drawer.close();
+    }
+  });
+
+  // Keep the sidebar scroll position across page loads.
+  const sidebar = document.querySelector<HTMLElement>("[data-sidebar]");
+  try {
+    const saved = sessionStorage.getItem("dsui-docs-sidebar");
+    if (sidebar && saved) sidebar.scrollTop = Number(saved);
+    sidebar?.addEventListener("scroll", () => {
+      sessionStorage.setItem("dsui-docs-sidebar", String(sidebar.scrollTop));
+    });
+    sidebar
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest" });
+  } catch {}
+
+  document.querySelector<HTMLElement>("[data-copy-markdown]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget as HTMLElement;
+    const label = button.querySelector("span");
+    const response = await fetch(button.dataset.copyMarkdown ?? "");
+    await navigator.clipboard.writeText(await response.text());
+    if (label) {
+      label.textContent = "Copied";
+      setTimeout(() => {
+        label.textContent = "Copy page as Markdown";
+      }, 1500);
+    }
+  });
+
+  document.addEventListener("click", async (event) => {
+    const button = (event.target as Element).closest<HTMLElement>("[data-copy]");
+    if (!button) return;
+    const code = button.closest(".code-block")?.querySelector("pre")?.textContent;
+    if (!code) return;
+    await navigator.clipboard.writeText(code);
+    const label = button.querySelector("span");
+    if (label) {
+      label.textContent = "Copied";
+      setTimeout(() => {
+        label.textContent = "Copy";
+      }, 1500);
+    }
+  });
+</script>

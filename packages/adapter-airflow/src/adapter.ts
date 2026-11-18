@@ -28,6 +28,7 @@ import {
 } from "./context.js";
 import { airflowHealth } from "./health.js";
 import { airflowJobs, airflowSignals, airflowStores } from "./jobs.js";
+import { airflowIconUrl } from "./logo.js";
 import {
   connectionsPage,
   createConnectionPage,
@@ -85,7 +86,7 @@ export function createAirflowAdapter(
       name: "Airflow",
       version: "1.0.0",
       author: "DSUI",
-      iconUrl: "https://airflow.apache.org/images/airflow-icon.svg",
+      iconUrl: airflowIconUrl,
       description: "Browse and operate Apache Airflow DAGs, runs, and assets.",
     },
     connectionMethods: {

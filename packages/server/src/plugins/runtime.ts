@@ -10,6 +10,8 @@ import {
   type PluginAuthenticationProvider,
   type PluginAuthorizationProvider,
   type PluginCapabilities,
+  type PluginCapabilityCatalog,
+  type PluginCapabilitySummary,
   type PluginCatalog,
   type PluginNavigationItem,
   type PluginPermission,
@@ -29,9 +31,11 @@ import {
   type RuntimePluginSlot,
   resolvePluginPage,
 } from "@northgraindata/dsui-plugin-sdk";
+import zodToJsonSchema from "zod-to-json-schema";
 import { resolveSdkRoot } from "../adapters/sdk.js";
-import { allowed } from "../auth.js";
+import { allowed, LOCAL_PRINCIPAL_ID } from "../auth.js";
 import type { PluginSource } from "../config.js";
+import { githubRepository } from "../github-repository.js";
 import { withWebBasePath } from "../web-path.js";
 import { buildPlugin, type PluginFetch } from "./build.js";
 import { parseCron } from "./cron.js";
@@ -128,7 +132,10 @@ function validateSlot(slot: RuntimePluginSlot): void {
       !["top", "right", "bottom", "left"].includes(slot.presentation.placement)
     )
       throw new Error(`Overlay slot "${slot.id}" has an invalid placement`);
-  } else if (slot.presentation.mode !== "modal") {
+  } else if (
+    slot.presentation.mode !== "modal" &&
+    slot.presentation.mode !== "drawer"
+  ) {
     throw new Error(
       `Overlay slot "${slot.id}" has an invalid presentation mode`,
     );
@@ -148,6 +155,9 @@ export type PluginHostCapabilities = {
   storage(pluginId: string): PluginStorageHandle;
   /** Typed JSON state, namespaced to the plugin. */
   stores(pluginId: string): PluginStores;
+  plugins(): PluginCapabilityCatalog;
+  /** Writes the same audit record as a user-invoked plugin action route. */
+  audit?(actor: string, action: string, target: string): void;
   capabilities?(pluginId: string): Pick<PluginCapabilities, "jobs" | "events">;
 };
 
@@ -155,7 +165,12 @@ function resolveInstalledBundle(specifier: string): string {
   const bundled = bundledPluginPath(specifier);
   if (bundled) return bundled;
   if (isAbsolute(specifier)) return specifier;
-  return requireFromWorkingDirectory.resolve(specifier);
+  try {
+    return requireFromWorkingDirectory.resolve(specifier);
+  } catch {
+    // First-party workspace packages are linked to the host, not necessarily its caller's cwd.
+    return createRequire(import.meta.url).resolve(specifier);
+  }
 }
 
 /**
@@ -186,6 +201,26 @@ function bundledPluginPath(specifier: string): string | undefined {
 const requireFromWorkingDirectory = createRequire(
   resolve(process.cwd(), "package.json"),
 );
+
+type BuildableSource = Extract<PluginSource, { source: "local" | "git" }>;
+
+/** Where a source-built plugin's files come from. */
+function pluginLocation(
+  source: BuildableSource,
+): Parameters<typeof buildPlugin>[1] {
+  if (source.source === "local") return { kind: "local", path: source.path };
+  const repository = githubRepository(source.repository);
+  if (!repository)
+    throw new Error(
+      `Plugin source must name a GitHub repository as owner/name, got "${source.repository}"`,
+    );
+  return {
+    kind: "git",
+    repository,
+    ref: source.ref ?? "main",
+    ...(source.path ? { path: source.path } : {}),
+  };
+}
 
 async function loadInstalledPlugin(specifier: string): Promise<unknown> {
   const bundled = bundledPluginPath(specifier);
@@ -379,6 +414,7 @@ export class PluginRuntime {
     this.host = host ?? {
       storage: (pluginId) => createPluginStorage(dataDir, pluginId),
       stores: () => createMemoryPluginStores(),
+      plugins: () => this.pluginCapabilities(),
     };
   }
 
@@ -428,38 +464,27 @@ export class PluginRuntime {
             ? source
             : undefined;
         const built = buildable
-          ? await buildPlugin(
-              id,
-              buildable.source === "local"
-                ? { kind: "local", path: buildable.path }
-                : {
-                    kind: "git",
-                    repository: buildable.repository,
-                    ref: buildable.ref ?? "main",
-                    ...(buildable.path ? { path: buildable.path } : {}),
-                  },
-              {
-                dataDir: this.sourceOptions.dataDir ?? process.cwd(),
-                ...("token" in buildable && buildable.token
-                  ? { githubToken: buildable.token }
-                  : {}),
-                // A source-built plugin links against the prepared SDK the
-                // same way an adapter does, so both resolve the same
-                // workspace packages instead of two copies.
-                sdkPackageRoot:
-                  this.sourceOptions.sdkPackageRoot ??
-                  (await resolveSdkRoot({
-                    dataDir: this.sourceOptions.dataDir ?? process.cwd(),
-                    version: process.env.DSUI_VERSION ?? "0.0.0",
-                  })),
-                ...(this.sourceOptions.fetch
-                  ? { fetch: this.sourceOptions.fetch }
-                  : {}),
-                ...(this.sourceOptions.offline
-                  ? { offline: this.sourceOptions.offline }
-                  : {}),
-              },
-            )
+          ? await buildPlugin(id, pluginLocation(buildable), {
+              dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+              ...("token" in buildable && buildable.token
+                ? { githubToken: buildable.token }
+                : {}),
+              // A source-built plugin links against the prepared SDK the
+              // same way an adapter does, so both resolve the same
+              // workspace packages instead of two copies.
+              sdkPackageRoot:
+                this.sourceOptions.sdkPackageRoot ??
+                (await resolveSdkRoot({
+                  dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+                  version: process.env.DSUI_VERSION ?? "0.0.0",
+                })),
+              ...(this.sourceOptions.fetch
+                ? { fetch: this.sourceOptions.fetch }
+                : {}),
+              ...(this.sourceOptions.offline
+                ? { offline: this.sourceOptions.offline }
+                : {}),
+            })
           : undefined;
         const module = await this.loadModule(
           built?.bundlePath ?? ("package" in source ? source.package : ""),
@@ -476,11 +501,13 @@ export class PluginRuntime {
         this.pluginStorage.set(id, storage);
         const prepared = definition.prepare(source.config, {
           services: this.services,
+          plugins: this.host.plugins(),
           storage,
           stores: this.host.stores(id),
           logger: pluginLogger(id),
           ...this.host.capabilities?.(id),
           access: {
+            principal: () => this.principalContext.getStore() ?? null,
             requireAdmin: async () => {
               if (this.backgroundContext.getStore()) return;
               const principal = this.principalContext.getStore();
@@ -497,7 +524,49 @@ export class PluginRuntime {
                   403,
                 );
             },
-            require: async (serviceId, permission) => {
+            requirePrincipal: async (
+              principalId,
+              serviceId,
+              permission,
+              action,
+            ) => {
+              if (this.securityFailure)
+                throw new PluginRequestError(
+                  "Authorization is unavailable",
+                  403,
+                );
+              let principal: PluginPrincipal | null;
+              if (this.authenticationProvider) {
+                if (!this.authenticationProvider.resolvePrincipal)
+                  throw new PluginRequestError(
+                    "Authentication provider does not support delegated identity resolution",
+                    403,
+                  );
+                principal =
+                  await this.authenticationProvider.resolvePrincipal(
+                    principalId,
+                  );
+              } else {
+                principal =
+                  principalId === LOCAL_PRINCIPAL_ID
+                    ? { id: LOCAL_PRINCIPAL_ID, role: "owner" }
+                    : null;
+              }
+              if (
+                !principal ||
+                principal.id !== principalId ||
+                !(await this.authorize(principal, permission, {
+                  type: "service",
+                  id: serviceId,
+                  ...action,
+                }))
+              )
+                throw new PluginRequestError(
+                  "Delegated service permission was revoked",
+                  403,
+                );
+            },
+            require: async (serviceId, permission, action) => {
               if (this.backgroundContext.getStore()) return;
               const principal = this.principalContext.getStore();
               if (
@@ -505,6 +574,7 @@ export class PluginRuntime {
                 !(await this.authorize(principal, permission, {
                   type: "service",
                   id: serviceId,
+                  ...action,
                 }))
               )
                 throw new PluginRequestError(
@@ -569,6 +639,15 @@ export class PluginRuntime {
             throw new Error(
               `Plugin "${request.id}" has invalid page shell "${page.shell}"`,
             );
+          if (
+            page.settings &&
+            (page.public ||
+              page.path?.includes(":") ||
+              page.path?.includes("*"))
+          )
+            throw new Error(
+              `Plugin "${request.id}" settings pages must be private static routes`,
+            );
           uniqueId(seenPages, page, "page", request.id);
         },
         navigation: (item: PluginNavigationItem) =>
@@ -593,7 +672,6 @@ export class PluginRuntime {
             throw new Error(
               `Plugin "${request.id}" action "${action.id}" has invalid permission "${String(action.permission)}"`,
             );
-          seenActions.push(action);
         },
         resource: (resource: RuntimePluginResource) => {
           uniqueId(seenResources, resource, "resource", request.id);
@@ -837,13 +915,22 @@ export class PluginRuntime {
     for (const [pluginId, items] of this.contributions) {
       pages.push(
         ...items.pages.map(
-          ({ id, path, title, description, public: isPublic, shell }) => ({
+          ({
+            id,
+            path,
+            title,
+            description,
+            public: isPublic,
+            shell,
+            settings,
+          }) => ({
             id,
             ...(path ? { path } : {}),
             title,
             ...(description ? { description } : {}),
             ...(isPublic ? { public: true } : {}),
             ...(shell && shell !== "app" ? { shell } : {}),
+            ...(settings ? { settings } : {}),
             pluginId,
           }),
         ),
@@ -1112,6 +1199,24 @@ export class PluginRuntime {
     return this.principalContext.run(principal, operation);
   }
 
+  async requireServiceAccess(
+    id: string,
+    permission: PluginPermission,
+    action?: Pick<PluginResource, "actionId" | "actionInput">,
+  ): Promise<void> {
+    if (this.backgroundContext.getStore()) return;
+    const principal = this.principalContext.getStore();
+    if (
+      !principal ||
+      !(await this.authorize(principal, permission, {
+        type: "service",
+        id,
+        ...action,
+      }))
+    )
+      throw new PluginRequestError("Insufficient service permission", 403);
+  }
+
   async canAccessGlobalEvents(): Promise<boolean> {
     if (this.backgroundContext.getStore()) return true;
     const principal = this.principalContext.getStore();
@@ -1131,6 +1236,141 @@ export class PluginRuntime {
       return true;
     }
     return this.authorize(principal, "inspect", { type: "service", id });
+  }
+
+  pluginCapabilities(): PluginCapabilityCatalog {
+    return {
+      list: async () => {
+        const visible: PluginCapabilitySummary[] = [];
+        for (const plugin of this.catalog().plugins)
+          if (await this.canAccessPlugin(plugin.id))
+            visible.push({
+              id: plugin.id,
+              name: plugin.name,
+              version: plugin.version,
+              status: plugin.status,
+            });
+        return visible;
+      },
+      get: async (pluginId) => {
+        if (!(await this.canAccessPlugin(pluginId))) return null;
+        const plugin = this.catalog().plugins.find(
+          (item) => item.id === pluginId,
+        );
+        return plugin
+          ? {
+              id: plugin.id,
+              name: plugin.name,
+              version: plugin.version,
+              status: plugin.status,
+            }
+          : null;
+      },
+      listActions: async (pluginId) => {
+        if (!(await this.canAccessPlugin(pluginId))) return null;
+        return (
+          this.active.has(pluginId)
+            ? (this.contributions.get(pluginId)?.actions ?? [])
+            : []
+        ).map((action) => ({
+          id: action.id,
+          permission: action.permission,
+          ...(action.input
+            ? { inputSchema: zodToJsonSchema(action.input) }
+            : {}),
+        }));
+      },
+      listResources: async (pluginId) => {
+        if (!(await this.canAccessPlugin(pluginId))) return null;
+        return this.resources(pluginId).map((resource) => ({
+          id: resource.id,
+          ...(resource.input
+            ? { inputSchema: zodToJsonSchema(resource.input) }
+            : {}),
+        }));
+      },
+      queryResource: async (pluginId, resourceId, input) => {
+        await this.requirePluginAccess(pluginId, "inspect");
+        const resource = this.resources(pluginId).find(
+          (item) => item.id === resourceId,
+        );
+        if (!resource)
+          throw new PluginRequestError("Plugin resource not found", 404);
+        const principal = this.principalContext.getStore();
+        const result = await resource.invoke(input);
+        if (
+          principal &&
+          !(await this.authorize(principal, "inspect", {
+            type: "plugin",
+            id: pluginId,
+          }))
+        )
+          throw new PluginRequestError(
+            "Plugin permission was revoked during the resource read",
+            403,
+          );
+        return result;
+      },
+      executeAction: async (pluginId, actionId, input) => {
+        const action = this.active.has(pluginId)
+          ? this.contributions
+              .get(pluginId)
+              ?.actions.find((item) => item.id === actionId)
+          : undefined;
+        if (!action)
+          throw new PluginRequestError("Plugin action not found", 404);
+        await this.requirePluginAccess(pluginId, action.permission);
+        const principal = this.principalContext.getStore();
+        const result = await action.invoke(input);
+        if (
+          principal &&
+          !(await this.authorize(principal, action.permission, {
+            type: "plugin",
+            id: pluginId,
+          }))
+        )
+          throw new PluginRequestError(
+            "Plugin permission was revoked during the action",
+            403,
+          );
+        if (principal)
+          this.host.audit?.(
+            principal.id,
+            "plugin.action.execute",
+            `${pluginId}.${actionId}`,
+          );
+        return result;
+      },
+    };
+  }
+
+  private async canAccessPlugin(pluginId: string): Promise<boolean> {
+    if (!this.active.has(pluginId) && !this.readiness.has(pluginId))
+      return false;
+    if (this.backgroundContext.getStore()) return true;
+    const principal = this.principalContext.getStore();
+    if (!principal) return !this.authorizationProvider;
+    return this.authorize(principal, "inspect", {
+      type: "plugin",
+      id: pluginId,
+    });
+  }
+
+  private async requirePluginAccess(
+    pluginId: string,
+    permission: PluginPermission,
+  ): Promise<void> {
+    if (this.backgroundContext.getStore()) return;
+    const principal = this.principalContext.getStore();
+    if (
+      (principal &&
+        !(await this.authorize(principal, permission, {
+          type: "plugin",
+          id: pluginId,
+        }))) ||
+      (!principal && this.authorizationProvider)
+    )
+      throw new PluginRequestError("Insufficient plugin permission", 403);
   }
 
   /**

@@ -1,14 +1,33 @@
-import { defineResource, poll } from "@northgraindata/dsui-adapter-sdk";
-import { readArtifact } from "../artifacts.js";
+import {
+  defineResource,
+  poll,
+  type ResourceRuntimeContext,
+} from "@northgraindata/dsui-adapter-sdk";
+import { artifactSource, readArtifact } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
+import { listRuns } from "../run-history.js";
 
 export const runs = defineResource({
   id: "runs",
-  query: async (_input: undefined, ctx: DbtContext) => {
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
     if (ctx.cloud) return ctx.cloud.listRuns();
-    if (ctx.config.method !== "local")
-      throw new Error("Unsupported dbt connection");
-    const artifact = await readArtifact(ctx.config, "run_results.json");
+    if (ctx.config.method === "push") {
+      return (await listRuns(ctx.blobs)).map((run) => ({
+        cause: "Pushed from CI",
+        id: run.id,
+        job: "Pushed build",
+        job_id: "Pushed build",
+        started_at: run.startedAt,
+        status: run.status,
+      }));
+    }
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "run_results.json",
+    );
     if (!artifact.data) return [];
     const rows = Array.isArray(artifact.data?.results)
       ? artifact.data.results

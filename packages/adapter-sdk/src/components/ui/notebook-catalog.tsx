@@ -20,10 +20,10 @@ type CatalogProps = {
 };
 
 export default function NotebookCatalog({ node, client }: ComponentProps) {
-  if (node.kind !== "custom") return null;
   const props = componentProps<CatalogProps>(node) ?? { notebooks: [] };
   const [message, setMessage] = useState<string>();
   const [busy, setBusy] = useState(false);
+  if (node.kind !== "custom") return null;
   const open = (id: string) =>
     client.navigate(`/notebooks/${encodeURIComponent(id)}`);
   const runAction = async (

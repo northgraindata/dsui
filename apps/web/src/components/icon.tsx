@@ -79,6 +79,12 @@ export const iconPaths: Record<string, ReactNode> = {
     </>
   ),
   command: <path d="M18 8a6 6 0 1 0 0 8M6 8a6 6 0 1 1 0 8" />,
+  sidebar: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16M15 10l-2 2 2 2" />
+    </>
+  ),
   chevron: <path d="m9 18 6-6-6-6" />,
   terminal: (
     <>

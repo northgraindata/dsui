@@ -6,6 +6,17 @@ import { JobQueue, type JobRunRow } from "./job-queue.js";
 
 type RegisteredJob = { pluginId: string; job: RuntimePluginJob };
 
+type ActiveRun = { controller: AbortController; done: Promise<void> };
+
+/**
+ * Runs that may execute at once across every plugin in this process.
+ *
+ * The pool is shared, so it has to stay larger than the long-running work a
+ * plugin can configure (such as AI investigations), or short jobs queue behind
+ * it again.
+ */
+export const DEFAULT_MAX_CONCURRENT_RUNS = 8;
+
 /** Persistence operations the in-process worker needs from a queue backend. */
 export type PluginJobQueueBackend = Pick<
   JobQueue,
@@ -32,14 +43,17 @@ export type PluginJobQueueBackend = Pick<
  * Queue state lives in the host SQLite database; handlers remain registered
  * plugin functions in this process. This boundary lets the queue backend be
  * replaced without changing the plugin SDK contract.
+ *
+ * Runs execute in a bounded pool, so one long job cannot hold every other
+ * plugin's work behind it. The queue still decides which runs may overlap:
+ * `singleton` and `per-key` are enforced when a run is claimed.
  */
 export class PluginJobService {
   private readonly queue: PluginJobQueueBackend;
   private timer: ReturnType<typeof setInterval> | undefined;
   private polling: Promise<void> | undefined;
-  private activeRun:
-    | { controller: AbortController; done: Promise<void> }
-    | undefined;
+  private readonly activeRuns = new Set<ActiveRun>();
+  private readonly maxConcurrentRuns: number;
   private stopped = false;
   private readonly owner = randomUUID();
   private readonly leaseMs = 30_000;
@@ -48,8 +62,13 @@ export class PluginJobService {
     database: DsuiDatabase,
     private readonly registeredJobs: () => RegisteredJob[],
     queue?: PluginJobQueueBackend,
+    options: { maxConcurrentRuns?: number } = {},
   ) {
     this.queue = queue ?? new JobQueue(database, this.leaseMs);
+    this.maxConcurrentRuns =
+      options.maxConcurrentRuns ?? DEFAULT_MAX_CONCURRENT_RUNS;
+    if (!Number.isInteger(this.maxConcurrentRuns) || this.maxConcurrentRuns < 1)
+      throw new Error("maxConcurrentRuns must be a positive integer");
   }
 
   enqueue(
@@ -107,11 +126,10 @@ export class PluginJobService {
     this.stopped = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
-    this.activeRun?.controller.abort(
-      new Error("Background job service stopped"),
-    );
+    for (const run of this.activeRuns)
+      run.controller.abort(new Error("Background job service stopped"));
     await this.polling;
-    await this.activeRun?.done;
+    await Promise.all([...this.activeRuns].map((run) => run.done));
   }
 
   refreshDefinitions(): void {
@@ -180,15 +198,30 @@ export class PluginJobService {
         );
     }
 
-    if (this.activeRun) return;
-    const run = this.queue.claim(this.owner);
-    if (!run) return;
+    while (!this.stopped && this.activeRuns.size < this.maxConcurrentRuns) {
+      const run = this.queue.claim(this.owner);
+      if (!run) return;
+      this.launch(run);
+    }
+  }
+
+  /** Starts a claimed run without awaiting it, so polling and scheduling continue. */
+  private launch(run: JobRunRow): void {
     const controller = new AbortController();
-    const done = this.execute(run, controller).finally(() => {
-      if (this.activeRun?.done === done) this.activeRun = undefined;
-    });
-    this.activeRun = { controller, done };
-    await done;
+    const active: ActiveRun = {
+      controller,
+      done: this.execute(run, controller)
+        .catch((error: unknown) => {
+          console.error(
+            `[plugin-job:${run.pluginId}/${run.jobId}] Run bookkeeping failed`,
+            error,
+          );
+        })
+        .finally(() => {
+          this.activeRuns.delete(active);
+        }),
+    };
+    this.activeRuns.add(active);
   }
 
   private async execute(

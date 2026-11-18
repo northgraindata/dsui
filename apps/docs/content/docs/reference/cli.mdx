@@ -1,0 +1,53 @@
+---
+title: Command line
+description: Reference for the dsui command, which starts the workspace, checks that your adapters load, and prints the version.
+contentType: reference
+---
+
+The `dsui` command starts DSUI and checks your setup. Run it with `npx @northgraindata/dsui`, followed by a command. In the official Docker image, `dsui` is on the path and its default command is `start`.
+
+```bash
+npx @northgraindata/dsui doctor
+```
+
+When you run it with npx, DSUI loads `dsui.yaml` from the current directory unless `DSUI_CONFIG` is set. See [environment variables](/docs/reference/environment-variables) for the settings that the commands read.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `dsui` | Starts the workspace. The same as `dsui serve` |
+| `dsui serve`, `dsui start` | Starts the workspace on port 4192 |
+| `dsui doctor` | Loads your configuration, builds every adapter, and reports which ones load |
+| `dsui doctor --json` | Prints the same report as JSON, for scripts |
+| `dsui doctor --check-adapters` | Only checks that local adapter paths exist, without building |
+| `dsui version` | Prints the version. `--version` and `-v` do the same |
+| `dsui help` | Shows the usage. `--help` and `-h` do the same |
+
+An unknown command prints the usage to standard error and exits with code `2`. `dsui adapter-host` is internal, and DSUI starts it for you.
+
+## Start the workspace
+
+`dsui serve` loads your configuration, builds the adapters, and starts the server. If an adapter fails to build, the server still starts without it, and the terminal names the adapter. When the server is ready, the terminal prints `ready` and the address to open, which is `http://localhost:4192` unless you change the port or the host. Stop the server with `Ctrl+C`.
+
+DSUI also prints a notice when telemetry is on. See [telemetry](/docs/reference/telemetry).
+
+## Check your setup
+
+`dsui doctor` reads the configuration from `DSUI_CONFIG`, builds each adapter the way a start does, and prints one line per adapter with a summary. It exits with code `0` when every adapter loads, and with `1` when one doesn't or when the configuration can't be read.
+
+`doctor` doesn't fall back to `/etc/dsui/dsui.yaml`, which the server does. Set `DSUI_CONFIG` when you run it in the Docker image.
+
+With `--check-adapters`, `doctor` doesn't build. It only checks that each `source: local` adapter path exists, and it treats every `source: git` adapter as present. Use it for frequent health checks.
+
+### JSON report
+
+`dsui doctor --json` prints one object:
+
+| Field | Meaning |
+| --- | --- |
+| `version` | The DSUI version |
+| `config` | The path of the configuration file, or `not configured` |
+| `services` | Number of services in the configuration |
+| `ok` | `true` when every adapter loaded |
+| `adapters` | One entry per adapter, with `id`, `status` (`ok` or `failed`), and `durationMs`. A loaded adapter also has `name`, and a failed one has `detail` |

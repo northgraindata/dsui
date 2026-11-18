@@ -10,7 +10,6 @@ import { MarkdownBlock } from "./markdown-block";
 import type { NotebookBlockDocument, NotebookDocument } from "./types";
 
 export default function Notebook({ client, node }: ComponentProps) {
-  if (node.kind !== "custom") return null;
   const notebook = componentProps<NotebookDocument>(node);
   const [blocks, setBlocks] = useState<NotebookBlockDocument[]>(() =>
     notebook ? [...notebook.blocks] : [],
@@ -93,7 +92,7 @@ export default function Notebook({ client, node }: ComponentProps) {
     client,
   ]);
 
-  if (!notebook) return null;
+  if (node.kind !== "custom" || !notebook) return null;
   const openTabs = openTabIds
     .map((id) => notebook.notebooks?.find((item) => item.id === id))
     .filter((item): item is { id: string; title: string } => Boolean(item));

@@ -1,4 +1,10 @@
-import { Button, Field, Input, Surface } from "@northgraindata/dsui-ui";
+import {
+  Button,
+  Field,
+  Input,
+  OptionSelect,
+  Surface,
+} from "@northgraindata/dsui-ui";
 import { type FormEvent, useState } from "react";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
 
@@ -90,26 +96,18 @@ export default function ActionForm({ client, node }: RegistryViewProps) {
             label={field.props.label ?? field.props.name}
           >
             {field.kind === "select" ? (
-              <select
+              <OptionSelect
                 name={field.props.name}
-                className="min-h-[34px] border border-border-strong bg-background px-2.5 text-primary"
                 value={values[field.props.name] ?? field.props.value ?? ""}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   setValues({
                     ...values,
-                    [field.props.name]: event.target.value,
+                    [field.props.name]: value,
                   })
                 }
-              >
-                {field.props.placeholder ? (
-                  <option value="">{field.props.placeholder}</option>
-                ) : null}
-                {field.props.options?.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                placeholder={field.props.placeholder}
+                options={field.props.options ?? []}
+              />
             ) : (
               <Input
                 name={field.props.name}

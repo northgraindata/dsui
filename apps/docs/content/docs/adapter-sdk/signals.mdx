@@ -1,79 +1,54 @@
 ---
 title: Signals
-description: Declare typed events and publish them to DSUI's durable event stream.
+description: Reference for defineSignal, which declares a typed event that an adapter publishes to DSUI's event log for people and plugins to read.
+contentType: reference
 ---
 
-A signal defines the shape of an event an adapter may publish. Declare it
-with `defineSignal`, then list it in the adapter's `signals` array. A
-[background job](/docs/adapter-sdk/jobs) or action can emit it using the typed
-`emit` function in its run context. Actions are useful for reporting outcomes
-of work initiated in DSUI; jobs are useful for reporting changes discovered by
-polling an external system.
+A signal is a typed event about a service, such as a failed query or a finished DAG run. Your adapter publishes signals from jobs and actions. DSUI stores them in an event log that people, scripts, and plugins can read.
+
+## Define a signal
+
+A signal has a kebab-case `id`, a `type`, and a Zod `schema` for its payload. The type is `info`, `success`, `warning`, or `error`.
 
 ```ts
-import { z } from "zod";
-import { defineAdapter, defineJob, defineSignal } from "@northgraindata/dsui-adapter-sdk";
+import { defineSignal, z } from "@northgraindata/dsui-adapter-sdk";
 
-const dagFailed = defineSignal({
-  id: "dag-failed",
+export const queryFailed = defineSignal({
+  id: "query-failed",
   type: "error",
   schema: z.object({
-    dagId: z.string(),
-    runId: z.string(),
-    failedAt: z.string(),
+    operation: z.string(),
+    durationMs: z.number().int().nonnegative(),
+    errorCode: z.string().optional(),
   }),
-});
-
-export default defineAdapter({
-  // metadata, context and health omitted
-  signals: [dagFailed],
-  jobs: [
-    defineJob({
-      id: "poll-dag-runs",
-      intervalMs: 30_000,
-      run: async ({ context, signal, emit }) => {
-        const failures = await context.client.listRecentFailures({ signal });
-        for (const failure of failures)
-          emit(dagFailed, failure, { idempotencyKey: failure.runId });
-      },
-    }),
-  ],
 });
 ```
 
-An action may emit a success signal after its side effect completes. It can
-also emit a failure signal inside a `catch` block before rethrowing the error;
-the event is persisted even though the action response is an error.
+List the signal in `signals` of `defineAdapter`. DSUI rejects an emission of a signal that the adapter didn't declare.
 
-The adapter host validates every payload against its declared schema. Events
-are stored in the DSUI database, scoped to the adapter service, and available
-to in-process subscribers through the runtime's `signalBus`. The `type` field
-is one of `info`, `success`, `warning`, or `error`. Event IDs are qualified by
-adapter, for example `airflow.dag-failed`.
+## Emit a signal
 
-A plugin can enqueue an investigation job when that event arrives by declaring
-`onSignals`. The job input receives the complete event envelope, including its
-typed `payload`:
+Call `emit` from a [job](/docs/adapter-sdk/jobs) or an [action](/docs/adapter-sdk/actions):
 
 ```ts
-defineJob({
-  id: "investigate-dag-failure",
-  onSignals: ["airflow.dag-failed"],
-  inputSchema: z.object({
-    signalId: z.literal("airflow.dag-failed"),
-    type: z.literal("error"),
-    payload: z.object({ dagId: z.string(), runId: z.string() }),
-  }),
-  run: async ({ input, context }) => {
-    await investigateDagRun(input.payload, context);
-  },
+ctx.emit(queryFailed, { operation: "select", durationMs: 42 }, {
+  idempotencyKey: runId,
 });
 ```
 
-Reuse the same idempotency key for the same external event so a retried poll
-does not create duplicate events or investigations.
+The payload must match the schema. An `idempotencyKey` makes the emission safe to repeat. DSUI records one event for a key, ignores a repeat with the same data, and reports an error when the key is reused with different data.
 
-Authenticated clients with inspect permission can read recent events from
-`GET /api/v1/events`. Optional query parameters are `serviceId`, `signalId`,
-`after` (an ISO timestamp), and `limit` (1–500). Results are ordered newest
-first.
+## Where signals go
+
+DSUI adds the signal to its event log with these values:
+
+- **`signalId`**: `<adapter id>.<signal id>`, such as `postgresql.query-failed`
+- **`type`**: the type that you declared
+- **`sourceType`** and **`sourceId`**: `adapter` and the ID of the service that emitted it
+- **`payload`** and **`occurredAt`**: your data and the time
+
+Anyone who can inspect the installation can read the log. See [HTTP API](/docs/reference/http-api#read-events). A plugin can start a job when a signal arrives, by listing the `signalId` in the job's `onSignals`. See [Plugin SDK jobs](/docs/plugin-sdk/jobs).
+
+## Choose what to put in a payload
+
+Put in the facts that someone needs to decide what to do, such as the operation, the duration, and an error code. Leave out credentials, query text, and personal data, because the event log is readable by everyone who can inspect the installation.

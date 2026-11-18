@@ -2,14 +2,16 @@
   "title": "Plugin SDK",
   "pages": [
     "overview",
-    "create-a-plugin",
+    "tutorial",
     "pages",
+    "slots-and-overlays",
     "resources",
     "actions",
     "jobs",
     "signals",
     "stores",
     "host-capabilities",
+    "auth-providers",
     "testing",
     "release"
   ]

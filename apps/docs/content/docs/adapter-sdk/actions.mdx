@@ -1,11 +1,12 @@
 ---
 title: Actions
-description: Commands, mutations, and side effects.
+description: Reference for defineAction, which declares a command that changes something, with a validated input and helpers to refresh data and publish signals.
+contentType: reference
 ---
 
-An action is a command. It defines behavior only — never presentation.
+An action is a command. It can change the service, start work, or write state. An action defines behavior only, so labels and layout belong to the components that run it. Reads belong in [resources](/docs/adapter-sdk/resources).
 
-## Inputless action
+## Define an action without input
 
 ```ts
 import { defineAction } from "@northgraindata/dsui-adapter-sdk";
@@ -13,41 +14,36 @@ import type { MyContext } from "./context.js";
 
 export const flush = defineAction({
   id: "flush",
-  run: async (_input, ctx: MyContext) => {
+  run: async (_input: undefined, ctx: MyContext) => {
     await ctx.client.clearCache();
     return { flushed: true };
   },
 });
 ```
 
-## Parameterized action
+The `id` must be unique within the adapter. Call the action to create a binding: `flush()`. Creating a binding doesn't run the action. It makes a serializable description that DSUI runs when someone clicks a button or submits a form.
 
-Add a Zod `input` schema. Binding arguments are validated and typed.
+## Define an action with input
+
+Add a Zod `input` schema. DSUI validates the input before `run` starts, so `run` always receives parsed values:
 
 ```ts
 import { defineAction, z } from "@northgraindata/dsui-adapter-sdk";
 
-export const suspendWarehouse = defineAction({
-  id: "suspend-warehouse",
-  input: z.object({ warehouse: z.string() }),
-  run: async ({ warehouse }, ctx: MyContext) => {
-    await ctx.client.suspend(warehouse);
-    return { warehouse, status: "SUSPENDED" };
-  },
+export const greet = defineAction({
+  id: "greet",
+  input: z.object({ name: z.string().min(1) }),
+  run: async ({ name }, ctx: MyContext) => ({ message: `Hello, ${name}` }),
 });
 ```
 
-```ts
-suspendWarehouse({ warehouse: "COMPUTE_WH" }) // → ActionBinding
-```
+Bind it with its input: `greet({ name: "Ada" })`. An input that doesn't match the schema is rejected with an error that lists the Zod issues.
 
-## Using bindings
+## Run an action from a page
 
-Pass action bindings to `Button`:
+Pass a binding to a `Button`. Add a `confirmation` for a destructive action:
 
 ```ts
-import { Button } from "@northgraindata/dsui-adapter-sdk";
-
 Button({
   label: "Suspend",
   action: suspendWarehouse({ warehouse: row.name }),
@@ -57,87 +53,65 @@ Button({
     description: "Running queries will be cancelled.",
     confirmLabel: "Suspend",
   },
-})
+});
 ```
 
-Or execute programmatically from the runtime:
+## The runtime context
 
-```ts
-const result = await instance.executeAction(
-  suspendWarehouse({ warehouse: "COMPUTE_WH" }),
-);
-```
+`run` receives your adapter context plus helpers from DSUI. Add `ActionRuntimeContext` to the type to see them:
 
-## Runtime context
-
-The `run` function receives your adapter context augmented with runtime helpers. Annotate the context type to see them:
-
-```ts
-import type { ActionRuntimeContext } from "@northgraindata/dsui-adapter-sdk";
-
-run: async (input, ctx: MyContext & ActionRuntimeContext) => {
-  // ctx.signal   — AbortSignal, fired when the user navigates away
-  // ctx.stores   — access store instances for mutations
-  // ctx.invalidate() — trigger resource re-fetch
-}
-```
-
-## Invalidation
-
-After a mutation, invalidate the resources it changes:
-
-```ts
-run: async ({ warehouse }, ctx: MyContext & ActionRuntimeContext) => {
-  await ctx.client.suspend(warehouse);
-  ctx.invalidate(warehouses);           // invalidate a specific resource
-  ctx.invalidate();                      // invalidate all resources
-  return { warehouse, status: "SUSPENDED" };
-}
-```
-
-The runtime re-fetches invalidated resources and updates every component watching them.
-
-## Abort signals
-
-The runtime passes an `AbortSignal` when the user navigates away or the action is superseded. Check it to avoid wasted work:
-
-```ts
-run: async (input, ctx: MyContext & ActionRuntimeContext) => {
-  const result = await ctx.client.longQuery(input, { signal: ctx.signal });
-  return result;
-}
-```
-
-## Store access from actions
-
-Actions can read and write adapter-scoped stores. This is how you wire a form submission to a store:
-
-```ts
-import type { ActionRuntimeContext } from "@northgraindata/dsui-adapter-sdk";
-import { sessionStore } from "./stores.js";
-
-run: async (input, ctx: MyContext & ActionRuntimeContext) => {
-  const session = ctx.stores.get(sessionStore);
-  session.setSelectedWarehouse(input.warehouse);
-  return { ok: true };
-}
-```
-
-Use `ctx.stores.get(def)` — the runtime ensures stores are ready before the action runs and flushes pending persistence after it completes.
-
-## Return value
-
-Actions return an `ActionResult`:
-
-| Status | Shape |
+| Helper | Meaning |
 | --- | --- |
-| `success` | `{ status: "success", data: TOutput }` |
-| `error` | `{ status: "error", error: Error }` |
+| `signal` | An `AbortSignal` that the caller owns. Pass it to cancellable work and check it during long work |
+| `stores` | Access to the adapter's stores |
+| `blobs` | Binary storage private to the service |
+| `emit(signal, payload, options?)` | Publishes a declared signal from this action |
+| `invalidate(resource?, input?)` | Makes DSUI read watched resources again |
 
-The runtime never throws from actions — errors are returned inside the result.
+```ts
+import type { ActionRuntimeContext } from "@northgraindata/dsui-adapter-sdk";
 
-## Actions are declarative
+run: async ({ warehouse }, ctx: MyContext & ActionRuntimeContext) => {
+  await ctx.client.suspend(warehouse, { signal: ctx.signal });
+  ctx.invalidate(warehouses);
+  return { warehouse, status: "SUSPENDED" };
+},
+```
 
-Calling `suspendWarehouse({ warehouse: "X" })` does **not** execute the action. It produces an `ActionBinding` — a serializable descriptor. Execution happens only when the runtime processes it (via a button click or `executeAction`).
+### Refresh data after a change
 
-This means action bindings are safe to pass across the server boundary and serialize into page nodes.
+`invalidate` makes DSUI run watched resources again, and every component that watches them updates:
+
+- `ctx.invalidate()` refreshes every resource
+- `ctx.invalidate(resource)` refreshes every binding of that resource
+- `ctx.invalidate(resource, input)` refreshes only the binding with that input
+
+### Publish a signal
+
+`emit` publishes one of the signals that the adapter declares in `signals`. Pass an `idempotencyKey` so a retry doesn't create a second event. DSUI ignores a repeat with the same key and the same data, and it reports an error when the key is reused with different data. See [signals](/docs/adapter-sdk/signals).
+
+## Results and errors
+
+An action returns data, and DSUI wraps it in a result:
+
+| Result | Shape |
+| --- | --- |
+| Success | `{ "status": "success", "data": … }`, with what `run` returned |
+| Error | `{ "status": "error", "message": … }`, when `run` throws |
+
+An action never throws to the caller. A thrown error becomes an error result with its message.
+
+## Describe an action
+
+An optional `description` says what the action does. DSUI publishes it with the input schema, so tools that list the adapter's actions can tell them apart. The AI assistant can run an action that an adapter declares, when the person who asks has the `execute` permission and the assistant's `allowActionExecution` setting isn't `false`. See [AI assistant](/docs/guides/ai-assistant).
+
+```ts
+defineAction({
+  id: "suspend-warehouse",
+  description: "Suspend a compute warehouse. Running queries are cancelled.",
+  input: z.object({ warehouse: z.string() }),
+  run: async ({ warehouse }, ctx: MyContext) => { /* … */ },
+});
+```
+
+Write a description that states the effect of the action.

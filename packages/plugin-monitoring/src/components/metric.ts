@@ -6,18 +6,21 @@
  * than as prose, so the card shows a label and a number with no formatting
  * logic in this file.
  */
-import { Card, KeyValue } from "@northgraindata/dsui-plugin-sdk";
+import { Card, type CardProps, Value } from "@northgraindata/dsui-plugin-sdk";
 
 export function metric(input: {
   label: string;
+  icon?: string;
   value: string;
+  field?: string;
   /** Secondary line explaining the number, e.g. its denominator. */
-  hint?: string;
+  hint?: CardProps["description"];
 }) {
   return Card({
     title: input.label,
     description: input.hint,
-    variant: "subtle",
-    content: KeyValue({ data: { Value: input.value } }),
+    variant: "metric",
+    icon: input.icon,
+    content: Value({ field: input.field ?? "reading", fallback: input.value }),
   });
 }

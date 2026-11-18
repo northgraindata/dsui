@@ -31,7 +31,7 @@ export function usePolling(
           }
         });
 
-    load();
+    void load();
     const timer = setInterval(load, intervalMs);
     return () => {
       active = false;

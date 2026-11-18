@@ -192,7 +192,11 @@ export async function buildPlugin(
       MAX_ARCHIVE_BYTES,
       "Plugin source",
     );
-    const files = extractTar(await gunzip(archive), location.repository);
+    const files = extractTar(
+      await gunzip(archive),
+      location.repository,
+      location.path,
+    );
     await writeTree(sourceDir, files, location.path);
     commit = _SHA.test(location.ref) ? location.ref : undefined;
   }

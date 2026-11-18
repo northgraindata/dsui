@@ -4,6 +4,7 @@ import type {
 } from "@northgraindata/dsui-plugin-sdk";
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import { useRouter, useRouterState } from "@tanstack/react-router";
+import type { CSSProperties } from "react";
 import {
   useCallback,
   useEffect,
@@ -12,6 +13,16 @@ import {
   useState,
 } from "react";
 import { getPluginSlots } from "../../api";
+import {
+  DrawerResizeHandle,
+  drawerExitMs,
+  useDrawerWidth,
+} from "./drawer-resize";
+import {
+  overlayHref,
+  overlayMatchesRoute,
+  sameOverlayLocation,
+} from "./overlay-navigation";
 import { pluginRendererClient } from "./plugin-client";
 import { PluginErrorBoundary } from "./plugin-error-boundary";
 
@@ -25,7 +36,6 @@ type TargetRect = Pick<
   "top" | "right" | "bottom" | "left" | "width" | "height"
 >;
 const openEvent = "dsui:overlay-open";
-
 function useOverlayTargetRect(active: boolean, targetId?: string) {
   const [rect, setRect] = useState<TargetRect>();
   const update = useCallback(() => {
@@ -170,17 +180,45 @@ function OverlayDialog({
   contribution,
   close,
   targetRect,
+  missingTarget,
+  visible = true,
 }: {
   active: ActiveOverlay;
   contribution?: PluginSlotResult;
   close: () => void;
   targetRect?: TargetRect;
+  missingTarget?: boolean;
+  visible?: boolean;
 }) {
   const panel = useRef<HTMLElement>(null);
   const previousFocus = useRef<Element | null>(null);
+  useEffect(() => {
+    if (visible) {
+      const target = panel.current?.querySelector<HTMLTextAreaElement>(
+        "textarea:not(:disabled)",
+      );
+      (target ?? panel.current)?.focus({ preventScroll: true });
+    }
+  }, [visible]);
   const presentation = contribution?.presentation;
   const anchored = presentation?.mode === "anchored";
+  const drawer = presentation?.mode === "drawer";
+  const agentDrawer = drawer && active.pluginId === "ai-agent";
   const [height, setHeight] = useState(240);
+  const drawerWidth = useDrawerWidth(
+    drawer,
+    `dsui:drawer-width:${active.pluginId}/${active.overlayId}`,
+    drawer ? (presentation.width ?? 520) : 520,
+  );
+  // A docked drawer reserves its width so the workspace shrinks beside it.
+  useLayoutEffect(() => {
+    if (!drawer || !visible) return;
+    const root = document.documentElement;
+    root.style.setProperty("--plugin-drawer-width", `${drawerWidth.width}px`);
+    return () => {
+      root.style.removeProperty("--plugin-drawer-width");
+    };
+  }, [drawer, visible, drawerWidth.width]);
   useLayoutEffect(() => {
     if (!panel.current) return;
     setHeight(panel.current.getBoundingClientRect().height);
@@ -205,7 +243,7 @@ function OverlayDialog({
   }, []);
   useLayoutEffect(() => {
     const element = panel.current;
-    if (anchored || !element) return;
+    if (anchored || drawer || !element) return;
     const siblings = new Map<HTMLElement, boolean>();
     let branch: HTMLElement = element;
     while (branch.parentElement) {
@@ -262,53 +300,75 @@ function OverlayDialog({
       document.removeEventListener("focusin", keepFocus);
       for (const [sibling, inert] of siblings) sibling.inert = inert;
     };
-  }, [anchored]);
+  }, [anchored, drawer]);
   const label = presentation?.label ?? "Plugin overlay";
-  const style =
-    targetRect && presentation
-      ? anchoredStyle(presentation, targetRect, height)
-      : undefined;
+  let style: CSSProperties | undefined;
+  if (drawer) style = { width: `min(${drawerWidth.width}px, 100vw)` };
+  else if (targetRect && presentation)
+    style = anchoredStyle(presentation, targetRect, height);
+  else if (anchored)
+    style = {
+      position: "fixed",
+      right: 16,
+      bottom: 16,
+      width: "min(360px, calc(100vw - 32px))",
+    };
+  const backdropClass = anchored
+    ? "pointer-events-none fixed inset-0 z-[100]"
+    : drawer
+      ? "plugin-drawer fixed inset-y-0 right-0 z-[100] flex"
+      : "fixed inset-0 z-[100] grid place-items-center bg-canvas/45 p-4 backdrop-blur-[2px]";
 
   return (
-    <div
-      className={
-        anchored
-          ? "pointer-events-none fixed inset-0 z-[100]"
-          : "fixed inset-0 z-[100] grid place-items-center bg-canvas/45 p-4 backdrop-blur-[2px]"
-      }
-      role="presentation"
-    >
+    <div className={backdropClass} role="presentation">
       {anchored && presentation.highlight && targetRect && (
         <Spotlight rect={targetRect} close={close} />
       )}
       <section
         ref={panel}
         tabIndex={-1}
-        className={`relative max-h-[min(680px,90vh)] w-full max-w-2xl overflow-auto rounded-xl border border-border-strong bg-surface-raised p-5 shadow-2xl ${anchored ? "pointer-events-auto" : ""}`}
+        data-closing={drawer && !visible ? "" : undefined}
+        className={
+          drawer
+            ? "plugin-drawer-panel relative flex h-full min-h-0 flex-col overflow-hidden border-l border-border-strong bg-surface-raised shadow-2xl [&>div]:min-h-0 [&>div]:flex-1 [&>div]:grid-rows-[minmax(0,1fr)]"
+            : `relative max-h-[min(680px,90vh)] w-full max-w-2xl overflow-auto rounded-xl border border-border-strong bg-surface-raised p-5 shadow-2xl ${anchored ? "pointer-events-auto" : ""}`
+        }
         style={style}
         role="dialog"
-        aria-modal={!anchored}
+        aria-modal={!anchored && !drawer}
         aria-label={label}
       >
-        <header className="mb-4 flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
-            {label}
-          </span>
-          <button
-            type="button"
-            className="text-xs text-secondary hover:text-primary"
-            onClick={close}
-          >
-            Close · Esc
-          </button>
-        </header>
+        {drawer && <DrawerResizeHandle {...drawerWidth} />}
+        {!agentDrawer && (
+          <header className="mb-4 flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
+              {label}
+            </span>
+            <button
+              type="button"
+              className="text-xs text-secondary hover:text-primary"
+              onClick={close}
+            >
+              Close · Esc
+            </button>
+          </header>
+        )}
+        {missingTarget && (
+          <p role="status" className="mb-4 text-sm text-secondary">
+            This page element is unavailable. Check the page for errors. Use the
+            guide controls below or close it to inspect the page.
+          </p>
+        )}
         {contribution ? (
           <PluginErrorBoundary key={`${active.pluginId}/${active.overlayId}`}>
             <DeclarativePageRenderer
               nodes={contribution.nodes}
               client={pluginRendererClient(active.pluginId, (path) =>
                 window.location.assign(
-                  `/plugins/${encodeURIComponent(active.pluginId)}/${path.replace(/^\/+/, "")}`,
+                  overlayHref(
+                    `/plugins/${encodeURIComponent(active.pluginId)}/${path.replace(/^\/+/, "")}`,
+                    import.meta.env.BASE_URL,
+                  ),
                 ),
               )}
             />
@@ -330,18 +390,53 @@ export function PluginOverlayLayer() {
   });
   const [active, setActive] = useState<ActiveOverlay>();
   const requestId = useRef(0);
+  const [closed, setClosed] = useState(false);
+  // Keep a closed drawer mounted until its slide-out has played.
+  const [exited, setExited] = useState(false);
+  useEffect(() => {
+    if (!closed) {
+      setExited(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setExited(true), drawerExitMs);
+    return () => window.clearTimeout(timer);
+  }, [closed]);
+  const opener = useRef<HTMLElement | null>(null);
   const close = useCallback(() => {
     requestId.current += 1;
-    setActive(undefined);
-  }, []);
+    if (active?.contribution?.presentation?.mode === "drawer") {
+      setClosed(true);
+      opener.current?.focus({ preventScroll: true });
+    } else setActive(undefined);
+  }, [active]);
   useEffect(() => {
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<ActiveOverlay>).detail;
       if (!detail?.pluginId || !detail.overlayId) return;
+      // Re-triggering an open drawer (launcher click, shortcut) toggles it off.
+      if (
+        active &&
+        !closed &&
+        active.pluginId === detail.pluginId &&
+        active.overlayId === detail.overlayId &&
+        active.contribution?.presentation?.mode === "drawer"
+      ) {
+        close();
+        return;
+      }
+      if (!active || closed) {
+        opener.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+      }
+      setClosed(false);
       const currentRequest = ++requestId.current;
-      setActive(
-        (current) =>
-          current ?? { pluginId: detail.pluginId, overlayId: detail.overlayId },
+      setActive((current) =>
+        current?.pluginId === detail.pluginId &&
+        current.overlayId === detail.overlayId
+          ? current
+          : { pluginId: detail.pluginId, overlayId: detail.overlayId },
       );
       void getPluginSlots("overlay", [], {
         pluginId: detail.pluginId,
@@ -359,10 +454,20 @@ export function PluginOverlayLayer() {
             contribution.presentation.path
           ) {
             if (
-              `${window.location.pathname}${window.location.search}` !==
-              contribution.presentation.path
+              !sameOverlayLocation(
+                `${window.location.pathname}${window.location.search}${window.location.hash}`,
+                overlayHref(
+                  contribution.presentation.path,
+                  import.meta.env.BASE_URL,
+                ),
+              )
             )
-              router.history.push(contribution.presentation.path);
+              router.history.push(
+                overlayHref(
+                  contribution.presentation.path,
+                  import.meta.env.BASE_URL,
+                ),
+              );
           }
           setActive(contribution ? { ...detail, contribution } : undefined);
         })
@@ -372,15 +477,23 @@ export function PluginOverlayLayer() {
     };
     window.addEventListener(openEvent, onOpen);
     return () => window.removeEventListener(openEvent, onOpen);
-  }, [router]);
+  }, [router, active, closed, close]);
   useEffect(() => {
-    if (!active) return;
+    const onClose = (event: Event) => {
+      const detail = (event as CustomEvent<{ pluginId?: string }>).detail;
+      if (!detail?.pluginId || detail.pluginId === active?.pluginId) close();
+    };
+    window.addEventListener("dsui:overlay-close", onClose);
+    return () => window.removeEventListener("dsui:overlay-close", onClose);
+  }, [active?.pluginId, close]);
+  useEffect(() => {
+    if (!active || closed) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, close]);
+  }, [active, closed, close]);
 
   const contribution = active?.contribution;
   const presentation = contribution?.presentation;
@@ -417,6 +530,18 @@ export function PluginOverlayLayer() {
   const targetId =
     presentation?.mode === "anchored" ? presentation.target : undefined;
   const targetRect = useOverlayTargetRect(Boolean(active), targetId);
+  const [expiredTarget, setExpiredTarget] = useState<PluginSlotResult>();
+  useEffect(() => {
+    if (!contribution || !targetId || targetRect) return;
+    const timeout = window.setTimeout(
+      () => setExpiredTarget(contribution),
+      8000,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [contribution, targetId, targetRect]);
+  const missingTarget = Boolean(
+    contribution && targetId && !targetRect && expiredTarget === contribution,
+  );
   if (
     !active ||
     contribution?.error ||
@@ -426,10 +551,13 @@ export function PluginOverlayLayer() {
   if (
     presentation?.mode === "anchored" &&
     presentation.path &&
-    pathname !== new URL(presentation.path, window.location.origin).pathname
+    !overlayMatchesRoute(pathname, presentation.path)
   )
     return null;
-  if (!contribution || (presentation?.mode === "anchored" && !targetRect))
+  if (
+    !contribution ||
+    (presentation?.mode === "anchored" && !targetRect && !missingTarget)
+  )
     return (
       <div className="fixed bottom-4 right-4 z-[100] rounded-lg border border-border-strong bg-surface-raised p-4 shadow-xl">
         <p role="status" className="text-sm text-secondary">
@@ -441,12 +569,16 @@ export function PluginOverlayLayer() {
       </div>
     );
   return (
-    <OverlayDialog
-      key={`${active.pluginId}/${active.overlayId}`}
-      active={active}
-      contribution={contribution}
-      close={close}
-      targetRect={targetRect}
-    />
+    <div hidden={closed && exited}>
+      <OverlayDialog
+        key={`${active.pluginId}/${active.overlayId}`}
+        active={active}
+        contribution={contribution}
+        close={close}
+        visible={!closed}
+        targetRect={targetRect}
+        missingTarget={missingTarget}
+      />
+    </div>
   );
 }

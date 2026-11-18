@@ -1,5 +1,6 @@
 import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext, DagTask } from "../context.js";
+import { formatRunTimestamp } from "./format.js";
 
 export const dagInput = z.object({ dagId: z.string().min(1) });
 
@@ -9,7 +10,12 @@ export const dags = defineResource({
     (await ctx.client.listDags()).map((dag) => ({
       ...dag,
       status: dag.isPaused ? "paused" : "active",
+      statusLabel: dag.isPaused ? "Paused" : "Active",
       statusTone: dag.isPaused ? "warning" : "healthy",
+      nextRunLabel:
+        !dag.isPaused && dag.nextRun
+          ? `Next ${formatRunTimestamp(dag.nextRun)}`
+          : "",
     })),
   refresh: poll("5s"),
 });
@@ -32,7 +38,12 @@ export const dagSource = defineResource({
 export const dagTasks = defineResource({
   id: "dag-tasks",
   input: dagInput,
-  query: ({ dagId }, ctx: AirflowContext) => ctx.client.listDagTasks(dagId),
+  query: async ({ dagId }, ctx: AirflowContext) =>
+    (await ctx.client.listDagTasks(dagId)).map((task) => ({
+      ...task,
+      ownerLabel: task.owner ? `Owner ${task.owner}` : "",
+      mappedLabel: task.isMapped ? "Mapped" : "",
+    })),
 });
 
 function structureItem(task: DagTask, role: "Start" | "Task" | "Endpoint") {

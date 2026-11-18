@@ -65,10 +65,11 @@ function rowsFrom(data: unknown): Record<string, unknown>[] {
 function relationIcon(type: string | undefined, depth: number): string {
   const normalizedType = type?.toLocaleLowerCase();
   if (depth === 0) return "database";
-  if (depth === 1) return "folder";
   if (normalizedType === "view") return "eye";
   if (normalizedType === "materialized-view") return "layers";
   if (normalizedType === "sequence") return "hash";
+  if (normalizedType === "table") return "table";
+  if (depth === 1) return "folder";
   return "table";
 }
 
@@ -119,6 +120,7 @@ function TreeBranch({
   selectedPath,
   search,
   onLeafSelect,
+  onItemDoubleClick,
 }: {
   client: ComponentClient;
   branch: ResourceTreeBranchDocument;
@@ -130,6 +132,7 @@ function TreeBranch({
   selectedPath?: string;
   search: string;
   onLeafSelect?(labels: string[]): void;
+  onItemDoubleClick?(labels: string[]): void;
 }) {
   const [data, setData] = useState<unknown>();
   const [error, setError] = useState<string>();
@@ -229,8 +232,16 @@ function TreeBranch({
             <button
               type="button"
               className="resource-tree-link"
-              title={nextLabels.join(".")}
-              onClick={activate}
+              title={
+                onItemDoubleClick
+                  ? `${nextLabels.join(".")} · Double-click to insert`
+                  : nextLabels.join(".")
+              }
+              onClick={(event) => {
+                if (onItemDoubleClick && event.detail > 1) return;
+                activate();
+              }}
+              onDoubleClick={() => onItemDoubleClick?.(nextLabels)}
             >
               <WorkbenchIcon
                 name={relationIcon(
@@ -259,6 +270,7 @@ function TreeBranch({
               selectedPath={selectedPath}
               search={search}
               onLeafSelect={onLeafSelect}
+              onItemDoubleClick={onItemDoubleClick}
             />
           ) : null}
         </li>
@@ -334,7 +346,11 @@ export function ResourceTree({
   client,
   node,
   onLeafSelect,
-}: RegistryViewProps & { onLeafSelect?(labels: string[]): void }) {
+  onItemDoubleClick,
+}: Pick<RegistryViewProps, "client" | "node"> & {
+  onLeafSelect?(labels: string[]): void;
+  onItemDoubleClick?(labels: string[]): void;
+}) {
   const stateKey =
     node.kind === "resource-tree" ? node.props.stateKey : undefined;
   const [search, setSearch] = useState("");
@@ -395,6 +411,7 @@ export function ResourceTree({
           selectedPath={node.props.selectedPath}
           search={search}
           onLeafSelect={onLeafSelect}
+          onItemDoubleClick={onItemDoubleClick}
         />
       </div>
     </section>

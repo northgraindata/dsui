@@ -44,7 +44,7 @@ export type HostSample = {
   readonly cpu: CpuSample;
   readonly memory: MemorySample;
   readonly disk: readonly DiskSample[];
-  /** Process uptime in seconds. */
+  /** Host OS uptime in seconds, as observed by the DSUI process. */
   readonly uptimeSeconds: number;
   readonly processMemoryBytes: number;
 };
@@ -103,7 +103,7 @@ export function sampleProcessMemory(): number {
   return process.memoryUsage().rss;
 }
 
-/** Process uptime in seconds. */
+/** Host OS uptime in seconds, as observed by the DSUI process. */
 export function sampleUptime(): number {
   return uptime();
 }

@@ -8,12 +8,13 @@
     "./browser": "./dist/browser.mjs"
   },
   "scripts": {
-    "test": "bun test",
+    "test": "bun test --pass-with-no-tests",
     "typecheck": "tsc --noEmit",
     "build": "bun build src/browser.tsx --bundle --target browser --format esm --outfile dist/browser.mjs"
   },
   "dependencies": {
     "@northgraindata/dsui-plugin-sdk": "workspace:*",
+    "@northgraindata/dsui-ui": "workspace:*",
     "zod": "^3.24.2"
   },
   "dsui": {

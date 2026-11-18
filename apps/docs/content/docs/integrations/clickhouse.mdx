@@ -1,0 +1,97 @@
+---
+title: ClickHouse
+description: Connect DSUI to a ClickHouse server over HTTP or HTTPS to browse databases and tables, run SQL, and watch and cancel running queries.
+contentType: reference
+---
+
+The ClickHouse adapter talks to ClickHouse over its HTTP or HTTPS interface. It has two connection methods, so you must set `method` on every service.
+
+## Add a ClickHouse service
+
+Declare the adapter and the service in `dsui.yaml`:
+
+```yaml {12-13}
+adapters:
+  clickhouse:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-clickhouse
+
+services:
+  - id: warehouse
+    adapter: clickhouse
+    name: ClickHouse
+    connection:
+      method: structured
+      host: clickhouse.example.com
+      protocol: https
+      database: default
+      username: default
+      password: ${CLICKHOUSE_PASSWORD}
+```
+
+In Docker Compose, use the service name of the ClickHouse container as `host`. For a local server without TLS, set `protocol: http`. See [connect a service](/docs/guides/connect-a-service) for how credentials work.
+
+## Connection methods
+
+### Host and port
+
+Use `method: structured` to give the host, protocol, and port separately.
+
+| Field | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `host` | Yes | | Host name or IP address, without a port or a path |
+| `protocol` | No | `https` | `https` or `http` |
+| `port` | No | `8443` for HTTPS, `8123` for HTTP | HTTP interface port. It isn't ClickHouse's native TCP port |
+
+### Connection URL
+
+Use `method: url` to give one HTTP or HTTPS URL in `url`, which is required. The path of the URL is a reverse-proxy prefix, so choose the database with `database` instead. The URL can't contain a fragment or query parameters. Use `settingsJson` and the authentication fields for those.
+
+## Options for both methods
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `database` | `default` | The database that DSUI uses first |
+| `databaseScope` | `all` | `all` lists every database the user can access. `selected` shows only `database` |
+| `showSystemDatabases` | `false` | Include the `system` and related databases in lists |
+| `readOnly` | `false` | When `true`, DSUI refuses to create databases and to run table commands such as truncate and drop |
+| `roles` | Empty | ClickHouse roles to use, separated by commas |
+| `settingsJson` | `{}` | A JSON object of ClickHouse settings to send with queries. DSUI rejects settings it manages itself, such as `max_execution_time` |
+| `headersJson` | `{}` | A JSON object of extra HTTP headers. DSUI rejects reserved headers such as `Authorization` |
+| `requestTimeoutMs` | `70000` | Milliseconds to wait for a response, from 1000 to 600000 |
+| `executionTimeoutSeconds` | `60` | Seconds that a query may run, from 1 to 600 |
+| `maxConnections` | `10` | Most open connections, from 1 to 100 |
+| `keepAlive` | `true` | Reuse connections |
+| `compression` | `true` | Compress requests and responses |
+| `pathname` | Empty | Reverse-proxy path prefix. It must start with `/` |
+| `proxyUrl` | None | HTTP or HTTPS proxy for DSUI's requests to ClickHouse |
+
+`readOnly` limits what DSUI does. To make ClickHouse itself refuse writes, sign in with a user that has no write permissions.
+
+## Authentication
+
+Choose one way to sign in:
+
+- **Username and password**: set `username` and `password`. If you set neither, DSUI uses the `default` user with an empty password. With `method: url`, the URL can carry the credentials instead
+- **Bearer token**: set `accessToken`
+- **Client certificate**: set `clientCert` and `clientKey` together
+
+DSUI rejects a connection that combines these methods. Use `caCert` to trust a private certificate authority. The certificate fields take PEM text, and they need HTTPS.
+
+## What you can do
+
+- **Overview**: see server information and the largest tables
+- **Data**: browse databases and tables, create a database, and open a table to see its columns, its DDL, and a preview of its rows
+- **Query editor**: write and run SQL, for one database or across the server
+- **Activity**: see running queries and cancel one after you confirm
+- **Table commands**: truncate, drop, optimize, or reload a dictionary. You confirm by typing the full `database.table` name
+- **System tables**: inspect system tables such as processes, the query log, parts, merges, mutations, replicas, users, roles, and settings
+
+## Signals
+
+Running a query in DSUI emits the signal `query-succeeded` or `query-failed`. The payload holds the operation, the database, the duration in milliseconds, and the row count when there is one.
+
+## Use with a DSUI Agent
+
+The adapter connects through a DSUI Agent. When DSUI starts the adapter for a routed service, the adapter reads `DSUI_CONNECTOR_PROXY_URL`. If you set `proxyUrl`, it takes priority over the agent. See [private networks](/docs/guides/private-networks).

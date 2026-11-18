@@ -1,0 +1,80 @@
+---
+title: DuckDB
+description: Connect DSUI to an in-memory, file-based, or remote DuckDB database to browse its catalog, run SQL, and manage extensions.
+contentType: reference
+---
+
+The DuckDB adapter opens a DuckDB database on the machine that runs DSUI, or attaches one in cloud storage or on a DuckDB server. It has several connection methods, so you must set `method` on every service.
+
+## Add a DuckDB service
+
+Declare the adapter and the service in `dsui.yaml`. This example opens a database file:
+
+```yaml {12-13}
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-duckdb
+
+services:
+  - id: warehouse
+    adapter: duckdb
+    name: Analytics warehouse
+    connection:
+      method: file
+      path: /data/warehouse.duckdb
+```
+
+The path is on the machine that runs DSUI, not in your browser. In Docker, mount the directory into the container first. See [run DSUI with Docker](/docs/getting-started/docker).
+
+## Connection methods
+
+Choose one `method`. Every method also accepts `readOnly`, which defaults to `false`. When it's `true`, DuckDB opens the database in read-only mode.
+
+### In-memory and file
+
+| Method | Fields | Meaning |
+| --- | --- | --- |
+| `memory` | | An empty database that exists only while DSUI holds the connection |
+| `file` | `path` (required) | A `.duckdb` file on the server's filesystem |
+
+DuckDB lets only one process hold a database file at a time. If another process has the file open, DSUI reports that the database file is locked. Close the other connection and try again. DSUI also runs requests to a `file` service one after another, not in parallel.
+
+### Cloud storage
+
+These methods open the database at `url` and create a DuckDB secret from the credential fields. All credential fields are optional.
+
+| Method | Storage | `url` scheme | Credential fields |
+| --- | --- | --- | --- |
+| `s3` | S3, MinIO, and other S3-compatible storage | `s3:` or `https:` | `s3AccessKeyId`, `s3SecretAccessKey`, `s3SessionToken`, `s3Region`, `s3Endpoint` |
+| `gcs` | Google Cloud Storage, through its S3 API with HMAC keys | `gcs:`, `gs:`, or `https:` | `gcsKeyId`, `gcsSecret` |
+| `r2` | Cloudflare R2 | `r2:` or `https:` | `r2KeyId`, `r2Secret`, `r2AccountId` |
+| `azure` | Azure Blob Storage | `az:`, `azure:`, or `https:` | `connectionString` |
+
+`url` is required for all of them. For example, `url: "s3://your_bucket/warehouse.duckdb"`.
+
+### DuckDB server
+
+| Method | Fields | Meaning |
+| --- | --- | --- |
+| `quack` | `uri`, `token`, `disableSsl` | A remote DuckDB instance served over HTTP |
+
+`uri` must start with `quack:` and defaults to `quack:localhost`. `token` authenticates DSUI to the server. `disableSsl` defaults to `false`, so reads use HTTPS unless you set it to `true`.
+
+## What you can do
+
+- **Data**: browse databases, schemas, tables, views, sequences, indexes, macros, functions, and types. Open a table to see its columns, a preview of its rows, and its DDL
+- **Query**: write and run SQL, and cancel a running query. DSUI keeps a history of the queries you run
+- **Notebooks**: create, save, duplicate, import, and delete notebooks
+- **Extensions**: install, load, unload, and reload DuckDB extensions
+- **Settings and secrets**: set and reset DuckDB settings, and create and drop secrets
+- **Changes**: attach and detach databases, create and drop schemas, tables, views, and indexes, and import data
+
+## Signals
+
+Running a query in DSUI emits the signal `query-succeeded` or `query-failed`. The payload holds the operation, the duration in milliseconds, and the row count or the error code. It never includes the query text. DSUI keeps the query history, so queries that other clients run don't emit signals.
+
+## Use with a DSUI Agent
+
+Remote DuckDB methods aren't verified to work through a DSUI Agent. The adapter doesn't read the proxy variables that DSUI sets for one. See [private networks](/docs/guides/private-networks#adapter-support).

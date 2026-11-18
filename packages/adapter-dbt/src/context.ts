@@ -17,6 +17,15 @@ const dbtLocalSchema = z.object({
   executable: z.string().min(1).default("dbt"),
 });
 
+const dbtPushSchema = z.object({
+  pushToken: z
+    .string()
+    .min(24, "Use a token of at least 24 characters")
+    .describe(
+      "Secret your CI sends as a bearer token when it uploads artifacts.",
+    ),
+});
+
 export const dbtConnectionMethods = {
   cloud: {
     label: "dbt Cloud",
@@ -30,6 +39,12 @@ export const dbtConnectionMethods = {
     schema: dbtLocalSchema,
     contextIdleTimeoutMs: 300_000,
   },
+  push: {
+    label: "dbt Core (push)",
+    description:
+      "Your CI uploads dbt artifacts to DSUI after each build. Nothing on this host runs dbt.",
+    schema: dbtPushSchema,
+  },
 } as const;
 
 export type DbtCloudConfig = z.output<typeof dbtCloudSchema> & {
@@ -38,7 +53,10 @@ export type DbtCloudConfig = z.output<typeof dbtCloudSchema> & {
 export type DbtLocalConfig = z.output<typeof dbtLocalSchema> & {
   method: "local";
 };
-export type DbtConfig = DbtCloudConfig | DbtLocalConfig;
+export type DbtPushConfig = z.output<typeof dbtPushSchema> & {
+  method: "push";
+};
+export type DbtConfig = DbtCloudConfig | DbtLocalConfig | DbtPushConfig;
 
 export interface DbtContext {
   readonly config: DbtConfig;
@@ -51,6 +69,7 @@ export async function createContext(config: DbtConfig): Promise<DbtContext> {
     const cloud = createDbtCloudClient(config);
     return { config, cloud };
   }
+  if (config.method === "push") return { config };
   const local = createDbtLocalClient(config);
   return { config, local };
 }

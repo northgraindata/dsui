@@ -3,6 +3,7 @@ import type {
   ActionResult,
   ActionRuntimeContext,
 } from "../action/index";
+import type { BlobStore } from "../blob";
 import type { AnyResourceDefinition } from "../resource/index";
 import type { ActionExecutionOptions } from "./types";
 
@@ -27,6 +28,7 @@ export class ActionExecutor<TContext> {
     private readonly stores: ActionRuntimeContext["stores"],
     private readonly readyStores: () => Promise<void>,
     private readonly flushStores: () => Promise<void>,
+    private readonly blobs: BlobStore,
   ) {}
 
   /**
@@ -47,6 +49,7 @@ export class ActionExecutor<TContext> {
       this.invalidate,
       options?.signal,
       this.stores,
+      this.blobs,
       emit,
     );
     const run = binding.definition.run as (
@@ -75,8 +78,9 @@ export class ActionExecutor<TContext> {
 function withRuntimeHelpers<TContext>(
   context: TContext,
   invalidate: (resource?: AnyResourceDefinition, input?: unknown) => void,
-  signal?: AbortSignal,
-  stores?: ActionRuntimeContext["stores"],
+  signal: AbortSignal | undefined,
+  stores: ActionRuntimeContext["stores"],
+  blobs: BlobStore,
   emit?: ActionRuntimeContext["emit"],
 ): TContext & ActionRuntimeContext {
   const augmented = Object.create(
@@ -94,6 +98,7 @@ function withRuntimeHelpers<TContext>(
     invalidate: { enumerable: false, value: invalidate },
     signal: { enumerable: false, value: signal },
     stores: { enumerable: false, value: stores },
+    blobs: { enumerable: false, value: blobs },
     emit: { enumerable: false, value: emit ?? (() => undefined) },
   });
   return augmented as TContext & ActionRuntimeContext;

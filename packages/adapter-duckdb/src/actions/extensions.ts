@@ -9,7 +9,7 @@ import {
   extensionCatalog,
   extensionDetails,
   extensions as extensionsResource,
-} from "../resources/extensions.js";
+} from "../resources/extension-state.js";
 
 type Ctx = DuckDbContext & ActionRuntimeContext;
 

@@ -1,0 +1,77 @@
+---
+title: Builtin components
+description: Reference for the 33 builtin components that adapters and plugins use to build pages, grouped by purpose.
+contentType: reference
+---
+
+DSUI ships 33 builtin components. You compose them on the server when you build a page, so no React, HTML, or CSS crosses the server boundary. The Plugin SDK re-exports most of them. Each page below lists the component's props, with an example.
+
+To build something that these components can't draw, see [custom components](/docs/build/custom-components).
+
+## Layout
+
+| Component | Purpose |
+| --- | --- |
+| [Grid](/docs/build/components/grid) | CSS grid with 1-6 columns |
+| [Columns](/docs/build/components/columns) | Multi-column weighted layout |
+| [Flex](/docs/build/components/flex) | Flexbox row or column layout |
+| [Stack](/docs/build/components/stack) | Vertical stack with gap |
+| [SplitPane](/docs/build/components/split-pane) | Sidebar + content + inspector layout |
+| [Tabs](/docs/build/components/tabs) | Tabbed interface |
+
+## Containers
+
+| Component | Purpose |
+| --- | --- |
+| [Card](/docs/build/components/card) | Versatile container with title, badge, and link |
+| [Section](/docs/build/components/section) | Titled content block |
+| [PageHeader](/docs/build/components/page-header) | Page-level header with title, badge, and actions |
+| [Resource](/docs/build/components/resource) | Data-binding wrapper |
+
+## Data display
+
+| Component | Purpose |
+| --- | --- |
+| [Table](/docs/build/components/table) | Data table with rows, actions, and filters |
+| [List](/docs/build/components/list) | Readable rows for named things such as jobs, assets, runs, and DAGs |
+| [Collection](/docs/build/components/collection) | Iterate over a data source |
+| [Value](/docs/build/components/value) | Single field from a data source |
+| [KeyValue](/docs/build/components/key-value) | Key-value pairs from a resource or inline data |
+| [Meter](/docs/build/components/meter) | Horizontal bar chart with segments |
+| [Gauge](/docs/build/components/gauge) | Radial gauge that shows one value against a maximum |
+| [Chart](/docs/build/components/chart) | Time series drawn as a line or area, bound to a resource or given as points |
+| [Badge](/docs/build/components/badge) | Status indicator with label and tone |
+| [Icon](/docs/build/components/icon) | Named icon renderer |
+| [ResourceTree](/docs/build/components/resource-tree) | Hierarchical tree navigator |
+
+## Input
+
+| Component | Purpose |
+| --- | --- |
+| [Button](/docs/build/components/button) | Clickable action trigger |
+| [Form](/docs/build/components/form) | Zod-driven form |
+| [Select](/docs/build/components/select) | Dropdown input |
+| [TextInput](/docs/build/components/text-input) | Text input field |
+| [Link](/docs/build/components/link) | Navigational link |
+
+## Code
+
+| Component | Purpose |
+| --- | --- |
+| [CodeBlock](/docs/build/components/code-block) | Read-only syntax-highlighted code |
+| [CodeEditor](/docs/build/components/code-editor) | Editable code editor (browser only) |
+| [QueryEditor](/docs/build/components/query-editor) | Query editor with explorer sidebar |
+| [CodeExplorer](/docs/build/components/code-explorer) | Read-only source browser with file search, breadcrumbs, and a Monaco preview |
+
+## Notebooks
+
+| Component | Purpose |
+| --- | --- |
+| [Notebook](/docs/build/components/notebook) | Full notebook with markdown and code blocks |
+| [NotebookCatalog](/docs/build/components/notebook-catalog) | Notebook listing view |
+
+## Overlays
+
+| Component | Purpose |
+| --- | --- |
+| [Target](/docs/build/components/target) | Publishes a stable element ID so a plugin overlay can point at its content |

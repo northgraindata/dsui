@@ -6,7 +6,7 @@ import {
 import { activityStore } from "../activity.js";
 import type { S3Context } from "../context.js";
 import { objectDetails, objects } from "../resources/s3.js";
-import { objectUploaded, objectsDeleted } from "../signals.js";
+import { objectsDeleted, objectUploaded } from "../signals.js";
 
 type Ctx = S3Context & ActionRuntimeContext;
 const objectInput = z.object({

@@ -170,7 +170,8 @@ await writeFile(
     {
       name: "@northgraindata/dsui",
       version,
-      description: "A local operational workspace for your data stack.",
+      description:
+        "The AI-native control plane for your data stack. Connect your data tools and manage them from one place. Explore your infrastructure, run operations, and work across services with AI that understands your stack.",
       type: "module",
       bin: { dsui: "bin/dsui.mjs" },
       exports: { "./plugin-sdk": "./dist/plugin-sdk.mjs" },

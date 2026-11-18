@@ -1,0 +1,322 @@
+---
+const docsBaseUrl = import.meta.env.DEV
+  ? "http://localhost:4322/docs"
+  : "/docs";
+const contactUrl = "https://github.com/northgraindata/dsui/discussions";
+
+const tiers = [
+  {
+    id: "community",
+    name: "Community",
+    price: "$0",
+    note: "Open source, Apache-2.0",
+    cta: {
+      label: "Get started",
+      href: `${docsBaseUrl}/getting-started/quickstart`,
+    },
+    description: "For builders who want full control.",
+    featured: false,
+  },
+  {
+    id: "cloud",
+    name: "Cloud",
+    price: "Pricing on request",
+    note: "Pro plugins and managed cloud",
+    cta: { label: "Talk to us", href: contactUrl },
+    description: "For teams ready to hand off the operations.",
+    featured: true,
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    price: "Pricing on request",
+    note: "Deployed in your cloud",
+    cta: { label: "Talk to us", href: contactUrl },
+    description: "For organizations with their own requirements.",
+    featured: false,
+  },
+] as const;
+
+// true = included, false = not included, string = shown as text.
+type Cell = boolean | string;
+type Row = {
+  label: string;
+  hint?: string;
+  icon?: string;
+  values: readonly [Cell, Cell, Cell];
+};
+type Group = { title: string; rows: readonly Row[] };
+
+const groups: readonly Group[] = [
+  {
+    title: "Platform",
+    rows: [
+      {
+        label: "Workspace for your whole data stack",
+        values: [true, true, true],
+      },
+      {
+        label: "Built-in adapters",
+        hint: "Airflow, dbt, PostgreSQL, ClickHouse, S3-compatible, DuckDB, Trino",
+        values: [true, true, true],
+      },
+      {
+        label: "Connections encrypted with your master key",
+        values: [true, true, true],
+      },
+    ],
+  },
+  {
+    title: "Plugins",
+    rows: [
+      {
+        label: "AI assistant",
+        icon: "/assets/dsui-agent-icon.webp",
+        values: [true, true, true],
+      },
+      {
+        label: "AI usage included",
+        hint: "AI assistant and AI diagnostics",
+        values: [false, true, true],
+      },
+      {
+        label: "Service health",
+        icon: "/assets/service-health-icon.webp",
+        values: [true, true, true],
+      },
+      {
+        label: "Monitoring",
+        icon: "/assets/host-monitoring-icon.webp",
+        values: [true, true, true],
+      },
+      {
+        label: "Code repository",
+        icon: "/assets/code-repositories-icon.webp",
+        values: [true, true, true],
+      },
+      {
+        label: "Notifications",
+        icon: "/assets/notifications-icon.webp",
+        hint: "Slack and Discord, rules, delivery history",
+        values: [false, true, true],
+      },
+      {
+        label: "AI diagnostics",
+        icon: "/assets/ai-diagnostics-icon.webp",
+        hint: "Evidence-based reports and draft pull requests",
+        values: [false, true, true],
+      },
+      {
+        label: "Team access",
+        icon: "/assets/team-access-icon.webp",
+        hint: "Teams, roles and service-level access",
+        values: [false, true, true],
+      },
+      {
+        label: "MCP",
+        icon: "/assets/mcp-icon.webp",
+        hint: "Connect AI clients with scoped access to your services",
+        values: [false, true, true],
+      },
+      { label: "Early access to new Pro plugins", values: [false, true, true] },
+    ],
+  },
+  {
+    title: "Extensibility",
+    rows: [
+      { label: "Adapter SDK and Plugin SDK", values: [true, true, true] },
+      {
+        label: "Private adapters and plugins",
+        hint: "Pulled from your own git and built on startup",
+        values: [true, true, true],
+      },
+      {
+        label: "Help building custom adapters and plugins",
+        values: [false, false, true],
+      },
+    ],
+  },
+  {
+    title: "Deployment",
+    rows: [
+      { label: "Self-hosted with npx or Docker", values: [true, true, true] },
+      { label: "Managed cloud, hosted by us", values: [false, true, true] },
+      {
+        label: "Deployed into your AWS, Azure or GCP account",
+        values: [false, false, true],
+      },
+      {
+        label: "Data stays in your own cloud",
+        values: ["Self-hosted", "Self-hosted", true],
+      },
+      {
+        label: "Private networking to your services",
+        values: [false, false, true],
+      },
+    ],
+  },
+  {
+    title: "Security and access",
+    rows: [
+      { label: "Email and password sign-in", values: [false, true, true] },
+      { label: "Role-based access by team", values: [false, true, true] },
+      { label: "Single sign-on (SSO)", values: [false, false, true] },
+      { label: "Audit log", values: [false, false, true] },
+      { label: "Security review with your team", values: [false, false, true] },
+    ],
+  },
+  {
+    title: "Support",
+    rows: [
+      { label: "Documentation and GitHub issues", values: [true, true, true] },
+      { label: "Email support", values: [false, true, true] },
+      {
+        label: "Dedicated support and onboarding",
+        values: [false, false, true],
+      },
+      { label: "Custom contract and invoicing", values: [false, false, true] },
+    ],
+  },
+];
+---
+
+<section id="pricing" class="pricing-section relative overflow-clip px-6 py-24 text-foreground sm:py-32" aria-labelledby="pricing-title">
+  <div class="mx-auto max-w-6xl">
+    <div class="max-w-2xl">
+      <p class="mb-5 font-mono text-[11px] tracking-[0.16em] text-brand-muted">PRICING</p>
+      <h2 id="pricing-title" class="text-balance text-4xl font-semibold tracking-tight sm:text-6xl">
+        Open source at the core.<br />Choose how you run it.
+      </h2>
+      <p class="mt-6 text-pretty text-base leading-7 text-copy sm:text-lg">
+        The platform and its SDKs are open source. Paid tiers add plugins built by us, hosting we manage, and deployment into your own cloud.
+      </p>
+    </div>
+
+    <p class="pricing-scroll-hint">Swipe to compare all three plans <span aria-hidden="true">↔</span></p>
+    <div class="pricing-scroll" tabindex="0" role="region" aria-label="Compare Community, Cloud, and Enterprise plans">
+      <table class="pricing-table">
+        <caption class="sr-only">Compare what each DSUI plan includes</caption>
+        <colgroup><col class="col-feature" /><col /><col /><col /></colgroup>
+        <thead>
+          <tr>
+            <th scope="col" class="pricing-intro">
+              <span class="comparison-kicker">FIND YOUR FIT</span>
+              <span class="comparison-title">Same foundation.<br />Your choice of control.</span>
+              <span class="comparison-note">Compare the platform, hosting,<br />and support in each plan.</span>
+            </th>
+            {tiers.map((tier) => (
+              <th scope="col" id={`tier-${tier.id}`} class:list={["pricing-head", { "pricing-head-featured": tier.featured }]}>
+                <span class="tier-identity">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    {tier.id === "community" && <path d="m8 8-4 4 4 4 M16 8l4 4-4 4 M14 4l-4 16" />}
+                    {tier.id === "cloud" && <path d="M7 18a5 5 0 1 1 .3-10A7 7 0 0 1 21 11a3.5 3.5 0 0 1-1 7z" />}
+                    {tier.id === "enterprise" && <path d="M4 21V7l8-4 8 4v14 M2 21h20 M9 21v-5h6v5 M8 8h1 M15 8h1 M8 12h1 M15 12h1" />}
+                  </svg>
+                  <span class="tier-name">{tier.name}</span>
+                </span>
+                <span class="tier-description">{tier.description}</span>
+                <span class:list={["tier-price", { "tier-price-free": tier.id === "community" }]}>{tier.price}</span>
+                <span class="tier-note">{tier.note}</span>
+                <a class:list={["pricing-cta", { "pricing-cta-primary": tier.featured }]} href={tier.cta.href}>{tier.cta.label}<span aria-hidden="true">↗</span></a>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        {groups.map((group, groupIndex) => (
+          <tbody>
+            <tr class="group-row"><th scope="rowgroup" colspan="4"><span class="group-heading"><span class="group-number" aria-hidden="true">{String(groupIndex + 1).padStart(2, "0")}</span>{group.title}</span></th></tr>
+            {group.rows.map((row, rowIndex) => (
+              <tr>
+                <th id={`feature-${groupIndex}-${rowIndex}`} scope="row" class="feature">
+                  <div class="feature-content">
+                    {row.icon && <img class="feature-icon" src={row.icon} width="26" height="26" alt="" loading="lazy" />}
+                    <div><span>{row.label}</span>{row.hint && <small>{row.hint}</small>}</div>
+                  </div>
+                </th>
+                {row.values.map((value, index) => (
+                  <td headers={`feature-${groupIndex}-${rowIndex} tier-${tiers[index].id}`} class:list={{ "cloud-cell": tiers[index].featured }}>
+                    {value === true ? (
+                      <>
+                        <svg class="yes" aria-hidden="true" viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7" /></svg>
+                        <span class="sr-only">Included</span>
+                      </>
+                    ) : value === false ? (
+                      <>
+                        <span class="no" aria-hidden="true"></span>
+                        <span class="sr-only">Not included</span>
+                      </>
+                    ) : (
+                      <span class="text">{value}</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        ))}
+        <tfoot>
+          <tr>
+            <th scope="row" class="pricing-foot-label">Ready when you are.</th>
+            {tiers.map((tier) => (
+              <td class="pricing-foot">
+                <a class:list={["pricing-cta", { "pricing-cta-primary": tier.featured }]} href={tier.cta.href}>{tier.cta.label}<span aria-hidden="true">↗</span></a>
+              </td>
+            ))}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+<style>
+  .pricing-section { background: var(--ds-color-canvas); scroll-margin-top: 80px; }
+  .pricing-scroll { margin-top: 64px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--ds-color-copy-faint) var(--ds-color-canvas); }
+  .pricing-scroll:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 6px; }
+  .pricing-table { width: 100%; min-width: 840px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  .col-feature { width: 34%; }
+  .pricing-table th, .pricing-table td { font-weight: 400; }
+  .pricing-intro, .pricing-head { border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); text-align: left; vertical-align: top; }
+  .pricing-intro { padding: 36px 36px 32px 0; }
+  .comparison-kicker { display: block; color: var(--ds-color-copy-subtle); font: 9px ui-monospace, monospace; letter-spacing: .12em; }
+  .comparison-title { display: block; margin-top: 24px; font-size: 23px; line-height: 1.35; font-weight: 500; letter-spacing: -.035em; color: var(--ds-color-foreground); }
+  .comparison-note { display: block; margin-top: 16px; font-size: 12px; line-height: 1.8; color: var(--ds-color-copy-subtle); }
+  .pricing-head { padding: 32px 24px; border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); }
+  .pricing-head-featured { border-top: 2px solid var(--ds-color-brand-muted); padding-top: 31px; }
+  .tier-identity { display: flex; align-items: center; gap: 10px; }
+  .tier-identity svg { flex-shrink: 0; color: var(--ds-color-copy-subtle); }
+  .pricing-head-featured .tier-identity svg { color: var(--ds-color-brand-muted); }
+  .tier-name { font-size: 19px; font-weight: 500; letter-spacing: -.035em; color: var(--ds-color-foreground); }
+  .tier-description { display: block; min-height: 54px; margin-top: 14px; color: var(--ds-color-copy-subtle); font-size: 12px; line-height: 1.7; }
+  .tier-price { display: flex; align-items: end; min-height: 56px; margin-top: 24px; color: var(--ds-color-foreground); font-size: 22px; font-weight: 500; line-height: 1.25; letter-spacing: -.04em; }
+  .tier-price-free { font-size: 38px; line-height: 1; }
+  .tier-note { display: block; min-height: 36px; margin-top: 9px; font-size: 10px; line-height: 1.7; color: var(--ds-color-copy-subtle); }
+  .pricing-cta { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 40px; padding: 9px 12px; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 23%, transparent); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--ds-color-copy); }
+  .pricing-head .pricing-cta { margin-top: 14px; }
+  .pricing-cta > span { color: var(--ds-color-copy-subtle); }
+  .pricing-cta-primary { background: var(--ds-color-brand-strong); border-color: var(--ds-color-brand-strong); color: var(--ds-color-foreground); }
+  .pricing-cta-primary > span { color: var(--ds-color-brand-softest); }
+  .pricing-cta:focus-visible { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 4px; }
+  .group-row th { padding: 32px 0 14px; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 20%, transparent); text-align: left; }
+  .group-heading { position: sticky; left: 0; display: inline-flex; align-items: center; gap: 12px; color: var(--ds-color-foreground); font-size: 13px; font-weight: 500; letter-spacing: -.01em; }
+  .group-number { color: var(--ds-color-copy-subtle); font: 9px ui-monospace, monospace; }
+  tbody tr:not(.group-row) > * { padding: 15px 24px; border-bottom: 1px solid color-mix(in srgb, var(--ds-color-copy) 9%, transparent); }
+  tbody tr:last-child > * { border-bottom: 0; }
+  .feature { position: sticky; left: 0; z-index: 1; background: var(--ds-color-canvas); text-align: left; font-size: 12px; line-height: 1.7; color: var(--ds-color-copy); }
+  tbody tr:not(.group-row) > .feature { padding-left: 0; padding-right: 36px; }
+  .feature-content { display: flex; align-items: center; gap: 10px; }
+  .feature-icon { flex-shrink: 0; object-fit: contain; }
+  .feature small { display: block; margin-top: 3px; color: var(--ds-color-copy-subtle); font-size: 10px; line-height: 1.7; }
+  tbody td { border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 7%, transparent); text-align: center; }
+  .yes { display: block; margin-inline: auto; color: var(--ds-color-copy-subtle); }
+  .cloud-cell .yes { color: var(--ds-color-brand-muted); }
+  .no { display: block; width: 9px; height: 1px; margin-inline: auto; background: var(--ds-color-copy-faint); }
+  .text { color: var(--ds-color-copy-subtle); font-size: 11px; line-height: 1.7; }
+  .pricing-foot { padding: 28px 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); border-left: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); }
+  .pricing-foot-label { padding: 28px 24px 28px 0; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 22%, transparent); color: var(--ds-color-copy-subtle); font-size: 12px; text-align: left; }
+  .pricing-scroll-hint { display: none; }
+  @media (hover: hover) and (pointer: fine) { .pricing-cta:hover { border-color: var(--ds-color-copy-subtle); background: color-mix(in srgb, var(--ds-color-copy) 6%, transparent); } .pricing-cta-primary:hover { background: var(--ds-color-brand-deep); border-color: var(--ds-color-brand-deep); } tbody tr:not(.group-row):hover > * { background: color-mix(in srgb, var(--ds-color-surface) 70%, var(--ds-color-canvas)); } }
+  @media (max-width: 900px) { .pricing-head, .pricing-foot { padding-inline: 18px; } .tier-name { font-size: 18px; } .tier-price { font-size: 20px; } .tier-price-free { font-size: 36px; } }
+  @media (max-width: 760px) { .pricing-scroll-hint { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 36px; color: var(--ds-color-copy-subtle); font-size: 11px; } .pricing-scroll { margin-top: 14px; } .pricing-table { min-width: 640px; } .col-feature { width: 160px; } .tier-description { min-height: 64px; } .tier-price { font-size: 18px; } .tier-price-free { font-size: 34px; } .pricing-intro { padding-right: 24px; } .comparison-title { font-size: 21px; } }
+</style>

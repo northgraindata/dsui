@@ -1,0 +1,13 @@
+{
+  "name": "Resource",
+  "description": "Data-binding wrapper.",
+  "props": {
+    "source": {
+      "description": "Resource binding"
+    },
+    "content": {
+      "description": "Child nodes"
+    }
+  },
+  "example": "Resource({\n  source: config(),\n  content: [Value({ field: \"host\" }), Value({ field: \"port\" })],\n})"
+}

@@ -95,7 +95,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-function localRunResults(data: Record<string, unknown>) {
+export function localRunResults(data: Record<string, unknown>) {
   const metadata = record(data.metadata);
   const generatedAt =
     typeof metadata?.generated_at === "string" ? metadata.generated_at : "";
@@ -120,6 +120,12 @@ function localRunResults(data: Record<string, unknown>) {
   return { runId, generatedAt, failedNodes, warningNodes };
 }
 
+/** The signal for a finished dbt Core invocation, by what its nodes did. */
+export function localRunSignal(result: ReturnType<typeof localRunResults>) {
+  if (result.failedNodes.length) return dbtRunFailed;
+  return result.warningNodes.length ? dbtRunWarning : dbtRunSucceeded;
+}
+
 export const monitorDbtRuns = defineJob<DbtContext>({
   id: "monitor-runs",
   intervalMs: 60_000,
@@ -136,12 +142,24 @@ export const monitorDbtRuns = defineJob<DbtContext>({
     if (context.cloud) {
       const runs = await context.cloud.listRuns(signal, 100);
       const candidates = runs
-        .filter((run) => cloudRunType(run.status ?? "") && Number.isFinite(Date.parse(run.finished_at ?? "")))
-        .sort((a, b) => (a.finished_at ?? "").localeCompare(b.finished_at ?? "") || a.id.localeCompare(b.id));
+        .filter(
+          (run) =>
+            cloudRunType(run.status ?? "") &&
+            Number.isFinite(Date.parse(run.finished_at ?? "")),
+        )
+        .sort(
+          (a, b) =>
+            (a.finished_at ?? "").localeCompare(b.finished_at ?? "") ||
+            a.id.localeCompare(b.id),
+        );
       if (firstPoll) cursorStore.actions.advance(previous);
       const unseen = candidates.filter((run) => {
-        const comparison = Date.parse(run.finished_at!) - Date.parse(previous!.finishedAt);
-        return comparison > 0 || (comparison === 0 && !previous!.runIds.includes(run.id));
+        const comparison =
+          Date.parse(run.finished_at!) - Date.parse(previous!.finishedAt);
+        return (
+          comparison > 0 ||
+          (comparison === 0 && !previous!.runIds.includes(run.id))
+        );
       });
       for (const run of unseen) {
         const definition = cloudRunType(run.status ?? "");
@@ -163,14 +181,10 @@ export const monitorDbtRuns = defineJob<DbtContext>({
       artifact.data.results.length === 0
     )
       return;
-    if (Date.parse(result.generatedAt) < Date.parse(previous.finishedAt)) return;
+    if (Date.parse(result.generatedAt) < Date.parse(previous.finishedAt))
+      return;
     if (previous.runIds.includes(result.runId)) return;
-    const definition = result.failedNodes.length
-      ? dbtRunFailed
-      : result.warningNodes.length
-        ? dbtRunWarning
-        : dbtRunSucceeded;
-    emit(definition, result, { idempotencyKey: result.runId });
+    emit(localRunSignal(result), result, { idempotencyKey: result.runId });
     cursorStore.actions.advance({
       finishedAt: result.generatedAt,
       runIds: [result.runId],
@@ -178,7 +192,9 @@ export const monitorDbtRuns = defineJob<DbtContext>({
   },
 });
 
-function advanceCursor<T extends { id: string | number; finished_at?: string | null }>(
+function advanceCursor<
+  T extends { id: string | number; finished_at?: string | null },
+>(
   store: { actions: { advance: (cursor: RunCursor) => void } },
   candidates: readonly T[],
   unseen: readonly T[],
@@ -186,7 +202,10 @@ function advanceCursor<T extends { id: string | number; finished_at?: string | n
 ): void {
   if (!unseen.length) return;
   const latest = unseen.reduce(
-    (at, run) => (Date.parse(run.finished_at ?? "") > Date.parse(at) ? run.finished_at! : at),
+    (at, run) =>
+      Date.parse(run.finished_at ?? "") > Date.parse(at)
+        ? run.finished_at!
+        : at,
     previous.finishedAt,
   );
   const runIds = candidates

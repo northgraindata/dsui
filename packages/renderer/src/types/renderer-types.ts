@@ -27,6 +27,7 @@ export interface RendererClient {
   navigate(path: string): void;
   /** Open an overlay contributed by the calling plugin, when supported. */
   openOverlay?(overlayId: string): void;
+  closeOverlay?(): void;
   notifyInteraction?(interaction: { target: string; event: string }): void;
 }
 

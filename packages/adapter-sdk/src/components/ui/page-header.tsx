@@ -1,5 +1,6 @@
 import type { ComponentProps as RegistryViewProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
+import { keyedItems } from "./keyed-items";
 
 /** Page header: title with optional description. */
 export default function PageHeader({
@@ -34,11 +35,11 @@ export default function PageHeader({
           ) : null}
           {node.props.tags ? (
             <div className="page-header-tags">
-              {nodes(node.props.tags).map((child, index) => (
-                <span key={`${child.kind}-${index}`}>
-                  {renderNode(client, child, context)}
-                </span>
-              ))}
+              {keyedItems(nodes(node.props.tags)).map(
+                ({ item: child, key }) => (
+                  <span key={key}>{renderNode(client, child, context)}</span>
+                ),
+              )}
             </div>
           ) : null}
         </div>
@@ -48,10 +49,8 @@ export default function PageHeader({
       ) : null}
       {node.props.actions ? (
         <div className="page-header-actions">
-          {nodes(node.props.actions).map((child, index) => (
-            <span key={`${child.kind}-${index}`}>
-              {renderNode(client, child, context)}
-            </span>
+          {keyedItems(nodes(node.props.actions)).map(({ item: child, key }) => (
+            <span key={key}>{renderNode(client, child, context)}</span>
           ))}
         </div>
       ) : null}

@@ -1,5 +1,57 @@
 ---
-import { ClientRouter } from "astro:transitions";
-import "../styles/global.css";
+import "../styles/tokens.css";
+import "../styles/page.css";
+import "../styles/layout.css";
+import "../styles/prose.css";
+import "../styles/search.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const siteName = "DSUI Docs";
+const fullTitle = title === siteName ? title : `${title} | ${siteName}`;
+const ogImage = "https://dsui.northgraindata.com/docs/og-ai-native.png";
 ---
-<!doctype html><html lang="en" class="dark"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><meta name="theme-color" content="#020617" /><meta property="og:image" content="https://dsui.northgraindata.com/docs/og-image.png" /><meta property="og:image:width" content="1672" /><meta property="og:image:height" content="941" /><meta property="og:image:alt" content="DSUI — One operational workspace for your stack." /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:image" content="https://dsui.northgraindata.com/docs/og-image.png" /><link rel="icon" type="image/png" href="/favicons/favicon-96x96.png?v=20260915" sizes="96x96" /><link rel="icon" type="image/svg+xml" href="/favicons/favicon.svg?v=20260915" /><link rel="shortcut icon" href="/favicons/favicon.ico?v=20260915" /><link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png?v=20260915" /><meta name="apple-mobile-web-app-title" content="DSUI" /><link rel="manifest" href="/favicons/site.webmanifest?v=20260915" /><slot name="head" /><ClientRouter /></head><body class="flex min-h-screen flex-col" transition:persist transition:animate="none" transition:name="page-layout"><slot /></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#040813" media="(prefers-color-scheme: dark)" />
+    <script is:inline>
+      try {
+        const theme = localStorage.getItem("dsui-docs-theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.dataset.theme = theme;
+        }
+      } catch {}
+    </script>
+    <title>{fullTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <meta property="og:title" content={fullTitle} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1672" />
+    <meta property="og:image:height" content="941" />
+    <meta property="og:image:alt" content="DSUI: the AI-native control plane for your data stack." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    {description && <meta name="twitter:description" content={description} />}
+    <meta name="twitter:image" content={ogImage} />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicons/favicon.svg?v=20260915`} />
+    <link rel="icon" type="image/png" href={`${base}/favicons/favicon-96x96.png?v=20260915`} sizes="96x96" />
+    <link rel="shortcut icon" href={`${base}/favicons/favicon.ico?v=20260915`} />
+    <link rel="apple-touch-icon" sizes="180x180" href={`${base}/favicons/apple-touch-icon.png?v=20260915`} />
+    <meta name="apple-mobile-web-app-title" content="DSUI" />
+    <link rel="manifest" href={`${base}/favicons/site.webmanifest?v=20260915`} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

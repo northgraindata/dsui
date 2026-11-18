@@ -29,7 +29,14 @@ Run DSUI from the repository root for this relative path, or use an absolute pat
 
 ## Behavior and limits
 
-- Displays host resource measurements and historical chart series sampled by a background job.
+- Displays CPU load, system memory, busiest configured path and DSUI resident memory in metric cards.
+- Metric cards, runtime details and volume capacity meters refresh together every five seconds while the page is open.
+- Charts update continuously without pause controls.
+- CPU and memory history share a row; disk history sits next to per-path capacity meters.
+- Runtime details distinguish DSUI process uptime from the observed host OS uptime.
+- Historical chart series are sampled by a background job, including while the page is closed.
+- CPU load measures runnable/waiting work and is not a CPU utilization percentage.
+- Storage history is a mean across readable configured paths; paths may share one filesystem.
 - Paths default to the runtime temporary and home directories. `maxVolumes` defaults to 16 and is capped at 32.
 - Measurements describe what the DSUI process can observe; container deployments may differ from the underlying host. This plugin does not collect metrics from remote services.
 

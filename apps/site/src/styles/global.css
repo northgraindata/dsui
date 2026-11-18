@@ -163,8 +163,6 @@
   --color-brand: var(--ds-color-brand);
   --color-brand-strong: var(--ds-color-brand-strong);
   --color-brand-deep: var(--ds-color-brand-deep);
-  --color-adapter-trino: var(--ds-cyan-300);
-  --color-adapter-trino-glow: var(--ds-cyan-400);
   --color-adapter-kafka: var(--ds-rose-300);
   --color-adapter-kafka-glow: var(--ds-rose-400);
   --color-adapter-kafka-mid: var(--ds-orange-400);

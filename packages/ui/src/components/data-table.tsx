@@ -7,6 +7,7 @@ export function DataTable({
   rows,
   onRowClick,
   renderCell,
+  renderHeader,
   renderRowActions,
   renderRowMenu,
 }: {
@@ -18,6 +19,7 @@ export function DataTable({
     value: unknown,
     row: Record<string, unknown>,
   ) => ReactNode;
+  renderHeader?: (column: { id: string; label: string }) => ReactNode;
   renderRowActions?: (row: Record<string, unknown>) => ReactNode;
   renderRowMenu?: (row: Record<string, unknown>) => ReactNode;
 }) {
@@ -28,7 +30,7 @@ export function DataTable({
           <tr>
             {columns.map((column) => (
               <th key={column.id} className="px-3 py-2 font-medium">
-                {column.label}
+                {renderHeader ? renderHeader(column) : column.label}
               </th>
             ))}
             {renderRowActions !== undefined || renderRowMenu !== undefined ? (

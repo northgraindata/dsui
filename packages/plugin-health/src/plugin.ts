@@ -1,17 +1,20 @@
 import {
+  defineJob,
+  definePage,
   definePlugin,
+  KeyValue,
   type PluginContext,
 } from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
 import { serviceCardSlot } from "./components/slots.js";
 import {
   countHealth,
-  healthSchema,
   joinProbes,
+  MAX_CONCURRENT_PROBES,
   probeServices,
   type ServiceSummary,
-  serviceSummarySchema,
 } from "./context.js";
+import { recordChecks } from "./history.js";
 import { healthOverviewPage } from "./pages/overview.js";
 import {
   summaryOutputSchema as healthSummarySchema,
@@ -32,26 +35,16 @@ import {
  * every deployment wants to pay on every dashboard load.
  */
 
-const summaryItemSchema = serviceSummarySchema.extend({
-  health: healthSchema,
-  detail: z.string().optional(),
-  latencyMs: z.number().optional(),
-});
-
-const summaryOutputSchema = z.object({
-  items: z.array(summaryItemSchema),
-  counts: z.object({
-    healthy: z.number(),
-    warning: z.number(),
-    unavailable: z.number(),
-    unknown: z.number(),
-  }),
-});
-
 type Config = z.infer<typeof configSchema>;
 const configSchema = z.object({
   /** Upper bound on a single probe, forwarded to the host. */
-  timeoutMs: z.number().int().positive().max(60_000).default(5_000),
+  checkIntervalMs: z
+    .number()
+    .int()
+    .min(10_000)
+    .max(3_600_000)
+    .default(3_600_000),
+  timeoutMs: z.number().int().positive().max(60_000).default(30_000),
   /** Maximum services probed per batch. */
   maxServices: z.number().int().positive().max(500).default(100),
 });
@@ -79,7 +72,31 @@ export function createHealthPlugin() {
       apiVersion: 1,
     },
     configSchema: configSchema,
-    setup(registry) {
+    setup(registry, config) {
+      registry.job(
+        defineJob({
+          id: "check-services",
+          intervalMs: config.checkIntervalMs,
+          concurrency: "singleton",
+          timeoutMs:
+            Math.ceil(config.maxServices / MAX_CONCURRENT_PROBES) *
+              config.timeoutMs +
+            5_000,
+          retry: { maxAttempts: 1 },
+          run: async ({ context }) => {
+            const { items } = await context.services.list({
+              limit: config.maxServices,
+            });
+            const probes = await probeServices(
+              (id) =>
+                context.services.probe(id, { timeoutMs: config.timeoutMs }),
+              items,
+            );
+            context.signal.throwIfAborted();
+            recordChecks(context.storage, joinProbes(items, probes));
+          },
+        }),
+      );
       // Declared so the host refreshes them; the page reads them rather than
       // probing on every render.
       registry.resource(serviceHealth);
@@ -101,6 +118,35 @@ export function createHealthPlugin() {
         description:
           "Reachability and response time for every configured service.",
       });
+
+      registry.page(
+        definePage({
+          path: "/settings",
+          render: () =>
+            KeyValue({
+              title: "Service health configuration",
+              data: {
+                "Background check interval": `${config.checkIntervalMs / 60_000} minutes`,
+                "Probe timeout": `${config.timeoutMs / 1000} seconds`,
+                "Maximum services": config.maxServices,
+                "History window": "7 days · one bar per hour",
+                "Status interpretation":
+                  "Reported by each adapter; latency alone does not mean unavailable",
+                Configuration:
+                  "Edit plugins.health.config in dsui.yaml, then restart DSUI",
+              },
+            }),
+        }),
+        {
+          id: "settings",
+          title: "Service health settings",
+          settings: {
+            category: "Monitoring",
+            label: "Service health",
+            permission: "manage",
+          },
+        },
+      );
 
       registry.navigation({
         id: "health-overview",

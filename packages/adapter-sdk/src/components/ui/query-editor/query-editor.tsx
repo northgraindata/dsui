@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { OptionSelect } from "@northgraindata/dsui-ui";
+import { useEffect, useRef, useState } from "react";
 import type { QueryEditorProps } from "../../primitives/query-editor";
 import { type ComponentProps, componentProps } from "../../runtime";
+import { ResourceTree } from "../resource-tree";
+import { identifierInsertion, qualifiedSqlName } from "./query-explorer";
 import { QueryToolbar } from "./query-toolbar";
 import { QueryResults } from "./results";
-import { SqlEditor } from "./sql-editor";
+import { SqlEditor, type SqlEditorHandle } from "./sql-editor";
 import { useQueryWorkspace } from "./use-query-workspace";
 
 export function selectFromRelation(labels: string[]): string {
@@ -69,53 +72,91 @@ function QueryEditorContent({
         }
       : baseAction;
   const workspace = useQueryWorkspace(client, action, props.value ?? "");
+  const editorRef = useRef<SqlEditorHandle>(null);
   const { tabs, tab, activeId, setActiveId, setSql, run, closeTab, newTab } =
     workspace;
   if (!tab) return null;
+  const explorerNode = props.explorer
+    ? {
+        kind: "resource-tree" as const,
+        props: {
+          label: "Query explorer",
+          branch: props.explorer,
+          searchPlaceholder: "Search databases, schemas, tables…",
+        },
+      }
+    : undefined;
   return (
-    <section className="query-workspace" aria-label="Query workspace">
-      <div
-        className="query-editor-panel"
-        data-dsui-overlay-target="query.editor"
-      >
-        {props.database ? (
-          <label className="query-database-picker">
-            <span>{props.database.label ?? "Database"}</span>
-            <select
-              value={database}
-              onChange={(event) => setDatabase(event.target.value)}
-            >
-              <option value="">Configured database</option>
-              {databases.map((item) => (
-                <option key={item.name} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <QueryToolbar
-          tabs={tabs}
-          activeId={activeId}
+    <section
+      className={`query-workspace ${explorerNode ? "query-workspace--with-explorer" : ""}`}
+      aria-label="Query workspace"
+    >
+      {explorerNode && (
+        <aside className="query-workspace-explorer">
+          <ResourceTree
+            client={client}
+            node={explorerNode}
+            onItemDoubleClick={(labels) => {
+              const name = qualifiedSqlName(labels, props.omitDatabaseFromSql);
+              if (editorRef.current) editorRef.current.insertText(name);
+              else
+                setSql(
+                  tab.sql +
+                    identifierInsertion(
+                      tab.sql,
+                      tab.sql.length,
+                      tab.sql.length,
+                      name,
+                    ),
+                );
+            }}
+          />
+        </aside>
+      )}
+      <div className="query-workspace-main">
+        <div
+          className="query-editor-panel"
+          data-dsui-overlay-target="query.editor"
+        >
+          {props.database ? (
+            <div className="query-database-picker">
+              <span>{props.database.label ?? "Database"}</span>
+              <OptionSelect
+                ariaLabel={props.database.label ?? "Database"}
+                value={database}
+                placeholder="Configured database"
+                options={databases.map((item) => ({
+                  value: item.name,
+                  label: item.name,
+                }))}
+                onValueChange={setDatabase}
+              />
+            </div>
+          ) : null}
+          <QueryToolbar
+            tabs={tabs}
+            activeId={activeId}
+            running={tab.running}
+            canRun={Boolean(tab.sql.trim())}
+            onSelect={setActiveId}
+            onClose={closeTab}
+            onNew={newTab}
+            onRun={run}
+          />
+          <SqlEditor
+            ref={editorRef}
+            value={tab.sql}
+            onChange={setSql}
+            onRun={run}
+            placeholder={`Write ${props.language.toUpperCase()}…`}
+          />
+        </div>
+        <QueryResults
+          result={tab.result}
+          error={tab.error}
           running={tab.running}
-          canRun={Boolean(tab.sql.trim())}
-          onSelect={setActiveId}
-          onClose={closeTab}
-          onNew={newTab}
-          onRun={run}
-        />
-        <SqlEditor
-          value={tab.sql}
-          onChange={setSql}
-          onRun={run}
-          placeholder={`Write ${props.language.toUpperCase()}…`}
         />
       </div>
-      <QueryResults
-        result={tab.result}
-        error={tab.error}
-        running={tab.running}
-      />
     </section>
   );
 }

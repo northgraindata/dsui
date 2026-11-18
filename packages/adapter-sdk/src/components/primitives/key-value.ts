@@ -3,6 +3,8 @@ import { defineComponent } from "../define";
 
 export interface KeyValueProps {
   title?: string;
+  /** Read a record from the surrounding Resource context. */
+  field?: string;
   source?: DataSource;
   data?: Readonly<Record<string, unknown>>;
 }

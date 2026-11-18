@@ -1,0 +1,16 @@
+{
+  "name": "SplitPane",
+  "description": "Sidebar + content + inspector layout.",
+  "props": {
+    "sidebar": {
+      "description": "Left pane"
+    },
+    "content": {
+      "description": "Center pane"
+    },
+    "inspector": {
+      "description": "Right pane (optional)"
+    }
+  },
+  "example": "SplitPane({\n  sidebar: ResourceTree({ label: \"Explorer\", branch: { source: tree() } }),\n  content: Table({ source: selected() }),\n  inspector: Card({ content: Value({ source: detail(), field: \"info\" }) }),\n})"
+}

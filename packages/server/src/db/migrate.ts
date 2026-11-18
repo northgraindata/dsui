@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 
-/** One numbered schema migration. Versions are dense, starting at 1. */
+/** One numbered schema migration. Versions increase and are never reused. */
 export interface Migration {
   readonly version: number;
   /** Short slug for logs, e.g. "init". */

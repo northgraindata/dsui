@@ -1,26 +1,65 @@
 ---
-title: Testing plugins
-description: Verify contributions and host behavior separately.
+title: Test a plugin
+description: Test a plugin's logic with a test runner, then check it inside a running DSUI by listing plugins and calling its endpoints.
+contentType: how-to
 ---
 
-Keep pure definitions and transformations testable without a DSUI server.
-Use Bun tests to validate configuration, route matching, resource outputs, job
-options and storage behavior. SDK tests cover the shared definition semantics;
-plugin tests should cover the behavior your extension contributes.
+You can test a plugin in two layers. Test its logic on its own, then run it in DSUI and call what it offers. This page uses the plugin from the [tutorial](/docs/plugin-sdk/tutorial).
 
-From the repository root:
+## Test the logic
 
-```sh
-bun run --filter @northgraindata/dsui-plugin-sdk test
-bun run --filter @northgraindata/dsui-plugin-sdk typecheck
-bun run --filter @northgraindata/dsui-plugin-health test
-bun run --filter @northgraindata/dsui-plugin-health typecheck
+A plugin's definitions are plain TypeScript, so any test runner works, such as `bun test`. Keep logic in functions that you can call without DSUI. Test the settings schema for its defaults, and test a procedure handler with a fake context:
+
+```ts
+import { expect, test } from "bun:test";
+import { configSchema } from "./config";
+
+test("greeting defaults to Hello", () => {
+  expect(configSchema.parse({}).greeting).toBe("Hello");
+});
 ```
 
-Host contracts also need integration checks: service authorization, request error
-redaction, durable jobs and browser bundle loading. These tests belong to product
-CI, which runs when affected SDK or plugin code changes.
+## Check it in a running DSUI
 
-Before an SDK release, `bun scripts/verify-sdk-packages.ts plugin-sdk` packs the
-SDKs, installs their tarballs in a separate project and checks server imports and
-a browser subpath build. This verifies package boundaries beyond workspace links.
+Start DSUI with your plugin in `dsui.yaml`, then list the plugins. `status` is `ready`, `disabled`, or `unavailable`, and an unavailable plugin carries the reason in `detail`:
+
+```bash
+curl http://localhost:4192/api/v1/plugins
+```
+
+The same list shows the plugin's pages, navigation entries, and slots. **Settings**, then **Extensions** shows the status in the workspace.
+
+Call what the plugin offers:
+
+```bash
+# Render a page
+curl http://localhost:4192/api/v1/plugins/hello-plugin/pages/services
+
+# Call a procedure. The body is the input
+curl --request POST \
+  --header "Content-Type: application/json" \
+  --data '{"name": "Ada"}' \
+  http://localhost:4192/api/v1/plugins/hello-plugin/procedures/greet
+```
+
+A resource works the same way at `/resources/<resource id>`. Restart DSUI after a change, because DSUI loads plugins once, when it starts.
+
+## Fix common load errors
+
+| Message | Cause |
+| --- | --- |
+| `Package declares plugin id "a" but is configured as "b"` | The key under `plugins` must equal `metadata.id` |
+| `Security plugins require critical: true` | A plugin with `security: true` needs `critical: true` in `dsui.yaml` |
+| `Invalid configuration` for a `source: git` plugin | The entry has fields that plugins don't accept, such as `commit` and `integrity`. Use `ref` |
+| A `422` from a procedure | The input or the output doesn't match its schema |
+
+## Test inside the DSUI repository
+
+If you work on DSUI itself, run the checks of a package from the repository root:
+
+```bash
+bun run --filter @northgraindata/dsui-plugin-sdk test
+bun run --filter @northgraindata/dsui-plugin-sdk typecheck
+```
+
+The product's own CI runs the integration checks for service authorization, error redaction, durable jobs, and browser bundle loading.

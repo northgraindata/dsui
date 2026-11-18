@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import type { PostgreSQLConfig } from "./context.js";
+import { connectThroughProxy } from "./proxy.js";
 
 const MAX_RESULT_BYTES = 16 * 1024 * 1024;
 
@@ -131,7 +132,24 @@ export interface PostgreSQLClient {
 export function createPostgreSQLClient(
   config: PostgreSQLConfig,
 ): PostgreSQLClient {
+  // A service routed through a DSUI agent gets its proxy from the host process.
+  const proxyUrl = process.env.DSUI_CONNECTOR_PROXY_URL;
   const sql = postgres({
+    ...(proxyUrl
+      ? {
+          socket: async () => {
+            const socket = await connectThroughProxy(
+              proxyUrl,
+              config.host,
+              config.port,
+              config.connectTimeout,
+            );
+            // postgres.js reads these for TLS server name verification.
+            Object.assign(socket, { host: config.host, port: config.port });
+            return socket;
+          },
+        }
+      : {}),
     host: config.host,
     port: config.port,
     database: config.database,

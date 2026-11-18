@@ -1,35 +1,73 @@
 ---
-title: Host capabilities and permissions
-description: Access services and installation administration explicitly.
+title: Host capabilities
+description: Reference for what a plugin can ask the host to do, including reading services and plugins, checking permissions, queueing jobs, and publishing events.
+contentType: reference
 ---
 
-A request that operates on a service must call
-`await context.access.require(serviceId, "inspect" | "execute" | "manage")`
-in addition to declaring its procedure permission. `context.services.get(id)`
-checks service visibility and returns `null` for a missing or inaccessible
-service. The service catalog includes an optional `iconUrl` for presentation.
+The `context` that a plugin receives is more than its settings. It carries capabilities that the host provides: catalogs of services and plugins, permission checks, a job queue, and the event log. The host keeps credentials private and checks permissions, so a plugin never sees a connection secret or another plugin's internals.
 
-`context.services.signals(id)` returns the visible service adapter’s declared
-signals as qualified IDs and severity types, without opening a connection.
-A missing or inaccessible service returns `null`. This optional capability
-requires a host that supports the signal catalog; plugins should check for it
-when they depend on enumerating signals before the first event occurs.
+## Read services
 
-## Installation administration
+`context.services` is a catalog of the services that the caller can see. It works with any adapter, so a plugin never imports or names one.
 
-`await context.access.requireAdmin()` requires an owner/admin request identity
-and plugin manage permission. Use it for installation-wide settings or secrets
-that service-level manage permission cannot authorize. Both additions are optional
-host capabilities for compatibility; plugins using them must require a host that
-implements them. Background jobs run as trusted installation operations.
+| Method | Returns |
+| --- | --- |
+| `list({ cursor?, limit? })` | A page of service summaries, and a `nextCursor` when more follow |
+| `get(id)` | One summary, or `null` when the service doesn't exist or isn't visible |
+| `listResources(id)` | The adapter's declared resources, with descriptions and input schemas, or `null` |
+| `listActions(id)` | The adapter's declared actions, or `null` |
+| `queryResource(id, resourceId, input)` | The data of a resource |
+| `executeAction(id, actionId, input)` | The result of an action |
+| `signals(id)` | The signals that the service's adapter can publish, as qualified IDs with their types, or `null`. Optional |
+| `probe(id, { timeoutMs? })` | The service's health, score, and checks, or `null`. The host opens the connection and calls the adapter's health check |
 
-## Compatibility
+A summary has an `id`, a `name`, the `adapter` ID, an optional `adapterName` and `iconUrl`, and `managedBy`, which is `configuration` or `ui`.
 
-The new host capabilities are additive. An older plugin can continue using its
-existing pages and storage. A plugin using a capability absent from its host
-receives an explicit unavailable-capability error.
+```ts
+const resources = await context.services.listResources(serviceId);
+const data = await context.services.queryResource(serviceId, "status", {});
+const result = await context.services.executeAction(serviceId, "check-now", {});
+```
 
-Declare the minimum host capabilities your plugin needs in its README and release
-notes. Matching `PLUGIN_API_VERSION` does not guarantee every optional capability
-exists on an older host. Request permissions are enforced by the host; background
-jobs run as trusted installation code, without request identity.
+Discovery doesn't open a connection. The host validates every input against the adapter's declaration, and it checks the `inspect` permission for resources and `execute` for actions. An optional method, such as `signals`, is missing on a host that doesn't support it, so check that it exists before you rely on it.
+
+## Read other plugins
+
+`context.plugins` offers the same shape for plugins. It lists the plugins that the caller can see, with their status, resources, and actions, and it can query a resource or execute an action:
+
+```ts
+const plugins = await context.plugins.list();
+const result = await context.plugins.executeAction(pluginId, "shout", { text: "hi" });
+```
+
+The host filters discovery by the caller's permission, validates inputs against their declarations, and checks the permission that an action declares. A plugin never receives another plugin's context or storage.
+
+## Check permissions
+
+A permission on a procedure covers the plugin, not each service. When an operation affects a service, call `access.require` as well:
+
+```ts
+await context.access.require(serviceId, "execute");
+```
+
+`require(serviceId, permission)` throws when the caller doesn't hold the permission for that service. It checks the permission, and it doesn't check that the service exists. The other access methods are:
+
+| Method | Meaning |
+| --- | --- |
+| `principal()` | The person who made the request, as `{ id, role }`. Absent in background work |
+| `requireAdmin()` | Requires the owner or admin role and the `manage` permission on the plugin. Use it for settings and secrets that cover the installation |
+| `requirePrincipal(principalId, serviceId, permission)` | Checks the current role of a named person, for work that you do on their behalf. See below |
+| `require(serviceId, permission, { actionId, actionInput })` | Checks a permission for one action on a service |
+
+### Work on someone's behalf
+
+A job runs as trusted code without a signed-in person. When it acts for a person, such as an assistant that continues their request, call `requirePrincipal` before each operation. DSUI resolves the person again through the authentication plugin, so a removed or demoted person loses access at once. An authentication provider supports this by implementing `resolvePrincipal(id)`, which returns the current role or `null`. Without that, the check fails safely. With no authentication plugin, only the local owner can be resolved.
+
+## Queue jobs and publish events
+
+- **`context.jobs.enqueue(jobId, input)`**: queues a job that your plugin owns. See [jobs](/docs/plugin-sdk/jobs)
+- **`context.events.emit(signalId, payload, serviceId?)`** and **`context.events.read(options)`**: publish and read events. See [signals and events](/docs/plugin-sdk/signals)
+
+## Depend on optional capabilities
+
+Some capabilities are optional, so an older host may not provide them. These include `services.signals`, `events.read`, `access.requireAdmin`, `access.requirePrincipal`, and `storage.migrate`. Calling a capability that the host lacks throws `Plugin host capability is unavailable`. The plugin API version `1` doesn't promise that every optional capability exists. State the capabilities that your plugin needs in its README and release notes, and see [versions and compatibility](/docs/build/compatibility).

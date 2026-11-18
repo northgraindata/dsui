@@ -2,6 +2,7 @@ import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { resolveLink } from "@northgraindata/dsui-adapter-sdk/components/ui/table";
 import type { ComponentProps as RegistryViewProps } from "../../runtime";
 import { WorkbenchIcon } from "../icons";
+import { keyedItems } from "../keyed-items";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -33,10 +34,8 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
         ) : null}
         <div className="layout-card-metric">
           <strong className="layout-card-value">
-            {content.map((child, index) => (
-              <span key={`${child.kind}-${index}`}>
-                {renderNode(client, child, context)}
-              </span>
+            {keyedItems(content).map(({ item: child, key }) => (
+              <span key={key}>{renderNode(client, child, context)}</span>
             ))}
           </strong>
           {title ? <small className="layout-card-label">{title}</small> : null}
@@ -76,10 +75,8 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
         </div>
         {content.length > 0 && (
           <div className="layout-card-content">
-            {content.map((child, index) => (
-              <div key={`${child.kind}-${index}`}>
-                {renderNode(client, child, context)}
-              </div>
+            {keyedItems(content).map(({ item: child, key }) => (
+              <div key={key}>{renderNode(client, child, context)}</div>
             ))}
           </div>
         )}
@@ -120,10 +117,8 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
         </header>
       )}
       <div className="layout-card-content">
-        {content.map((child, index) => (
-          <div key={`${child.kind}-${index}`}>
-            {renderNode(client, child, context)}
-          </div>
+        {keyedItems(content).map(({ item: child, key }) => (
+          <div key={key}>{renderNode(client, child, context)}</div>
         ))}
       </div>
     </section>

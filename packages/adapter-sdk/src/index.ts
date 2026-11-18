@@ -26,6 +26,7 @@ export {
   type AdapterDefinition,
   type AdapterHealthCheck,
   type AdapterHealthReport,
+  type AdapterHealthRuntime,
   type AdapterInfo,
   type ConnectionMethodDefinition,
   type ConnectionRequestConcurrency,
@@ -34,9 +35,16 @@ export {
   healthReport,
   reachabilityCheck,
   type SignalWeight,
+  SUPPORTED_ADAPTER_API_VERSIONS,
   scoreChecks,
   statusFor,
 } from "./adapter/index";
+export {
+  assertBlobKey,
+  type BlobInfo,
+  type BlobStore,
+  createMemoryBlobStore,
+} from "./blob";
 export {
   Badge,
   type BadgeNode,
@@ -101,6 +109,11 @@ export {
   Link,
   type LinkNode,
   type LinkProps,
+  List,
+  type ListFilter,
+  type ListItem,
+  type ListNode,
+  type ListProps,
   Meter,
   type MeterData,
   type MeterNode,
@@ -220,9 +233,26 @@ export {
   type InputResource,
   type ResourceBinding,
   type ResourceDefinition,
+  type ResourceMetadata,
   type ResourceReference,
   type ResourceRuntimeContext,
 } from "./resource/index";
+export {
+  type AnyRouteDefinition,
+  DEFAULT_ROUTE_BODY_BYTES,
+  type DefineRouteOptions,
+  defineRoute,
+  MAX_ROUTE_BODY_BYTES,
+  type RouteAuth,
+  type RouteDefinition,
+  RouteError,
+  type RouteHandlerInput,
+  type RouteMethod,
+  type RoutePermission,
+  type RouteRequest,
+  type RouteResponse,
+  routeJson,
+} from "./route";
 export {
   type ActionExecutionOptions,
   type AdapterInstance,
@@ -233,6 +263,9 @@ export {
   type ResourceResult,
   type ResourceStatus,
   type ResourceSuccess,
+  type RouteExecution,
+  type RouteExecutionOptions,
+  type RouteRequestData,
   resourceKey,
   stableStringify,
 } from "./runtime/index";

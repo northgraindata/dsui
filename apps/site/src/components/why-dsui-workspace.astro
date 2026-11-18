@@ -1,0 +1,93 @@
+---
+const tools = [
+  { name: "Airflow", logo: "airflow.svg" },
+  { name: "dbt", logo: "dbt.png" },
+  { name: "PostgreSQL", logo: "postgresql.svg" },
+  { name: "S3", logo: "s3.svg" },
+  { name: "MinIO", logo: "minio.svg" },
+  { name: "ClickHouse", logo: "clickhouse.png" },
+];
+const capabilities = [
+  {
+    name: "AI assistant",
+    detail: "Ask across your stack",
+    icon: "dsui-agent-icon.webp",
+  },
+  {
+    name: "AI diagnostics",
+    detail: "Investigate with context",
+    icon: "ai-diagnostics-icon.webp",
+  },
+  { name: "MCP", detail: "Connect your AI tools", icon: "mcp-icon.webp" },
+  { name: "Your plugins", detail: "Build your own capabilities", icon: null },
+];
+---
+
+<figure class="stack-diagram" aria-labelledby="stack-diagram-caption">
+  <div class="diagram-labels" aria-hidden="true"><span>Your existing tools</span><span>One control plane</span><span>Extend what you can do</span></div>
+  <div class="diagram-flow">
+    <svg class="diagram-wires" viewBox="0 0 1000 348" preserveAspectRatio="none" fill="none" aria-hidden="true">
+      {[24, 84, 144, 204, 264, 324].map((y) => <path d={`M260 ${y} C350 ${y} 340 174 420 174`} />)}
+      {[34.5, 127.5, 220.5, 313.5].map((y) => <path d={`M580 174 C660 174 650 ${y} 740 ${y}`} />)}
+      <circle cx="420" cy="174" r="3" /><circle cx="580" cy="174" r="3" />
+    </svg>
+    <ul class="tool-nodes" aria-label="Your existing tools">
+      {tools.map((tool) => <li><img src={`/assets/logos/${tool.logo}`} width="26" height="26" alt="" loading="lazy" /><span>{tool.name}</span></li>)}
+    </ul>
+    <div class="dsui-node"><img src="/branding/logo-icon.svg" width="64" height="64" alt="" loading="lazy" /><strong>DSUI</strong><span>Your control plane</span></div>
+    <ul class="capability-nodes" aria-label="Capabilities connected through DSUI">
+      {capabilities.map((capability) => <li>
+        {capability.icon ? <img src={`/assets/${capability.icon}`} width="36" height="36" alt="" loading="lazy" /> : <span class="sdk-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5 M16 7l5 5-5 5 M14 4l-4 16" /></svg></span>}
+        <div><strong>{capability.name}</strong><span>{capability.detail}</span></div>
+      </li>)}
+    </ul>
+  </div>
+  <figcaption id="stack-diagram-caption"><span class="caption-rule" aria-hidden="true"></span>Your infrastructure stays where it is. DSUI connects to it.<span class="caption-rule" aria-hidden="true"></span></figcaption>
+</figure>
+
+<style>
+  .stack-diagram { max-width: 1000px; margin: 64px auto 0; }
+  .diagram-labels, .diagram-flow { display: grid; grid-template-columns: 26% 16% 26%; justify-content: space-between; }
+  .diagram-labels { margin-bottom: 24px; color: var(--ds-color-copy-subtle); font: 10px ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; }
+  .diagram-labels > :nth-child(2) { text-align: center; }
+  .diagram-flow { position: relative; align-items: center; height: 348px; }
+  .diagram-wires { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--ds-color-brand-muted); pointer-events: none; }
+  .diagram-wires path { stroke: currentColor; stroke-width: 1; opacity: .35; vector-effect: non-scaling-stroke; }
+  .diagram-wires circle { fill: currentColor; opacity: .75; }
+  .tool-nodes, .capability-nodes { position: relative; display: grid; }
+  .tool-nodes { gap: 12px; }
+  .tool-nodes li { display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 18px; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 12%, transparent); border-radius: 8px; background: var(--ds-color-canvas); color: var(--ds-color-copy); font-size: 14px; }
+  .tool-nodes img { object-fit: contain; flex-shrink: 0; }
+  .dsui-node { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 1; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 55%, transparent); border-radius: 18px; background: var(--ds-color-canvas); box-shadow: 0 0 48px color-mix(in srgb, var(--ds-color-brand) 10%, transparent), inset 0 1px 0 color-mix(in srgb, var(--ds-color-brand-muted) 12%, transparent); }
+  .dsui-node strong { margin-top: 12px; font-size: 24px; font-weight: 600; letter-spacing: -.04em; }
+  .dsui-node > span { margin-top: 5px; color: var(--ds-color-copy-subtle); font-size: 10px; }
+  .capability-nodes { gap: 24px; }
+  .capability-nodes li { display: flex; align-items: center; gap: 12px; height: 69px; padding: 0 14px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 16%, transparent); border-radius: 8px; background: var(--ds-color-canvas); }
+  .capability-nodes img { flex-shrink: 0; border-radius: 8px; }
+  .capability-nodes strong { display: block; font-size: 13px; font-weight: 500; }
+  .capability-nodes li div > span { display: block; margin-top: 5px; color: var(--ds-color-copy-subtle); font-size: 10px; line-height: 1.4; }
+  .sdk-icon { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 20%, transparent); border-radius: 8px; color: var(--ds-color-brand-muted); }
+  .sdk-icon svg { width: 22px; height: 22px; }
+  figcaption { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 40px; color: var(--ds-color-copy-subtle); font-size: 12px; line-height: 1.7; text-align: center; }
+  .caption-rule { width: 48px; height: 1px; background: color-mix(in srgb, var(--ds-color-copy) 18%, transparent); }
+  @media (max-width: 760px) {
+    .stack-diagram { max-width: 480px; margin-top: 40px; }
+    .diagram-labels { display: none; }
+    .diagram-wires { display: none; }
+    .diagram-flow { display: flex; flex-direction: column; height: auto; }
+    .tool-nodes { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .tool-nodes li { padding: 0 12px; gap: 10px; font-size: 12px; }
+    .tool-nodes img { width: 22px; height: 22px; }
+    .dsui-node { width: 148px; margin: 40px 0; }
+    .dsui-node::before, .dsui-node::after { position: absolute; left: 50%; width: 1px; height: 40px; background: color-mix(in srgb, var(--ds-color-brand-muted) 45%, transparent); content: ""; }
+    .dsui-node::before { bottom: 100%; }
+    .dsui-node::after { top: 100%; }
+    .dsui-node img { width: 52px; height: 52px; }
+    .capability-nodes { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .capability-nodes li { height: auto; min-height: 100px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; padding: 14px; }
+    .capability-nodes strong { font-size: 12px; }
+    .capability-nodes li div > span { margin-top: 4px; }
+    figcaption { margin-top: 28px; font-size: 11px; }
+    .caption-rule { display: none; }
+  }
+</style>

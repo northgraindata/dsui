@@ -115,6 +115,10 @@ export function pluginRendererClient(
           detail: { pluginId, overlayId },
         }),
       ),
+    closeOverlay: () =>
+      window.dispatchEvent(
+        new CustomEvent("dsui:overlay-close", { detail: { pluginId } }),
+      ),
   };
 }
 

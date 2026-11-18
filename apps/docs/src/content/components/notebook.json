@@ -1,0 +1,31 @@
+{
+  "name": "Notebook",
+  "description": "Full notebook with markdown and code blocks.",
+  "props": {
+    "title": {
+      "description": "Notebook title"
+    },
+    "description": {
+      "description": "Subtitle"
+    },
+    "blocks": {
+      "description": "Content blocks"
+    },
+    "notebooks": {
+      "description": "Notebook list sidebar"
+    },
+    "openTabs": {
+      "description": "Open tab indicators"
+    },
+    "metadata": {
+      "description": "Metadata display"
+    },
+    "actions": {
+      "description": "Lifecycle actions"
+    },
+    "id": {
+      "description": "Stable ID for the notebook, so the host can address it"
+    }
+  },
+  "example": "Notebook({\n  title: \"Analysis\",\n  blocks: [\n    { id: \"b1\", kind: \"markdown\", content: \"# Revenue Analysis\" },\n    { id: \"b2\", kind: \"code\", language: \"sql\", content: \"SELECT 1\", action: run() },\n  ],\n  actions: { save: saveNotebook(), create: createNotebook() },\n})"
+}

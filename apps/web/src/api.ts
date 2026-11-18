@@ -463,6 +463,14 @@ export async function runOperation(
 export async function currentPrincipal() {
   return request<{ id: string; role: string } | null>("/auth/me");
 }
+
+export function authenticationEntry() {
+  return request<
+    | { mode: "none" }
+    | { mode: "unavailable" }
+    | { mode: "plugin"; pluginId: string; pageId?: string }
+  >("/auth/entry");
+}
 export function titleFor(id: string) {
   return (
     (
@@ -479,4 +487,90 @@ export function titleFor(id: string) {
       } as Record<string, string>
     )[id] ?? id.replaceAll("-", " ")
   );
+}
+
+export function getSettings() {
+  return request<import("@northgraindata/dsui-core").SettingsSnapshot>(
+    "/settings",
+  );
+}
+export function saveSettings(
+  scope: "installation" | "preferences",
+  revision: number,
+  value: unknown,
+) {
+  return request<import("@northgraindata/dsui-core").SettingsSnapshot>(
+    `/settings/${scope}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ revision, value }),
+    },
+  );
+}
+export function getSettingsSystem() {
+  return request<import("@northgraindata/dsui-core").SettingsSystem>(
+    "/settings/system",
+  );
+}
+
+/** A DSUI agent: a customer-side connector that carries traffic into a private network. */
+export type Connector = {
+  id: string;
+  name: string;
+  createdAt: string;
+  revokedAt: string | null;
+  lastConnectedAt: string | null;
+  lastSeenAt: string | null;
+  online: boolean;
+  activeStreams: number;
+  info: {
+    version?: string;
+    hostname?: string;
+    os?: string;
+    arch?: string;
+    observedIp?: string;
+    localAddrs?: string[];
+    targets?: string[];
+  };
+  services: { id: string; name: string }[];
+};
+export type ConnectorWithToken = { connector: Connector; token: string };
+export type TargetTest =
+  | { ok: true; ms: number }
+  | { ok: false; code: string; message: string; ms: number };
+
+/** Reserved connection key naming the agent a service goes through. */
+export const CONNECTOR_KEY = "__connector";
+
+export function getConnectors() {
+  return request<Connector[]>("/connectors");
+}
+export function createConnector(name: string) {
+  return request<ConnectorWithToken>("/connectors", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+export function renameConnector(id: string, name: string) {
+  return request<Connector>(`/connectors/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+export function rotateConnector(id: string) {
+  return request<ConnectorWithToken>(`/connectors/${id}/rotate`, {
+    method: "POST",
+  });
+}
+export function revokeConnector(id: string) {
+  return request<Connector>(`/connectors/${id}/revoke`, { method: "POST" });
+}
+export function deleteConnector(id: string) {
+  return request<void>(`/connectors/${id}`, { method: "DELETE" });
+}
+export function testConnectorTarget(id: string, target: string) {
+  return request<TargetTest>(`/connectors/${id}/test-target`, {
+    method: "POST",
+    body: JSON.stringify({ target }),
+  });
 }

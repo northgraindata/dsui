@@ -5,6 +5,9 @@ import { z } from "zod";
 import type { AdapterSourceLocation } from "./adapters/build.js";
 import type { AdapterPackageSource } from "./adapters/types.js";
 
+import { githubRepository } from "./github-repository.js";
+import { installationSettingsSchema } from "./settings";
+
 const installedPluginSourceSchema = z
   .object({
     package: z.string().min(1),
@@ -92,7 +95,9 @@ async function locateConfig(path: string): Promise<string | null> {
     try {
       await access(candidate);
       return candidate;
-    } catch {}
+    } catch {
+      // This candidate may not exist; try the remaining supported locations.
+    }
   }
   return null;
 }
@@ -119,18 +124,15 @@ export function toAdapterSourceLocation(
     return { kind: "local", path: resolve(cwd, source.path) };
   }
   if ("source" in source && source.source === "git") {
-    const repository = source.repository
-      .replace(/^git\+https:\/\/github\.com\//, "")
-      .replace(/\.git$/, "");
-    const [owner, name, ...rest] = repository.split("/");
-    if (!owner || !name || rest.length) {
+    const repository = githubRepository(source.repository);
+    if (!repository) {
       throw new ConfigError(
         `adapter source must name a GitHub repository as owner/name, got "${source.repository}"`,
       );
     }
     return {
       kind: "git",
-      repository: `${owner}/${name}`,
+      repository,
       // A pinned commit wins when given; otherwise the branch, tag, or default.
       ref: source.commit ?? source.ref ?? "main",
       ...(source.path ? { subdirectory: source.path } : {}),
@@ -278,7 +280,7 @@ export const gitAdapterSourceSchema = z
       .optional(),
   })
   .strict()
-  .refine((value) => Boolean(value.commit) !== Boolean(value.integrity), {
+  .refine((value) => Boolean(value.commit) === Boolean(value.integrity), {
     message:
       "commit and integrity are both required for a pinned prebuilt adapter, or both omitted to build from source",
   });
@@ -377,11 +379,13 @@ export function toAdapterPackageSource(
 export const configSchema = z
   .object({
     services: z.array(serviceSchema).default([]),
+    settings: installationSettingsSchema.partial().optional(),
     auth: z
       .object({ mode: z.enum(["none", "local", "enterprise"]).optional() })
       .optional(),
     adapters: z.record(adapterEntrySchema).optional(),
     plugins: z.record(pluginSourceSchema).optional(),
+    telemetry: z.object({ enabled: z.boolean().optional() }).optional(),
   })
   .passthrough();
 

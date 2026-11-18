@@ -86,3 +86,12 @@ export interface PublicService {
   actions: string[];
   logo?: string;
 }
+
+export {
+  type InstallationSettings,
+  installationDefaults,
+  preferenceDefaults,
+  type SettingsSnapshot,
+  type SettingsSystem,
+  type UserPreferences,
+} from "./settings";

@@ -1,0 +1,19 @@
+{
+  "name": "@northgraindata/dsui-adapter-clickhouse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/adapter.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.24.1",
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "http-proxy-agent": "^7.0.2",
+    "https-proxy-agent": "^7.0.6"
+  }
+}

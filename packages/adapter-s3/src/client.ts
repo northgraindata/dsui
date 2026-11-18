@@ -1,4 +1,5 @@
 import {
+  type _Object,
   S3Client as AwsS3Client,
   CopyObjectCommand,
   DeleteObjectCommand,
@@ -86,7 +87,7 @@ export function createS3Client(config: S3Config): S3Client {
         await Promise.all(
           (result.CommonPrefixes ?? []).map(async (item) => {
             if (!item.Prefix) return undefined;
-            const objects = [];
+            const objects: _Object[] = [];
             let summaryToken: string | undefined;
             do {
               const summary = await client.send(

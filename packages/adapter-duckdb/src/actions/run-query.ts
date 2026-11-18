@@ -14,8 +14,8 @@ import {
   views,
 } from "../resources/catalog.js";
 import { queryHistory } from "../resources/history.js";
-import { queryHistoryStore } from "../stores/index.js";
 import { queryFailed, querySucceeded } from "../signals.js";
+import { queryHistoryStore } from "../stores/index.js";
 
 type Ctx = DuckDbContext & ActionRuntimeContext;
 
