@@ -8,6 +8,7 @@ function context(options: {
 }): AirflowContext {
   return {
     client: {
+      authenticate: async () => undefined,
       getVersion: async () => {
         if (options.unreachable) throw new Error("connect ECONNREFUSED");
         return { version: "2.9.1" };
