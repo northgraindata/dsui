@@ -160,7 +160,7 @@ export function createHealthPlugin() {
       });
       registry.page(statusPageView, {
         id: "status-page",
-        title: "Status page",
+        title: "Status pages",
       });
       registry.page(
         definePage({

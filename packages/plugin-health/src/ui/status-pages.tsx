@@ -78,19 +78,6 @@ export function StatusPagesPage({ client }: ComponentProps) {
       <style>{styles}</style>
       <style>{statusStyles}</style>
 
-      {data?.canCreate && !creating && (
-        <div className="sp-toolbar">
-          <button
-            type="button"
-            className="h-button"
-            data-variant="primary"
-            onClick={() => setCreating(true)}
-          >
-            New status page
-          </button>
-        </div>
-      )}
-
       {list.error && <Notice tone="error">{list.error}</Notice>}
 
       {creating && (
@@ -101,15 +88,7 @@ export function StatusPagesPage({ client }: ComponentProps) {
         />
       )}
 
-      {data && data.items.length === 0 && !creating && (
-        <Empty>
-          {data.canCreate
-            ? "No status pages yet. Create one for a team, with the services they care about."
-            : "No status pages you can see yet."}
-        </Empty>
-      )}
-
-      {data && data.items.length > 0 && (
+      {data && !creating && (
         <ul className="sp-cards">
           {data.items.map((page) => (
             <li key={page.id}>
@@ -118,34 +97,50 @@ export function StatusPagesPage({ client }: ComponentProps) {
                 to={pagePath.statusPage(page.slug)}
                 className="sp-card"
               >
-                <span className="sp-card-band" data-status={page.status} />
-                <span className="sp-card-body">
-                  <strong>{page.name}</strong>
-                  <span className="sp-card-description">
-                    {page.description ?? `/${page.slug}`}
-                  </span>
-                  <span className="sp-card-foot">
-                    <StatusText status={page.status} />
-                    <span className="h-muted">
-                      {page.components}{" "}
-                      {page.components === 1 ? "component" : "components"}
-                      {page.activeNotices > 0
-                        ? ` · ${page.activeNotices} active ${page.activeNotices === 1 ? "notice" : "notices"}`
-                        : ""}
-                    </span>
+                <strong>{page.name}</strong>
+                <span className="sp-card-description">
+                  {page.description ?? `/${page.slug}`}
+                </span>
+                <span className="sp-card-foot">
+                  <StatusText status={page.status} />
+                  <span>
+                    {page.components}{" "}
+                    {page.components === 1 ? "component" : "components"}
+                    {page.activeNotices > 0
+                      ? ` · ${page.activeNotices} ${page.activeNotices === 1 ? "notice" : "notices"}`
+                      : ""}
                   </span>
                 </span>
               </PageLink>
             </li>
           ))}
+          {data.canCreate && (
+            <li>
+              <button
+                type="button"
+                className="sp-card sp-card-new"
+                onClick={() => setCreating(true)}
+              >
+                <span aria-hidden="true">+</span>
+                <strong>New status page</strong>
+                <span className="sp-card-description">
+                  Pick the services a team relies on
+                </span>
+              </button>
+            </li>
+          )}
         </ul>
+      )}
+
+      {data && data.items.length === 0 && !data.canCreate && (
+        <Empty>No status pages you can see yet.</Empty>
       )}
 
       {!data && !list.error && (
         <ul className="sp-cards" aria-busy="true">
           {[0, 1, 2].map((key) => (
             <li key={key}>
-              <div className="sp-card sp-card-loading">
+              <div className="sp-card">
                 <span className="h-skeleton" />
                 <span className="h-skeleton" />
               </div>
@@ -180,12 +175,9 @@ export function StatusPageView({ client, node }: ComponentProps) {
       <style>{styles}</style>
       <style>{statusStyles}</style>
 
-      <nav className="h-breadcrumb" aria-label="Breadcrumb">
-        <PageLink client={client} to={pagePath.statusPages}>
-          Status pages
-        </PageLink>
-        {data ? ` / ${data.page.name}` : ""}
-      </nav>
+      <PageLink client={client} to={pagePath.statusPages} className="sp-back">
+        <span aria-hidden="true">←</span> All status pages
+      </PageLink>
 
       {detail.error && <Notice tone="error">{detail.error}</Notice>}
       {!data && !detail.error && <PageSkeleton />}
@@ -206,39 +198,43 @@ export function StatusPageView({ client, node }: ComponentProps) {
 
       {data && mode !== "edit" && (
         <>
-          <header className="sp-head">
-            <div>
-              <h1>{data.page.name}</h1>
+          <header className="sp-hero" data-status={data.status}>
+            <div className="sp-hero-main">
+              <span className="sp-status" data-status={data.status}>
+                <StatusDot status={data.status} />
+                {headline[data.status]}
+              </span>
+              <h2>{data.page.name}</h2>
               {data.page.description && <p>{data.page.description}</p>}
             </div>
-            <div className="h-section-actions">
-              {data.can.post && mode === "view" && (
-                <button
-                  type="button"
-                  className="h-button"
-                  data-variant="primary"
-                  onClick={() => setMode("notice")}
-                >
-                  Post notice
-                </button>
-              )}
-              {data.can.edit && (
-                <button
-                  type="button"
-                  className="h-button"
-                  onClick={() => setMode("edit")}
-                >
-                  Edit page
-                </button>
-              )}
+            <div className="sp-hero-side">
+              <div className="sp-actions">
+                {data.can.edit && (
+                  <button
+                    type="button"
+                    className="h-button"
+                    onClick={() => setMode("edit")}
+                  >
+                    Edit
+                  </button>
+                )}
+                {data.can.post && (
+                  <button
+                    type="button"
+                    className="h-button"
+                    data-variant="primary"
+                    disabled={mode === "notice"}
+                    onClick={() => setMode("notice")}
+                  >
+                    Post notice
+                  </button>
+                )}
+              </div>
+              <span className="sp-hero-meta">
+                Updated {ago(data.generatedAt, now)}
+              </span>
             </div>
           </header>
-
-          <div className="sp-banner" data-status={data.status} role="status">
-            <StatusDot status={data.status} />
-            <strong>{headline[data.status]}</strong>
-            <span>Updated {ago(data.generatedAt, now)}</span>
-          </div>
 
           {mode === "notice" && (
             <NoticeForm
@@ -252,7 +248,10 @@ export function StatusPageView({ client, node }: ComponentProps) {
           )}
 
           {data.active.length > 0 && (
-            <section className="sp-notices" aria-label="Active notices">
+            <section className="sp-block" aria-labelledby="sp-active">
+              <h3 className="sp-label" id="sp-active">
+                Active notices
+              </h3>
               {data.active.map((notice) => (
                 <NoticeCard
                   key={notice.id}
@@ -266,30 +265,30 @@ export function StatusPageView({ client, node }: ComponentProps) {
             </section>
           )}
 
-          <ComponentList components={data.components} />
+          <section className="sp-block" aria-labelledby="sp-components">
+            <h3 className="sp-label" id="sp-components">
+              Components
+            </h3>
+            <ComponentList components={data.components} />
+          </section>
 
-          <section className="h-section">
-            <header>
-              <div>
-                <h2>Past notices</h2>
-                <p>Resolved in the last 30 days.</p>
-              </div>
-            </header>
+          <section className="sp-block" aria-labelledby="sp-history">
+            <h3 className="sp-label" id="sp-history">
+              Past notices
+            </h3>
             {data.history.length === 0 ? (
-              <Empty>No notices in the last 30 days.</Empty>
+              <p className="sp-quiet">Nothing in the last 30 days.</p>
             ) : (
-              <div className="sp-notices">
-                {data.history.map((notice) => (
-                  <NoticeCard
-                    key={notice.id}
-                    client={client}
-                    notice={notice}
-                    components={data.components}
-                    canPost={false}
-                    onChange={detail.reload}
-                  />
-                ))}
-              </div>
+              data.history.map((notice) => (
+                <NoticeCard
+                  key={notice.id}
+                  client={client}
+                  notice={notice}
+                  components={data.components}
+                  canPost={false}
+                  onChange={detail.reload}
+                />
+              ))
             )}
           </section>
         </>
@@ -319,29 +318,24 @@ function ComponentList({
   components: readonly StatusComponentView[];
 }) {
   if (components.length === 0)
-    return <Empty>This page has no components yet.</Empty>;
+    return <p className="sp-quiet">This page has no components yet.</p>;
   return (
-    <section className="sp-components" aria-label="Components">
+    <div className="sp-components">
       {components.map((component) => (
         <article key={component.id} className="sp-component">
           <header>
-            <div>
-              <h3>{component.name}</h3>
-              {component.description && <p>{component.description}</p>}
-            </div>
+            <h4>{component.name}</h4>
+            <span className="sp-uptime">{percent(component.availability)}</span>
             <StatusText status={component.status} />
           </header>
           <UptimeBars component={component} />
           <footer>
             <span>{component.days.length} days ago</span>
-            <span className="sp-rule" aria-hidden="true" />
-            <span>{percent(component.availability)} uptime</span>
-            <span className="sp-rule" aria-hidden="true" />
             <span>Today</span>
           </footer>
         </article>
       ))}
-    </section>
+    </div>
   );
 }
 
@@ -356,8 +350,8 @@ function dayTitle(day: StatusComponentView["days"][number]): string {
 
 function UptimeBars({ component }: { component: StatusComponentView }) {
   const width = 4;
-  const gap = 2;
-  const height = 30;
+  const gap = 1.6;
+  const height = 24;
   const total = component.days.length * (width + gap) - gap;
   return (
     <svg
@@ -374,7 +368,7 @@ function UptimeBars({ component }: { component: StatusComponentView }) {
           y={0}
           width={width}
           height={height}
-          rx={1.5}
+          rx={1}
           data-status={day.status ?? "missing"}
         >
           <title>{dayTitle(day)}</title>
@@ -401,40 +395,26 @@ function NoticeCard({
 }) {
   const { useState } = React;
   const [open, setOpen] = useState(false);
+  const resolved = notice.resolvedAt !== null;
   const affected = components
     .filter((component) => notice.componentIds.includes(component.id))
     .map((component) => component.name);
   return (
     <article
       className="sp-notice"
-      data-impact={notice.impact}
-      data-resolved={notice.resolvedAt !== null}
+      data-status={resolved ? "resolved" : notice.impact}
     >
       <header>
-        <div>
-          <h3>{notice.title}</h3>
-          <p className="h-muted">
+        <div className="sp-notice-title">
+          <h4>{notice.title}</h4>
+          <p>
+            {resolved ? "Resolved" : componentLabel[notice.impact]}
+            {" · "}
             {affected.length > 0 ? affected.join(", ") : "Whole page"}
-            {notice.source ? ` · posted by ${notice.source}` : ""}
+            {notice.source ? ` · via ${notice.source}` : ""}
           </p>
         </div>
-        <StatusText
-          status={notice.resolvedAt === null ? notice.impact : "operational"}
-        />
-      </header>
-      <ol className="sp-updates">
-        {notice.updates.map((update) => (
-          <li key={update.id} data-status={update.status}>
-            <strong>{noticeStatusLabel[update.status]}</strong>
-            <p>{update.message}</p>
-            <time dateTime={new Date(update.time).toISOString()}>
-              {dateTime(update.time)}
-            </time>
-          </li>
-        ))}
-      </ol>
-      {canPost && notice.resolvedAt === null && !open && (
-        <div className="h-section-actions">
+        {canPost && !resolved && !open && (
           <button
             type="button"
             className="h-button"
@@ -442,8 +422,8 @@ function NoticeCard({
           >
             Add update
           </button>
-        </div>
-      )}
+        )}
+      </header>
       {open && (
         <UpdateForm
           client={client}
@@ -454,6 +434,19 @@ function NoticeCard({
           }}
         />
       )}
+      <ol className="sp-updates">
+        {notice.updates.map((update) => (
+          <li key={update.id} data-status={update.status}>
+            <time dateTime={new Date(update.time).toISOString()}>
+              {dateTime(update.time)}
+            </time>
+            <div>
+              <strong>{noticeStatusLabel[update.status]}</strong>
+              <p>{update.message}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </article>
   );
 }
