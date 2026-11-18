@@ -527,6 +527,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     );
     if (adaptersLoaded && signature === adapterSignature) return;
     adapterSync = (async () => {
+      if (!adaptersLoaded)
+        await removeStagedBuild(
+          join(loaderOptions.dataDir ?? dataDir, "adapters", "staged"),
+        );
       const next: LoadedAdapter[] = [];
       const previous = new Map(
         registry.list().map((adapter) => [adapter.id, adapter]),

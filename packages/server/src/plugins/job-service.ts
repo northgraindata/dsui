@@ -192,6 +192,7 @@ export class PluginJobService {
         maxAttempts: definition.maxAttempts,
         scheduledFor,
         coalesce: true,
+        origin: "schedule",
       });
       const nextRunAt =
         definition.intervalMs !== null
