@@ -17,6 +17,7 @@ import { overviewPage } from "./pages/overview.js";
 import { databaseQueryPage, queryPage } from "./pages/query.js";
 import { relationPage } from "./pages/relation.js";
 import { schemaPage } from "./pages/schema.js";
+import { presentation } from "./presentation";
 import { activity } from "./resources/activity.js";
 import { capabilities } from "./resources/capabilities.js";
 import {
@@ -57,6 +58,7 @@ export function createPostgreSQLAdapter() {
       author: "DSUI",
       description: "Inspect PostgreSQL databases and run SQL queries.",
       iconUrl: postgresqlIconUrl,
+      presentation,
     },
     connectionMethods: {
       postgresql: {

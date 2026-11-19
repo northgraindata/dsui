@@ -75,7 +75,7 @@ export function GeneralSettings() {
         <SettingsRow
           id="workspace-name"
           label="Workspace name"
-          description="Shown in the sidebar and browser tab."
+          description="Shown in the browser tab."
           source={source("name")}
         >
           <input

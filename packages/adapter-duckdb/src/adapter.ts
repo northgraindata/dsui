@@ -51,6 +51,7 @@ import { overviewPage } from "./pages/overview.js";
 import { queryPage } from "./pages/query.js";
 import { schemaPage } from "./pages/schema.js";
 import { relationPage } from "./pages/table.js";
+import { presentation } from "./presentation";
 import {
   columnProfile,
   databaseCards,
@@ -119,6 +120,7 @@ export function createDuckDbAdapter(
       author: "DSUI",
       description: "Browse DuckDB catalogs, run SQL, and manage extensions.",
       iconUrl: duckdbIconUrl,
+      presentation,
     },
     connectionMethods: duckdbConnectionMethods,
     context: async (config: DuckDbConfig): Promise<DuckDbContext> => {

@@ -2,120 +2,16 @@
 .adapter-marketplace {
   padding: var(--app-page-padding);
 }
-.marketplace-heading {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin: 0 0 32px;
-}
-.marketplace-heading-icon {
-  display: grid;
-  place-items: center;
-  width: 60px;
-  height: 60px;
-  flex-shrink: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  color: var(--color-accent);
-  background: linear-gradient(
-    135deg,
-    var(--color-surface-raised),
-    var(--color-background)
-  );
-}
-.marketplace-heading h1 {
-  margin: 0 0 4px;
-  font-size: var(--app-page-title-size);
-  line-height: 1.25;
-  font-weight: 600;
-  letter-spacing: -1px;
-}
-.marketplace-heading p {
-  color: var(--color-secondary);
-  margin: 0;
-  font-size: 13px;
-  letter-spacing: 0.1px;
-}
-.marketplace-heading > button {
-  margin-left: auto;
-  padding: 0 18px;
-  min-height: 40px;
-  font-size: 14px;
-}
-.marketplace-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-.marketplace-card,
-.marketplace-skeleton {
-  min-height: 154px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: linear-gradient(
-    125deg,
-    var(--color-surface),
-    var(--color-background)
-  );
-  padding: 18px;
-}
-.marketplace-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-}
-.marketplace-card-identity {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-.marketplace-card h2 {
-  margin: 4px 0 5px;
-  font-size: 14px;
-  font-weight: 500;
-}
-.marketplace-card p {
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 0;
-}
-.marketplace-card > button {
-  width: 100%;
-  background: #0b2050;
-  border-color: #102551;
-  color: var(--color-secondary);
-}
-.marketplace-card > button:hover {
-  background: #12306e;
-  color: var(--color-primary);
-}
 .marketplace-message {
-  padding: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   color: var(--color-secondary);
-}
-.marketplace-search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 480px;
-  margin-bottom: 20px;
-  padding: 10px 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
-  border-radius: 8px;
-  color: var(--color-secondary);
-}
-.marketplace-search input {
-  width: 100%;
-  background: transparent;
-  border: 0;
-}
-.marketplace-search button {
-  font-size: 20px;
+  font-size: 12px;
 }
 .connection-dialog {
   position: fixed;
@@ -569,9 +465,6 @@
   .connection-dialog {
     inset: 0;
   }
-  .marketplace-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 @media (max-width: 950px) {
   .connection-body {
@@ -648,23 +541,6 @@
   .connection-brand {
     width: 48px;
     height: 48px;
-  }
-  .marketplace-heading {
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .marketplace-heading h1 {
-    font-size: 24px;
-  }
-  .marketplace-heading-icon {
-    width: 48px;
-    height: 48px;
-  }
-  .marketplace-heading > button {
-    margin-left: 60px;
-  }
-  .marketplace-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
   .adapter-marketplace {
     padding: 22px 18px;

@@ -46,6 +46,7 @@ import { assetDetailPage, assetListPage } from "./pages/assets.js";
 import { dagDetailPage, dagListPage } from "./pages/dags.js";
 import { overviewPage } from "./pages/overview.js";
 import { dagRunDetailPage, taskInstanceDetailPage } from "./pages/runs.js";
+import { presentation } from "./presentation";
 import {
   connections,
   eventLogs,
@@ -87,6 +88,7 @@ export function createAirflowAdapter(
       version: "1.0.0",
       author: "DSUI",
       iconUrl: airflowIconUrl,
+      presentation,
       description: "Browse and operate Apache Airflow DAGs, runs, and assets.",
     },
     connectionMethods: {

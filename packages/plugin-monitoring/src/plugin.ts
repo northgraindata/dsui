@@ -13,6 +13,7 @@ import {
   sampleUptime,
   sampleVolumes,
 } from "./context.js";
+import { iconUrl } from "./logo";
 import { overviewPage } from "./pages/overview.js";
 import {
   hostCpu,
@@ -89,6 +90,8 @@ export function createMonitoringPlugin() {
       name: "Host monitoring",
       version: "1.0.0",
       apiVersion: 1,
+      category: "Monitoring",
+      iconUrl,
     },
     configSchema,
     setup(registry, config) {
