@@ -191,6 +191,8 @@ export type PluginNavigationItem = {
   readonly label: string;
   readonly pageId: string;
   readonly order?: number;
+  /** An icon for this entry alone, when a plugin has several; otherwise the plugin's `iconUrl`. */
+  readonly iconUrl?: string;
 };
 
 export type PluginUiSlot = {
@@ -325,6 +327,8 @@ export type PluginCapabilitySummary = {
   readonly name: string;
   readonly version: string;
   readonly status: PluginReadinessStatus;
+  /** The plugin's icon, so another plugin can show where something it embeds comes from. */
+  readonly iconUrl?: string;
 };
 export type PluginActionSummary = {
   readonly id: string;

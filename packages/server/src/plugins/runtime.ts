@@ -672,8 +672,13 @@ export class PluginRuntime {
             );
           uniqueId(seenPages, page, "page", request.id);
         },
-        navigation: (item: PluginNavigationItem) =>
-          uniqueId(seenNavigation, item, "navigation", request.id),
+        navigation: (item: PluginNavigationItem) => {
+          if (item.iconUrl !== undefined && typeof item.iconUrl !== "string")
+            throw new Error(
+              `Plugin "${request.id}" navigation "${item.id}" has an invalid iconUrl`,
+            );
+          uniqueId(seenNavigation, item, "navigation", request.id);
+        },
         slot: (slot: RuntimePluginSlot) => {
           validateSlot(slot);
           uniqueId(seenSlots, slot, "slot", request.id);
@@ -1343,6 +1348,7 @@ export class PluginRuntime {
               name: plugin.name,
               version: plugin.version,
               status: plugin.status,
+              ...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
             });
         return visible;
       },
@@ -1357,6 +1363,7 @@ export class PluginRuntime {
               name: plugin.name,
               version: plugin.version,
               status: plugin.status,
+              ...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
             }
           : null;
       },

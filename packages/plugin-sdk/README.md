@@ -72,7 +72,9 @@ No group is shown for a plugin without navigation entries.
 `iconUrl` accepts an image URL or a self-contained image data URL, matching adapter metadata.
 Prefer a data URL bundled in the plugin so its icon works on installations mounted under a path prefix and does not require another server.
 The sidebar uses the plug glyph when the icon is missing or fails to load.
+A plugin with several entries can give one of them its own icon with `iconUrl` on the navigation item; the others use the plugin's.
 The host returns these fields in `PluginCatalog.plugins`, subject to the caller's existing plugin permissions.
+Other plugins read a plugin's `iconUrl` from `context.plugins.get`, for example to mark what they show from it.
 Both fields are optional and existing plugins keep working without changes.
 
 ## Runtime and compatibility

@@ -20,7 +20,8 @@ export function groupPluginNavigation(
       group = { label, items: [] };
       groups.set(label, group);
     }
-    group.items.push({ ...item, iconUrl: plugin.iconUrl });
+    // An entry may carry its own icon when one plugin has several entries.
+    group.items.push({ ...item, iconUrl: item.iconUrl ?? plugin.iconUrl });
   }
   return [...groups.values()].sort((left, right) => {
     if (left.label === right.label) return 0;

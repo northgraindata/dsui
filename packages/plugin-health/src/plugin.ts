@@ -16,9 +16,9 @@ import { serviceCardSlot } from "./components/slots.js";
 import { configSchema, SCHEDULER_TICK_MS } from "./config.js";
 import type { ServiceSummary } from "./context.js";
 import { fleetSchema } from "./contract.js";
-import { iconUrl, statusPagesIconUrl } from "./logo.js";
 import { openHealthDb } from "./db.js";
 import { emitWeeklyReport } from "./digest.js";
+import { iconUrl, statusPagesIconUrl } from "./logo.js";
 import {
   overviewPage,
   statusPagesPage,

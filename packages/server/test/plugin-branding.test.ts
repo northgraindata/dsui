@@ -156,3 +156,89 @@ test.each(["category", "iconUrl"])(
     }
   },
 );
+
+test("a navigation entry may carry its own icon, and other plugins see a plugin's icon", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dsui-plugin-branding-entry-"));
+  let seen: unknown;
+  const health = definePlugin({
+    metadata: {
+      id: "health",
+      name: "Health",
+      version: "1.0.0",
+      apiVersion: 1,
+      iconUrl,
+    },
+    configSchema: z.object({}),
+    setup(registry) {
+      for (const id of ["overview", "status-pages"])
+        registry.page(definePage({ path: `/${id}`, render: () => [] }), {
+          id,
+          title: id,
+        });
+      registry.navigation({
+        id: "health",
+        area: "primary",
+        label: "Health",
+        pageId: "overview",
+      });
+      registry.navigation({
+        id: "status-pages",
+        area: "primary",
+        label: "Status pages",
+        pageId: "status-pages",
+        iconUrl: "data:image/webp;base64,cGFnZXM=",
+      });
+    },
+  });
+  const reader = definePlugin({
+    metadata: { id: "reader", name: "Reader", version: "1.0.0", apiVersion: 1 },
+    configSchema: z.object({}),
+    setup(registry) {
+      registry.page(
+        definePage({
+          path: "/overview",
+          render: async ({ context }) => {
+            seen = await context.plugins.get("health");
+            return [];
+          },
+        }),
+        { id: "overview", title: "Reader" },
+      );
+    },
+  });
+  const modules = new Map([
+    ["health", health],
+    ["reader", reader],
+  ]);
+  const runtime = createRuntime({
+    dataDir: root,
+    config: {
+      services: [],
+      plugins: Object.fromEntries(
+        [...modules.keys()].map((id) => [
+          id,
+          { package: id, enabled: true, config: {} },
+        ]),
+      ),
+    },
+    pluginModuleLoader: async (id) => ({ default: modules.get(id) }),
+  });
+  try {
+    await runtime.refreshConfig();
+    const catalog = await (await runtime.app.request("/api/v1/plugins")).json();
+    expect(
+      catalog.navigation.map((item: { id: string; iconUrl?: string }) => [
+        item.id,
+        item.iconUrl ?? null,
+      ]),
+    ).toEqual([
+      ["health", null],
+      ["status-pages", "data:image/webp;base64,cGFnZXM="],
+    ]);
+    await runtime.app.request("/api/v1/plugins/reader/pages/overview");
+    expect(seen).toMatchObject({ id: "health", iconUrl });
+  } finally {
+    await runtime.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
