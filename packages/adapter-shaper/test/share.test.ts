@@ -116,7 +116,7 @@ describe("share-dashboard action", () => {
       { id: "d1", visibility: "password-protected" },
       value,
     )) as { url: string; generatedPassword: string };
-    expect(result.url).toBe("https://shaper.example/sub/dashboards/d1");
+    expect(result.url).toBe("https://shaper.example/sub/view/d1");
     expect(result.generatedPassword.length).toBeGreaterThanOrEqual(16);
     expect(shared[0]).toEqual([
       "d1",
@@ -156,7 +156,7 @@ describe("share-dashboard action", () => {
 
   test("builds the link under a path prefix", () => {
     expect(dashboardLink("https://x.dev/shaper", "a b")).toBe(
-      "https://x.dev/shaper/dashboards/a%20b",
+      "https://x.dev/shaper/view/a%20b",
     );
   });
 });

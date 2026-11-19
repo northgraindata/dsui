@@ -15,10 +15,15 @@ export const shareInput = z.object({
   password: z.string().min(8, "Use at least 8 characters").optional(),
 });
 
-/** Where Shaper serves a dashboard, and the id an embed needs. */
+/**
+ * Where Shaper serves a shared dashboard to an anonymous or password-entering
+ * viewer. `/dashboards/:id` is Shaper's own editor route and always requires
+ * a signed-in user; `/view/:id` is the public viewer that honors visibility
+ * and the password gate.
+ */
 export function dashboardLink(baseUrl: string, id: string): string {
   const base = new URL(baseUrl);
-  base.pathname = `${base.pathname.replace(/\/+$/, "")}/dashboards/${encodeURIComponent(id)}`;
+  base.pathname = `${base.pathname.replace(/\/+$/, "")}/view/${encodeURIComponent(id)}`;
   base.search = "";
   base.hash = "";
   return base.toString();
