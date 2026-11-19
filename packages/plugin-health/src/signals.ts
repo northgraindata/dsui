@@ -136,6 +136,7 @@ type Registry = {
     id: string;
     payload: z.ZodTypeAny;
     type?: SignalType;
+    scope?: "service" | "global";
   }): void;
 };
 
@@ -144,6 +145,7 @@ export function registerSignals(registry: Registry): void {
     registry.signal({
       id: definition.id,
       type: definition.type,
+      scope: "service",
       payload: signalPayloadSchema,
     });
   registry.signal({

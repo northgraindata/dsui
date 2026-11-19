@@ -314,10 +314,13 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         if (!source) return null;
         if (!registry.has(source.service.adapter)) return null;
         const adapter = registry.get(source.service.adapter);
-        return adapter.catalog.signals.map((signal) => ({
-          id: `${adapter.id}.${signal.id}`,
-          type: signal.type,
-        }));
+        return [
+          ...adapter.catalog.signals.map((signal) => ({
+            id: `${adapter.id}.${signal.id}`,
+            type: signal.type,
+          })),
+          ...pluginRuntime.serviceSignals(),
+        ];
       },
       listResources: async (id) => {
         if (!(await pluginRuntime.canAccessService(id))) return null;

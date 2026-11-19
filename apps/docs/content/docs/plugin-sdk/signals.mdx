@@ -30,6 +30,23 @@ In the event log, a plugin event has `sourceType` set to `plugin` and `sourceId`
 
 When a person's request causes an event, DSUI records their principal ID as `actor`. This covers events a plugin publishes while handling someone's request, and the events of a service action someone runs. Background jobs and local single-user mode record no actor.
 
+### Signals about services
+
+If the plugin emits a signal about individual services, as Service health does when a service goes down, declare it with `scope: "service"`:
+
+```ts
+registry.signal({
+  id: "service-unavailable",
+  payload: z.object({ summary: z.string() }),
+  type: "error",
+  scope: "service",
+});
+```
+
+DSUI then lists it with every service's own signals in `context.services.signals(serviceId)`, so signal pickers, such as workflow editors, can offer it before it has ever fired.
+Emit it with the service's ID.
+A signal without `scope`, or with `scope: "global"`, is not listed for services.
+
 ## Actions people run
 
 Every service action someone runs leaves one event. When the adapter publishes its own signal for the action, such as a failed query, that event names the person as `actor`. Otherwise DSUI records `dsui.action-executed`, with `sourceType` set to `host`, the `actor`, and this payload:
