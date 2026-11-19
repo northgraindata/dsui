@@ -30,6 +30,7 @@ import { validateAttachments } from "./attachments/validation";
 import { mentionServices, serviceMentions } from "./chat/mentions";
 import { replyInputSchema, resolveReply } from "./chat/replies";
 import { conversationTitle, generatedTitle } from "./chat/title";
+import { iconUrl } from "./logo";
 import {
   history,
   owner,
@@ -96,6 +97,8 @@ export function createAiAgentPlugin(
       name: "AI assistant",
       version: "0.1.0",
       apiVersion: 1,
+      category: "AI",
+      iconUrl,
     },
     configSchema,
     setup(registry) {

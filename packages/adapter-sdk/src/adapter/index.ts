@@ -22,6 +22,7 @@ export {
   scoreChecks,
   statusFor,
 } from "./health";
+export type { AdapterPresentation } from "./presentation";
 export type {
   AdapterDefinition,
   AdapterHealthCheck,

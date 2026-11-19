@@ -134,36 +134,6 @@
   color: var(--color-unavailable);
   font-size: 12px;
 }
-.settings-summary {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 22px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-}
-.settings-summary-mark {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  color: var(--color-accent);
-  background: var(--color-canvas);
-}
-.settings-summary strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-primary);
-}
-.settings-summary p {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--color-secondary);
-}
 .settings-pill {
   display: inline-flex;
   align-items: center;

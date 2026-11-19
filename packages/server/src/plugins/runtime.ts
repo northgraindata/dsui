@@ -261,6 +261,10 @@ function isRuntimePluginDefinition(
     /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value.metadata.version) &&
     (value.metadata.security === undefined ||
       typeof value.metadata.security === "boolean") &&
+    (value.metadata.category === undefined ||
+      typeof value.metadata.category === "string") &&
+    (value.metadata.iconUrl === undefined ||
+      typeof value.metadata.iconUrl === "string") &&
     typeof value.metadata.apiVersion === "number" &&
     typeof value.configSchema.parse === "function" &&
     typeof value.prepare === "function" &&
@@ -906,6 +910,12 @@ export class PluginRuntime {
         id,
         name: active?.definition.metadata.name ?? id,
         version: active?.definition.metadata.version ?? "unknown",
+        ...(active?.definition.metadata.category
+          ? { category: active.definition.metadata.category }
+          : {}),
+        ...(active?.definition.metadata.iconUrl
+          ? { iconUrl: active.definition.metadata.iconUrl }
+          : {}),
         ...readiness,
       };
     });

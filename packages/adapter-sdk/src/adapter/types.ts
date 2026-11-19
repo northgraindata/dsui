@@ -7,6 +7,7 @@ import type { AnyResourceDefinition } from "../resource/index";
 import type { AnyRouteDefinition } from "../route";
 import type { AnySignalDefinition } from "../signal";
 import type { AnyStoreDefinition } from "../store/index";
+import type { AdapterPresentation } from "./presentation";
 
 /**
  * Host API contract version, independent of the npm package version.
@@ -51,6 +52,8 @@ export interface AdapterInfo {
    * when missing or unreachable.
    */
   iconUrl?: string;
+  /** Optional catalog content shared by the host and connection flow. */
+  presentation?: AdapterPresentation;
   /** One-line description for listings. */
   description?: string;
 }

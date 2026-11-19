@@ -12,6 +12,11 @@ export function publicAdapterPayload(
   return {
     id: adapter.id,
     name: adapter.metadata.name,
+    version: adapter.metadata.version,
+    ...(adapter.metadata.author ? { author: adapter.metadata.author } : {}),
+    ...(adapter.metadata.presentation
+      ? { presentation: adapter.metadata.presentation }
+      : {}),
     description: adapter.metadata.description ?? "",
     ...(adapter.metadata.iconUrl ? { iconUrl: adapter.metadata.iconUrl } : {}),
     status: readiness?.status ?? "ok",
