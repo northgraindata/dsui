@@ -28,15 +28,11 @@ DSUI validates the payload against the schema, adds the plugin's ID to the signa
 
 In the event log, a plugin event has `sourceType` set to `plugin` and `sourceId` set to the plugin's ID. See [HTTP API](/docs/reference/http-api#read-events).
 
-When a person's request causes an event, DSUI records their principal ID as `actor`.
-This covers events a plugin publishes while handling someone's request, and the events of a service action someone runs.
-Background jobs and local single-user mode record no actor.
+When a person's request causes an event, DSUI records their principal ID as `actor`. This covers events a plugin publishes while handling someone's request, and the events of a service action someone runs. Background jobs and local single-user mode record no actor.
 
 ## Actions people run
 
-Every service action someone runs leaves one event.
-When the adapter publishes its own signal for the action, such as a failed query, that event names the person as `actor`.
-Otherwise DSUI records `dsui.action-executed`, with `sourceType` set to `host`, the `actor`, and this payload:
+Every service action someone runs leaves one event. When the adapter publishes its own signal for the action, such as a failed query, that event names the person as `actor`. Otherwise DSUI records `dsui.action-executed`, with `sourceType` set to `host`, the `actor`, and this payload:
 
 | Field | Meaning |
 | --- | --- |

@@ -18,6 +18,7 @@ import {
   type PluginPrincipal,
   PluginRequestError,
   type PluginResource,
+  type PluginSecretProvider,
   type PluginServiceCatalog,
   type PluginServiceSummary,
   type PluginStores,
@@ -85,6 +86,7 @@ type Contributions = {
   jobs: RuntimePluginJob[];
   authentication?: PluginAuthenticationProvider;
   authorization?: PluginAuthorizationProvider;
+  secrets: PluginSecretProvider[];
 };
 
 type PluginLoadRequest = {
@@ -318,6 +320,7 @@ function emptyContributions(): Contributions {
     actions: [],
     resources: [],
     jobs: [],
+    secrets: [],
   };
 }
 
@@ -775,6 +778,34 @@ export class PluginRuntime {
             throw new Error("Duplicate authorization provider");
           contributions.authorization = provider;
         },
+        secrets: (provider: PluginSecretProvider) => {
+          if (
+            !provider ||
+            typeof provider.resolve !== "function" ||
+            typeof provider.label !== "string" ||
+            !provider.label ||
+            typeof provider.reference?.label !== "string"
+          )
+            throw new Error("Invalid secret provider");
+          if (
+            provider.search !== undefined &&
+            typeof provider.search !== "function"
+          )
+            throw new Error("Invalid secret provider search");
+          if (!pluginIdPattern.test(provider.id))
+            throw new Error(
+              `Secret provider id "${provider.id}" must be kebab-case`,
+            );
+          if (
+            contributions.secrets.some((entry) => entry.id === provider.id) ||
+            this.secretProvider(provider.id) ||
+            [...pendingContributions.values()].some((pending) =>
+              pending.secrets.some((entry) => entry.id === provider.id),
+            )
+          )
+            throw new Error(`Duplicate secret provider "${provider.id}"`);
+          contributions.secrets.push(provider);
+        },
       };
       try {
         request.prepared.setup(registry);
@@ -897,6 +928,17 @@ export class PluginRuntime {
         });
       }
     }
+  }
+
+  /** Secret providers from plugins that started, in load order. */
+  secretProviders(): PluginSecretProvider[] {
+    return [...this.contributions.values()].flatMap(
+      (contribution) => contribution.secrets,
+    );
+  }
+
+  secretProvider(id: string): PluginSecretProvider | undefined {
+    return this.secretProviders().find((provider) => provider.id === id);
   }
 
   catalog(): PluginCatalog {

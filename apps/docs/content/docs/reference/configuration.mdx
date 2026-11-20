@@ -73,6 +73,18 @@ A list. Each entry describes one service.
 | `name` | No | Display name, 1 to 120 characters |
 | `connection` | No | The fields that the adapter defines. Defaults to an empty object |
 
+Any value in `connection` can be a reference to a secret manager instead of a string:
+
+```yaml
+connection:
+  password:
+    $secret:
+      provider: aws
+      reference: prod/app-database#password
+```
+
+DSUI reads the secret when it calls the service. See [credentials from a secret manager](/docs/guides/credentials-from-a-secret-manager).
+
 An adapter with several connection methods needs `method` in `connection`. The page for each [integration](/docs/integrations) lists its fields. A service ID can't also belong to a service that you added in the workspace.
 
 ## adapters

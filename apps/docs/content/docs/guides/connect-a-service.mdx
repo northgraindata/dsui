@@ -61,6 +61,8 @@ The `id` must be lowercase letters, digits, and hyphens, and it must start with 
 
 DSUI replaces `${NAME}` with the value of the environment variable `NAME` when it reads the file. If a variable is missing, DSUI stops with `Configuration requires environment variable NAME`. Set the variables in the environment of the DSUI process. In Docker Compose, add them under `environment`.
 
+To avoid keeping the credentials in DSUI's environment too, read them from a secret manager instead. See [credentials from a secret manager](/docs/guides/credentials-from-a-secret-manager).
+
 ## Add a service in the workspace
 
 <Steps>

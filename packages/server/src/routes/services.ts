@@ -10,6 +10,9 @@ import type { ConnectionCipher } from "../db/crypto.js";
 import type { DsuiDatabase, UiServiceRow } from "../db/database.js";
 import type { SignalBus } from "../events/signal-bus.js";
 import type { PluginRuntime } from "../plugins/runtime.js";
+import { restoreReferences } from "../secrets/reference.js";
+import type { SecretResolver } from "../secrets/resolver.js";
+import type { SecretSuggestions } from "../secrets/suggestions.js";
 import { errorMessage, httpStatus } from "./errors.js";
 
 export const createServiceSchema = z.object({
@@ -60,7 +63,15 @@ export function serviceSource(
 }
 
 /** Resolves and decrypts a service connection. Never logs or returns secrets. */
-export function connectionFor(
+export async function connectionFor(
+  deps: Pick<ServiceDeps, "cipher" | "secrets">,
+  source: ServiceSource,
+): Promise<Record<string, unknown>> {
+  return deps.secrets.resolveConnection(storedConnection(deps.cipher, source));
+}
+
+/** The connection as stored: secret references are still references. */
+function storedConnection(
   cipher: ConnectionCipher | undefined,
   source: ServiceSource,
 ): Record<string, unknown> {
@@ -81,7 +92,12 @@ export function connectionFor(
 export async function queryServiceResource(
   deps: Pick<
     ServiceDeps,
-    "registry" | "database" | "cipher" | "getConfig" | "refreshConfig"
+    | "registry"
+    | "database"
+    | "cipher"
+    | "secrets"
+    | "getConfig"
+    | "refreshConfig"
   >,
   serviceId: string,
   resourceId: string,
@@ -93,7 +109,7 @@ export async function queryServiceResource(
   const adapter = deps.registry.get(source.service.adapter);
   return adapter.backend.executeResource(
     resourceId,
-    connectionFor(deps.cipher, source),
+    await connectionFor(deps, source),
     input,
     { persistenceNamespace: serviceId },
   );
@@ -105,6 +121,7 @@ export async function executeServiceAction(
     | "registry"
     | "database"
     | "cipher"
+    | "secrets"
     | "getConfig"
     | "refreshConfig"
     | "signalBus"
@@ -159,7 +176,7 @@ export async function executeServiceAction(
   try {
     result = await adapter.backend.executeAction(
       actionId,
-      connectionFor(deps.cipher, source),
+      await connectionFor(deps, source),
       input,
       signal,
       { persistenceNamespace: serviceId },
@@ -211,6 +228,10 @@ export interface ServiceDeps {
   signalBus: SignalBus;
   database: DsuiDatabase;
   cipher: ConnectionCipher | undefined;
+  /** Reads the credentials a connection refers to in a secret manager. */
+  secrets: SecretResolver;
+  /** Offers secrets to pick from, when a provider can list them. */
+  secretSuggestions: SecretSuggestions;
   getConfig(): DsuiConfig;
   refreshConfig(): Promise<DsuiConfig>;
   refreshJobs?(): void;
@@ -239,7 +260,7 @@ export async function publicService(
       actions: [],
     };
   }
-  const connection = connectionFor(deps.cipher, source);
+  const connection = await connectionFor(deps, source);
   const health = await adapter.backend.checkHealth(connection, {
     persistenceNamespace: source.service.id,
   });
@@ -263,7 +284,9 @@ export async function testConnection(
   raw: Record<string, unknown>,
 ): Promise<HealthStatus> {
   const adapter = deps.registry.get(adapterId);
-  const connection = adapter.backend.validateConnection(raw);
+  const connection = adapter.backend.validateConnection(
+    await deps.secrets.resolveConnection(raw),
+  );
   return adapter.backend.checkHealth(connection);
 }
 
@@ -309,6 +332,48 @@ export function registerServiceRoutes(
     }
   });
 
+  // What the connection form offers for pointing a field at a secret manager.
+  app.get("/api/v1/secret-providers", async (context) => {
+    if (
+      deps.pluginRuntime &&
+      !(await deps.pluginRuntime.authorize(context.get("principal"), "inspect"))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
+    return context.json(
+      (deps.pluginRuntime?.secretProviders() ?? []).map(
+        ({ id, label, description, reference, search }) => ({
+          id,
+          label,
+          ...(description ? { description } : {}),
+          reference,
+          searchable: search !== undefined,
+        }),
+      ),
+    );
+  });
+
+  // Listing secret names tells a person what exists, so it needs the same
+  // role as creating a service.
+  app.get("/api/v1/secret-providers/:id/suggestions", async (context) => {
+    const principal = context.get("principal");
+    if (
+      !allowed(principal, "manage") ||
+      (deps.pluginRuntime &&
+        !(await deps.pluginRuntime.authorize(principal, "manage")))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
+    try {
+      return context.json(
+        await deps.secretSuggestions.suggest(
+          context.req.param("id"),
+          context.req.query("q") ?? "",
+        ),
+      );
+    } catch (error) {
+      return context.json({ message: errorMessage(error) }, 404);
+    }
+  });
+
   app.post("/api/v1/services/test", async (context) => {
     if (
       deps.pluginRuntime &&
@@ -338,7 +403,14 @@ export function registerServiceRoutes(
       await deps.refreshConfig();
       const input = createServiceSchema.parse(await context.req.json());
       const adapter = deps.registry.get(input.adapter);
-      const connection = adapter.backend.validateConnection(input.connection);
+      // Validate the real values, which also proves each reference can be read,
+      // then store the references: the credential itself must not be kept.
+      const connection = restoreReferences(
+        adapter.backend.validateConnection(
+          await deps.secrets.resolveConnection(input.connection),
+        ),
+        input.connection,
+      );
       if (!deps.cipher)
         throw new Error(
           "DSUI_MASTER_KEY is required to persist UI-managed connections",
@@ -445,7 +517,7 @@ export function registerServiceRoutes(
       if (!source) throw new Error("Service not found");
       const adapter = deps.registry.get(source.service.adapter);
       const document = await adapter.backend.renderPage(
-        connectionFor(deps.cipher, source),
+        await connectionFor(deps, source),
         path,
         { persistenceNamespace: source.service.id },
       );
