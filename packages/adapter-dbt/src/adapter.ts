@@ -15,6 +15,7 @@ import { modelsPage } from "./pages/models.js";
 import { overviewPage } from "./pages/overview.js";
 import { runDetailPage } from "./pages/run-detail.js";
 import { runsPage } from "./pages/runs.js";
+import { presentation } from "./presentation";
 import {
   artifactDetail,
   artifacts,
@@ -55,6 +56,7 @@ export function createDbtAdapter() {
       author: "DSUI",
       description: "Browse and operate dbt Cloud and local projects.",
       iconUrl: dbtIconUrl,
+      presentation,
     },
     connectionMethods: dbtConnectionMethods,
     context: createContext,

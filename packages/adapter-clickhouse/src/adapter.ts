@@ -9,6 +9,7 @@ import {
 import type { ClickHouseContext } from "./context.js";
 import { clickhouseIconUrl } from "./logo.js";
 import { pages } from "./pages.js";
+import { presentation } from "./presentation";
 import { catalogResources } from "./resources.js";
 
 export function createClickHouseAdapter(
@@ -23,6 +24,7 @@ export function createClickHouseAdapter(
       version: "0.1.0",
       author: "DSUI",
       iconUrl: clickhouseIconUrl,
+      presentation,
       description:
         "Explore ClickHouse databases, run SQL, and monitor active queries.",
     },

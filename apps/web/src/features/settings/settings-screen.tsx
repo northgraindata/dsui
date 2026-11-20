@@ -141,23 +141,6 @@ function SettingsContent() {
           ))}
         </nav>
         <div className="settings-content">
-          <div className="settings-summary">
-            <span className="settings-summary-mark">
-              <Icon name="gear" size={20} />
-            </span>
-            <div>
-              <strong>{snapshot.installation.name}</strong>
-              <p>
-                {snapshot.identity === "local"
-                  ? "Local operator"
-                  : "Your workspace"}{" "}
-                ·{" "}
-                {snapshot.canManage
-                  ? "Administrator access"
-                  : "Personal preferences"}
-              </p>
-            </div>
-          </div>
           <div hidden={selected !== "general"}>
             <GeneralSettings key={snapshot.principalId} />
           </div>

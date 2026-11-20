@@ -21,6 +21,7 @@ import {
   readFile,
   writeConnection,
 } from "./database";
+import { iconUrl } from "./logo";
 import {
   type Connection,
   type Context,
@@ -202,6 +203,8 @@ export function createCodeRepositoryPlugin() {
       name: "Code repositories",
       version: "0.1.0",
       apiVersion: 1,
+      category: "Code",
+      iconUrl,
     },
     configSchema,
     start: reconcileConfiguredConnections,

@@ -61,6 +61,20 @@ See the [example plugin README](../../examples/example-plugin/README.md) for loa
 | Stores and jobs | Define plugin storage and background work. |
 | Shared components | Compose interfaces using the Adapter SDK's page primitives. |
 
+## Sidebar presentation
+
+Set optional `metadata.category` and `metadata.iconUrl` to group and brand your plugin's navigation entries.
+For example, use `category: "Monitoring"` for monitoring or `category: "Code"` for developer tools.
+Categories are open labels, sorted alphabetically; plugins without a category (or with a blank category) appear last under `Extensions`.
+Navigation entries keep their catalog order inside each category.
+No group is shown for a plugin without navigation entries.
+
+`iconUrl` accepts an image URL or a self-contained image data URL, matching adapter metadata.
+Prefer a data URL bundled in the plugin so its icon works on installations mounted under a path prefix and does not require another server.
+The sidebar uses the plug glyph when the icon is missing or fails to load.
+The host returns these fields in `PluginCatalog.plugins`, subject to the caller's existing plugin permissions.
+Both fields are optional and existing plugins keep working without changes.
+
 ## Runtime and compatibility
 
 Trusted plugins run in the DSUI server process. Install code you trust.

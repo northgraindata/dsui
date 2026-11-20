@@ -139,6 +139,10 @@ export type PluginMetadata = {
   readonly version: string;
   readonly apiVersion: typeof PLUGIN_API_VERSION;
   readonly security?: boolean;
+  /** Sidebar group label. Plugins without a category appear in Extensions. */
+  readonly category?: string;
+  /** Image URL or self-contained data URL, following adapter metadata. */
+  readonly iconUrl?: string;
 };
 
 /** Explicit opt-in to the host's dynamically composed Settings navigation. */
@@ -354,6 +358,8 @@ export type PluginCatalog = {
     id: string;
     name: string;
     version: string;
+    category?: string;
+    iconUrl?: string;
     status: PluginReadinessStatus;
     detail?: string;
   }>;

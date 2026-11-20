@@ -20,6 +20,7 @@ import { s3Health } from "./health.js";
 import { s3IconUrl } from "./logo.js";
 import { browserPage } from "./pages/browser.js";
 import { fileBrowserPage } from "./pages/buckets.js";
+import { presentation } from "./presentation";
 import {
   bucketInfo,
   buckets,
@@ -40,6 +41,7 @@ export function createS3Adapter(
       version: "0.1.0",
       author: "DSUI",
       iconUrl: s3IconUrl,
+      presentation,
       description: "Browse and manage S3-compatible object storage.",
     },
     connectionMethods: {

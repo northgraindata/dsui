@@ -13,6 +13,7 @@ import {
   ServicePage,
   ServiceView,
 } from "./features/adapter-workspace/service-screens";
+import { AdapterDetailScreen } from "./features/adapters/adapter-detail";
 import {
   AdaptersScreen,
   AddAdapterScreen,
@@ -49,6 +50,11 @@ const servicesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/services",
   component: AdaptersScreen,
+});
+const adapterDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/adapters/$adapterId",
+  component: AdapterDetailScreen,
 });
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -88,6 +94,7 @@ const pluginPageRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   servicesRoute,
+  adapterDetailRoute,
   settingsRoute,
   addRoute,
   detailRoute,
