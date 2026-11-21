@@ -7,7 +7,7 @@
   --color-background: #060b16;
   --color-surface: #080e1b;
   --color-surface-raised: #0c1323;
-  --color-surface-hover: #0c1836;
+  --color-surface-hover: #101a2b;
   --color-border: #172134;
   --color-border-strong: #273651;
   --color-primary: #f0f3fc;
@@ -23,9 +23,18 @@
   --color-danger-foreground: #fecdd3;
   --color-unknown: #8491aa;
   --color-overlay: #02050d;
+  --spacing-control: 36px;
+  --radius-control: 8px;
+  --text-metric: 26px;
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Plugins may reference these aliases only inside their browser bundles. */
+@theme static {
+  --color-success: var(--color-healthy);
+  --color-danger: var(--color-unavailable);
 }
 
 @theme {
@@ -88,23 +97,27 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 36px;
+  min-height: var(--spacing-control);
   margin: 0;
-  padding: 6px 9px;
-  border: 1px solid #29496e;
-  border-radius: 8px;
-  background: #101e34;
-  color: #dceaff;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-primary);
   font-size: 12px;
   text-align: left;
 }
 .dsui-option-select .dsui-option-select-trigger:hover:not(:disabled),
 .dsui-option-select .dsui-option-select-trigger[aria-expanded="true"] {
-  border-color: #428af0;
-  background: #15305a;
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+.dsui-option-select .dsui-option-select-trigger[aria-expanded="true"] {
+  border-color: var(--color-accent);
 }
 .dsui-option-select-trigger:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .dsui-option-select-trigger-label {
   flex: 1;
@@ -117,7 +130,7 @@
   flex: none;
   width: 15px;
   height: 15px;
-  color: #8fafda;
+  color: var(--color-muted);
 }
 .dsui-option-select-icon {
   display: grid;
@@ -126,8 +139,8 @@
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: #17345b;
-  color: #d9ebff;
+  background: transparent;
+  color: var(--color-secondary);
 }
 .dsui-option-select-icon img,
 .dsui-option-select-icon svg {
@@ -150,10 +163,10 @@
   margin: 0;
   overflow-y: auto;
   padding: 7px;
-  border: 1px solid #2c496e;
+  border: 1px solid var(--color-border-strong);
   border-radius: 10px;
-  background: linear-gradient(145deg, #101f36, #081321);
-  color: #dceaff;
+  background: var(--color-surface-raised);
+  color: var(--color-primary);
   box-shadow: 0 16px 48px #000b;
   scrollbar-width: thin;
 }
@@ -168,7 +181,7 @@
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: #e8f2ff;
+  color: var(--color-secondary);
   text-align: left;
 }
 .dsui-option-select-option + .dsui-option-select-option {
@@ -176,14 +189,20 @@
 }
 .dsui-option-select-menu .dsui-option-select-option:hover:not(:disabled),
 .dsui-option-select-menu .dsui-option-select-option:focus-visible {
-  border-color: #315f9b;
-  background: #142b4b;
+  border-color: transparent;
+  background: var(--color-surface-hover);
 }
 .dsui-option-select-menu .dsui-option-select-option[aria-selected="true"] {
-  border-color: #2c71d1;
-  background: linear-gradient(115deg, #173d78, #102b52);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-accent) 10%,
+    var(--color-surface-raised)
+  );
+  color: var(--color-primary);
 }
 .dsui-option-select-option:disabled {
+  cursor: not-allowed;
   opacity: 0.45;
 }
 .dsui-option-select-copy {
@@ -199,18 +218,18 @@
 }
 .dsui-option-select-copy strong {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .dsui-option-select-copy small {
   margin-top: 2px;
-  color: #92a9c8;
+  color: var(--color-muted);
   font-size: 10px;
 }
 .dsui-option-select-check {
   width: 16px;
   height: 16px;
   flex: none;
-  color: #83beff;
+  color: var(--color-accent-hover);
 }
 
 @layer components {

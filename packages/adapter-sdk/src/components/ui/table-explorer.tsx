@@ -199,18 +199,20 @@ export function TableExplorer({
   return (
     <div className="table-explorer">
       {profile && <TableInsights data={profile} />}
-      <div className="table-explorer-toolbar">
-        <button
-          type="button"
-          className="table-explorer-clear"
-          onClick={() => {
-            setFilters({});
-            setSort(undefined);
-          }}
-        >
-          Clear all
-        </button>
-      </div>
+      {(Object.keys(filters).length > 0 || sort) && (
+        <div className="table-explorer-toolbar">
+          <button
+            type="button"
+            className="table-explorer-clear"
+            onClick={() => {
+              setFilters({});
+              setSort(undefined);
+            }}
+          >
+            Clear all
+          </button>
+        </div>
+      )}
       {renderTable(visibleRows, renderHeader)}
       {visibleRows.length === 0 && (
         <p className="table-explorer-empty">

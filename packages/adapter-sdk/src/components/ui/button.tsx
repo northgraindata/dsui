@@ -17,6 +17,7 @@ export function Button({ client, node, context }: ComponentProps) {
   const action = resolveAction(props.action, context);
   const icon = resolve(props.icon, context);
   const confirmation = resolveConfirmation(props.confirmation, context);
+  const isListItem = props.variant === "list-item";
   return (
     <UiButton
       variant={
@@ -26,7 +27,7 @@ export function Button({ client, node, context }: ComponentProps) {
             ? "ghost"
             : props.variant
       }
-      className={props.variant === "list-item" ? "button-list-item" : undefined}
+      className={isListItem ? "button-list-item" : undefined}
       disabled={busy}
       onClick={() => {
         if (
@@ -84,8 +85,10 @@ export function Button({ client, node, context }: ComponentProps) {
       }}
     >
       {icon ? (
-        <span className="button-list-icon">
-          <WorkbenchIcon name={icon} />
+        <span
+          className={isListItem ? "button-list-icon" : "button-inline-icon"}
+        >
+          <WorkbenchIcon name={icon} size={isListItem ? 16 : 15} />
         </span>
       ) : null}
       <span className="button-list-text">

@@ -24,10 +24,12 @@ export function ColumnProfileHeader({
   profile,
   sortDirection,
   onSort,
+  showProfile = true,
 }: {
   profile: ColumnProfile;
   sortDirection?: QuerySortDirection;
   onSort(): void;
+  showProfile?: boolean;
 }) {
   const distribution = profile.distribution;
   const sampleLabel = `Based on ${profile.sampleSize} result rows`;
@@ -53,7 +55,7 @@ export function ColumnProfileHeader({
           <WorkbenchIcon name={sort.icon} size={14} />
         </button>
       </div>
-      {distribution.kind === "histogram" && (
+      {showProfile && distribution.kind === "histogram" && (
         <div className="query-column-profile">
           <div
             className="query-column-histogram"
@@ -75,7 +77,7 @@ export function ColumnProfileHeader({
           </div>
         </div>
       )}
-      {distribution.kind === "values" && (
+      {showProfile && distribution.kind === "values" && (
         <div
           className="query-column-values"
           title={`${distribution.distinct} distinct values · ${profile.nullCount} null · ${sampleLabel}`}
@@ -94,7 +96,7 @@ export function ColumnProfileHeader({
           )}
         </div>
       )}
-      {distribution.kind === "empty" && (
+      {showProfile && distribution.kind === "empty" && (
         <div className="query-column-no-data">No rows to profile</div>
       )}
     </div>

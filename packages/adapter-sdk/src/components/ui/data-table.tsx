@@ -21,10 +21,12 @@ export function DataTable({
   columns,
   rows,
   className = "",
+  profilesVisible = true,
 }: {
   columns: readonly DataTableColumn[];
   rows: readonly Record<string, unknown>[];
   className?: string;
+  profilesVisible?: boolean;
 }) {
   const preferences = useDisplayPreferences();
   const profiles = useMemo(
@@ -67,13 +69,14 @@ export function DataTable({
             {profiles.map((profile) => (
               <th
                 key={profile.name}
-                className="query-profile-header"
+                className={`query-profile-header${profilesVisible ? "" : " query-profile-header--compact"}`}
                 aria-sort={ariaSort(
                   sort?.name === profile.name ? sort.direction : undefined,
                 )}
               >
                 <ColumnProfileHeader
                   profile={profile}
+                  showProfile={profilesVisible}
                   sortDirection={
                     sort?.name === profile.name ? sort.direction : undefined
                   }

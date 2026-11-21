@@ -1,160 +1,89 @@
 import {
+  Badge,
   Button,
   Card,
-  Columns,
-  definePage,
   Grid,
-  List,
-  Meter,
-  Resource,
+  PageHeader,
   Section,
-  Stack,
-  Value,
+  Table,
+  definePage,
 } from "@northgraindata/dsui-adapter-sdk";
 import { runBuild } from "../actions/build.js";
 import { dashboard, recentRuns } from "../resources/dashboard.js";
+import { DbtDashboardMetrics } from "../components/dashboard-metrics.js";
 
 export const overviewPage = definePage({
   path: "/",
   render: () => [
-    Grid({
-      columns: 5,
-      content: [
-        Card({
-          variant: "metric",
-          icon: "table",
-          title: "Models",
-          content: Value({
-            source: dashboard(),
-            field: "models",
-            format: "number",
-            fallback: "Unavailable",
-          }),
-        }),
-        Card({
-          variant: "metric",
-          icon: "check",
-          title: "Tests",
-          content: Value({
-            source: dashboard(),
-            field: "tests",
-            format: "number",
-            fallback: "Unavailable",
-          }),
-        }),
-        Card({
-          variant: "metric",
-          icon: "database",
-          title: "Sources",
-          content: Value({
-            source: dashboard(),
-            field: "sources",
-            format: "number",
-            fallback: "Unavailable",
-          }),
-        }),
-        Card({
-          variant: "metric",
-          icon: "folder",
-          title: "Projects",
-          content: Value({
-            source: dashboard(),
-            field: "projects",
-            format: "number",
-            fallback: "Unavailable",
-          }),
-        }),
-        Card({
-          variant: "metric",
-          icon: "play",
-          title: "Jobs",
-          content: Value({
-            source: dashboard(),
-            field: "jobs",
-            format: "number",
-            fallback: "Unavailable",
-          }),
-        }),
-      ],
+    PageHeader({
+      title: "dbt",
+      description: "Monitor builds, models and transformations.",
+      actions: Button({
+        label: "Run dbt build",
+        icon: "play",
+        variant: "primary",
+        action: runBuild({}),
+        successLink: { path: "/runs/:runId", params: { runId: "runId" } },
+      }),
     }),
-    Columns({
-      columns: [
-        {
-          weight: 2,
-          content: Section({
-            title: "Latest run",
-            description: "The most recent execution reported by dbt.",
-            link: { label: "View runs", path: "/runs" },
-            content: Resource({
-              source: dashboard(),
-              content: Card({
-                variant: "panel",
-                title: { field: "latestStatus" },
-                description: { field: "latestDuration" },
-                content: Meter({ source: dashboard(), format: "number" }),
-              }),
-            }),
-          }),
-        },
-        {
-          content: Section({
-            title: "Quick actions",
-            content: Stack({
-              gap: "sm",
-              content: [
-                Button({
-                  variant: "list-item",
-                  icon: "table",
-                  label: "Browse models",
-                  description: "Explore models from the manifest",
-                  link: "/models",
-                }),
-                Button({
-                  variant: "list-item",
-                  icon: "file",
-                  label: "Open artifacts",
-                  description: "Inspect generated dbt artifacts",
-                  link: "/artifacts",
-                }),
-                Button({
-                  variant: "list-item",
-                  icon: "activity",
-                  label: "View run history",
-                  description: "Inspect recent dbt executions",
-                  link: "/runs",
-                }),
-                Button({
-                  variant: "list-item",
-                  icon: "play",
-                  label: "Run dbt build",
-                  description: "Run the configured dbt build workflow",
-                  action: runBuild({}),
-                  successLink: {
-                    path: "/runs/:runId",
-                    params: { runId: "runId" },
-                  },
-                }),
-              ],
-            }),
-          }),
-        },
-      ],
-    }),
+    DbtDashboardMetrics({ source: dashboard() }),
     Section({
       title: "Recent runs",
-      description: "Latest runs for this connection.",
-      link: { label: "View all", path: "/runs" },
-      content: List({
+      description: "The latest dbt executions.",
+      link: { label: "All runs", path: "/runs" },
+      content: Table({
         source: recentRuns(),
-        noun: "run",
-        item: {
-          icon: "history",
-          title: "job",
-          description: "cause",
-          status: { label: "status", detail: "started" },
-        },
-        emptyMessage: "No runs yet.",
+        variant: "plain",
+        columns: [
+          { id: "job", label: "Job" },
+          {
+            id: "status",
+            label: "Status",
+            renderCell: Badge({
+              label: { field: "status" },
+              tone: { field: "tone" },
+              dot: true,
+            }),
+          },
+          { id: "cause", label: "Trigger" },
+          { id: "started", label: "Started (UTC)" },
+        ],
         rowLink: { path: "/runs/:runId", params: { runId: "id" } },
+      }),
+    }),
+    Section({
+      title: "Quick actions",
+      content: Grid({
+        content: [
+          Card({
+            variant: "interactive",
+            icon: "table",
+            title: "Browse models",
+            description: "Explore the model catalog",
+            link: { path: "/models", params: {} },
+          }),
+          Card({
+            variant: "interactive",
+            icon: "file",
+            title: "Open artifacts",
+            description: "Inspect dbt artifacts",
+            link: { path: "/artifacts", params: {} },
+          }),
+          Card({
+            variant: "interactive",
+            icon: "network",
+            title: "View lineage",
+            description: "Trace model dependencies",
+            link: { path: "/lineage", params: {} },
+          }),
+          Card({
+            variant: "interactive",
+            icon: "history",
+            title: "Run history",
+            description: "Review previous executions",
+            link: { path: "/runs", params: {} },
+          }),
+        ],
       }),
     }),
   ],

@@ -19,7 +19,7 @@ export function scopeForPaths(paths: string[], layer: Layer) {
     /^(packages\/plugin-|examples\/example-plugin\/)/.test(path),
   );
   const product = codePaths.some((path) =>
-    /^(apps\/web\/|packages\/(server|core|renderer)\/|Dockerfile|docker-compose)/.test(
+    /^(apps\/(web|ui-lab)\/|packages\/(server|core|renderer)\/|Dockerfile|docker-compose)/.test(
       path,
     ),
   );

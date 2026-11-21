@@ -130,3 +130,8 @@ surrounding debt, but it must not silently worsen the architecture.
 
 By participating, you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 Report vulnerabilities through [SECURITY.md](SECURITY.md).
+
+## UI workshop
+
+Run `bun run ui-lab` for the local component, state and dashboard gallery. See
+[UI Lab](apps/ui-lab/README.md) for fixtures, coverage checks and adding examples.

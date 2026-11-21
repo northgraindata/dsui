@@ -6,8 +6,8 @@
 .query-workspace-explorer {
   position: sticky;
   top: 76px;
-  height: min(780px, calc(100dvh - 190px));
-  min-height: 420px;
+  height: 600px;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 10px;
@@ -22,7 +22,7 @@
 }
 .query-workspace-main {
   display: grid;
-  gap: 22px;
+  gap: 12px;
   min-width: 0;
 }
 @media (max-width: 900px) {

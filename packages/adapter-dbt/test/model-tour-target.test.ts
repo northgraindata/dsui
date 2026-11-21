@@ -42,11 +42,14 @@ test("model source tour target exists independently of resource loading", () => 
       props: {
         id: "dbt.model.source",
         content: {
-          kind: "resource",
+          kind: "custom",
           props: {
-            source: {
-              resourceId: "model-detail",
-              input: { modelId: "model.dsui_demo.fct_tour_orders" },
+            component: "dbt/model-workspace",
+            props: {
+              source: {
+                resourceId: "model-detail",
+                input: { modelId: "model.dsui_demo.fct_tour_orders" },
+              },
             },
           },
         },

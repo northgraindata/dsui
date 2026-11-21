@@ -23,13 +23,30 @@ export function DataTable({
   renderRowActions?: (row: Record<string, unknown>) => ReactNode;
   renderRowMenu?: (row: Record<string, unknown>) => ReactNode;
 }) {
+  const numericColumns = new Set(
+    columns
+      .filter((column) => {
+        const values = rows
+          .map((row) => row[column.id])
+          .filter((value) => value != null);
+        return (
+          values.length > 0 &&
+          values.every((value) => typeof value === "number")
+        );
+      })
+      .map((column) => column.id),
+  );
   return (
     <Surface className="dsui-data-table-shell overflow-x-auto">
       <table className="dsui-data-table w-full border-collapse text-left text-[12px]">
         <thead className="border-b border-border bg-surface-raised text-secondary">
           <tr>
             {columns.map((column) => (
-              <th key={column.id} className="px-3 py-2 font-medium">
+              <th
+                key={column.id}
+                className="px-3 py-2 font-medium"
+                data-numeric={numericColumns.has(column.id) || undefined}
+              >
                 {renderHeader ? renderHeader(column) : column.label}
               </th>
             ))}
@@ -50,6 +67,7 @@ export function DataTable({
                 <td
                   key={column.id}
                   className="max-w-72 truncate px-3 py-2 text-primary"
+                  data-numeric={numericColumns.has(column.id) || undefined}
                 >
                   {index === 0 && onRowClick ? (
                     <button
@@ -172,5 +190,6 @@ function RowMenu({ children }: { children: ReactNode }) {
 
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return value.toLocaleString();
   return typeof value === "object" ? JSON.stringify(value) : String(value);
 }

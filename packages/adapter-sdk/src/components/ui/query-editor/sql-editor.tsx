@@ -211,13 +211,15 @@ export function SqlEditor({
   ]);
   if (failed)
     return (
-      <HighlightedSqlInput
-        value={value}
-        onChange={onChange}
-        onRun={onRun}
-        placeholder={placeholder}
-        inputRef={fallback}
-      />
+      <div className="sql-editor-wrap">
+        <HighlightedSqlInput
+          value={value}
+          onChange={onChange}
+          onRun={onRun}
+          placeholder={placeholder}
+          inputRef={fallback}
+        />
+      </div>
     );
   return (
     <div className="sql-editor-wrap">

@@ -39,6 +39,9 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
             ))}
           </strong>
           {title ? <small className="layout-card-label">{title}</small> : null}
+          {description ? (
+            <p className="layout-card-description">{description}</p>
+          ) : null}
         </div>
       </section>
     );
