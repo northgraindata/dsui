@@ -48,6 +48,8 @@ import {
 } from "./routes/services.js";
 import { registerSettingsRoutes } from "./routes/settings";
 import { registerSystemRoutes } from "./routes/system.js";
+import { SecretResolver } from "./secrets/resolver.js";
+import { SecretSuggestions } from "./secrets/suggestions.js";
 import { createErrorCounter } from "./telemetry/errors";
 
 export type Runtime = ReturnType<typeof createRuntime>;
@@ -132,6 +134,12 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     options.masterKey ?? process.env.DSUI_MASTER_KEY,
   );
   const cipher = new ConnectionCipher(masterKey);
+  const secrets = new SecretResolver({
+    provider: (id) => pluginRuntime.secretProvider(id),
+  });
+  const secretSuggestions = new SecretSuggestions({
+    provider: (id) => pluginRuntime.secretProvider(id),
+  });
   let config = options.config ?? { services: [] };
   const listPluginServiceSummaries = () => {
     const configured = config.services.map((service) => {
@@ -204,9 +212,12 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     }
     const timeoutMs = options?.timeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
     const probe = (async () =>
-      adapter.backend.checkHealth(connectionFor(cipher, source), {
-        persistenceNamespace: source.service.id,
-      }))();
+      adapter.backend.checkHealth(
+        await connectionFor({ cipher, secrets }, source),
+        {
+          persistenceNamespace: source.service.id,
+        },
+      ))();
     // A plugin asks for health on a user-visible surface, so a hung
     // connection must not hold that request open indefinitely. The probe is
     // not cancelled: a late result is discarded rather than reported as a
@@ -274,6 +285,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             registry,
             database,
             cipher,
+            secrets,
             getConfig: () => config,
             refreshConfig,
             signalBus,
@@ -339,6 +351,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             registry,
             database,
             cipher,
+            secrets,
             getConfig: () => config,
             refreshConfig,
           },
@@ -441,7 +454,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             const currentAdapter = registry.get(current.service.adapter);
             const emissions = await currentAdapter.backend.executeJob(
               definition.id,
-              connectionFor(cipher, current),
+              await connectionFor({ cipher, secrets }, current),
               input,
               {
                 runId: context.runId,
@@ -742,6 +755,8 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     refreshJobs: () => pluginJobs.refreshDefinitions(),
     database,
     cipher,
+    secrets,
+    secretSuggestions,
     getConfig,
     refreshConfig,
     audit,

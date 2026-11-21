@@ -55,6 +55,27 @@ export type Field = {
   options?: Array<{ label: string; value: string }>;
 };
 
+/** A secret manager a plugin offers for pointing a field at a stored secret. */
+export type SecretProvider = {
+  id: string;
+  label: string;
+  description?: string;
+  reference: { label: string; placeholder?: string; hint?: string };
+  /** Whether the manager can suggest secrets while a person types. */
+  searchable: boolean;
+};
+
+export type SecretSuggestions =
+  | {
+      available: true;
+      items: Array<{ reference: string; label?: string; description?: string }>;
+    }
+  /** The manager cannot list secrets for this installation: use a plain input. */
+  | { available: false; items: [] };
+
+/** What a field holds when it points at a secret instead of containing one. */
+export type SecretReference = { provider: string; reference: string };
+
 export type ConnectionMethod = {
   id: string;
   label: string;
@@ -326,6 +347,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export async function getServices() {
   const r = await request<Service[] | { data: Service[] }>("/services");
   return Array.isArray(r) ? r : r.data;
+}
+export function getSecretProviders() {
+  return request<SecretProvider[]>("/secret-providers");
+}
+export function getSecretSuggestions(providerId: string, query: string) {
+  return request<SecretSuggestions>(
+    `/secret-providers/${encodeURIComponent(providerId)}/suggestions?q=${encodeURIComponent(query)}`,
+  );
 }
 export async function getAdapters() {
   const r = await request<PublicAdapter[] | { data: PublicAdapter[] }>(

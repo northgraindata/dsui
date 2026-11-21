@@ -7,7 +7,10 @@ import {
   connectionTopEntries,
   createService,
   firstLeaf,
+  getSecretProviders,
   type HealthStatus,
+  type SecretProvider,
+  type SecretReference,
   testService,
 } from "../api";
 import { connectionTestMessage } from "../service-pages";
@@ -63,6 +66,12 @@ export function ConnectionDialog({
   const [values, setValues] = useState<Record<string, string>>({
     name: `My ${adapter.name}`,
   });
+  // Fields that point at a secret manager instead of holding a value. Providers
+  // come from plugins; without any, the form offers values only.
+  const [providers, setProviders] = useState<SecretProvider[]>([]);
+  const [references, setReferences] = useState<Record<string, SecretReference>>(
+    {},
+  );
   const [route, setRoute] = useState<Route>("direct");
   const [connectorId, setConnectorId] = useState<string>();
   const routable = !localOnlyAdapters.has(adapter.id);
@@ -92,27 +101,50 @@ export function ConnectionDialog({
     };
   }, []);
   useEffect(() => {
+    // Offering secret managers is optional, so a failure here only hides it.
+    getSecretProviders()
+      .then((found) => {
+        if (alive.current) setProviders(found);
+      })
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
     if (step > 0) stageRef.current?.focus();
     else dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
   }, [step]);
   function chooseMethod(id: string | undefined) {
     setMethodId(id);
     setValues((previous) => ({ name: previous.name ?? "" }));
+    setReferences({});
     setResult(undefined);
     setSaveError(undefined);
   }
   const update = (key: string, value: string) =>
     setValues((previous) => ({ ...previous, [key]: value }));
+  const updateReference = (
+    key: string,
+    reference: SecretReference | undefined,
+  ) => {
+    setReferences((previous) => {
+      const { [key]: _removed, ...rest } = previous;
+      return reference ? { ...rest, [key]: reference } : rest;
+    });
+    setResult(undefined);
+  };
+  const secrets = { providers, references, update: updateReference };
   function input() {
     // The display name is not part of the adapter's connection schema. Omit
     // untouched optional fields so the adapter can apply its own defaults.
     const connection = Object.fromEntries(
-      fields
-        .filter(
-          (field) =>
-            values[field.key] !== undefined && values[field.key] !== "",
-        )
-        .map((field) => [field.key, values[field.key]]),
+      fields.flatMap((field): Array<[string, unknown]> => {
+        const reference = references[field.key];
+        if (reference)
+          return reference.reference
+            ? [[field.key, { $secret: reference }]]
+            : [];
+        const value = values[field.key];
+        return value !== undefined && value !== "" ? [[field.key, value]] : [];
+      }),
     );
     const routed =
       routable && route === "agent" && connectorId
@@ -333,6 +365,7 @@ export function ConnectionDialog({
                 values={values}
                 copy={fieldCopy}
                 update={update}
+                secrets={secrets}
               />
               <div className="connection-field">
                 <label htmlFor="connection-name">Connection name</label>
@@ -353,6 +386,7 @@ export function ConnectionDialog({
                       values={values}
                       copy={fieldCopy}
                       update={update}
+                      secrets={secrets}
                     />
                   </div>
                 </details>

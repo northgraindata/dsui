@@ -439,6 +439,59 @@ export interface PluginAuthenticationProvider {
   routes?(request: Request): Promise<Response> | Response;
 }
 
+/**
+ * A source of credentials that lives outside DSUI, such as a cloud secret
+ * manager.
+ *
+ * A connection field may hold a reference instead of a value. The host asks the
+ * provider for the value just before it calls the adapter, so DSUI stores the
+ * reference and never the credential. A reference is opaque to the host: only
+ * the provider that issued the format parses it.
+ */
+/** A secret a person can pick instead of typing its reference. */
+export type PluginSecretSuggestion = {
+  /** What goes into the field. */
+  reference: string;
+  /** Shown instead of the reference when it reads better. */
+  label?: string;
+  description?: string;
+};
+
+export interface PluginSecretProvider {
+  /** Kebab-case and unique across plugins; it is what a stored reference names. */
+  id: string;
+  /** Shown in the connection form, e.g. "AWS Secrets Manager". */
+  label: string;
+  description?: string;
+  /** Describes the input a person fills in to point at a secret. */
+  reference: { label: string; placeholder?: string; hint?: string };
+  /**
+   * Returns the secret's current value.
+   *
+   * Throw with a message that names what was asked for and why it failed. The
+   * host never logs or returns the resolved value, and an error that contains
+   * one would defeat that.
+   */
+  resolve(
+    reference: string,
+    options: { signal?: AbortSignal },
+  ): Promise<string>;
+  /**
+   * Lists secrets whose reference starts with, or matches, `query`.
+   *
+   * Optional, because listing usually needs a broader permission than reading
+   * one secret. The form offers suggestions only when this exists and works.
+   * Throw when the caller may not list: the host remembers that and falls back
+   * to a plain input without asking again for a few minutes. Return at most a
+   * few dozen entries, never a secret's value, and treat an empty query as
+   * "show the first ones".
+   */
+  search?(
+    query: string,
+    options: { signal?: AbortSignal },
+  ): Promise<PluginSecretSuggestion[]>;
+}
+
 export interface PluginAuthorizationProvider {
   /**
    * Narrows what the principal's role already allows.
@@ -496,6 +549,7 @@ export interface RuntimePluginRegistry {
   job(job: RuntimePluginJob): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
+  secrets(provider: PluginSecretProvider): void;
 }
 
 /** A declared job as the host publishes it. */
@@ -580,6 +634,13 @@ export interface PluginRegistry<TConfig = unknown> {
   job(job: JobDefinition): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
+  /**
+   * Offers a secret manager that connection fields can point at.
+   *
+   * Unlike authentication, several providers may coexist; each id must be
+   * unique across plugins.
+   */
+  secrets(provider: PluginSecretProvider): void;
 }
 
 export interface PluginCapabilities {
@@ -941,6 +1002,7 @@ export function definePlugin<TConfig>(
                 );
               runtimeRegistry.authorization(provider);
             },
+            secrets: (provider) => runtimeRegistry.secrets(provider),
           };
           definition.setup(registry, config);
         },
