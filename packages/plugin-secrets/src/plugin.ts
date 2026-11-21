@@ -3,6 +3,7 @@ import {
   type PluginSecretProvider,
 } from "@northgraindata/dsui-plugin-sdk";
 import { z } from "zod";
+import { iconUrl } from "./logo";
 import {
   AWS_LABEL,
   awsConfigSchema,
@@ -89,6 +90,8 @@ export function createSecretsPlugin() {
       name: "Secret managers",
       version: "1.0.0",
       apiVersion: 1,
+      category: "Integrations",
+      iconUrl,
     },
     configSchema,
     setup(registry, config) {
