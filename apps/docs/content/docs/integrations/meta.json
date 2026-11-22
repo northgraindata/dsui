@@ -8,6 +8,7 @@
     "duckdb",
     "dbt",
     "postgresql",
-    "s3"
+    "s3",
+    "snowflake"
   ]
 }

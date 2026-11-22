@@ -19,6 +19,7 @@ import type {
   AdapterBackend,
   AdapterCatalog,
   AdapterExecutionContext,
+  AdapterHealthContext,
   JobCatalogEntry,
   LoadedAdapter,
   LoadedConnectionMethod,
@@ -346,7 +347,7 @@ export class RemoteBackend implements AdapterBackend {
 
   async checkHealth(
     connection: unknown,
-    context?: AdapterExecutionContext,
+    context?: AdapterHealthContext,
   ): Promise<HealthStatus> {
     const started = Date.now();
     try {
@@ -355,6 +356,8 @@ export class RemoteBackend implements AdapterBackend {
           method: "health",
           connection,
           persistenceNamespace: context?.persistenceNamespace,
+          timeoutMs: context?.timeoutMs,
+          signal: context?.signal,
         }),
         "adapter host",
       );
