@@ -1,15 +1,16 @@
 ---
 title: Integrations
-description: Compare the official adapters for Airflow, ClickHouse, dbt, DuckDB, PostgreSQL, S3, and Snowflake, and find the one that fits your service.
+description: Compare DSUI's official adapters and find the one that fits your service.
 contentType: landing
 ---
 
-An adapter connects DSUI to one kind of service and gives the workspace its pages, data, and actions. DSUI ships seven official adapters. You load each one from the DSUI repository, so they all use the same setup.
+An adapter connects DSUI to one kind of service and gives the workspace its pages, data, and actions. You load each one from the DSUI repository, so they all use the same setup.
 
 | Adapter | Connects to | Connection methods | Through a DSUI Agent |
 | --- | --- | --- | --- |
 | [Airflow](/docs/integrations/airflow) | Apache Airflow 3 and 2.10 | `airflow`, `airflow-2` | Not verified |
 | [ClickHouse](/docs/integrations/clickhouse) | ClickHouse over HTTP or HTTPS | `structured`, `url` | Yes |
+| [Dagster](/docs/integrations/dagster) | Dagster webserver or Dagster+ | `dagster`, `dagster-basic`, `dagster-plus` | Not verified |
 | [dbt](/docs/integrations/dbt) | dbt Cloud, a local dbt project, or artifacts from CI | `cloud`, `local`, `push` | Not verified |
 | [DuckDB](/docs/integrations/duckdb) | DuckDB in memory, in a file, in cloud storage, or on a DuckDB server | `memory`, `file`, `s3`, `gcs`, `r2`, `azure`, `quack` | Not verified |
 | [PostgreSQL](/docs/integrations/postgresql) | PostgreSQL servers | One method, no `method` field | Yes |
