@@ -6,14 +6,14 @@ import type {
   StorePersistenceProvider,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
+import { routeConnection } from "../connectors/routing.js";
 import {
   type AdapterBuildPhase,
   type AdapterSourceLocation,
   buildAdapter,
 } from "./build.js";
-import { assertAdapterDefinition } from "./definition.js";
 import type { AdapterFetch } from "./fetch.js";
-import { AdapterHostClient } from "./host.js";
+import { AdapterHostClient, type HostMethod } from "./host.js";
 import { resolveSdkRoot } from "./sdk.js";
 import type {
   AdapterBackend,
@@ -23,19 +23,23 @@ import type {
   JobCatalogEntry,
   LoadedAdapter,
   LoadedConnectionMethod,
+  RouteCall,
+  RouteCatalogEntry,
+  RouteReply,
   SignalCatalogEntry,
 } from "./types.js";
 import { AdapterExecutionError, AdapterLoadError } from "./types.js";
 
 export interface AdapterLoadOptions {
   dataDir?: string;
+  buildDirectory?: string;
   fetch?: AdapterFetch;
   /** Reuse the stored bundle and never open the network. */
   offline?: boolean;
   /** Subprocess host factory; callers can inject a controlled host. */
   spawnHost?: (bundlePath: string) => {
     request(request: {
-      method: "describe" | "health" | "page" | "resource" | "action" | "job";
+      method: HostMethod;
       connection?: unknown;
       target?: string;
       input?: unknown;
@@ -45,7 +49,7 @@ export interface AdapterLoadOptions {
       timeoutMs?: number;
       hostIdleTimeoutMs?: number;
     }): Promise<unknown>;
-    close?(): Promise<void>;
+    close?(drain?: boolean): Promise<void>;
     invalidateService?(namespace: string): Promise<void>;
   };
   /** Host call budget in ms (actions run long). */
@@ -54,6 +58,8 @@ export interface AdapterLoadOptions {
   persistenceProvider?: (namespace: string) => StorePersistenceProvider;
   /** SQLite path passed to isolated adapter hosts. */
   persistenceDatabasePath?: string;
+  /** Directory under which isolated adapter hosts keep each service's blobs. */
+  persistenceBlobRoot?: string;
   /** Version stamped on the adapter SDK; defaults to the running DSUI. */
   version?: string;
   /** Called as an adapter build moves between phases. */
@@ -61,14 +67,6 @@ export interface AdapterLoadOptions {
 }
 
 export { assertAdapterDefinition } from "./definition.js";
-
-function healthy(started: number): HealthStatus {
-  return {
-    status: "healthy",
-    checkedAt: new Date().toISOString(),
-    latencyMs: Date.now() - started,
-  };
-}
 
 function unhealthy(started: number, error: unknown): HealthStatus {
   return {
@@ -201,7 +199,50 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
     ...catalog,
     jobs: Array.isArray(catalog.jobs) ? catalog.jobs : [],
     signals,
+    routes: assertRoutes(catalog.routes, from),
   } as AdapterCatalog;
+}
+
+const ROUTE_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+
+function assertRoutes(value: unknown, from: string): RouteCatalogEntry[] {
+  if (value === undefined) return [];
+  const invalid = () =>
+    new AdapterLoadError(`Invalid adapter routes from ${from}`);
+  if (!Array.isArray(value)) throw invalid();
+  return value.map((entry): RouteCatalogEntry => {
+    if (!entry || typeof entry !== "object") throw invalid();
+    const route = entry as Record<string, unknown>;
+    const auth = route.auth;
+    if (
+      typeof route.id !== "string" ||
+      typeof route.path !== "string" ||
+      !route.path.startsWith("/") ||
+      !ROUTE_METHODS.includes(route.method as string) ||
+      (route.permission !== "inspect" && route.permission !== "execute") ||
+      !Number.isInteger(route.maxBodyBytes) ||
+      !Number.isInteger(route.timeoutMs) ||
+      !(
+        auth === "principal" ||
+        (typeof auth === "object" &&
+          auth !== null &&
+          typeof (auth as { token?: unknown }).token === "string")
+      )
+    )
+      throw invalid();
+    return {
+      id: route.id,
+      method: route.method as RouteCatalogEntry["method"],
+      path: route.path,
+      auth:
+        auth === "principal"
+          ? "principal"
+          : { token: (auth as { token: string }).token },
+      permission: route.permission,
+      maxBodyBytes: route.maxBodyBytes as number,
+      timeoutMs: route.timeoutMs as number,
+    };
+  });
 }
 
 function assertHealthStatus(value: unknown, from: string): HealthStatus {
@@ -211,7 +252,7 @@ function assertHealthStatus(value: unknown, from: string): HealthStatus {
 }
 
 type RemoteHostRequest = {
-  method: "describe" | "health" | "page" | "resource" | "action" | "job";
+  method: HostMethod;
   connection?: unknown;
   target?: string;
   input?: unknown;
@@ -220,11 +261,12 @@ type RemoteHostRequest = {
   signal?: AbortSignal;
   timeoutMs?: number;
   hostIdleTimeoutMs?: number;
+  env?: Record<string, string>;
 };
 
 type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
-  close?(): Promise<void>;
+  close?(drain?: boolean): Promise<void>;
   invalidateService?(namespace: string): Promise<void>;
 };
 
@@ -249,8 +291,8 @@ function queueSerialRequest(
 }
 
 export class RemoteBackend implements AdapterBackend {
-  async close(): Promise<void> {
-    await this.host.close?.();
+  async close(drain = false): Promise<void> {
+    await this.host.close?.(drain);
   }
 
   async invalidateService(namespace: string): Promise<void> {
@@ -265,7 +307,13 @@ export class RemoteBackend implements AdapterBackend {
     >[],
   ) {}
 
-  private request(request: RemoteHostRequest): Promise<unknown> {
+  private request(routable: RemoteHostRequest): Promise<unknown> {
+    // A service that uses a DSUI agent carries a reserved key; strip it and
+    // give the host process the proxy that reaches the agent.
+    const routed = routeConnection(routable.connection);
+    const request: RemoteHostRequest = routed.env
+      ? { ...routable, connection: routed.connection, env: routed.env }
+      : routable;
     const connection = request.connection;
     const methodId =
       connection && typeof connection === "object" && "method" in connection
@@ -479,6 +527,78 @@ export class RemoteBackend implements AdapterBackend {
       };
     });
   }
+
+  async executeRoute(
+    routeId: string,
+    connection: unknown,
+    call: RouteCall,
+    options: { signal: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<RouteReply> {
+    const result = (await this.request({
+      method: "route",
+      connection,
+      target: routeId,
+      input: call,
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      persistenceNamespace: context?.persistenceNamespace,
+    })) as Partial<{
+      status: unknown;
+      headers: unknown;
+      body: unknown;
+      emissions: unknown;
+    }> | null;
+    const headers = result?.headers;
+    if (
+      !result ||
+      !Number.isInteger(result.status) ||
+      !headers ||
+      typeof headers !== "object" ||
+      Object.values(headers).some((value) => typeof value !== "string") ||
+      (result.body !== undefined && typeof result.body !== "string") ||
+      !Array.isArray(result.emissions)
+    )
+      throw new AdapterExecutionError(
+        "Adapter host returned an invalid route reply",
+      );
+    return {
+      status: result.status as number,
+      headers: headers as Record<string, string>,
+      ...(typeof result.body === "string"
+        ? { body: new Uint8Array(Buffer.from(result.body, "base64")) }
+        : {}),
+      emissions: result.emissions.map((entry) => {
+        const emission = entry as Record<string, unknown> | null;
+        if (
+          !emission ||
+          typeof emission.signalId !== "string" ||
+          !("payload" in emission) ||
+          (emission.idempotencyKey !== undefined &&
+            typeof emission.idempotencyKey !== "string")
+        )
+          throw new AdapterExecutionError(
+            "Adapter host returned an invalid signal",
+          );
+        return {
+          signalId: emission.signalId,
+          payload: emission.payload,
+          ...(typeof emission.idempotencyKey === "string"
+            ? { idempotencyKey: emission.idempotencyKey }
+            : {}),
+        };
+      }),
+    };
+  }
+}
+
+/**
+ * A path inside a compiled binary's own filesystem (`/$bunfs/...`, or
+ * `B:/~BUN/...` on Windows). It answers `existsSync` but is not a script the
+ * binary can be given to run, so it must not count as a file on disk.
+ */
+export function isEmbedded(path: string): boolean {
+  return path.includes("$bunfs") || path.includes("~BUN");
 }
 
 /**
@@ -493,6 +613,7 @@ export class RemoteBackend implements AdapterBackend {
 export function defaultHostCommand(
   bundlePath: string,
   databasePath?: string,
+  blobRoot?: string,
 ): {
   command: string;
   args: string[];
@@ -502,12 +623,13 @@ export function defaultHostCommand(
     "--bundle",
     bundlePath,
     ...(databasePath ? ["--database", databasePath] : []),
+    ...(blobRoot ? ["--blobs", blobRoot] : []),
   ];
   for (const candidate of [
     fileURLToPath(new URL("../adapter-host.ts", import.meta.url)),
     fileURLToPath(import.meta.url),
   ])
-    if (existsSync(candidate))
+    if (!isEmbedded(candidate) && existsSync(candidate))
       return { command: process.execPath, args: [candidate, ...hostArgs] };
   // Compiled binary: its own image is not on disk, so it re-enters itself.
   return { command: process.execPath, args: hostArgs };
@@ -550,6 +672,7 @@ export async function loadAdapter(
 
   const built = await buildAdapter(id, source, {
     dataDir,
+    buildDirectory: options.buildDirectory,
     sdkPackageRoot: await resolveSdkRoot({
       dataDir,
       version: options.version ?? process.env.DSUI_VERSION ?? "0.0.0",
@@ -569,6 +692,7 @@ export async function loadAdapter(
       const { command, args } = defaultHostCommand(
         bundlePath,
         options.persistenceDatabasePath,
+        options.persistenceBlobRoot,
       );
       return new AdapterHostClient({
         command,
@@ -577,48 +701,55 @@ export async function loadAdapter(
       });
     });
   const host = spawn(built.bundlePath);
-  const described = (await host
-    .request({ method: "describe" })
-    .catch((error: unknown) => {
+  try {
+    const described = (await host
+      .request({ method: "describe" })
+      .catch((error: unknown) => {
+        throw new AdapterLoadError(
+          `Adapter host describe failed for "${id}": ${error instanceof Error ? error.message : "unknown error"}`,
+        );
+      })) as {
+      metadata?: AdapterInfo;
+      connectionSchema?: LoadedAdapter["connectionSchema"];
+      connectionMethods?: unknown;
+      resources?: AdapterCatalog["resources"];
+      actions?: AdapterCatalog["actions"];
+      pages?: AdapterCatalog["pages"];
+      components?: AdapterCatalog["components"];
+      jobs?: JobCatalogEntry[];
+      signals?: SignalCatalogEntry[];
+      routes?: unknown;
+    };
+    const catalog = assertCatalog(described, built.bundlePath);
+    const metadata = described.metadata;
+    if (!metadata || metadata.id !== id)
       throw new AdapterLoadError(
-        `Adapter host describe failed for "${id}": ${error instanceof Error ? error.message : "unknown error"}`,
+        `Adapter declares id "${metadata?.id ?? "?"}" but is registered as "${id}"`,
       );
-    })) as {
-    metadata?: AdapterInfo;
-    connectionSchema?: LoadedAdapter["connectionSchema"];
-    connectionMethods?: unknown;
-    resources?: AdapterCatalog["resources"];
-    actions?: AdapterCatalog["actions"];
-    pages?: AdapterCatalog["pages"];
-    components?: AdapterCatalog["components"];
-    jobs?: JobCatalogEntry[];
-    signals?: SignalCatalogEntry[];
-  };
-  const catalog = assertCatalog(described, built.bundlePath);
-  const metadata = described.metadata;
-  if (!metadata || metadata.id !== id)
-    throw new AdapterLoadError(
-      `Adapter declares id "${metadata?.id ?? "?"}" but is registered as "${id}"`,
-    );
-  const connectionMethods = toConnectionMethods(described.connectionMethods);
-  return {
-    id,
-    metadata: { ...metadata },
-    catalog: {
-      resources: catalog.resources,
-      actions: catalog.actions,
-      pages: catalog.pages,
-      components: built.components ?? [],
-      jobs: catalog.jobs,
-      signals: catalog.signals,
-    },
-    ...(described.connectionSchema
-      ? { connectionSchema: described.connectionSchema }
-      : {}),
-    ...(connectionMethods ? { connectionMethods } : {}),
-    backend: new RemoteBackend(host, id, connectionMethods ?? []),
-    ...(built.browserBundlePath
-      ? { browserBundlePath: built.browserBundlePath }
-      : {}),
-  };
+    const connectionMethods = toConnectionMethods(described.connectionMethods);
+    return {
+      id,
+      metadata: { ...metadata },
+      catalog: {
+        resources: catalog.resources,
+        actions: catalog.actions,
+        pages: catalog.pages,
+        components: built.components ?? [],
+        jobs: catalog.jobs,
+        signals: catalog.signals,
+        routes: catalog.routes,
+      },
+      ...(described.connectionSchema
+        ? { connectionSchema: described.connectionSchema }
+        : {}),
+      ...(connectionMethods ? { connectionMethods } : {}),
+      backend: new RemoteBackend(host, id, connectionMethods ?? []),
+      ...(built.browserBundlePath
+        ? { browserBundlePath: built.browserBundlePath }
+        : {}),
+    };
+  } catch (error) {
+    await host.close?.().catch(() => undefined);
+    throw error;
+  }
 }

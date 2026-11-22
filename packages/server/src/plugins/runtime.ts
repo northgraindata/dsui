@@ -18,6 +18,7 @@ import {
   type PluginPrincipal,
   PluginRequestError,
   type PluginResource,
+  type PluginSecretProvider,
   type PluginServiceCatalog,
   type PluginServiceSummary,
   type PluginStores,
@@ -33,8 +34,9 @@ import {
 } from "@northgraindata/dsui-plugin-sdk";
 import zodToJsonSchema from "zod-to-json-schema";
 import { resolveSdkRoot } from "../adapters/sdk.js";
-import { allowed } from "../auth.js";
+import { allowed, LOCAL_PRINCIPAL_ID } from "../auth.js";
 import type { PluginSource } from "../config.js";
+import { githubRepository } from "../github-repository.js";
 import { withWebBasePath } from "../web-path.js";
 import { buildPlugin, type PluginFetch } from "./build.js";
 import { parseCron } from "./cron.js";
@@ -84,6 +86,7 @@ type Contributions = {
   jobs: RuntimePluginJob[];
   authentication?: PluginAuthenticationProvider;
   authorization?: PluginAuthorizationProvider;
+  secrets: PluginSecretProvider[];
 };
 
 type PluginLoadRequest = {
@@ -201,6 +204,26 @@ const requireFromWorkingDirectory = createRequire(
   resolve(process.cwd(), "package.json"),
 );
 
+type BuildableSource = Extract<PluginSource, { source: "local" | "git" }>;
+
+/** Where a source-built plugin's files come from. */
+function pluginLocation(
+  source: BuildableSource,
+): Parameters<typeof buildPlugin>[1] {
+  if (source.source === "local") return { kind: "local", path: source.path };
+  const repository = githubRepository(source.repository);
+  if (!repository)
+    throw new Error(
+      `Plugin source must name a GitHub repository as owner/name, got "${source.repository}"`,
+    );
+  return {
+    kind: "git",
+    repository,
+    ref: source.ref ?? "main",
+    ...(source.path ? { path: source.path } : {}),
+  };
+}
+
 async function loadInstalledPlugin(specifier: string): Promise<unknown> {
   const bundled = bundledPluginPath(specifier);
   if (bundled) return import(pathToFileURL(bundled).href);
@@ -240,6 +263,10 @@ function isRuntimePluginDefinition(
     /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value.metadata.version) &&
     (value.metadata.security === undefined ||
       typeof value.metadata.security === "boolean") &&
+    (value.metadata.category === undefined ||
+      typeof value.metadata.category === "string") &&
+    (value.metadata.iconUrl === undefined ||
+      typeof value.metadata.iconUrl === "string") &&
     typeof value.metadata.apiVersion === "number" &&
     typeof value.configSchema.parse === "function" &&
     typeof value.prepare === "function" &&
@@ -297,6 +324,7 @@ function emptyContributions(): Contributions {
     actions: [],
     resources: [],
     jobs: [],
+    secrets: [],
   };
 }
 
@@ -443,38 +471,27 @@ export class PluginRuntime {
             ? source
             : undefined;
         const built = buildable
-          ? await buildPlugin(
-              id,
-              buildable.source === "local"
-                ? { kind: "local", path: buildable.path }
-                : {
-                    kind: "git",
-                    repository: buildable.repository,
-                    ref: buildable.ref ?? "main",
-                    ...(buildable.path ? { path: buildable.path } : {}),
-                  },
-              {
-                dataDir: this.sourceOptions.dataDir ?? process.cwd(),
-                ...("token" in buildable && buildable.token
-                  ? { githubToken: buildable.token }
-                  : {}),
-                // A source-built plugin links against the prepared SDK the
-                // same way an adapter does, so both resolve the same
-                // workspace packages instead of two copies.
-                sdkPackageRoot:
-                  this.sourceOptions.sdkPackageRoot ??
-                  (await resolveSdkRoot({
-                    dataDir: this.sourceOptions.dataDir ?? process.cwd(),
-                    version: process.env.DSUI_VERSION ?? "0.0.0",
-                  })),
-                ...(this.sourceOptions.fetch
-                  ? { fetch: this.sourceOptions.fetch }
-                  : {}),
-                ...(this.sourceOptions.offline
-                  ? { offline: this.sourceOptions.offline }
-                  : {}),
-              },
-            )
+          ? await buildPlugin(id, pluginLocation(buildable), {
+              dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+              ...("token" in buildable && buildable.token
+                ? { githubToken: buildable.token }
+                : {}),
+              // A source-built plugin links against the prepared SDK the
+              // same way an adapter does, so both resolve the same
+              // workspace packages instead of two copies.
+              sdkPackageRoot:
+                this.sourceOptions.sdkPackageRoot ??
+                (await resolveSdkRoot({
+                  dataDir: this.sourceOptions.dataDir ?? process.cwd(),
+                  version: process.env.DSUI_VERSION ?? "0.0.0",
+                })),
+              ...(this.sourceOptions.fetch
+                ? { fetch: this.sourceOptions.fetch }
+                : {}),
+              ...(this.sourceOptions.offline
+                ? { offline: this.sourceOptions.offline }
+                : {}),
+            })
           : undefined;
         const module = await this.loadModule(
           built?.bundlePath ?? ("package" in source ? source.package : ""),
@@ -514,7 +531,49 @@ export class PluginRuntime {
                   403,
                 );
             },
-            require: async (serviceId, permission) => {
+            requirePrincipal: async (
+              principalId,
+              serviceId,
+              permission,
+              action,
+            ) => {
+              if (this.securityFailure)
+                throw new PluginRequestError(
+                  "Authorization is unavailable",
+                  403,
+                );
+              let principal: PluginPrincipal | null;
+              if (this.authenticationProvider) {
+                if (!this.authenticationProvider.resolvePrincipal)
+                  throw new PluginRequestError(
+                    "Authentication provider does not support delegated identity resolution",
+                    403,
+                  );
+                principal =
+                  await this.authenticationProvider.resolvePrincipal(
+                    principalId,
+                  );
+              } else {
+                principal =
+                  principalId === LOCAL_PRINCIPAL_ID
+                    ? { id: LOCAL_PRINCIPAL_ID, role: "owner" }
+                    : null;
+              }
+              if (
+                !principal ||
+                principal.id !== principalId ||
+                !(await this.authorize(principal, permission, {
+                  type: "service",
+                  id: serviceId,
+                  ...action,
+                }))
+              )
+                throw new PluginRequestError(
+                  "Delegated service permission was revoked",
+                  403,
+                );
+            },
+            require: async (serviceId, permission, action) => {
               if (this.backgroundContext.getStore()) return;
               const principal = this.principalContext.getStore();
               if (
@@ -522,6 +581,7 @@ export class PluginRuntime {
                 !(await this.authorize(principal, permission, {
                   type: "service",
                   id: serviceId,
+                  ...action,
                 }))
               )
                 throw new PluginRequestError(
@@ -722,6 +782,34 @@ export class PluginRuntime {
             throw new Error("Duplicate authorization provider");
           contributions.authorization = provider;
         },
+        secrets: (provider: PluginSecretProvider) => {
+          if (
+            !provider ||
+            typeof provider.resolve !== "function" ||
+            typeof provider.label !== "string" ||
+            !provider.label ||
+            typeof provider.reference?.label !== "string"
+          )
+            throw new Error("Invalid secret provider");
+          if (
+            provider.search !== undefined &&
+            typeof provider.search !== "function"
+          )
+            throw new Error("Invalid secret provider search");
+          if (!pluginIdPattern.test(provider.id))
+            throw new Error(
+              `Secret provider id "${provider.id}" must be kebab-case`,
+            );
+          if (
+            contributions.secrets.some((entry) => entry.id === provider.id) ||
+            this.secretProvider(provider.id) ||
+            [...pendingContributions.values()].some((pending) =>
+              pending.secrets.some((entry) => entry.id === provider.id),
+            )
+          )
+            throw new Error(`Duplicate secret provider "${provider.id}"`);
+          contributions.secrets.push(provider);
+        },
       };
       try {
         request.prepared.setup(registry);
@@ -846,6 +934,17 @@ export class PluginRuntime {
     }
   }
 
+  /** Secret providers from plugins that started, in load order. */
+  secretProviders(): PluginSecretProvider[] {
+    return [...this.contributions.values()].flatMap(
+      (contribution) => contribution.secrets,
+    );
+  }
+
+  secretProvider(id: string): PluginSecretProvider | undefined {
+    return this.secretProviders().find((provider) => provider.id === id);
+  }
+
   catalog(): PluginCatalog {
     const plugins = [...this.readiness.entries()].map(([id, readiness]) => {
       const active = this.active.get(id);
@@ -853,6 +952,12 @@ export class PluginRuntime {
         id,
         name: active?.definition.metadata.name ?? id,
         version: active?.definition.metadata.version ?? "unknown",
+        ...(active?.definition.metadata.category
+          ? { category: active.definition.metadata.category }
+          : {}),
+        ...(active?.definition.metadata.iconUrl
+          ? { iconUrl: active.definition.metadata.iconUrl }
+          : {}),
         ...readiness,
       };
     });
@@ -1149,14 +1254,32 @@ export class PluginRuntime {
   async requireServiceAccess(
     id: string,
     permission: PluginPermission,
+    action?: Pick<PluginResource, "actionId" | "actionInput">,
   ): Promise<void> {
     if (this.backgroundContext.getStore()) return;
     const principal = this.principalContext.getStore();
     if (
       !principal ||
-      !(await this.authorize(principal, permission, { type: "service", id }))
+      !(await this.authorize(principal, permission, {
+        type: "service",
+        id,
+        ...action,
+      }))
     )
       throw new PluginRequestError("Insufficient service permission", 403);
+  }
+
+  /**
+   * The person the current plugin call acts for, to record on the signals it
+   * causes. None in background work, where no person is asking, and none in
+   * local single-user mode, where every request is the same anonymous owner.
+   */
+  actingPrincipalId(): string | undefined {
+    if (this.backgroundContext.getStore()) return undefined;
+    const principal = this.principalContext.getStore();
+    return principal && principal.id !== LOCAL_PRINCIPAL_ID
+      ? principal.id
+      : undefined;
   }
 
   async canAccessGlobalEvents(): Promise<boolean> {

@@ -1,0 +1,19 @@
+{
+  "name": "Form",
+  "description": "Zod-driven form.",
+  "props": {
+    "schema": {
+      "description": "Zod schema defining form fields"
+    },
+    "fields": {
+      "description": "Optional custom field nodes"
+    },
+    "onSubmit": {
+      "description": "Action triggered on form submission"
+    },
+    "submitLabel": {
+      "description": "Submit button text"
+    }
+  },
+  "example": "Form({\n  schema: z.object({ name: z.string().min(1), endpoint: z.string().url() }),\n  onSubmit: createConnection(),\n  submitLabel: \"Connect\",\n})"
+}

@@ -1,30 +1,41 @@
 ---
 title: Plugin SDK
-description: Build extensions for the DSUI workspace.
+description: Build a plugin that adds pages, navigation, background jobs, settings, and sign-in to a whole DSUI installation.
+contentType: landing
 ---
 
-A plugin adds workspace features across services: pages, navigation, UI slots,
-operations, background jobs and storage. An adapter connects one external system;
-a plugin composes capabilities across the installation.
+A plugin is a TypeScript package that adds features to the whole workspace. It can add pages and navigation, put content into the interface, run background work, keep its own data, and sign people in. An adapter connects one kind of service. A plugin works across the installation. See [choose adapter or plugin](/docs/build/overview).
 
-Plugins are trusted server code. DSUI validates inputs and enforces request
-permissions, but a plugin runs inside the server process.
+A plugin is trusted code. DSUI loads it into the server process, so it can do what the server can do. Only load plugins that you trust.
 
-| Primitive | Purpose | Guide |
+You write a plugin with the `@northgraindata/dsui-plugin-sdk` package. Pin its exact version. The package re-exports most builtin [components](/docs/build/components), so pages look like adapter pages.
+
+## Start here
+
+<Cards>
+<Card title="Build your first plugin" href="/docs/plugin-sdk/tutorial">
+Write, load, and run a small plugin, with a page and a procedure.
+</Card>
+<Card title="Choose adapter or plugin" href="/docs/build/overview">
+Check that a plugin is the right kind of extension.
+</Card>
+</Cards>
+
+## What a plugin is made of
+
+| Part | What it does | Page |
 | --- | --- | --- |
-| Plugin | Identity, configuration and lifecycle | [Create a plugin](/docs/plugin-sdk/create-a-plugin) |
-| Page and slot | Routes and contributions to host UI | [Pages and slots](/docs/plugin-sdk/pages) |
-| Resource | Read data with a refresh policy | [Resources](/docs/plugin-sdk/resources) |
-| Procedure and action | Validated operations | [Actions and procedures](/docs/plugin-sdk/actions) |
-| Job | Durable background work | [Jobs](/docs/plugin-sdk/jobs) |
-| Signal | Typed events and event reading | [Signals](/docs/plugin-sdk/signals) |
-| Store and storage | JSON state and private SQLite databases | [Stores and storage](/docs/plugin-sdk/stores) |
-| Host capabilities | Service access and authorization | [Host capabilities](/docs/plugin-sdk/host-capabilities) |
+| Pages and navigation | Add screens and links, and Settings entries | [Pages and navigation](/docs/plugin-sdk/pages) |
+| Slots and overlays | Add content to the host interface | [Slots and overlays](/docs/plugin-sdk/slots-and-overlays) |
+| Resources | Offer reads of data | [Resources](/docs/plugin-sdk/resources) |
+| Actions and procedures | Offer validated operations | [Actions and procedures](/docs/plugin-sdk/actions) |
+| Jobs | Run durable background work | [Jobs](/docs/plugin-sdk/jobs) |
+| Signals | Publish and read events | [Signals and events](/docs/plugin-sdk/signals) |
+| Stores and storage | Keep JSON state and SQLite data | [Stores and storage](/docs/plugin-sdk/stores) |
+| Host capabilities | Read services and plugins, and check permissions | [Host capabilities](/docs/plugin-sdk/host-capabilities) |
+| Providers | Sign people in, and limit what they can do | [Authentication and authorization](/docs/plugin-sdk/auth-providers) |
+| Secret providers | Read credentials from a secret manager | [Secret providers](/docs/plugin-sdk/secret-providers) |
 
-Start with [create a plugin](/docs/plugin-sdk/create-a-plugin), then add the
-capabilities your extension needs. See [testing](/docs/plugin-sdk/testing) and
-[release](/docs/plugin-sdk/release) before distributing it.
+## Test and share
 
-The public package is `@northgraindata/dsui-plugin-sdk`. Shared page components
-are re-exported from the Adapter SDK, so both extension types use the same
-[component vocabulary](/docs/adapter-sdk/components).
+See [test a plugin](/docs/plugin-sdk/testing) to check your plugin, and [release a plugin](/docs/plugin-sdk/release) to share it. DSUI loads a plugin from a GitHub repository, a directory, or an installed package. See [plugins](/docs/guides/plugins) for how people load one.

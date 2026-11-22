@@ -2,14 +2,18 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from "@tanstack/react-router";
+import { authenticationEntry, currentPrincipal, getPluginCatalog } from "./api";
 import { AppShell } from "./app/app-shell";
+import { isPublicPluginPage } from "./auth-routing";
 import {
   ServiceDetail,
   ServiceObjectView,
   ServicePage,
   ServiceView,
 } from "./features/adapter-workspace/service-screens";
+import { AdapterDetailScreen } from "./features/adapters/adapter-detail";
 import {
   AdaptersScreen,
   AddAdapterScreen,
@@ -18,7 +22,25 @@ import { DashboardScreen } from "./features/dashboard/dashboard-screen";
 import { PluginPageScreen } from "./features/plugins/plugin-page-screen";
 import { SettingsScreen } from "./features/settings/settings-screen";
 
-const rootRoute = createRootRoute({ component: AppShell });
+const rootRoute = createRootRoute({
+  component: AppShell,
+  beforeLoad: async ({ location }) => {
+    if (await currentPrincipal()) return;
+    const entry = await authenticationEntry();
+    if (entry.mode === "none") return;
+    if (entry.mode === "unavailable" || !entry.pageId)
+      throw new Error(
+        "Authentication is unavailable. Contact your administrator.",
+      );
+    const catalog = await getPluginCatalog();
+    if (isPublicPluginPage(location.pathname, catalog.pages)) return;
+    throw redirect({
+      to: "/plugins/$pluginId/$",
+      params: { pluginId: entry.pluginId, _splat: entry.pageId },
+      replace: true,
+    });
+  },
+});
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -28,6 +50,11 @@ const servicesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/services",
   component: AdaptersScreen,
+});
+const adapterDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/adapters/$adapterId",
+  component: AdapterDetailScreen,
 });
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -67,6 +94,7 @@ const pluginPageRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   servicesRoute,
+  adapterDetailRoute,
   settingsRoute,
   addRoute,
   detailRoute,

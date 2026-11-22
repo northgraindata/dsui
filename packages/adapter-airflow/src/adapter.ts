@@ -28,6 +28,7 @@ import {
 } from "./context.js";
 import { airflowHealth } from "./health.js";
 import { airflowJobs, airflowSignals, airflowStores } from "./jobs.js";
+import { airflowIconUrl } from "./logo.js";
 import {
   connectionsPage,
   createConnectionPage,
@@ -45,6 +46,7 @@ import { assetDetailPage, assetListPage } from "./pages/assets.js";
 import { dagDetailPage, dagListPage } from "./pages/dags.js";
 import { overviewPage } from "./pages/overview.js";
 import { dagRunDetailPage, taskInstanceDetailPage } from "./pages/runs.js";
+import { presentation } from "./presentation";
 import {
   connections,
   eventLogs,
@@ -85,7 +87,8 @@ export function createAirflowAdapter(
       name: "Airflow",
       version: "1.0.0",
       author: "DSUI",
-      iconUrl: "https://airflow.apache.org/images/airflow-icon.svg",
+      iconUrl: airflowIconUrl,
+      presentation,
       description: "Browse and operate Apache Airflow DAGs, runs, and assets.",
     },
     connectionMethods: {

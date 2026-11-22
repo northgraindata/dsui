@@ -1,0 +1,19 @@
+{
+  "name": "Section",
+  "description": "Titled content block.",
+  "props": {
+    "title": {
+      "description": "Section heading"
+    },
+    "description": {
+      "description": "Subtext"
+    },
+    "link": {
+      "description": "\"See all\" link (path must start with `/`)"
+    },
+    "content": {
+      "description": "Child nodes"
+    }
+  },
+  "example": "Section({\n  title: \"Warehouses\",\n  description: \"Active compute resources\",\n  link: { label: \"View all\", path: \"/warehouses\" },\n  content: Table({ source: warehouses() }),\n})"
+}

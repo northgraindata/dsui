@@ -46,17 +46,28 @@ export function AdapterTabsMenu({
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    const closeOnMove = () => setOpen(false);
+    const closeOnResize = () => setOpen(false);
+    const followButton = (event: Event) => {
+      // Scrolling the menu's own list must not dismiss it.
+      if (event.target instanceof Node && menu.current?.contains(event.target))
+        return;
+      const rect = button.current?.getBoundingClientRect();
+      if (!rect) return;
+      setPosition({
+        top: rect.bottom + 6,
+        right: Math.max(8, innerWidth - rect.right),
+      });
+    };
     document.addEventListener("pointerdown", closeOnOutside);
     document.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("resize", closeOnMove);
-    document.addEventListener("scroll", closeOnMove, true);
+    window.addEventListener("resize", closeOnResize);
+    document.addEventListener("scroll", followButton, true);
     return () => {
       active = false;
       document.removeEventListener("pointerdown", closeOnOutside);
       document.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("resize", closeOnMove);
-      document.removeEventListener("scroll", closeOnMove, true);
+      window.removeEventListener("resize", closeOnResize);
+      document.removeEventListener("scroll", followButton, true);
     };
   }, [open]);
 

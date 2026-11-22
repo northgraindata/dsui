@@ -1,6 +1,6 @@
 import {
-  ADAPTER_API_VERSION,
   type AdapterDefinition,
+  SUPPORTED_ADAPTER_API_VERSIONS,
 } from "@northgraindata/dsui-adapter-sdk";
 import { AdapterLoadError } from "./types.js";
 
@@ -18,20 +18,24 @@ export function assertAdapterDefinition(
   if (!metadata || typeof metadata.id !== "string" || !metadata.id)
     throw problem("metadata.id must be a non-empty string");
   const apiVersion = candidate.apiVersion ?? candidate.sdkVersion;
-  if (apiVersion !== ADAPTER_API_VERSION)
+  if (
+    typeof apiVersion !== "string" ||
+    !SUPPORTED_ADAPTER_API_VERSIONS.includes(apiVersion)
+  )
     throw problem(
-      `targets adapter API ${String(apiVersion)}; host requires ${ADAPTER_API_VERSION}`,
+      `targets adapter API ${String(apiVersion)}; host supports ${SUPPORTED_ADAPTER_API_VERSIONS.join(", ")}`,
     );
   if (typeof candidate.createContext !== "function")
     throw problem("missing createContext factory");
   for (const key of ["stores", "resources", "actions", "pages"] as const) {
     if (!Array.isArray(candidate[key])) throw problem(`missing ${key} list`);
   }
-  // Jobs and signals were added after the initial adapter SDK release. Treat
-  // absent lists as empty so previously built bundles remain loadable.
+  // Jobs, signals and routes were added after the initial adapter SDK release.
+  // Treat absent lists as empty so previously built bundles remain loadable.
   return {
     ...candidate,
     jobs: Array.isArray(candidate.jobs) ? candidate.jobs : [],
     signals: Array.isArray(candidate.signals) ? candidate.signals : [],
+    routes: Array.isArray(candidate.routes) ? candidate.routes : [],
   } as unknown as AdapterDefinition;
 }

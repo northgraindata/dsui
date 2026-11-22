@@ -139,6 +139,10 @@ export type PluginMetadata = {
   readonly version: string;
   readonly apiVersion: typeof PLUGIN_API_VERSION;
   readonly security?: boolean;
+  /** Sidebar group label. Plugins without a category appear in Extensions. */
+  readonly category?: string;
+  /** Image URL or self-contained data URL, following adapter metadata. */
+  readonly iconUrl?: string;
 };
 
 /** Explicit opt-in to the host's dynamically composed Settings navigation. */
@@ -354,6 +358,8 @@ export type PluginCatalog = {
     id: string;
     name: string;
     version: string;
+    category?: string;
+    iconUrl?: string;
     status: PluginReadinessStatus;
     detail?: string;
   }>;
@@ -410,6 +416,10 @@ export type PluginResource = {
 };
 
 export interface PluginAuthenticationProvider {
+  /** Resolve current identity/teams for delegated background authorization; never reuse a session snapshot. */
+  resolvePrincipal?(
+    id: string,
+  ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
   authenticate(
     request: Request,
   ): Promise<PluginPrincipal | null> | PluginPrincipal | null;
@@ -427,6 +437,59 @@ export interface PluginAuthenticationProvider {
    * intercept another plugin's routes, or reach a path outside its own prefix.
    */
   routes?(request: Request): Promise<Response> | Response;
+}
+
+/**
+ * A source of credentials that lives outside DSUI, such as a cloud secret
+ * manager.
+ *
+ * A connection field may hold a reference instead of a value. The host asks the
+ * provider for the value just before it calls the adapter, so DSUI stores the
+ * reference and never the credential. A reference is opaque to the host: only
+ * the provider that issued the format parses it.
+ */
+/** A secret a person can pick instead of typing its reference. */
+export type PluginSecretSuggestion = {
+  /** What goes into the field. */
+  reference: string;
+  /** Shown instead of the reference when it reads better. */
+  label?: string;
+  description?: string;
+};
+
+export interface PluginSecretProvider {
+  /** Kebab-case and unique across plugins; it is what a stored reference names. */
+  id: string;
+  /** Shown in the connection form, e.g. "AWS Secrets Manager". */
+  label: string;
+  description?: string;
+  /** Describes the input a person fills in to point at a secret. */
+  reference: { label: string; placeholder?: string; hint?: string };
+  /**
+   * Returns the secret's current value.
+   *
+   * Throw with a message that names what was asked for and why it failed. The
+   * host never logs or returns the resolved value, and an error that contains
+   * one would defeat that.
+   */
+  resolve(
+    reference: string,
+    options: { signal?: AbortSignal },
+  ): Promise<string>;
+  /**
+   * Lists secrets whose reference starts with, or matches, `query`.
+   *
+   * Optional, because listing usually needs a broader permission than reading
+   * one secret. The form offers suggestions only when this exists and works.
+   * Throw when the caller may not list: the host remembers that and falls back
+   * to a plain input without asking again for a few minutes. Return at most a
+   * few dozen entries, never a secret's value, and treat an empty query as
+   * "show the first ones".
+   */
+  search?(
+    query: string,
+    options: { signal?: AbortSignal },
+  ): Promise<PluginSecretSuggestion[]>;
 }
 
 export interface PluginAuthorizationProvider {
@@ -486,6 +549,7 @@ export interface RuntimePluginRegistry {
   job(job: RuntimePluginJob): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
+  secrets(provider: PluginSecretProvider): void;
 }
 
 /** A declared job as the host publishes it. */
@@ -570,6 +634,13 @@ export interface PluginRegistry<TConfig = unknown> {
   job(job: JobDefinition): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
+  /**
+   * Offers a secret manager that connection fields can point at.
+   *
+   * Unlike authentication, several providers may coexist; each id must be
+   * unique across plugins.
+   */
+  secrets(provider: PluginSecretProvider): void;
 }
 
 export interface PluginCapabilities {
@@ -577,7 +648,18 @@ export interface PluginCapabilities {
     /** Identity of the authenticated request; absent in background work. */
     principal?(): PluginPrincipal | null;
     requireAdmin?(): Promise<void>;
-    require(serviceId: string, permission: PluginPermission): Promise<void>;
+    /** Rechecks the current identity's permission without changing the job's execution identity. */
+    requirePrincipal?(
+      principalId: string,
+      serviceId: string,
+      permission: PluginPermission,
+      action?: Pick<PluginResource, "actionId" | "actionInput">,
+    ): Promise<void>;
+    require(
+      serviceId: string,
+      permission: PluginPermission,
+      action?: Pick<PluginResource, "actionId" | "actionInput">,
+    ): Promise<void>;
   };
   readonly jobs: {
     enqueue(jobId: string, input: unknown): Promise<{ runId: string }>;
@@ -920,6 +1002,7 @@ export function definePlugin<TConfig>(
                 );
               runtimeRegistry.authorization(provider);
             },
+            secrets: (provider) => runtimeRegistry.secrets(provider),
           };
           definition.setup(registry, config);
         },

@@ -1,0 +1,18 @@
+{
+  "name": "Tabs",
+  "description": "Tabbed interface.",
+  "props": {
+    "items": {
+      "description": "Tab definitions"
+    },
+    "defaultIndex": {
+      "description": "Initially active tab",
+      "default": "0"
+    },
+    "variant": {
+      "description": "Visual style",
+      "default": "\"default\""
+    }
+  },
+  "example": "Tabs({\n  items: [\n    { label: \"Overview\", content: Table({ source: overview() }) },\n    { label: \"Metrics\", content: Card({ content: Value({ source: metrics(), field: \"cpu\" }) }) },\n    { label: \"Logs\", link: \"/logs\" },\n  ],\n})"
+}

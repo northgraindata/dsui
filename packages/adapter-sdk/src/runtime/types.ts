@@ -4,10 +4,12 @@ import type {
   ActionResult,
 } from "../action/index";
 import type { AdapterDefinition } from "../adapter/index";
+import type { BlobStore } from "../blob";
 import type { PageNode } from "../components/index";
 import type { SignalEmission } from "../job";
 import type { AnyPageDefinition, StoreAccessor } from "../page/index";
 import type { AnyResourceDefinition, ResourceBinding } from "../resource/index";
+import type { RouteRequest, RouteResponse } from "../route";
 import type {
   StoreDefinition,
   StoreInstance,
@@ -17,6 +19,8 @@ import type {
 export interface AdapterRuntimeOptions {
   /** Host-owned backend for stores declaring persistent state. */
   readonly persistenceProvider?: StorePersistenceProvider;
+  /** Host-owned binary storage for this service. Defaults to memory. */
+  readonly blobStore?: BlobStore;
 }
 
 /**
@@ -70,6 +74,19 @@ export interface JobExecutionOptions {
   readonly signal: AbortSignal;
 }
 
+/** The request the host hands over, before `text()` and `json()` are attached. */
+export type RouteRequestData = Omit<RouteRequest, "text" | "json">;
+
+export interface RouteExecutionOptions {
+  readonly signal: AbortSignal;
+}
+
+export interface RouteExecution {
+  /** Validated response, ready to send. */
+  readonly response: RouteResponse;
+  readonly emissions: readonly SignalEmission[];
+}
+
 /**
  * A rendered page with its own store scope.
  *
@@ -110,6 +127,8 @@ export interface PageScope {
 export interface AdapterInstance<TContext = unknown> {
   /** The definition this instance was created from. */
   readonly definition: AdapterDefinition<TContext, unknown>;
+  /** Binary storage private to this service. */
+  readonly blobs: BlobStore;
   /** Runtime dependencies built by the definition's context factory. */
   readonly context: TContext;
   /**
@@ -167,6 +186,12 @@ export interface AdapterInstance<TContext = unknown> {
     input: unknown,
     options: JobExecutionOptions,
   ): Promise<readonly SignalEmission[]>;
+  /** Serves one declared route and returns its response and validated signals. */
+  runRoute(
+    routeId: string,
+    request: RouteRequestData,
+    options: RouteExecutionOptions,
+  ): Promise<RouteExecution>;
   /**
    * Re-executes watched bindings: none (all), a resource (its
    * bindings), or a resource plus input (one binding).

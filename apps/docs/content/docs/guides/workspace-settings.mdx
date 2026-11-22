@@ -1,0 +1,68 @@
+---
+title: Workspace settings
+description: Reference for every section of Settings, including which settings you can manage in dsui.yaml and which need the admin role.
+contentType: reference
+---
+
+Open **Settings** to name your workspace, set personal display preferences, manage DSUI Agents, and check what the installation has loaded. **General** and **Preferences** are visible to everyone. **Agents**, **Extensions**, and **System** appear only for people who can manage the installation, which means the admin and owner roles. Without an authentication plugin, you are the owner. See [how DSUI works](/docs/getting-started/concepts#access-control).
+
+## General
+
+General holds the settings of the whole installation. Changes apply immediately and survive restarts.
+
+| Setting | Values | Default |
+| --- | --- | --- |
+| **Workspace name** | 1 to 80 characters | `My workspace` |
+| **Environment** | `local`, `development`, `staging`, or `production` | `local` |
+| **Default time zone** | `browser`, or an IANA time zone such as `Europe/Warsaw` | `browser` |
+
+The workspace name appears in the sidebar and in the browser tab title. When the environment isn't `local`, DSUI shows a bar with the workspace name and environment at the top of every page, so people can tell a production workspace from a staging one.
+
+### Manage general settings in dsui.yaml
+
+Set any of these values under `settings` in `dsui.yaml`:
+
+```yaml
+settings:
+  name: Analytics production
+  environment: production
+  timeZone: UTC
+```
+
+A value set in `dsui.yaml` is read-only in the UI, and the server refuses to change it. If you remove the value from the file, DSUI falls back to the value saved in the UI, or to the default. DSUI re-reads `dsui.yaml` when the workspace loads its services, so you don't need to restart it.
+
+## Preferences
+
+Preferences are personal. Without an authentication plugin, they belong to the local operator. With authentication, each account has its own. Select **Save changes** to apply them.
+
+| Preference | Values | Default |
+| --- | --- | --- |
+| **Time zone** | `inherit` (follow the workspace), `browser`, or an IANA time zone | `inherit` |
+| **Clock** | `24h` or `12h` | `24h` |
+| **Table density** | `comfortable` or `compact` | `comfortable` |
+| **Font size** (SQL editor) | 11 to 20 | 13 |
+| **Tab size** (SQL editor) | 2 or 4 | 2 |
+| **Wrap long lines** (SQL editor) | On or off | Off |
+
+Time zone and clock apply to the shared timestamp displays. Table density and the editor settings apply to shared SDK components in every adapter. A plugin that draws its own interface can ignore them. **Reset defaults** fills the form with the defaults so you can review them before you save.
+
+## Agents
+
+Agents lists the DSUI Agents that connect to this installation. Use it to add an agent, rotate its token, revoke it, or delete it. See [private networks](/docs/guides/private-networks).
+
+## Extensions
+
+Extensions shows what this installation has loaded.
+
+- **Plugins**: each plugin with a status of **Loaded**, **Disabled**, or **Unavailable**. A plugin that contributes a settings page adds a link to it here.
+- **Adapters**: the adapters that DSUI loaded.
+
+Extensions are loaded from `dsui.yaml`, so you add or remove them there. If no plugins are configured, the panel says so.
+
+## System
+
+System shows facts about this installation and cannot change them.
+
+- **Installation**: DSUI version, runtime, platform, authentication (**Local operator** or **Provided by a plugin**), and connection encryption status
+- **Configuration & storage**: the path of the configuration file and of the data directory
+- **Diagnostics**: **Download diagnostics** exports versions and extension statuses to help troubleshoot. The export excludes credentials, configuration values, and filesystem paths. It isn't a backup of DSUI data.

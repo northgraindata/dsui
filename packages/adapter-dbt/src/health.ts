@@ -2,6 +2,7 @@ import { access, stat } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type AdapterHealthCheck,
+  type AdapterHealthRuntime,
   healthReport,
   reachabilityCheck,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -17,8 +18,12 @@ import type { DbtContext } from "./context.js";
  * with the other's signals would produce confident nonsense, so the checks
  * branch on the configured connection method.
  */
-export async function dbtHealth(ctx: DbtContext) {
+export async function dbtHealth(
+  ctx: DbtContext,
+  runtime: AdapterHealthRuntime,
+) {
   const started = Date.now();
+  if (ctx.config.method === "push") return pushHealth(runtime);
   if (ctx.config.method === "cloud" && ctx.cloud)
     return cloudHealth(ctx, started);
   return localHealth(ctx, started);
@@ -202,5 +207,33 @@ async function localHealth(ctx: DbtContext, started: number) {
         : score >= 60
           ? "warning"
           : "unavailable",
+  });
+}
+
+/**
+ * dbt Core (push): nothing here to reach and nothing here to run. A push
+ * service is healthy from the moment it exists, because the only thing left
+ * to wait for is the customer's pipeline: reporting that as a failure would
+ * also fail the connection test, which has to pass before the service can be
+ * saved. What is worth showing is whether CI has delivered artifacts yet.
+ */
+async function pushHealth(runtime: AdapterHealthRuntime) {
+  const pushed = await runtime.blobs.list("artifacts/");
+  const latest = pushed.reduce<string | undefined>(
+    (at, blob) => (!at || blob.updatedAt > at ? blob.updatedAt : at),
+    undefined,
+  );
+  return healthReport({
+    checks: [
+      {
+        id: "artifacts",
+        label: "Artifacts received",
+        ok: true,
+        detail: latest
+          ? `${pushed.length} artifact${pushed.length === 1 ? "" : "s"}, latest ${latest}`
+          : "Waiting for the first upload from CI.",
+      },
+    ],
+    weights: { artifacts: 1 },
   });
 }

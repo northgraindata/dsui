@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { StoreActionAccessor } from "../action/types";
+import type { BlobStore } from "../blob";
 import type { RefreshStrategy } from "../refresh/types";
 
 /** Optional generic discovery metadata for a declared resource. */
@@ -11,6 +12,8 @@ export interface ResourceMetadata {
 export interface ResourceRuntimeContext {
   /** Access to adapter-scoped stores, including persistent stores. */
   readonly stores: StoreActionAccessor;
+  /** Binary storage private to this service. */
+  readonly blobs: BlobStore;
 }
 
 /**

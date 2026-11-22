@@ -30,6 +30,7 @@ import { validateAttachments } from "./attachments/validation";
 import { mentionServices, serviceMentions } from "./chat/mentions";
 import { replyInputSchema, resolveReply } from "./chat/replies";
 import { conversationTitle, generatedTitle } from "./chat/title";
+import { iconUrl } from "./logo";
 import {
   history,
   owner,
@@ -93,9 +94,11 @@ export function createAiAgentPlugin(
   return definePlugin({
     metadata: {
       id: "ai-agent",
-      name: "DSUI Agent",
+      name: "AI assistant",
       version: "0.1.0",
       apiVersion: 1,
+      category: "AI",
+      iconUrl,
     },
     configSchema,
     setup(registry) {
@@ -110,7 +113,7 @@ export function createAiAgentPlugin(
         defineSlot({
           id: "chat-drawer",
           slot: "overlay",
-          presentation: { mode: "drawer", label: "DSUI Agent", width: 560 },
+          presentation: { mode: "drawer", label: "AI assistant", width: 560 },
           render: () => drawer(),
         }),
       );

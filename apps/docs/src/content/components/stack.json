@@ -1,0 +1,14 @@
+{
+  "name": "Stack",
+  "description": "Vertical stack with gap.",
+  "props": {
+    "content": {
+      "description": "Child nodes"
+    },
+    "gap": {
+      "description": "Spacing between items",
+      "default": "\"md\""
+    }
+  },
+  "example": "Stack({\n  gap: \"sm\",\n  content: [\n    Badge({ label: \"First\" }),\n    Badge({ label: \"Second\" }),\n    Badge({ label: \"Third\" }),\n  ],\n})"
+}

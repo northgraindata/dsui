@@ -158,9 +158,15 @@ export async function prepareSdk(
     if (install) {
       const child = Bun.spawn(
         ["bun", "install", "--ignore-scripts", "--no-save"],
-        { cwd: destination, stdout: "inherit", stderr: "inherit" },
+        { cwd: destination, stdout: "pipe", stderr: "inherit" },
       );
-      if ((await child.exited) !== 0)
+      // Install progress belongs on stderr so machine-readable CLI output stays JSON.
+      const [code, output] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+      ]);
+      process.stderr.write(output);
+      if (code !== 0)
         throw new Error(`Failed to install dependencies for ${name}`);
     }
   }

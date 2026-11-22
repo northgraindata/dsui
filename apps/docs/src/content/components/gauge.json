@@ -1,0 +1,28 @@
+{
+  "name": "Gauge",
+  "description": "Radial gauge that shows one value against a maximum.",
+  "props": {
+    "value": {
+      "description": "Current value, in the same unit as `max`"
+    },
+    "max": {
+      "description": "Upper bound of the scale",
+      "default": "100"
+    },
+    "tone": {
+      "description": "Color band. Omit it to derive the band from `scale`."
+    },
+    "scale": {
+      "description": "Which end of the scale is bad",
+      "default": "\"higher-is-better\""
+    },
+    "showValue": {
+      "description": "Print the value inside the ring",
+      "default": "true"
+    },
+    "label": {
+      "description": "Accessible description. Not drawn."
+    }
+  },
+  "example": "Gauge({ value: 72, scale: \"higher-is-worse\", label: \"Disk used\" })"
+}

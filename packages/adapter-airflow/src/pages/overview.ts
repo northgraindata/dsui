@@ -1,17 +1,16 @@
 import {
-  Badge,
   Button,
   Card,
   Columns,
   definePage,
   Grid,
+  List,
   Section,
   Stack,
-  Table,
   Value,
 } from "@northgraindata/dsui-adapter-sdk";
-import { pauseDag, triggerDag, unpauseDag } from "../actions/dags.js";
 import { overview, overviewDags } from "../resources/overview.js";
+import { dagActions } from "./dags.js";
 
 export const overviewPage = definePage({
   path: "/",
@@ -69,50 +68,23 @@ export const overviewPage = definePage({
             title: "DAGs",
             description: "Monitor schedules and trigger workflows.",
             link: { label: "View all", path: "/dags" },
-            content: Table({
+            content: List({
               source: overviewDags(),
-              columns: [
-                { id: "name", label: "DAG" },
-                { id: "schedule", label: "Schedule" },
-                { id: "lastRun", label: "Last run" },
-                { id: "nextRun", label: "Next run" },
-                {
-                  id: "status",
-                  label: "Status",
-                  renderCell: Badge({
-                    label: { field: "status" },
-                    tone: { field: "statusTone" },
-                    dot: true,
-                  }),
+              noun: "DAG",
+              searchable: true,
+              item: {
+                icon: "network",
+                title: "name",
+                badge: "schedule",
+                description: "description",
+                status: {
+                  label: "lastRunState",
+                  tone: "lastRunTone",
+                  detail: "lastRunLabel",
                 },
-              ],
+              },
               rowLink: { path: "/dags/:dagId", params: { dagId: "dagId" } },
-              rowActions: [
-                {
-                  action: triggerDag,
-                  label: "Trigger",
-                  icon: "play",
-                  input: { dagId: "dagId" },
-                  successLink: {
-                    path: "/dags/:dagId?tab=graph&runId=:dagRunId",
-                    params: { dagId: "dagId", dagRunId: "dagRunId" },
-                  },
-                },
-                {
-                  label: "Pause",
-                  icon: "pause",
-                  action: pauseDag,
-                  input: { dagId: "dagId" },
-                  when: { field: "isPaused", equals: false },
-                },
-                {
-                  label: "Unpause",
-                  icon: "reload",
-                  action: unpauseDag,
-                  input: { dagId: "dagId" },
-                  when: { field: "isPaused", equals: true },
-                },
-              ],
+              rowActions: dagActions,
             }),
           }),
         },

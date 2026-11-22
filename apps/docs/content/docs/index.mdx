@@ -1,40 +1,36 @@
 ---
-title: DSUI Developer Preview
-description: The extensible platform for your data stack.
+title: DSUI documentation
+description: Connect your data tools, operate them from one workspace, and extend DSUI with adapters and plugins.
+contentType: landing
 ---
 
-> **Developer Preview**
->
-> DSUI is under active development. Expect breaking changes, incomplete adapter coverage, and bugs.
+<Callout type="warning" title="Developer preview">
+DSUI is under active development. Expect breaking changes and incomplete adapter coverage.
+</Callout>
 
-DSUI is an open-source, extensible platform for your data stack. Connect tools, install plugins, and build custom capabilities tailored to your infrastructure.
+DSUI is an open-source, AI-native control plane for your data stack. You connect services such as databases, orchestrators, and object storage, and then explore and operate them from one workspace.
 
-![DSUI workspace overview showing connected data and infrastructure services](https://dsui.northgraindata.com/assets/product.png)
+![The DSUI workspace with connected services](https://dsui.northgraindata.com/assets/product.png)
 
-## Start here
+## Choose where to start
 
-[Run DSUI with npx](/docs/getting-started/quickstart) and connect an in-memory
-DuckDB workspace in a few minutes. Choose Docker when you need isolation or are
-already running the rest of your stack in Compose.
-
-![DSUI infrastructure overview showing services converging on one workspace](/docs/assets/dsui-runtime-overview.png)
-
-## Extend your data stack
-
-Connect databases, orchestration tools, transformation services, and storage
-through adapters. Install plugins to add capabilities across connected services.
-
-- Declare adapter sources and service connections in `dsui.yaml`
-- Run service operations on the server and keep credentials there
-- Build custom integrations with the [Adapter SDK](/docs/adapter-sdk/overview)
-- Build pages, actions, jobs, and workflows with the [Plugin SDK](/docs/plugin-sdk/overview)
-
-The [configuration guide](/docs/getting-started/configuration) includes complete
-examples for loading adapters and connecting services.
-
-## Current status
-
-- Local-first, self-hosted Developer Preview
-- Partial adapter coverage
-- Breaking changes between preview releases are possible
-- Enterprise features and hosted control planes are not included yet
+<Cards>
+<Card title="Run DSUI" href="/docs/getting-started/quickstart">
+Start a workspace with npx and run your first query.
+</Card>
+<Card title="Learn how it works" href="/docs/getting-started/concepts">
+Services, adapters, plugins, and where your credentials stay.
+</Card>
+<Card title="Connect a service" href="/docs/integrations">
+Set up Airflow, ClickHouse, dbt, DuckDB, PostgreSQL, or S3.
+</Card>
+<Card title="Build an adapter" href="/docs/adapter-sdk/overview">
+Add support for a service that DSUI doesn't cover yet.
+</Card>
+<Card title="Build a plugin" href="/docs/plugin-sdk/overview">
+Add pages, background jobs, and settings across your installation.
+</Card>
+<Card title="Read the telemetry policy" href="/docs/reference/telemetry">
+See what DSUI sends, what it never sends, and how to turn it off.
+</Card>
+</Cards>

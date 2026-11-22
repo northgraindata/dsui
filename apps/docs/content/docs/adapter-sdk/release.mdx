@@ -1,53 +1,62 @@
 ---
-title: Releasing an adapter
-description: Distribute an adapter and declare its SDK and host requirements.
+title: Release an adapter
+description: Share your adapter from a GitHub repository or a local directory, pin the version that people run, and declare which SDK it targets.
+contentType: how-to
 ---
 
-Adapters and the Adapter SDK have separate versions. Pin the SDK package version
-you tested; the host checks `ADAPTER_API_VERSION` (or the legacy `sdkVersion`
-marker) rather than equating it with npm SemVer.
+DSUI builds every adapter from source when it starts, so releasing an adapter means publishing its source where DSUI can fetch it. There are two sources, `git` for a GitHub repository and `local` for a directory. DSUI doesn't load prebuilt packages from npm.
 
-## Source builds
+## Prepare the package
 
-A source adapter provides `package.json` and `src/adapter.ts`, with an optional
-`dsui.browser` entry for custom browser components. DSUI installs dependencies,
-bundles the server entry and starts an isolated adapter host. Ordinary npm and
-native dependencies are supported by this source-build path.
+Your adapter is a TypeScript package. DSUI finds the entry file in `package.json`, in this order:
+
+1. `exports["."]`, or `exports` when it's a string
+2. `main`
+3. `./src/adapter.ts`
+
+The entry must be a TypeScript file, and its default export must be the adapter from `defineAdapter`. For custom browser components, add `dsui.browser` with the path of the browser entry. See [custom components](/docs/build/custom-components).
+
+Pin the exact version of `@northgraindata/dsui-adapter-sdk` that you tested. DSUI decides whether it can load your adapter from the adapter API marker, not from the package version. See [versions and compatibility](/docs/build/compatibility).
+
+## Publish from GitHub
+
+Push your adapter to a public GitHub repository. People load it with `source: git`:
+
+```yaml
+adapters:
+  example:
+    source: git
+    repository: "git+https://github.com/your_org/dsui-adapter-example"
+    ref: v1.0.0
+```
+
+| Field | Meaning |
+| --- | --- |
+| `repository` | `git+https://github.com/owner/repository` |
+| `ref` | A branch, tag, or commit SHA. Without it, DSUI builds the `main` branch |
+| `path` | The directory of the adapter package, when the repository holds more than one package |
+
+The key under `adapters` must equal the `id` in your adapter's metadata.
+
+Tell people to set `ref` to a tag or a commit SHA, so that a new commit doesn't change what they run. Tag each release.
+
+DSUI downloads the repository without credentials, and the adapter source has no token field. A private repository therefore doesn't work. Use `source: local` for a private adapter.
+
+## Load from a directory
+
+`source: local` builds an adapter from a directory on the machine that runs DSUI. The path is absolute, or relative to the directory where DSUI started:
 
 ```yaml
 adapters:
   example:
     source: local
-    path: ./examples/example-adapter
+    path: ./hello-adapter
 ```
 
-Run DSUI from the repository root for the relative path above. Git source builds
-also accept a repository, ref and optional package path. Review source before
-configuring it; lifecycle scripts are disabled but source builds are trusted code.
+## Trust and security
 
-## Prebuilt artifacts
+A source build is trusted code. DSUI disables dependency lifecycle scripts when it installs, but your adapter still runs on the DSUI machine. People who load your adapter should read its source first. See [runtime model](/docs/adapter-sdk/runtime-model) for how it's isolated.
 
-The prebuilt npm installation path uses a pinned package version and tarball SRI.
-A prebuilt artifact includes the adapter manifest and server bundle, plus a browser
-bundle for custom components. Follow the manifest and integrity contract enforced
-by the host; these requirements differ from the source-build path.
+## Releases of the SDK
 
-```yaml
-adapters:
-  example:
-    package: "@your-org/dsui-adapter-example"
-    version: "1.0.0"
-    integrity: "sha512-..."
-```
-
-See the [complete example](https://github.com/northgraindata/dsui/tree/main/examples/example-adapter)
-and the host's [installation schemas](https://github.com/northgraindata/dsui/blob/main/packages/server/src/config.ts).
-
-## SDK releases
-
-Adapter SDK uses its own npm package, changelog and `adapter-sdk-vX.Y.Z` tags.
-Its technical UI dependency is published first with the same version. SDKs ship
-TypeScript source, types, CSS and browser subpaths for Bun and TS-aware bundlers.
-
-See [release policy](/docs/releases) for versioning, Changesets and CI. Product
-releases remain separate and publish both npm and Docker distributions.
+The Adapter SDK has its own versions, changelog, and `adapter-sdk-vX.Y.Z` tags, separate from the product. See [versions and compatibility](/docs/build/compatibility).

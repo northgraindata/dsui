@@ -669,6 +669,9 @@ export function createAirflowClient(
   }
 
   return {
+    authenticate: async (signal) => {
+      if (!basicAuthorization) await getAccessToken(signal);
+    },
     dispose: () => lifetime.abort(),
     getVersion: async (signal): Promise<AirflowVersion> =>
       request("version", versionResponseSchema, signal),

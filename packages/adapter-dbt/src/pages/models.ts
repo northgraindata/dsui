@@ -1,7 +1,7 @@
 import {
   definePage,
+  List,
   PageHeader,
-  Table,
   Tabs,
   Target,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -21,22 +21,26 @@ export const modelsPage = definePage({
           label: "List",
           content: Target({
             id: "dbt.models.table",
-            content: Table({
+            content: List({
               source: models(),
-              columns: [
-                { id: "uniqueId", label: "ID" },
-                { id: "name", label: "Model" },
-                { id: "package", label: "Package" },
-                { id: "database", label: "Database" },
-                { id: "schema", label: "Schema" },
-                { id: "materialized", label: "Materialized" },
-                { id: "dependsOn", label: "Upstream models" },
+              noun: "model",
+              searchable: true,
+              pageSize: 50,
+              filters: [
+                { field: "materialized", label: "Materialized" },
+                { field: "package", label: "Package" },
               ],
+              item: {
+                icon: "layers",
+                title: "name",
+                badge: "materialized",
+                description: "description",
+                meta: ["location", "upstreamLabel"],
+              },
               rowLink: {
                 path: "/models/:modelId",
                 params: { modelId: "uniqueId" },
               },
-              searchable: true,
             }),
           }),
         },

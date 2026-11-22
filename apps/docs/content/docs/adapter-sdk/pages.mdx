@@ -1,14 +1,22 @@
 ---
 title: Pages
-description: Routes that compose components and bindings into views.
+description: Reference for definePage, which declares a route that turns params, query values, and store state into a tree of components.
+contentType: reference
 ---
 
-A page is a route. It receives typed params, query params, and store access — and returns a tree of DSUI components.
+A page is a route in your adapter. When someone opens a URL under a service, DSUI finds the page whose path matches, calls its `render` function, and sends the resulting tree of components to the browser. A page composes [builtin components](/docs/build/components) and binds them to resources and actions.
 
-## Basic page
+## Define a page
+
+`path` must start with `/`. `render` returns one component or an array of them:
 
 ```ts
-import { definePage, PageHeader, Table } from "@northgraindata/dsui-adapter-sdk";
+import {
+  definePage,
+  PageHeader,
+  Table,
+} from "@northgraindata/dsui-adapter-sdk";
+import { status } from "./resources.js";
 
 export const overview = definePage({
   path: "/",
@@ -19,152 +27,91 @@ export const overview = definePage({
 });
 ```
 
+Register the page in `pages` of `defineAdapter`.
+
 ## Route params
 
-Segments like `:database` become typed params:
+A segment that starts with `:` is a param. TypeScript infers the params from the path, DSUI decodes them, and every value is a string:
 
 ```ts
-export const schemaPage = definePage({
-  path: "/databases/:database/schemas/:schema",
-  render: ({ params }) => [
-    PageHeader({ title: `${params.database} / ${params.schema}` }),
-    Table({ source: tables({ database: params.database, schema: params.schema }) }),
-  ],
+export const hello = definePage({
+  path: "/hello/:name",
+  render: ({ params }) => [PageHeader({ title: params.name })],
 });
 ```
 
-`params` is `Record<string, string>` — every segment is a string. The route pattern is validated at definition time (must start with `/`).
+For `/hello/Ada%20Lovelace`, `params.name` is `Ada Lovelace`. A URL matches only when it has the same number of segments as the path, and a path can't have wildcards. When no page matches, DSUI answers `No page matches URL: <path>`.
 
-## Query params
+## Query values
 
-Access the URL query string via `query`:
+`query` is a standard `URLSearchParams` for the query string of the URL:
 
 ```ts
-export const searchPage = definePage({
+export const search = definePage({
   path: "/search",
   render: ({ query }) => [
     PageHeader({ title: `Search: ${query.get("q") ?? ""}` }),
-    Table({ source: searchResults({ query: query.get("q") ?? "" }) }),
+    Table({ source: results({ text: query.get("q") ?? "" }) }),
   ],
 });
 ```
 
-`query` is a standard `URLSearchParams` instance.
+## Compose components
 
-## Composing components
-
-Pages compose DSUI components into trees. Components accept resources as `source` and actions as `action`:
+Components take resources as `source` and actions as `action`:
 
 ```ts
-import {
-  definePage, PageHeader, Section, Table, Button, Card, Value,
-} from "@northgraindata/dsui-adapter-sdk";
-
 definePage({
   path: "/warehouses",
   render: () => [
     PageHeader({
       title: "Warehouses",
-      actions: [
-        Button({ label: "Refresh", action: flush() }),
-      ],
+      actions: [Button({ label: "Refresh", action: flush() })],
     }),
     Section({
       title: "Compute",
-      content: Table({
-        source: warehouses(),
-        rowActions: [
-          {
-            label: "Suspend",
-            action: suspendWarehouse({ warehouse: "row.name" }),
-            when: { field: "status", equals: "RUNNING" },
-          },
-        ],
-      }),
-    }),
-    Section({
-      title: "Summary",
-      content: Card({
-        content: Value({ source: warehouseSummary(), field: "total" }),
-      }),
+      content: Table({ source: warehouses() }),
     }),
   ],
 });
 ```
 
-## Store access
+### Add actions to table rows
 
-Pages receive a `stores` accessor for reading and subscribing to store state:
+A row action names an action and maps the action's input from the row's columns. Pass the action definition, or its ID as a string, and an `input` object whose keys are the action's input fields and whose values are column names:
 
 ```ts
-import { defineStore } from "@northgraindata/dsui-adapter-sdk";
-
-const filterStore = defineStore({
-  id: "filters",
-  scope: "page",
-  state: { status: "all" as string },
-  actions: ({ set }) => ({
-    setStatus: (status: string) => set({ status }),
-  }),
+Table({
+  source: warehouses(),
+  rowActions: [
+    {
+      label: "Suspend",
+      variant: "danger",
+      action: suspendWarehouse,
+      input: { warehouse: "name" },
+      when: { field: "status", equals: "RUNNING" },
+      confirmation: {
+        title: "Suspend warehouse?",
+        description: "Running queries will be cancelled.",
+      },
+    },
+  ],
 });
+```
 
+## Use stores in a page
+
+`render` also receives a `stores` accessor. `stores.use(store)` returns the state and the actions of a store, and it makes the page render again when the state changes. `stores.get(store)` returns only the current state and doesn't subscribe the page.
+
+```ts
 definePage({
   path: "/warehouses",
   stores: [filterStore],
   render: ({ stores }) => {
-    const { status } = stores.use(filterStore); // subscribes to changes
-    return [
-      Table({ source: warehousesFiltered({ status }) }),
-    ];
+    const { status } = stores.use(filterStore);
+    return [Table({ source: warehousesFiltered({ status }) })];
   },
 });
 ```
 
-| Method | Behavior |
-| --- | --- |
-| `stores.use(def)` | Returns state + actions. Subscribes the page — re-renders on state change. |
-| `stores.get(def)` | Returns state only. No subscription — reads the current snapshot. |
-
-Use `use` when the UI depends on the store. Use `get` when you need a value but the page shouldn't re-render when it changes.
-
-## Page-scoped stores
-
-Pass `stores` to `definePage` to create page-scoped instances. These are destroyed when the page scope is disposed:
-
-```ts
-definePage({
-  path: "/editor",
-  stores: [editorStore],
-  render: ({ stores }) => {
-    const { content } = stores.use(editorStore);
-    return [CodeBlock({ label: "Editor", value: content })];
-  },
-});
-```
-
-Page-scoped stores get a fresh instance per page mount. Adapter-scoped stores survive across page navigation.
-
-## Multiple nodes
-
-A page can return a single node or an array:
-
-```ts
-// single
-render: () => PageHeader({ title: "Home" }),
-
-// array
-render: () => [
-  PageHeader({ title: "Home" }),
-  Section({ title: "...", content: Table({ source: data() }) }),
-],
-```
-
-## How pages are consumed
-
-The runtime matches a URL to a page path, creates a `PageScope`, and calls `render()`. The scope owns store instances and handles disposal. Components receive the serialized tree and render it in the browser.
-
-```ts
-const scope = instance.createPageScope("/databases/MAIN/schemas/PUBLIC");
-await scope.ready();
-const nodes = scope.render(); // PageNode[]
-```
+Listing a store in `stores` creates a page-scoped instance of it, which lasts while the page is open. See [stores](/docs/adapter-sdk/stores) for scopes and persistence.

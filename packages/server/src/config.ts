@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { AdapterSourceLocation } from "./adapters/build.js";
 import type { AdapterPackageSource } from "./adapters/types.js";
 
+import { githubRepository } from "./github-repository.js";
 import { installationSettingsSchema } from "./settings";
 
 const installedPluginSourceSchema = z
@@ -123,18 +124,15 @@ export function toAdapterSourceLocation(
     return { kind: "local", path: resolve(cwd, source.path) };
   }
   if ("source" in source && source.source === "git") {
-    const repository = source.repository
-      .replace(/^git\+https:\/\/github\.com\//, "")
-      .replace(/\.git$/, "");
-    const [owner, name, ...rest] = repository.split("/");
-    if (!owner || !name || rest.length) {
+    const repository = githubRepository(source.repository);
+    if (!repository) {
       throw new ConfigError(
         `adapter source must name a GitHub repository as owner/name, got "${source.repository}"`,
       );
     }
     return {
       kind: "git",
-      repository: `${owner}/${name}`,
+      repository,
       // A pinned commit wins when given; otherwise the branch, tag, or default.
       ref: source.commit ?? source.ref ?? "main",
       ...(source.path ? { subdirectory: source.path } : {}),
@@ -282,7 +280,7 @@ export const gitAdapterSourceSchema = z
       .optional(),
   })
   .strict()
-  .refine((value) => Boolean(value.commit) !== Boolean(value.integrity), {
+  .refine((value) => Boolean(value.commit) === Boolean(value.integrity), {
     message:
       "commit and integrity are both required for a pinned prebuilt adapter, or both omitted to build from source",
   });
@@ -387,6 +385,7 @@ export const configSchema = z
       .optional(),
     adapters: z.record(adapterEntrySchema).optional(),
     plugins: z.record(pluginSourceSchema).optional(),
+    telemetry: z.object({ enabled: z.boolean().optional() }).optional(),
   })
   .passthrough();
 

@@ -1,6 +1,7 @@
 import {
   definePage,
   KeyValue,
+  List,
   PageHeader,
   Table,
   Tabs,
@@ -14,16 +15,19 @@ export const assetListPage = definePage({
       title: "Assets",
       description: "Browse Airflow 3 assets or Airflow 2 datasets.",
     }),
-    Table({
+    List({
       source: assets(),
+      noun: "asset",
       searchable: true,
       pageSize: 25,
-      columns: [
-        { id: "name", label: "Asset" },
-        { id: "uri", label: "URI" },
-        { id: "group", label: "Group" },
-        { id: "updatedAt", label: "Updated" },
-      ],
+      filters: [{ field: "group", label: "Group" }],
+      item: {
+        icon: "layers",
+        title: "name",
+        badge: "group",
+        description: "uri",
+        meta: ["producerLabel", "updatedLabel"],
+      },
       rowLink: { path: "/assets/:assetId", params: { assetId: "assetId" } },
     }),
   ],

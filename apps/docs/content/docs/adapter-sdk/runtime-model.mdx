@@ -1,0 +1,33 @@
+---
+title: Runtime model
+description: Learn how DSUI runs your adapter, how many processes it uses, when requests run in parallel, and what that means for the code you write.
+contentType: conceptual
+---
+
+DSUI doesn't run your adapter inside its own process. It bundles the adapter, starts it in a separate process called an adapter host, and sends requests to it. This page explains how those processes are created and reused, so you can write an adapter that behaves well under them.
+
+## One adapter host for each service
+
+DSUI keeps one adapter host process for each service that is in use. Requests for the same service go through that process one at a time, and requests for different services run in parallel.
+
+- **Reads**: page renders, resource reads, and health checks use the service's retained host
+- **Everything else**: actions, jobs, routes, and connection tests that don't belong to a saved service start a short-lived host. A long-running action therefore never blocks the page reads of the same service
+
+DSUI keeps at most 16 retained hosts for an adapter. When all of them are busy, an extra request runs in a short-lived host instead. A retained host stops after 5 minutes without requests, or after a longer idle time when a connection method asks to keep its context longer.
+
+## The context lives for a request
+
+By default, DSUI builds a new context for each request and disposes it when the request ends. A method can ask DSUI to keep the context with `contextIdleTimeoutMs`. DSUI then reuses it until the service has been idle that long. See [connections and context](/docs/adapter-sdk/connections-and-context#create-and-dispose-the-context).
+
+Retention is an optimization, not a promise. DSUI can evict an idle host at any time, so don't depend on a context to hold session state.
+
+## Serialize requests when a resource needs it
+
+Set `requestConcurrency: "serial"` on a connection method when the service allows only one user at a time, such as a database file with an exclusive lock. DSUI then queues every call for that method of the adapter, including actions and jobs, so they run one after another.
+
+## What to do about it
+
+- **Keep state in stores, not in variables.** A host process can start and stop between requests, so a module-level variable can disappear. See [stores](/docs/adapter-sdk/stores)
+- **Keep `context` cheap.** Open slow clients lazily, or set `contextIdleTimeoutMs`
+- **Release everything in `disposeContext`.** Close sockets, pools, and file handles, or the next request can fail on a lock
+- **Put availability probes in `health`.** Don't make the context creation check that the service is up

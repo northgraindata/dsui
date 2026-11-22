@@ -22,13 +22,19 @@ export {
   scoreChecks,
   statusFor,
 } from "./health";
+export type { AdapterPresentation } from "./presentation";
 export type {
   AdapterDefinition,
   AdapterHealthCheck,
   AdapterHealthReport,
+  AdapterHealthRuntime,
   AdapterInfo,
   ConnectionMethodDefinition,
   ConnectionRequestConcurrency,
   DefineAdapterOptions,
 } from "./types";
-export { ADAPTER_API_VERSION, ADAPTER_SDK_VERSION } from "./types";
+export {
+  ADAPTER_API_VERSION,
+  ADAPTER_SDK_VERSION,
+  SUPPORTED_ADAPTER_API_VERSIONS,
+} from "./types";

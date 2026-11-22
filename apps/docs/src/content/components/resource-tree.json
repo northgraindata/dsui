@@ -1,0 +1,22 @@
+{
+  "name": "ResourceTree",
+  "description": "Hierarchical tree navigator.",
+  "props": {
+    "label": {
+      "description": "Tree label"
+    },
+    "branch": {
+      "description": "Root branch definition"
+    },
+    "selectedPath": {
+      "description": "Currently selected path"
+    },
+    "stateKey": {
+      "description": "Persistence key for selection state"
+    },
+    "searchPlaceholder": {
+      "description": "Search input placeholder"
+    }
+  },
+  "example": "ResourceTree({\n  label: \"Explorer\",\n  branch: {\n    source: tree(),\n    nameField: \"name\",\n    rowLink: { path: \"/item/:id\", params: { id: \"id\" } },\n    children: { source: children(), nameField: \"name\" },\n  },\n})"
+}

@@ -1,0 +1,14 @@
+{
+  "title": "Guides",
+  "pages": [
+    "connect-a-service",
+    "credentials-from-a-secret-manager",
+    "production",
+    "access-control",
+    "private-networks",
+    "ai-assistant",
+    "plugins",
+    "workspace-settings",
+    "troubleshooting"
+  ]
+}

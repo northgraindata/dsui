@@ -1,0 +1,126 @@
+---
+title: dbt
+description: Connect DSUI to dbt Cloud, to a dbt project on the DSUI machine, or to artifacts that your CI pushes, to browse runs, models, and tests and react to finished runs.
+contentType: reference
+---
+
+The dbt adapter has three connection methods, so you must set `method` on every service:
+
+- **`cloud`**: reads and operates a dbt Cloud account with an API token
+- **`local`**: runs dbt Core or Fusion on the machine that runs DSUI
+- **`push`**: reads dbt artifacts that your CI uploads, and runs nothing on the DSUI machine
+
+## Add a dbt Cloud service
+
+Declare the adapter and the service in `dsui.yaml`:
+
+```yaml {14-15}
+adapters:
+  dbt:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-dbt
+
+services:
+  - id: dbt
+    adapter: dbt
+    name: dbt Cloud
+    connection:
+      method: cloud
+      baseUrl: https://cloud.getdbt.com
+      accountId: ${DBT_ACCOUNT_ID}
+      apiToken: ${DBT_API_TOKEN}
+```
+
+See [connect a service](/docs/guides/connect-a-service) for how credentials work.
+
+## Connection methods
+
+### dbt Cloud
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `baseUrl` | Yes | URL of your dbt Cloud host |
+| `accountId` | Yes | Your dbt Cloud account ID |
+| `apiToken` | Yes | An API token for the account |
+| `jobId` | No | The job that the **run-build** action uses when you don't name one |
+
+### dbt on the DSUI machine
+
+Use `local` when DSUI runs through npx, or in a container that has your dbt project.
+
+```yaml
+connection:
+  method: local
+  projectPath: /data/dbt
+  target: dev
+```
+
+| Field | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `projectPath` | Yes | | Directory of the dbt project |
+| `profilesDir` | No | dbt's default | Directory of `profiles.yml` |
+| `target` | No | The profile's default | dbt target to use |
+| `targetPath` | No | `target` | Directory that holds the dbt artifacts |
+| `executable` | No | `dbt` | Command that starts dbt |
+
+The official Docker image contains dbt Core 1.10.15, installed with pipx, and the `dbt` command. It doesn't contain a dbt adapter package for your warehouse, such as `dbt-postgres`, so a project that needs one can't run in the image as it is. In a container, `projectPath` is a path inside the container, so mount your project there.
+
+### Artifacts pushed from CI
+
+Use `push` when nothing on the DSUI machine can run or see your dbt project. This is the way to use dbt Core with a hosted DSUI.
+
+```yaml
+connection:
+  method: push
+  pushToken: ${DBT_PUSH_TOKEN}
+```
+
+`pushToken` is a secret of at least 24 characters. Generate one with `openssl rand -hex 32`.
+
+After each `dbt build`, upload each artifact with one `PUT` request. The address has three parts: the address of your DSUI instance, the ID of the service, and the artifact name.
+
+```bash
+for artifact in manifest catalog run_results sources; do
+  curl --fail --silent --show-error --request PUT \
+    --header "Authorization: Bearer $DBT_PUSH_TOKEN" \
+    --data-binary "@target/$artifact.json" \
+    "$DSUI_URL/adapters/v1/services/$DSUI_SERVICE_ID/artifacts/$artifact.json"
+done
+```
+
+- **Artifacts**: DSUI accepts `manifest.json`, `catalog.json`, `run_results.json`, `sources.json`, `freshness.json`, `semantic_manifest.json`, `osi_document.json`, and `graph_summary.json`. Each must be a JSON object of at most 128 MB
+- **Replacement**: the latest upload of each artifact replaces the previous one
+- **Run history**: every `run_results.json` is also kept as its own run, so the **Runs** page lists the history. DSUI keeps runs for 14 days, up to 500, and deletes older ones when a new one arrives. Pushing the same run again replaces it
+- **Read-only**: a `push` service shows what CI sent. It never runs dbt
+
+The upload endpoint authenticates with the push token alone, not with a DSUI sign-in. If a reverse proxy requires sign-in in front of DSUI, let requests to `/adapters/v1/` through.
+
+## What you can do
+
+- **Overview and Projects**: see the state of your dbt projects
+- **Jobs and runs**: list jobs and runs, and open a run to see its details, logs, artifacts, and graph
+- **Models**: open a model to see its columns and its lineage
+- **Sources and tests**: browse sources and test results
+- **Artifacts**: open the raw manifest and the other artifacts
+- **Operate**: trigger a dbt Cloud job, cancel a dbt Cloud run, and run dbt commands on a `local` service
+
+## Signals
+
+The adapter emits one signal for each finished run:
+
+- **`run-succeeded`**: the run finished without failures or warnings
+- **`run-warning`**: the run had warnings
+- **`run-failed`**: the run had failures
+
+How DSUI finds finished runs depends on the method:
+
+- **`cloud`**: every 60 seconds, DSUI reads the 100 most recent runs and emits for each one that finished after the previous check
+- **`local`**: every 60 seconds, DSUI reads `run_results.json` in the target directory and emits for a new invocation
+- **`push`**: DSUI emits when your CI uploads `run_results.json`
+
+Each run emits once, keyed by its run ID. The first check starts from the moment DSUI first polls, so runs that finished earlier don't emit. A plugin job can react with `onSignals: ["dbt.run-failed"]`, where the part before the dot is the adapter's ID.
+
+## Use with a DSUI Agent
+
+The dbt adapter doesn't read the proxy variables that DSUI sets for a DSUI Agent, so routing it through an agent isn't verified. See [private networks](/docs/guides/private-networks#adapter-support).

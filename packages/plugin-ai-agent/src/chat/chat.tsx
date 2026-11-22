@@ -167,8 +167,8 @@ export function AgentLauncher({ client }: ComponentProps) {
       <button
         type="button"
         className="da-trigger"
-        title="Open agent · ⌘ J"
-        aria-label="Open DSUI Agent"
+        title="Toggle agent · ⌘ J"
+        aria-label="Toggle AI assistant"
         aria-controls="dsui-agent-panel"
         onClick={open}
       >
@@ -211,13 +211,13 @@ function AgentPanel({ client }: { client: ComponentProps["client"] }) {
       id="dsui-agent-panel"
       className="da-panel"
       data-open={open}
-      aria-label="DSUI Agent"
+      aria-label="AI assistant"
     >
       <header className="da-header">
         <span className="da-outline-mark">
           <AgentLogo size={20} />
         </span>
-        <h2>DSUI Agent</h2>
+        <h2>AI assistant</h2>
         <button
           type="button"
           className="da-icon-button"

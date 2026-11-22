@@ -1,0 +1,108 @@
+---
+title: Run DSUI with Docker
+description: Run DSUI from the official container image with Docker Compose and a file-backed DuckDB database.
+contentType: tutorial
+---
+
+In this tutorial, you run DSUI in a container, keep its data in a volume, and query a DuckDB database file. You need Docker with Compose and network access to GitHub, because DSUI builds the adapter from source the first time it starts.
+
+DSUI doesn't start the services you configure. It connects to services that are already running, so a database in your Compose file runs as its own container.
+
+<Steps>
+<Step>
+
+### Add a configuration file
+
+Create `dsui.yaml`:
+
+```yaml {12-13}
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-duckdb
+
+services:
+  - id: warehouse
+    adapter: duckdb
+    name: Analytics warehouse
+    connection:
+      method: file
+      path: /data/warehouse.duckdb
+```
+
+The `file` method opens a DuckDB database at `path` on the container's filesystem. DuckDB creates the file if it doesn't exist.
+
+</Step>
+<Step>
+
+### Add a Compose file
+
+Create `compose.yaml` next to it:
+
+```yaml {7}
+services:
+  dsui:
+    image: ghcr.io/northgraindata/dsui:latest
+    ports:
+      - "4192:4192"
+    volumes:
+      - ./dsui.yaml:/etc/dsui/dsui.yaml:ro
+      - dsui-data:/data
+
+volumes:
+  dsui-data:
+```
+
+The image reads `/etc/dsui/dsui.yaml` by default. Set `DSUI_CONFIG` to use a different path. The `/data` volume holds DSUI's database, its encryption key, the adapter build cache, and your DuckDB file.
+
+</Step>
+<Step>
+
+### Start DSUI
+
+```bash
+docker compose up -d
+docker compose logs -f dsui
+```
+
+The log prints `ready` and the address `http://localhost:4192` when the server is up.
+
+</Step>
+<Step>
+
+### Run a query
+
+Open `http://localhost:4192`, select **Analytics warehouse**, and open **Query**. Run this statement:
+
+```sql
+select 42 as answer;
+```
+
+The result is one row with the value `42`. The database file lives in the `dsui-data` volume, so it survives `docker compose down`.
+
+</Step>
+</Steps>
+
+## Pin the adapter version
+
+Without a `ref`, DSUI builds the adapter from the `main` branch. For a repeatable deployment, set `ref` to a tag or a commit SHA that you reviewed:
+
+```yaml
+adapters:
+  duckdb:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    ref: a_reviewed_commit_sha
+    path: packages/adapter-duckdb
+```
+
+## File permissions
+
+The container runs as user ID 65532, not as root. A named volume works without changes. If you mount a host directory at `/data` instead, make it writable by that user ID.
+
+## Next steps
+
+- [Learn how DSUI works](/docs/getting-started/concepts)
+- [Connect your own services](/docs/reference/configuration)
+- [Troubleshoot connection problems](/docs/guides/troubleshooting)

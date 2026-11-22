@@ -1,0 +1,58 @@
+---
+title: Telemetry
+description: Reference for the anonymous usage event that a self-hosted DSUI sends, what it contains, and how to turn it off.
+contentType: reference
+---
+
+A self-hosted DSUI server sends one anonymous usage event when it starts, and one more every 24 hours while it runs. The event helps the maintainers see which versions, platforms, and adapters are in use. Telemetry is on by default, and the server prints a notice at startup that says so.
+
+DSUI sends the event to a relay run by the DSUI maintainers, at `https://cloud.dsui.northgraindata.com/telemetry/v1`. A send waits at most 3 seconds, and a failed send is dropped without retrying, so telemetry never slows down or breaks your server.
+
+## What the event contains
+
+The event has exactly these fields. DSUI checks every event against a fixed schema before it sends it.
+
+| Field | Example | Meaning |
+| --- | --- | --- |
+| `event` | `server_started` | `server_started` at startup, or `server_heartbeat` every 24 hours |
+| `installId` | A random UUID | Generated the first time DSUI runs and stored in its database. It isn't derived from your machine |
+| `version` | `0.4.0` | The DSUI version |
+| `os`, `arch` | `linux`, `arm64` | Operating system and CPU architecture |
+| `runtime` | `bun 1.3.12` | The runtime that DSUI runs on |
+| `deployment` | `docker` | `docker` for the official image, `managed` for instances that DSUI Cloud runs, or `other` |
+| `serviceCounts` | `{"postgresql": 2, "other": 1}` | Number of services for each built-in adapter. Any other adapter counts as `other`. It includes services that you added in the workspace |
+| `pluginCount` | `2` | Number of configured plugins |
+| `pluginKinds` | `{"health": 1, "other": 1}` | Plugins by first-party name. Any other plugin counts as `other` |
+| `usage24h` | `{"actionsExecuted": 3, "pluginProcedures": 0, "servicesCreated": 1}` | How many actions, plugin procedures, and service creations happened in the last 24 hours. Counts only |
+| `installAgeDays` | `12` | Days since the install ID was created |
+| `errors` | `{"action_failed.postgresql": 2}` | How many times something failed since the previous event, by category and built-in adapter. Counts only |
+| `ci` | `false` | Whether the `CI` environment variable is set to a value other than empty, `0`, or `false`, so throwaway runs can be filtered out |
+
+### Names that DSUI reports
+
+DSUI reports a name only from a fixed list. An adapter or plugin that you named yourself could identify you, so it counts as `other`.
+
+- **Adapters**: `airflow`, `clickhouse`, `dbt`, `duckdb`, `postgresql`, `s3`, and `trino`
+- **Plugins**: `ai-agent`, `ai-diagnostics-pro`, `auth-pro`, `code-repository`, `health`, `monitoring`, and `notifications-pro`. DSUI counts a plugin by name only when it's loaded with `package: "@northgraindata/dsui-plugin-<name>"`. A plugin loaded from `source: git` or `source: local` counts as `other`
+- **Error categories**: `action_failed`, `resource_query_failed`, `adapter_load_failed`, and `unhandled_error`. The first three are followed by the adapter name, such as `action_failed.postgresql`. DSUI keeps no message, stack trace, ID, or path
+
+## What the event never contains
+
+The event has no host names, URLs, connection details, credentials, queries, resource names, user names, or installation name. The IP address isn't a field of the event. As with any request, the relay receives the address that the request comes from.
+
+## Turn it off
+
+Any one of these turns telemetry off, and the server prints no notice once it's off:
+
+- Set the environment variable `DSUI_TELEMETRY` to `off`, `0`, or `false`
+- Set `DO_NOT_TRACK` to `1` or `true`
+- Set `telemetry.enabled` to `false` in `dsui.yaml`
+
+```yaml
+telemetry:
+  enabled: false
+```
+
+## Send events to your own collector
+
+Set `DSUI_TELEMETRY_URL` to send events to a different address. If you also set `DSUI_TELEMETRY_TOKEN`, DSUI sends it as a bearer token in the `Authorization` header.

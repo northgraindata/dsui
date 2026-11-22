@@ -1,25 +1,76 @@
 ---
 title: Stores and storage
-description: Choose typed JSON state or plugin-owned relational storage.
+description: Reference for the two ways a plugin keeps data, typed JSON stores for small state and private SQLite databases for relational data, including migrations.
+contentType: reference
 ---
 
-Use `defineStore` for JSON-shaped state with typed actions. The host namespaces
-plugin stores so two plugins can reuse the same store ID. Use
-`context.stores.get(definition)` to obtain an instance; wait for `ready()` before
-reading persisted state and `flush()` when you need writes to finish.
+A plugin has two places to keep data. A **store** holds a small JSON value that your code reads and writes as a whole, such as a selected team or a dismissed notice. A **database** is a private SQLite file for data that you query, index, or update in transactions. Use stores for state, and databases for records.
 
-Choose memory persistence for temporary state or persistent storage with a stable
-key and version for durable state. Store migrations remain the plugin's concern.
+## Keep state in a store
 
-## SQLite and private files
+`defineStore` takes an `id`, the initial `state`, an `actions` function, and an optional `persistence`. DSUI saves each plugin's stores under the plugin's own name, so two plugins can use the same store ID without a clash:
 
-`context.storage.openDatabase(name)` returns a cached SQLite handle in the
-plugin's own data directory. `context.storage.directory?.()` returns that private
-directory when supported by the host. The plugin owns its schema and migrations.
+```ts
+import { defineStore } from "@northgraindata/dsui-plugin-sdk";
 
-Use SQLite for relational data, indexes and transactions, and stores for values
-consumed as one JSON object. Persist event processing results and their cursor
-in the same transaction when consuming [signals](/docs/plugin-sdk/signals).
+const counter = defineStore({
+  id: "counter",
+  persistence: { type: "persistent" },
+  state: { ticks: 0 },
+  actions: ({ set, get }) => ({
+    tick: () => set({ ticks: get().ticks + 1 }),
+  }),
+});
+```
 
-The [Code Repository plugin](https://github.com/northgraindata/dsui/tree/main/packages/plugin-code-repository)
-provides a working storage and durable-job example.
+Get the live instance from the context, in a job, a procedure, or a page:
+
+```ts
+const instance = context.stores.get(counter);
+instance.actions.tick();
+const { ticks } = instance.get();
+```
+
+`set(patch)` merges a partial update into the state, `get()` returns a copy of the state, and `reset()` restores the initial state.
+
+### Choose persistence
+
+- **`{ type: "memory" }`** (default): the state lasts only while DSUI runs
+- **`{ type: "persistent", key?, version? }`**: DSUI saves the state in its database and loads it again, so it survives a restart. `key` defaults to the store `id`, and `version` defaults to `1`
+
+DSUI merges saved state over the initial state, so a field that you add later gets its default value. `version` is saved with the state, but DSUI doesn't migrate state for you. A persistent store holds plain JSON.
+
+A persistent store loads in the background. Wait for `await instance.ready()` before you read saved state in code that runs right after a restart, and call `await instance.flush()` when you need pending writes to finish.
+
+## Keep records in a database
+
+`context.storage.openDatabase(name)` opens the SQLite file `<name>.sqlite` in your plugin's private directory, creating it on first use, and returns a handle from `bun:sqlite`. Calling it again with the same name returns the same handle. A name is lowercase letters, digits, and hyphens, and it starts with a letter.
+
+DSUI keeps the files in `<data directory>/plugins/<plugin id>/`. It creates the directory with permissions for its owner only. DSUI never reads what is inside, so your plugin owns its tables and migrations, and `context.storage.directory()` returns the path of the directory.
+
+### Apply migrations
+
+`context.storage.migrate(name, migrations)` opens the database and applies the migrations that haven't run yet. Each migration has a `version`, a `name`, and an `up` function that receives the database:
+
+```ts
+const db = context.storage.migrate("notes", [
+  {
+    version: 1,
+    name: "create-notes",
+    up: (database) =>
+      database.run(
+        "create table notes (id integer primary key, text text not null)",
+      ),
+  },
+]);
+
+db.run("insert into notes (text) values (?)", ["first note"]);
+```
+
+DSUI applies migrations in the order of their versions. It runs each one in its own transaction, and it records the version in a `schema_migrations` table of that database, so a migration never runs twice. Call `migrate` before you query your tables, and keep ordinary reads free of schema work.
+
+`migrate` is an optional host capability. A host that lacks it leaves it undefined, so fail with a clear message when your plugin depends on it.
+
+### Process events once
+
+When you read events with [`events.read`](/docs/plugin-sdk/signals#read-events), save the cursor and the results of processing in the same transaction, so a crash can't lose events or repeat their effects.

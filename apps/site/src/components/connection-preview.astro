@@ -1,0 +1,56 @@
+---
+import ShaderBackground from "./ui/line-shader-homlu-ui.astro";
+---
+
+<div class="connection-stage">
+  <div class="connection-background" aria-hidden="true"><ShaderBackground /></div>
+  <div class="connection-window" role="img" aria-label="Example ClickHouse connection setup showing connection steps, host and port fields, and the Test connection action.">
+    <div aria-hidden="true">
+      <div class="connection-header"><img src="/assets/logos/clickhouse.png" width="30" height="30" alt="" loading="lazy" /><div><strong>Connect ClickHouse</strong><p>Set up your connection to ClickHouse.</p></div><span>×</span></div>
+      <div class="connection-body"><div class="connection-steps"><div class="active"><span>1</span><p><strong>Connection</strong><small>Provide connection details</small></p></div><div><span>2</span><p><strong>Test</strong><small>Verify connection</small></p></div><div><span>3</span><p><strong>Finish</strong><small>You’re all set!</small></p></div></div>
+        <div class="connection-fields"><strong class="field-title">Connection type</strong><p class="field-description">Choose how you want to connect to ClickHouse.</p><div class="connection-methods"><div class="chosen"><span>Host and port</span><i></i><small>Cloud or self-hosted</small></div><div><span>Connection URL</span><i></i><small>HTTP(S) connection string</small></div></div><div class="field"><span>Host</span><div class="field-value">clickhouse.example.com</div></div><div class="field"><span>Connection name</span><div class="field-value filled">My ClickHouse</div><small>A friendly name to identify this connection.</small></div><p class="advanced-label">▾ Advanced options</p><div class="advanced-fields"><div class="field"><span>Database <small>(optional)</small></span><div class="field-value filled">analytics</div></div><div class="field"><span>Username <small>(optional)</small></span><div class="field-value filled">default</div></div></div></div>
+      </div>
+      <div class="connection-footer"><span>Cancel</span><span class="test-action">Test connection →</span></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .connection-stage { position: relative; isolation: isolate; display: grid; place-items: center; min-height: 390px; padding: 36px 24px; overflow: hidden; background: var(--ds-color-canvas); }
+  .connection-background { position: absolute; z-index: -1; inset: -60px; pointer-events: none; opacity: .55; mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent); }
+  .connection-window { width: 94%; max-width: 580px; overflow: hidden; border: 1px solid #34445e; border-radius: 10px; background: #080f1c; box-shadow: 0 20px 48px #0005; text-align: left; }
+  .connection-header { display: flex; align-items: center; gap: 10px; padding: 16px; border-bottom: 1px solid #1b263b; }
+  .connection-header img { object-fit: contain; }
+  .connection-header strong { color: #e0e8f5; font-size: 13px; font-weight: 500; }
+  .connection-header p { margin-top: 4px; color: #8996aa; font-size: 9px; }
+  .connection-header > span { margin-left: auto; color: #8996aa; font-size: 20px; }
+  .connection-body { display: grid; grid-template-columns: 120px minmax(0, 1fr); }
+  .connection-steps { padding: 20px 12px; border-right: 1px solid #1b263b; }
+  .connection-steps > div { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 22px; }
+  .connection-steps > div > span { display: grid; place-items: center; width: 21px; height: 21px; flex-shrink: 0; border: 1px solid #34445e; border-radius: 50%; color: #8996aa; font-size: 9px; }
+  .connection-steps > .active > span { background: #2563eb; border-color: #2563eb; color: white; }
+  .connection-steps strong { display: block; padding-top: 3px; color: #d1dbea; font-size: 9px; font-weight: 500; }
+  .connection-steps small { display: block; margin-top: 5px; color: #8996aa; font-size: 7px; line-height: 1.5; }
+  .connection-fields { min-width: 0; padding: 20px 16px; }
+  .field-title { font-size: 10px; font-weight: 500; color: #d1dbea; }
+  .field-description { margin-top: 5px; color: #8996aa; font-size: 8px; line-height: 1.6; }
+  .connection-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .connection-methods > div { position: relative; padding: 10px; border: 1px solid #223047; border-radius: 5px; }
+  .connection-methods > .chosen { border-color: #3578f6; }
+  .connection-methods span { display: block; padding-right: 12px; color: #d1dbea; font-size: 8px; }
+  .connection-methods small { display: block; margin-top: 5px; color: #8996aa; font-size: 7px; line-height: 1.6; }
+  .connection-methods i { position: absolute; right: 8px; top: 11px; width: 7px; height: 7px; border-radius: 50%; border: 1px solid #34445e; }
+  .chosen i { background: #3578f6; border-color: #3578f6; }
+  .field { margin-top: 14px; }
+  .field > span { display: block; color: #d1dbea; font-size: 9px; }
+  .field small { color: #8996aa; font-size: 8px; }
+  .field > small { display: block; margin-top: 5px; line-height: 1.6; }
+  .field-value { padding: 9px; margin-top: 6px; border: 1px solid #223047; border-radius: 4px; color: #8996aa; font-size: 9px; overflow-wrap: anywhere; }
+  .field-value.filled { color: #d1dbea; }
+  .advanced-label { margin-top: 18px; color: #d1dbea; font-size: 9px; }
+  .advanced-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .connection-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-top: 1px solid #1b263b; }
+  .connection-footer > span { padding: 7px 10px; border: 1px solid #223047; border-radius: 4px; font-size: 9px; color: #d1dbea; }
+  .connection-footer > .test-action { color: white; background: #2563eb; border-color: #2563eb; }
+  @media (max-width: 540px) { .connection-stage { padding: 28px 12px; } .connection-window { width: 100%; } .connection-body { grid-template-columns: 1fr; } .connection-steps { display: flex; justify-content: space-between; padding: 12px; border-right: 0; border-bottom: 1px solid #1b263b; } .connection-steps > div { margin: 0; align-items: center; } .connection-steps small { display: none; } .connection-steps strong { font-size: 8px; padding: 0; } .connection-fields { padding: 16px 12px; } }
+</style>

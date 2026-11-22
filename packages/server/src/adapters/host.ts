@@ -6,7 +6,8 @@ export type HostMethod =
   | "page"
   | "resource"
   | "action"
-  | "job";
+  | "job"
+  | "route";
 
 export interface AdapterHostRequest {
   id?: string | number;
@@ -22,6 +23,8 @@ export interface AdapterHostRequest {
   timeoutMs?: number;
   /** Parent-only override; long context retention must not be cut short by host idle. */
   hostIdleTimeoutMs?: number;
+  /** Extra environment for the host process, for example proxy settings of a routed service. */
+  env?: Record<string, string>;
 }
 
 interface JsonRpcResponse {
@@ -57,13 +60,17 @@ class HostSession {
   private stderr = "";
   private closed = false;
 
-  constructor(private readonly options: AdapterHostClientOptions) {
+  constructor(
+    private readonly options: AdapterHostClientOptions,
+    env?: Record<string, string>,
+  ) {
     this.child = Bun.spawn(
       [options.command, ...(options.args ?? []), "--persistent"],
       {
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",
+        ...(env ? { env: { ...process.env, ...env } } : {}),
       },
     );
     this.reader = this.child.stdout.getReader();
@@ -220,19 +227,33 @@ interface HostSlot {
 export class AdapterHostClient {
   private readonly slots = new Map<string, HostSlot>();
   private closed = false;
+  private retiring = false;
+  private readonly requests = new Set<Promise<unknown>>();
   private allocation = Promise.resolve();
 
   constructor(private readonly options: AdapterHostClientOptions) {}
 
   async request(request: AdapterHostRequest): Promise<unknown> {
-    if (this.closed) throw new AdapterHostError("Adapter host client closed");
+    if (this.retiring || this.closed)
+      throw new AdapterHostError("Adapter host client closed");
+    const active = this.dispatch(request);
+    this.requests.add(active);
+    try {
+      return await active;
+    } finally {
+      this.requests.delete(active);
+    }
+  }
+
+  private async dispatch(request: AdapterHostRequest): Promise<unknown> {
     request.signal?.throwIfAborted();
     const namespace = request.persistenceNamespace;
     if (
       !namespace ||
       request.method === "describe" ||
       request.method === "action" ||
-      request.method === "job"
+      request.method === "job" ||
+      request.method === "route"
     )
       return this.ephemeral(request);
     let slot = this.slots.get(namespace);
@@ -248,7 +269,7 @@ export class AdapterHostClient {
         throw new AdapterHostError("Adapter service host invalidated");
       request.signal?.throwIfAborted();
       const fingerprint = createHash("sha256")
-        .update(JSON.stringify(request.connection ?? {}))
+        .update(JSON.stringify([request.connection ?? {}, request.env ?? {}]))
         .digest("hex");
       if (current.session && current.fingerprint !== fingerprint) {
         await current.session.close();
@@ -259,7 +280,7 @@ export class AdapterHostClient {
           if (this.closed)
             throw new AdapterHostError("Adapter host client closed");
           if (!(await this.makeRoom(current))) return false;
-          current.session = new HostSession(this.options);
+          current.session = new HostSession(this.options, request.env);
           current.fingerprint = fingerprint;
           return true;
         });
@@ -316,7 +337,7 @@ export class AdapterHostClient {
 
   private async ephemeral(request: AdapterHostRequest): Promise<unknown> {
     if (this.closed) throw new AdapterHostError("Adapter host client closed");
-    const session = new HostSession(this.options);
+    const session = new HostSession(this.options, request.env);
     this.ephemeralSessions.add(session);
     try {
       return await session.request(request);
@@ -336,7 +357,9 @@ export class AdapterHostClient {
     await slot.session?.close();
   }
 
-  async close(): Promise<void> {
+  async close(drain = false): Promise<void> {
+    this.retiring = true;
+    if (drain) await Promise.allSettled(this.requests);
     this.closed = true;
     await this.allocation;
     await Promise.all(

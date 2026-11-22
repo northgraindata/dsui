@@ -17,4 +17,7 @@ export type {
   ResourceResult,
   ResourceStatus,
   ResourceSuccess,
+  RouteExecution,
+  RouteExecutionOptions,
+  RouteRequestData,
 } from "./types";

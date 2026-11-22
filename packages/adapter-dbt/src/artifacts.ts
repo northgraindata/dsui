@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { z } from "@northgraindata/dsui-adapter-sdk";
-import type { DbtLocalConfig } from "./context.js";
+import {
+  type BlobStore,
+  type ResourceRuntimeContext,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
+import type { DbtContext, DbtLocalConfig } from "./context.js";
 
 export const artifactNames = [
   "manifest.json",
@@ -30,24 +34,54 @@ export type ArtifactDetail = ArtifactRead & {
   readonly content?: string;
 };
 
+/** Where artifacts the adapter reads were put: a project on disk, or uploaded by CI. */
+export type ArtifactSource =
+  | DbtLocalConfig
+  | { readonly method: "push"; readonly blobs: BlobStore };
+
+/** Blob key of the latest upload of one artifact. */
+export const pushedArtifactKey = (name: ArtifactName): string =>
+  `artifacts/${name}`;
+
+/**
+ * The artifact source a resource reads from.
+ *
+ * dbt Cloud has no artifacts to read here: its resources talk to the API.
+ */
+export function artifactSource(
+  ctx: DbtContext & ResourceRuntimeContext,
+): ArtifactSource {
+  if (ctx.config.method === "local") return ctx.config;
+  if (ctx.config.method === "push") return { method: "push", blobs: ctx.blobs };
+  throw new Error("This resource is available for dbt Core connections only");
+}
+
 function targetDirectory(config: DbtLocalConfig): string {
   return join(config.projectPath, config.targetPath ?? "target");
 }
 
-export async function readArtifact(
-  config: DbtLocalConfig,
+function schemaVersionOf(data: Record<string, unknown>): string | undefined {
+  const metadata = jsonObject.safeParse(data.metadata);
+  return metadata.success &&
+    typeof metadata.data.dbt_schema_version === "string"
+    ? metadata.data.dbt_schema_version
+    : undefined;
+}
+
+async function readText(
+  source: ArtifactSource,
   name: ArtifactName,
-): Promise<ArtifactRead> {
-  const path = join(targetDirectory(config), name);
-  try {
-    const data = jsonObject.parse(JSON.parse(await readFile(path, "utf8")));
-    const metadata = jsonObject.safeParse(data.metadata);
-    const schemaVersion = metadata.success
-      ? typeof metadata.data.dbt_schema_version === "string"
-        ? metadata.data.dbt_schema_version
-        : undefined
+): Promise<{ path: string; text: string } | undefined> {
+  if (source.method === "push") {
+    const key = pushedArtifactKey(name);
+    const bytes = await source.blobs.get(key);
+    return bytes
+      ? { path: `pushed:${name}`, text: new TextDecoder().decode(bytes) }
       : undefined;
-    return { name, path, present: true, schemaVersion, data };
+  }
+  const path = join(targetDirectory(source), name);
+  try {
+    return { path, text: await readFile(path, "utf8") };
   } catch (error) {
     if (
       error &&
@@ -55,10 +89,34 @@ export async function readArtifact(
       "code" in error &&
       error.code === "ENOENT"
     )
-      return { name, path, present: false };
+      return undefined;
+    throw error;
+  }
+}
+
+export async function readArtifact(
+  source: ArtifactSource,
+  name: ArtifactName,
+): Promise<ArtifactRead> {
+  const location =
+    source.method === "push"
+      ? `pushed:${name}`
+      : join(targetDirectory(source), name);
+  try {
+    const found = await readText(source, name);
+    if (!found) return { name, path: location, present: false };
+    const data = jsonObject.parse(JSON.parse(found.text));
     return {
       name,
-      path,
+      path: found.path,
+      present: true,
+      schemaVersion: schemaVersionOf(data),
+      data,
+    };
+  } catch (error) {
+    return {
+      name,
+      path: location,
       present: true,
       warning: error instanceof Error ? error.message : "Invalid JSON artifact",
     };
@@ -66,10 +124,10 @@ export async function readArtifact(
 }
 
 export async function readArtifactDetail(
-  config: DbtLocalConfig,
+  source: ArtifactSource,
   name: ArtifactName,
 ): Promise<ArtifactDetail> {
-  const artifact = await readArtifact(config, name);
+  const artifact = await readArtifact(source, name);
   if (!artifact.present || artifact.warning) return artifact;
   return {
     ...artifact,
@@ -78,9 +136,9 @@ export async function readArtifactDetail(
 }
 
 export async function readArtifacts(
-  config: DbtLocalConfig,
+  source: ArtifactSource,
 ): Promise<ArtifactRead[]> {
-  return Promise.all(artifactNames.map((name) => readArtifact(config, name)));
+  return Promise.all(artifactNames.map((name) => readArtifact(source, name)));
 }
 
 export async function readLocalRunLog(

@@ -1,0 +1,40 @@
+---
+title: Build extensions
+description: Choose between an adapter and a plugin, and see which SDK to start with.
+contentType: conceptual
+---
+
+You extend DSUI with two kinds of code. An adapter teaches DSUI to work with one kind of service. A plugin adds a feature to the whole installation. Most new work is an adapter, so start there unless your idea fits the plugin column below.
+
+## Choose adapter or plugin
+
+| | Adapter | Plugin |
+| --- | --- | --- |
+| Scope | One kind of service, with one instance for each configured service | The whole installation |
+| Where it runs | An isolated subprocess, built from source when DSUI starts | Inside the DSUI server process, as trusted code |
+| Declared with | `defineAdapter` | `definePlugin` |
+| Package | `@northgraindata/dsui-adapter-sdk` | `@northgraindata/dsui-plugin-sdk` |
+| Connection to a service | Declares connection methods, and DSUI builds the form | Reads services through host capabilities |
+| Required | A `health` check | Metadata, a configuration schema, and a `setup` function |
+| Only in this SDK | Connection methods, health checks, HTTP routes | Navigation, slots and overlays, procedures, SQLite storage, authentication and authorization |
+
+Choose an adapter when you need to:
+
+- Show and operate a database, orchestrator, storage service, or another system that DSUI doesn't cover yet
+- Give each configured service its own connection, pages, and background polling
+
+Choose a plugin when you need to:
+
+- Add a page or a navigation entry that works across services
+- React to events that adapters publish, or run durable background work
+- Sign people in, or limit what they can do
+
+An adapter and a plugin work together. An adapter publishes a signal, such as a failed DAG run, and a plugin job runs when that signal arrives.
+
+## Start building
+
+- **Adapter**: follow the [Adapter SDK overview](/docs/adapter-sdk/overview)
+- **Plugin**: follow the [Plugin SDK overview](/docs/plugin-sdk/overview)
+- **Both**: learn the shared [building blocks](/docs/build/building-blocks), the [components](/docs/build/components) that pages use, and the [versions and compatibility](/docs/build/compatibility) rules
+
+DSUI loads adapters and plugins from `dsui.yaml`. See [configuration](/docs/reference/configuration).

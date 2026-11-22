@@ -1,14 +1,9 @@
-import { defineResource } from "@northgraindata/dsui-adapter-sdk";
-import { readArtifact } from "../artifacts.js";
+import {
+  defineResource,
+  type ResourceRuntimeContext,
+} from "@northgraindata/dsui-adapter-sdk";
+import { artifactSource, readArtifact } from "../artifacts.js";
 import type { DbtContext } from "../context.js";
-
-function local(ctx: DbtContext) {
-  if (ctx.config.method !== "local")
-    throw new Error(
-      "This resource is available for dbt Local connections only",
-    );
-  return ctx.config;
-}
 
 function records(value: unknown): Record<string, unknown>[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -21,8 +16,11 @@ function records(value: unknown): Record<string, unknown>[] {
 
 export const sources = defineResource({
   id: "sources",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const config = local(ctx);
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const config = artifactSource(ctx);
     const [manifest, freshness] = await Promise.all([
       readArtifact(config, "manifest.json"),
       readArtifact(config, "sources.json"),
@@ -47,6 +45,9 @@ export const sources = defineResource({
         maxLoadedAt:
           typeof fresh?.max_loaded_at === "string" ? fresh.max_loaded_at : "",
         error: typeof fresh?.error === "string" ? fresh.error : "",
+        location: [source.database, source.schema]
+          .filter((part) => typeof part === "string" && part)
+          .join("."),
       };
     });
   },
@@ -54,8 +55,11 @@ export const sources = defineResource({
 
 export const tests = defineResource({
   id: "tests",
-  query: async (_input: undefined, ctx: DbtContext) => {
-    const config = local(ctx);
+  query: async (
+    _input: undefined,
+    ctx: DbtContext & ResourceRuntimeContext,
+  ) => {
+    const config = artifactSource(ctx);
     const [manifest, results] = await Promise.all([
       readArtifact(config, "manifest.json"),
       readArtifact(config, "run_results.json"),

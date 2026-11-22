@@ -145,6 +145,15 @@ export interface PluginStorage {
    * plugin cannot traverse out of its own directory.
    */
   openDatabase(name: string): Database;
+  /** Applies pending versioned migrations using the host migration service. */
+  migrate?(
+    name: string,
+    migrations: {
+      readonly version: number;
+      readonly name: string;
+      up(db: Database): void;
+    }[],
+  ): Database;
 }
 
 /** Rejects a database name that would escape the plugin's directory. */

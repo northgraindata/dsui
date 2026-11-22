@@ -1,0 +1,37 @@
+{
+  "name": "List",
+  "description": "Readable rows for named things such as jobs, assets, runs, and DAGs.",
+  "props": {
+    "source": {
+      "description": "Resource binding that supplies the rows"
+    },
+    "data": {
+      "description": "Inline rows (alternative to `source`)"
+    },
+    "item": {
+      "description": "Row fields that fill the title, description, badge, meta, icon, and status"
+    },
+    "rowLink": {
+      "description": "Link each row to a route"
+    },
+    "rowActions": {
+      "description": "Actions with `variant: \"primary\"` and an icon appear as row buttons. The rest open from the overflow menu."
+    },
+    "searchable": {
+      "description": "Add a search box that matches the title, description, badge, and meta"
+    },
+    "noun": {
+      "description": "Singular noun for the count and the search placeholder, such as `\"job\"`"
+    },
+    "filters": {
+      "description": "Filter dropdowns, each bound to a row field"
+    },
+    "pageSize": {
+      "description": "Rows shown before a \"Show more\" button. All rows when omitted."
+    },
+    "emptyMessage": {
+      "description": "Text shown when there are no rows"
+    }
+  },
+  "example": "List({\n  source: jobs(),\n  item: {\n    title: \"name\",\n    description: \"schedule\",\n    badge: \"type\",\n    status: { label: \"state\", detail: \"lastRun\" },\n  },\n  searchable: true,\n  noun: \"job\",\n})"
+}

@@ -7,6 +7,7 @@ import { unzipSync } from "fflate";
 import type { Config, Connection, SnapshotFile } from "./model";
 
 import { ignored, safePath } from "./paths";
+import { forgetGithubToken, githubToken } from "./token-source";
 
 function inside(root: string, path: string) {
   const difference = relative(root, path);
@@ -69,9 +70,10 @@ export async function localFolders(
   return folders.sort();
 }
 
-function remote(
+async function remote(
   config: Config,
   item: Pick<Connection, "provider" | "instance" | "repository">,
+  signal: AbortSignal,
 ) {
   if (item.provider === "github") {
     const repository = item.repository
@@ -81,10 +83,26 @@ function remote(
       throw new PluginRequestError(
         "Use a GitHub repository as owner/repository",
       );
+    const owner = repository.split("/")[0] ?? "";
+    const tokenSource = config.githubToken
+      ? undefined
+      : config.githubTokenSource;
     return {
       base: `https://api.github.com/repos/${repository}`,
-      token: config.githubToken,
+      token:
+        config.githubToken ??
+        (tokenSource
+          ? await githubToken(tokenSource, owner, signal)
+          : undefined),
       github: true,
+      // A token can be refused before the time it was said to last (the app
+      // was uninstalled, or it was revoked): ask for a new one once.
+      renew: tokenSource
+        ? async () => {
+            forgetGithubToken(tokenSource, owner);
+            return githubToken(tokenSource, owner, signal);
+          }
+        : undefined,
     };
   }
   const instance = config.gitlab.find((entry) => entry.id === item.instance);
@@ -101,14 +119,31 @@ function remote(
     base: `${instance.url.replace(/\/$/, "")}/api/v4/projects/${encodeURIComponent(repository)}`,
     token: instance.token,
     github: false,
+    renew: undefined,
   };
 }
+type RemoteSource = Awaited<ReturnType<typeof remote>>;
+
 async function request(
   url: string,
-  source: ReturnType<typeof remote>,
+  source: RemoteSource,
   signal: AbortSignal,
 ): Promise<Response> {
-  const response = await fetch(url, {
+  const first = await send(url, source, signal);
+  if (first.status !== 401 || !source.renew)
+    return answer(first, url, source, signal);
+  // The token was refused: a new one, once, before giving up.
+  const renewed = await source.renew();
+  return answer(
+    await send(url, { ...source, token: renewed }, signal),
+    url,
+    source,
+    signal,
+  );
+}
+
+function send(url: string, source: RemoteSource, signal: AbortSignal) {
+  return fetch(url, {
     signal,
     redirect: "manual",
     headers: {
@@ -122,6 +157,14 @@ async function request(
       ...(source.github ? { Accept: "application/vnd.github+json" } : {}),
     },
   });
+}
+
+async function answer(
+  response: Response,
+  url: string,
+  source: RemoteSource,
+  signal: AbortSignal,
+): Promise<Response> {
   if ([301, 302, 303, 307, 308].includes(response.status)) {
     const target = new URL(response.headers.get("location") ?? "", url);
     if (
@@ -149,7 +192,7 @@ export async function branches(
   item: Pick<Connection, "provider" | "instance" | "repository">,
   signal: AbortSignal,
 ): Promise<string[]> {
-  const source = remote(config, item);
+  const source = await remote(config, item, signal);
   const names: string[] = [];
   for (let page = 1; page <= 100; page++) {
     const url = `${source.base}/${source.github ? "branches" : "repository/branches"}?per_page=100&page=${page}`;
@@ -303,7 +346,7 @@ export async function fetchSnapshot(
     }
     return { version: hash.digest("hex"), files };
   }
-  const source = remote(config, item);
+  const source = await remote(config, item, signal);
   const commitUrl = `${source.base}/${source.github ? "commits" : "repository/commits"}/${encodeURIComponent(item.branch)}`;
   const result = await (await request(commitUrl, source, signal)).json();
   const version = source.github
