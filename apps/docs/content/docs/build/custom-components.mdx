@@ -1,0 +1,108 @@
+---
+title: Custom components
+description: Reuse builtin components as a server-side composite, or ship your own browser component, with defineComponent.
+contentType: how-to
+---
+
+`defineComponent` creates a component that your pages can use. A component has exactly one of two forms: a server-side composite built from builtin components, or a browser component that you implement in React. Pass `render` for a composite or `path` for a browser component, never both.
+
+## Reuse builtin components in a composite
+
+A composite is a function that returns builtin components. DSUI runs it on the server, so no browser code is involved. Use it for chrome that your pages repeat, such as a status card or a detail header.
+
+```ts
+import {
+  Card,
+  type CardNode,
+  defineComponent,
+  Value,
+} from "@northgraindata/dsui-adapter-sdk";
+import { status } from "./resources/status";
+
+export const StatusCard = defineComponent<{ title?: string }, CardNode>({
+  id: "status-card",
+  render: ({ title }) =>
+    Card({ title, content: Value({ source: status(), field: "url" }) }),
+});
+```
+
+Use it like any builtin component: `StatusCard({ title: "Service" })`.
+
+## Ship a browser component
+
+Use a browser component when no builtin component draws what you need. You declare it on the server, and DSUI loads its implementation in the browser.
+
+<Steps>
+<Step>
+
+### Declare the component
+
+Give the component an `id` that starts with your adapter's ID, and point `path` at the module that implements it. Add a Zod schema in `props` so DSUI rejects bad props when it builds the page.
+
+```ts
+import { defineComponent, z } from "@northgraindata/dsui-adapter-sdk";
+
+export const Greeting = defineComponent<{ name: string }>({
+  id: "my-adapter/greeting",
+  path: "./greeting-view.tsx",
+  props: z.object({ name: z.string() }),
+});
+```
+
+Calling `Greeting({ name: "Ada" })` returns a `custom` node. Its props must be JSON, so a component never carries React, HTML, or CSS across the server boundary. An action that you pass in a prop reaches the browser as an action reference.
+
+</Step>
+<Step>
+
+### Implement the component
+
+The component receives `client`, `node`, and the helpers for rendering child nodes. Read your props with `componentProps`:
+
+```tsx
+import {
+  type ComponentProps,
+  componentProps,
+} from "@northgraindata/dsui-adapter-sdk";
+
+export default function Greeting({ node }: ComponentProps) {
+  const props = componentProps<{ name: string }>(node);
+  return <p>Hello, {props?.name}</p>;
+}
+```
+
+The `client` offers `executeResource`, `executeAction`, and `navigate`. Some hosts also provide `watchResource`, `openOverlay`, `closeOverlay`, and `notifyInteraction`, so check that they exist before you call them.
+
+</Step>
+<Step>
+
+### Register it in the browser entry
+
+Create one browser entry that maps each component `id` to its implementation. DSUI passes its own copy of React, so your bundle doesn't ship one.
+
+```ts
+import Greeting from "./greeting-view";
+
+export function createComponents(React: typeof import("react")) {
+  return {
+    "my-adapter/greeting": (props: Record<string, unknown>) =>
+      React.createElement(Greeting as never, props as never),
+  };
+}
+```
+
+Point to the entry from `package.json`:
+
+```json
+{
+  "dsui": {
+    "browser": "./src/browser.ts"
+  }
+}
+```
+
+</Step>
+</Steps>
+
+The build fails and names the component when a declared `path` component has no entry in the browser map. Without that check, the page would show "Unknown component" and nothing else would fail.
+
+Server composites run from your adapter's source. Browser components load from the adapter's browser bundle, which DSUI builds along with the adapter.

@@ -1,0 +1,19 @@
+{
+  "name": "Link",
+  "description": "Navigational link.",
+  "props": {
+    "href": {
+      "description": "Target URL or route"
+    },
+    "label": {
+      "description": "Link text"
+    },
+    "icon": {
+      "description": "Icon name"
+    },
+    "external": {
+      "description": "Open in new tab"
+    }
+  },
+  "example": "Link({ href: \"/warehouses\", label: \"View warehouses\" })\nLink({ href: \"https://docs.example.com\", label: \"Docs\", external: true })"
+}

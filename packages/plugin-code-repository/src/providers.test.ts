@@ -6,6 +6,7 @@ import { strToU8, zipSync } from "fflate";
 import { type Connection, configSchema, connectionSchema } from "./model";
 import { safePath } from "./paths";
 import { archiveFiles, branches, fetchSnapshot } from "./providers";
+import { clearGithubTokens } from "./token-source";
 
 function replaceFetch(
   handler: (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>,
@@ -17,6 +18,7 @@ function replaceFetch(
 
 const temporary: string[] = [];
 afterEach(async () => {
+  clearGithubTokens();
   for (const path of temporary.splice(0))
     await rm(path, { recursive: true, force: true });
 });
@@ -185,4 +187,135 @@ test("GitLab fetches the selected branch and publishes a snapshot of the selecte
   } finally {
     mock.mockRestore();
   }
+});
+
+const SERVICE = "https://panel.example.com/github/token";
+const SECRET = "instance-secret-value";
+const fromService = configSchema.parse({
+  githubTokenSource: { url: SERVICE, secret: SECRET },
+});
+
+/** A panel that hands out tokens and a GitHub that accepts only the latest one. */
+function githubWithBroker(
+  options: { lifetimeMs?: number; refuseFirst?: boolean } = {},
+) {
+  const issued: string[] = [];
+  const github: { token: string | null; url: string }[] = [];
+  const brokerCalls: { owner: string | null; secret: string | null }[] = [];
+  const mock = replaceFetch(async (input, init) => {
+    const url = new URL(String(input));
+    if (url.origin + url.pathname === SERVICE) {
+      brokerCalls.push({
+        owner: url.searchParams.get("owner"),
+        secret: new Headers(init?.headers).get("authorization"),
+      });
+      const token = `ghs_${issued.length + 1}`;
+      issued.push(token);
+      return Response.json({
+        token,
+        expiresAt: new Date(
+          Date.now() + (options.lifetimeMs ?? 3_600_000),
+        ).toISOString(),
+      });
+    }
+    const bearer = new Headers(init?.headers).get("Authorization");
+    github.push({ token: bearer, url: String(input) });
+    if (options.refuseFirst && bearer === "Bearer ghs_1")
+      return new Response("{}", { status: 401 });
+    return Response.json([{ name: "main" }]);
+  });
+  return { brokerCalls, github, issued, mock };
+}
+
+test("GitHub tokens come from the token service, per owner, and are reused until they run out", async () => {
+  const { brokerCalls, github, mock } = githubWithBroker();
+  try {
+    const signal = new AbortController().signal;
+    await branches(fromService, item(), signal);
+    await branches(fromService, item(), signal);
+    expect(brokerCalls).toEqual([{ owner: "org", secret: `Bearer ${SECRET}` }]);
+    expect(github.map((call) => call.token)).toEqual([
+      "Bearer ghs_1",
+      "Bearer ghs_1",
+    ]);
+  } finally {
+    mock.mockRestore();
+  }
+});
+
+test("a token about to expire is replaced before it is used", async () => {
+  const { brokerCalls, github, mock } = githubWithBroker({
+    lifetimeMs: 60_000,
+  });
+  try {
+    const signal = new AbortController().signal;
+    await branches(fromService, item(), signal);
+    await branches(fromService, item(), signal);
+    expect(brokerCalls).toHaveLength(2);
+    expect(github.map((call) => call.token)).toEqual([
+      "Bearer ghs_1",
+      "Bearer ghs_2",
+    ]);
+  } finally {
+    mock.mockRestore();
+  }
+});
+
+test("a token GitHub refuses is replaced once and the request is retried", async () => {
+  const { brokerCalls, github, mock } = githubWithBroker({ refuseFirst: true });
+  try {
+    expect(
+      await branches(fromService, item(), new AbortController().signal),
+    ).toEqual(["main"]);
+    expect(brokerCalls).toHaveLength(2);
+    expect(github.map((call) => call.token)).toEqual([
+      "Bearer ghs_1",
+      "Bearer ghs_2",
+    ]);
+  } finally {
+    mock.mockRestore();
+  }
+});
+
+test("when the app is no longer connected the owner is told to connect it again, without the secret", async () => {
+  const mock = replaceFetch(async () => new Response("{}", { status: 404 }));
+  try {
+    const error = await branches(
+      fromService,
+      item(),
+      new AbortController().signal,
+    ).then(
+      () => new Error("expected a failure"),
+      (caught: unknown) => caught as Error,
+    );
+    expect(error.name).toBe("PluginRequestError");
+    expect(error.message).toContain("Connect it again");
+    expect(error.message).not.toContain(SECRET);
+  } finally {
+    mock.mockRestore();
+  }
+});
+
+test("a token in the configuration is used as it is, and the service is not asked", async () => {
+  const { brokerCalls, github, mock } = githubWithBroker();
+  try {
+    const config = configSchema.parse({
+      githubToken: "static-token",
+      githubTokenSource: { url: SERVICE, secret: SECRET },
+    });
+    await branches(config, item(), new AbortController().signal);
+    expect(brokerCalls).toEqual([]);
+    expect(github[0]?.token).toBe("Bearer static-token");
+  } finally {
+    mock.mockRestore();
+  }
+});
+
+test("the token service must use HTTPS, except on this machine", () => {
+  const parse = (url: string) =>
+    configSchema.safeParse({ githubTokenSource: { url, secret: "s" } }).success;
+  expect(parse("https://panel.example.com/t")).toBe(true);
+  expect(parse("http://localhost:3000/t")).toBe(true);
+  expect(parse("http://127.0.0.1:3000/t")).toBe(true);
+  expect(parse("http://panel.example.com/t")).toBe(false);
 });

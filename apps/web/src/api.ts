@@ -11,6 +11,7 @@ import type {
   PluginCatalog,
   PluginSlotResult,
 } from "@northgraindata/dsui-plugin-sdk";
+import { SERVICE_CONNECTIONS_CHANGED } from "./service-events";
 
 /** Canonical server contracts. New code uses these; see legacy aliases below. */
 export type { HealthStatus, PageDocument, PublicAdapter, PublicService };
@@ -32,6 +33,11 @@ export type Service = {
 };
 export type Adapter = {
   id: string;
+  version?: string;
+  author?: string;
+  presentation?: PublicAdapter["presentation"];
+  status?: PublicAdapter["status"];
+  detail?: string;
   name: string;
   category: string;
   description: string;
@@ -48,6 +54,27 @@ export type Field = {
   required?: boolean;
   options?: Array<{ label: string; value: string }>;
 };
+
+/** A secret manager a plugin offers for pointing a field at a stored secret. */
+export type SecretProvider = {
+  id: string;
+  label: string;
+  description?: string;
+  reference: { label: string; placeholder?: string; hint?: string };
+  /** Whether the manager can suggest secrets while a person types. */
+  searchable: boolean;
+};
+
+export type SecretSuggestions =
+  | {
+      available: true;
+      items: Array<{ reference: string; label?: string; description?: string }>;
+    }
+  /** The manager cannot list secrets for this installation: use a plain input. */
+  | { available: false; items: [] };
+
+/** What a field holds when it points at a secret instead of containing one. */
+export type SecretReference = { provider: string; reference: string };
 
 export type ConnectionMethod = {
   id: string;
@@ -180,7 +207,12 @@ export function adapterFromPublicAdapter(adapter: PublicAdapter): Adapter {
   return {
     id: adapter.id,
     name: adapter.name,
-    category: adapter.id,
+    category: adapter.presentation?.category ?? "Other",
+    version: adapter.version,
+    author: adapter.author,
+    presentation: adapter.presentation,
+    status: adapter.status,
+    detail: adapter.detail,
     description: adapter.description,
     ...(adapter.iconUrl ? { logo: adapter.iconUrl } : {}),
     fields,
@@ -316,6 +348,14 @@ export async function getServices() {
   const r = await request<Service[] | { data: Service[] }>("/services");
   return Array.isArray(r) ? r : r.data;
 }
+export function getSecretProviders() {
+  return request<SecretProvider[]>("/secret-providers");
+}
+export function getSecretSuggestions(providerId: string, query: string) {
+  return request<SecretSuggestions>(
+    `/secret-providers/${encodeURIComponent(providerId)}/suggestions?q=${encodeURIComponent(query)}`,
+  );
+}
 export async function getAdapters() {
   const r = await request<PublicAdapter[] | { data: PublicAdapter[] }>(
     "/adapters",
@@ -419,16 +459,19 @@ export async function executeAction(
 }
 export async function deleteService(id: string) {
   await request<void>(`/services/${id}`, { method: "DELETE" });
+  window.dispatchEvent(new Event(SERVICE_CONNECTIONS_CHANGED));
 }
 /** @deprecated The server no longer serves capability manifests. */
 export async function getManifest(id: string): Promise<Manifest> {
   return request<Manifest>(`/services/${id}/manifest`);
 }
 export async function createService(input: unknown) {
-  return request<Service>("/services", {
+  const service = await request<Service>("/services", {
     method: "POST",
     body: JSON.stringify(input),
   });
+  window.dispatchEvent(new Event(SERVICE_CONNECTIONS_CHANGED));
+  return service;
 }
 export async function testService(input: unknown) {
   return request<HealthStatus>("/services/test", {
@@ -511,4 +554,66 @@ export function getSettingsSystem() {
   return request<import("@northgraindata/dsui-core").SettingsSystem>(
     "/settings/system",
   );
+}
+
+/** A DSUI agent: a customer-side connector that carries traffic into a private network. */
+export type Connector = {
+  id: string;
+  name: string;
+  createdAt: string;
+  revokedAt: string | null;
+  lastConnectedAt: string | null;
+  lastSeenAt: string | null;
+  online: boolean;
+  activeStreams: number;
+  info: {
+    version?: string;
+    hostname?: string;
+    os?: string;
+    arch?: string;
+    observedIp?: string;
+    localAddrs?: string[];
+    targets?: string[];
+  };
+  services: { id: string; name: string }[];
+};
+export type ConnectorWithToken = { connector: Connector; token: string };
+export type TargetTest =
+  | { ok: true; ms: number }
+  | { ok: false; code: string; message: string; ms: number };
+
+/** Reserved connection key naming the agent a service goes through. */
+export const CONNECTOR_KEY = "__connector";
+
+export function getConnectors() {
+  return request<Connector[]>("/connectors");
+}
+export function createConnector(name: string) {
+  return request<ConnectorWithToken>("/connectors", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+export function renameConnector(id: string, name: string) {
+  return request<Connector>(`/connectors/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+export function rotateConnector(id: string) {
+  return request<ConnectorWithToken>(`/connectors/${id}/rotate`, {
+    method: "POST",
+  });
+}
+export function revokeConnector(id: string) {
+  return request<Connector>(`/connectors/${id}/revoke`, { method: "POST" });
+}
+export function deleteConnector(id: string) {
+  return request<void>(`/connectors/${id}`, { method: "DELETE" });
+}
+export function testConnectorTarget(id: string, target: string) {
+  return request<TargetTest>(`/connectors/${id}/test-target`, {
+    method: "POST",
+    body: JSON.stringify({ target }),
+  });
 }

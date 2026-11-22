@@ -1,0 +1,13 @@
+{
+  "title": "Integrations",
+  "pages": [
+    "index",
+    "airflow",
+    "dagster",
+    "clickhouse",
+    "duckdb",
+    "dbt",
+    "postgresql",
+    "s3"
+  ]
+}

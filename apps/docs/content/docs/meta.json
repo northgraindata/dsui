@@ -2,14 +2,13 @@
   "title": "DSUI",
   "pages": [
     "index",
-    "how-dsui-works",
     "getting-started",
-    "adapters",
+    "guides",
+    "integrations",
+    "reference",
+    "build",
     "adapter-sdk",
     "plugin-sdk",
-    "telemetry",
-    "releases",
-    "troubleshooting",
     "contributing"
   ]
 }

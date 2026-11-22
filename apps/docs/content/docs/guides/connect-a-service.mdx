@@ -1,0 +1,92 @@
+---
+title: Connect a service
+description: Add a service to your workspace from dsui.yaml or from the workspace, and keep its credentials out of your files.
+contentType: how-to
+---
+
+A service is one connection to a data tool, such as a PostgreSQL database. You can declare it in `dsui.yaml` or add it in the workspace. Both need the adapter for that tool to be declared in `dsui.yaml` first.
+
+## Choose where to define the service
+
+| | In `dsui.yaml` | In the workspace |
+| --- | --- | --- |
+| Best for | Repeatable setups that you keep in version control | A one-off connection while you explore |
+| ID | The `id` you choose | A random ID that DSUI generates |
+| Credentials | In the file, usually as `${NAME}` variables | Encrypted in DSUI's database with the master key |
+| Change it | Edit the file. DSUI re-reads it when the workspace loads its services | Delete the service and add it again |
+| Delete it | Remove it from the file | Delete it in the workspace |
+| Required role | None, you control the file | `manage` (the admin and owner roles) |
+
+A service declared in `dsui.yaml` can't be deleted in the workspace. A service ID can't be defined in both places. DSUI reports `Service IDs are managed twice` and asks you to remove one.
+
+## Declare the adapter
+
+Under `adapters`, tell DSUI where to get each adapter. The workspace offers only the adapters you declare here.
+
+```yaml
+adapters:
+  postgresql:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-postgresql
+```
+
+The key, `postgresql`, must match the ID that the adapter declares. DSUI builds the adapter from source when it starts, so the first start needs network access. See [troubleshooting](/docs/guides/troubleshooting#an-adapter-is-unavailable) if the build fails.
+
+## Declare the service in dsui.yaml
+
+Add the service under `services`. The `adapter` value names a key under `adapters`, and `connection` holds the fields that the adapter defines. See the page for your [integration](/docs/integrations) for them.
+
+```yaml {14-15}
+adapters:
+  postgresql:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-postgresql
+
+services:
+  - id: app-database
+    adapter: postgresql
+    name: Application database
+    connection:
+      host: postgres
+      database: app
+      username: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+```
+
+The `id` must be lowercase letters, digits, and hyphens, and it must start with a letter. The `name` is optional and appears in the workspace.
+
+### Keep credentials out of the file
+
+DSUI replaces `${NAME}` with the value of the environment variable `NAME` when it reads the file. If a variable is missing, DSUI stops with `Configuration requires environment variable NAME`. Set the variables in the environment of the DSUI process. In Docker Compose, add them under `environment`.
+
+To avoid keeping the credentials in DSUI's environment too, read them from a secret manager instead. See [credentials from a secret manager](/docs/guides/credentials-from-a-secret-manager).
+
+## Add a service in the workspace
+
+<Steps>
+<Step>
+
+### Open the add-service page
+
+From the dashboard, select **Manage adapters**, or search for **Add service** in the command palette.
+
+</Step>
+<Step>
+
+### Choose the adapter and fill in the connection
+
+Pick an adapter. Choose a **Connection type** if the adapter offers several, then fill in its fields. To reach a service in a private network, choose **Via DSUI Agent** and select an agent. See [private networks](/docs/guides/private-networks).
+
+</Step>
+<Step>
+
+### Test and save
+
+Select **Test connection**. If it succeeds, select **Save connection**. If it fails, fix the fields and select **Test again**. After you save, select **Open connection** to open the service.
+
+</Step>
+</Steps>
+
+DSUI saves the connection encrypted with the master key. Keep the key safe, because DSUI can't read saved connections without it. See [saved connections can't be decrypted](/docs/guides/troubleshooting#saved-connections-cant-be-decrypted).

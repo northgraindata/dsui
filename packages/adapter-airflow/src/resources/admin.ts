@@ -3,17 +3,36 @@ import type { AirflowContext } from "../context.js";
 
 export const connections = defineResource({
   id: "connections",
-  query: (_, ctx: AirflowContext) => ctx.client.listConnections(),
+  query: async (_, ctx: AirflowContext) =>
+    (await ctx.client.listConnections()).map((connection) => {
+      const host = [connection.host, connection.port]
+        .filter((part) => part !== null && part !== "")
+        .join(":");
+      return {
+        ...connection,
+        address: [connection.login, host].filter(Boolean).join("@"),
+      };
+    }),
 });
 
 export const variables = defineResource({
   id: "variables",
-  query: (_, ctx: AirflowContext) => ctx.client.listVariables(),
+  query: async (_, ctx: AirflowContext) =>
+    (await ctx.client.listVariables()).map((variable) => ({
+      ...variable,
+      encryptedLabel: variable.isEncrypted ? "Encrypted" : "",
+    })),
 });
 
 export const pools = defineResource({
   id: "pools",
-  query: (_, ctx: AirflowContext) => ctx.client.listPools(),
+  query: async (_, ctx: AirflowContext) =>
+    (await ctx.client.listPools()).map((pool) => ({
+      ...pool,
+      openLabel: `${pool.openSlots} of ${pool.slots} open`,
+      openTone: pool.openSlots > 0 ? "healthy" : "warning",
+      usageLabel: `${pool.runningSlots} running · ${pool.queuedSlots} queued`,
+    })),
 });
 
 export const users = defineResource({
@@ -29,7 +48,11 @@ export const users = defineResource({
           roles: "Configure users and roles in Airflow 3's auth manager.",
         },
       ];
-    return ctx.client.listUsers();
+    return (await ctx.client.listUsers()).map((user) => ({
+      ...user,
+      statusLabel: user.active ? "Active" : "Inactive",
+      statusTone: user.active ? "healthy" : "muted",
+    }));
   },
 });
 

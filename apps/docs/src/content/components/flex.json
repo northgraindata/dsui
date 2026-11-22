@@ -1,0 +1,30 @@
+{
+  "name": "Flex",
+  "description": "Flexbox row or column layout.",
+  "props": {
+    "content": {
+      "description": "Child nodes"
+    },
+    "direction": {
+      "description": "Flex direction",
+      "default": "\"row\""
+    },
+    "gap": {
+      "description": "Spacing between items",
+      "default": "\"md\""
+    },
+    "align": {
+      "description": "Cross-axis alignment",
+      "default": "\"stretch\""
+    },
+    "justify": {
+      "description": "Main-axis alignment",
+      "default": "\"start\""
+    },
+    "wrap": {
+      "description": "Allow wrapping",
+      "default": "false"
+    }
+  },
+  "example": "Flex({\n  direction: \"row\",\n  gap: \"sm\",\n  align: \"center\",\n  justify: \"between\",\n  content: [\n    Badge({ label: \"Status\" }),\n    Button({ label: \"Action\" }),\n  ],\n})"
+}

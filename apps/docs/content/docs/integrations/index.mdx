@@ -1,0 +1,32 @@
+---
+title: Integrations
+description: Compare the official adapters for Airflow, ClickHouse, Dagster, dbt, DuckDB, PostgreSQL, and S3, and find the one that fits your service.
+contentType: landing
+---
+
+An adapter connects DSUI to one kind of service and gives the workspace its pages, data, and actions. DSUI ships seven official adapters. You load each one from the DSUI repository, so they all use the same setup.
+
+| Adapter | Connects to | Connection methods | Through a DSUI Agent |
+| --- | --- | --- | --- |
+| [Airflow](/docs/integrations/airflow) | Apache Airflow 3 and 2.10 | `airflow`, `airflow-2` | Not verified |
+| [ClickHouse](/docs/integrations/clickhouse) | ClickHouse over HTTP or HTTPS | `structured`, `url` | Yes |
+| [Dagster](/docs/integrations/dagster) | Dagster webserver or Dagster+ | `dagster`, `dagster-basic`, `dagster-plus` | Not verified |
+| [dbt](/docs/integrations/dbt) | dbt Cloud, a local dbt project, or artifacts from CI | `cloud`, `local`, `push` | Not verified |
+| [DuckDB](/docs/integrations/duckdb) | DuckDB in memory, in a file, in cloud storage, or on a DuckDB server | `memory`, `file`, `s3`, `gcs`, `r2`, `azure`, `quack` | Not verified |
+| [PostgreSQL](/docs/integrations/postgresql) | PostgreSQL servers | One method, no `method` field | Yes |
+| [S3](/docs/integrations/s3) | AWS S3, MinIO, and other S3-compatible stores | One method, no `method` field | Not verified |
+
+An adapter with several connection methods needs `method` in the service's `connection`. An adapter with one method doesn't take a `method` field. "Not verified" means that the adapter's source doesn't read the proxy variables that DSUI sets for an agent. See [private networks](/docs/guides/private-networks#adapter-support).
+
+## Add an integration
+
+Every integration follows the same two steps:
+
+1. Declare the adapter under `adapters` in `dsui.yaml`, with `source: git` and the path `packages/adapter-<name>` in the DSUI repository.
+2. Add a service that uses it, either in `dsui.yaml` or in the workspace.
+
+Each page below has a complete configuration to start from. See [connect a service](/docs/guides/connect-a-service) for how services and credentials work.
+
+## Your service isn't listed
+
+Build an adapter for it with the [Adapter SDK](/docs/adapter-sdk/overview). An adapter you build loads the same way as an official one.

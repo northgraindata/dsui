@@ -1,0 +1,97 @@
+/*
+ * Docs design tokens.
+ * Dark values follow packages/ui/src/styles.css so the docs match the product.
+ * Light values are the matching palette; text and accent pairs meet WCAG AA.
+ * Theme: follows the system unless <html data-theme="light|dark"> is set.
+ */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f6f8fc;
+  --surface-raised: #eef2f9;
+  --border: #dfe5ef;
+  --border-strong: #c5cfe0;
+  --text: #0b1220;
+  --text-secondary: #3a4a66;
+  --text-muted: #5b6b87;
+  --accent: #1d5fe6;
+  --accent-hover: #174cc0;
+  --accent-soft: #e6eefe;
+  --accent-contrast: #ffffff;
+  --link: #1d5fe6;
+  --code-bg: #f6f8fc;
+  --healthy: #12794a;
+  --warning: #8a5a00;
+  --danger: #b4233f;
+  --callout-note: #1d5fe6;
+  --callout-warning: #b27200;
+  --callout-danger: #c42a49;
+  --shadow: 0 8px 30px rgb(11 18 32 / 12%);
+  --scrim: rgb(11 18 32 / 45%);
+
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo,
+    monospace;
+
+  --header-height: 3.5rem;
+  --sidebar-width: 17rem;
+  --toc-width: 14rem;
+  --measure: 46rem;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #040813;
+    --surface: #080e1b;
+    --surface-raised: #0c1323;
+    --border: #172134;
+    --border-strong: #273651;
+    --text: #f0f3fc;
+    --text-secondary: #b0c1df;
+    --text-muted: #8399bd;
+    --accent: #2870ff;
+    --accent-hover: #4687ff;
+    --accent-soft: #0c1836;
+    --accent-contrast: #ffffff;
+    --link: #6ea0ff;
+    --code-bg: #080e1b;
+    --healthy: #50c878;
+    --warning: #edbd54;
+    --danger: #ff547f;
+    --callout-note: #4687ff;
+    --callout-warning: #edbd54;
+    --callout-danger: #ff547f;
+    --shadow: 0 8px 30px rgb(0 0 0 / 50%);
+    --scrim: rgb(2 5 13 / 65%);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #040813;
+  --surface: #080e1b;
+  --surface-raised: #0c1323;
+  --border: #172134;
+  --border-strong: #273651;
+  --text: #f0f3fc;
+  --text-secondary: #b0c1df;
+  --text-muted: #8399bd;
+  --accent: #2870ff;
+  --accent-hover: #4687ff;
+  --accent-soft: #0c1836;
+  --accent-contrast: #ffffff;
+  --link: #6ea0ff;
+  --code-bg: #080e1b;
+  --healthy: #50c878;
+  --warning: #edbd54;
+  --danger: #ff547f;
+  --callout-note: #4687ff;
+  --callout-warning: #edbd54;
+  --callout-danger: #ff547f;
+  --shadow: 0 8px 30px rgb(0 0 0 / 50%);
+  --scrim: rgb(2 5 13 / 65%);
+}

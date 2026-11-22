@@ -1,0 +1,13 @@
+{
+  "name": "NotebookCatalog",
+  "description": "Notebook listing view.",
+  "props": {
+    "notebooks": {
+      "description": "List of notebooks"
+    },
+    "actions": {
+      "description": "Catalog actions"
+    }
+  },
+  "example": "NotebookCatalog({\n  notebooks: [\n    { id: \"n1\", title: \"Revenue Analysis\", updatedAt: \"2025-01-15\" },\n    { id: \"n2\", title: \"User Segments\", updatedAt: \"2025-01-14\" },\n  ],\n  actions: { create: createNotebook(), import: importNotebook() },\n})"
+}

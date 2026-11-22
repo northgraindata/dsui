@@ -7,6 +7,9 @@ import type {
   TaskInstance,
 } from "../context.js";
 import { dagInput } from "./dags.js";
+import { formatRunTimestamp } from "./format.js";
+
+export { formatRunTimestamp } from "./format.js";
 
 export const dagRunInput = dagInput.extend({
   dagRunId: z.string().min(1),
@@ -29,18 +32,31 @@ export const dagRuns = defineResource({
   refresh: poll("5s"),
 });
 
-function runStateTone(state: string) {
+export function runStateTone(state: string) {
   switch (state.toLowerCase()) {
     case "success":
       return "healthy";
     case "failed":
+    case "upstream_failed":
       return "unavailable";
     case "running":
     case "queued":
+    case "scheduled":
       return "info";
+    case "up_for_retry":
+    case "up_for_reschedule":
+    case "deferred":
+      return "warning";
     default:
       return "muted";
   }
+}
+
+/** Airflow states such as `upstream_failed`, as "Upstream failed". */
+export function stateLabel(state: string | null | undefined) {
+  if (!state || state === "none") return "Not run";
+  const words = state.replaceAll("_", " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function formatRunDuration(run: Pick<DagRun, "startDate" | "endDate">) {
@@ -57,26 +73,18 @@ export function formatRunDuration(run: Pick<DagRun, "startDate" | "endDate">) {
   return `${seconds}s`;
 }
 
-export function formatRunTimestamp(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  })
-    .format(date)
-    .replace(" at ", ", ");
-}
-
 function formatDagRunForTable(run: DagRun) {
+  const startedAt = formatRunTimestamp(run.startDate);
   return {
     ...run,
     logicalDateDisplay: formatRunTimestamp(run.logicalDate),
-    startedAt: formatRunTimestamp(run.startDate),
+    startedAt,
     endedAt: formatRunTimestamp(run.endDate),
+    displayRunId: displayRunId(run),
+    duration: formatRunDuration(run),
+    stateLabel: stateLabel(run.state),
+    stateTone: runStateTone(run.state),
+    summary: startedAt === "—" ? "Not started yet" : `Started ${startedAt}`,
   };
 }
 
@@ -117,12 +125,7 @@ export const recentDagRuns = defineResource({
   id: "recent-dag-runs",
   input: dagInput,
   query: async ({ dagId }, ctx: AirflowContext) =>
-    (await ctx.client.listDagRuns(dagId)).slice(0, 5).map((run) => ({
-      ...formatDagRunForTable(run),
-      displayRunId: displayRunId(run),
-      duration: formatRunDuration(run),
-      stateTone: runStateTone(run.state),
-    })),
+    (await ctx.client.listDagRuns(dagId)).slice(0, 5).map(formatDagRunForTable),
   refresh: poll("5s"),
 });
 
@@ -138,10 +141,17 @@ export const taskInstances = defineResource({
   id: "task-instances",
   input: dagRunInput,
   query: async ({ dagId, dagRunId }, ctx: AirflowContext) =>
-    (await ctx.client.listTaskInstances(dagId, dagRunId)).map((instance) => ({
-      ...instance,
-      durationDisplay: formatTaskDuration(instance.duration),
-    })),
+    (await ctx.client.listTaskInstances(dagId, dagRunId)).map((instance) => {
+      const duration = formatTaskDuration(instance.duration);
+      return {
+        ...instance,
+        durationDisplay: duration,
+        durationLabel: duration === "—" ? "" : `${duration} s`,
+        stateLabel: stateLabel(instance.state),
+        stateTone: runStateTone(instance.state ?? ""),
+        attempt: `Try ${instance.tryNumber} of ${instance.maxTries}`,
+      };
+    }),
   refresh: poll("3s"),
 });
 

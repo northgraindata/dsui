@@ -1,0 +1,39 @@
+---
+title: Versions and compatibility
+description: Learn how DSUI and its two SDKs are versioned, which API markers decide whether the host loads your code, and what the npm tags mean.
+contentType: reference
+---
+
+DSUI has three release lines with separate versions: the product, the Adapter SDK, and the Plugin SDK. A release of one line doesn't publish the others. This page covers what you need to know as a person who builds an extension. Maintainers publish releases by following the process in the repository.
+
+## Release lines
+
+| Line | Published as | Git tag |
+| --- | --- | --- |
+| Product | `@northgraindata/dsui` on npm, and `ghcr.io/northgraindata/dsui` | `vX.Y.Z` |
+| Adapter SDK | `@northgraindata/dsui-adapter-sdk` | `adapter-sdk-vX.Y.Z` |
+| Plugin SDK | `@northgraindata/dsui-plugin-sdk` | `plugin-sdk-vX.Y.Z` |
+
+The Adapter SDK package includes the implementation of the builtin components. The Plugin SDK re-exports most of them, so both SDKs share nearly the same component vocabulary.
+
+## npm tags
+
+A stable version such as `0.4.0` is published with the `latest` tag. A version with a hyphen, such as `0.5.0-rc.1`, is published with the `next` tag.
+
+## API markers
+
+The host decides whether to load your code from an API marker in the definition, not from the package version.
+
+- **Adapters**: the `apiVersion` of a definition is `0.3.0` today. The host loads adapters that target `0.2.0` or `0.3.0`, and it rejects any other value with `targets adapter API <version>; host supports 0.2.0, 0.3.0`. A newer marker only adds optional members, so an adapter built for an older marker keeps working
+- **Plugins**: `metadata.apiVersion` must be `PLUGIN_API_VERSION`, which is `1`. The host rejects a plugin that requires another API, with `Plugin "<id>" requires API <version>; host supports 1`
+
+The package version and the API marker are independent. A compatible patch release of an SDK keeps the same marker.
+
+## Current versions
+
+| Package | Version | API marker |
+| --- | --- | --- |
+| `@northgraindata/dsui-adapter-sdk` | 0.4.0 | `0.3.0` |
+| `@northgraindata/dsui-plugin-sdk` | 0.3.0 | `1` |
+
+Both SDKs are below 1.0, so a minor version can contain breaking changes. Pin the exact SDK version that you build against, and read the changelog before you upgrade.

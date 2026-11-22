@@ -1,17 +1,40 @@
-import { defineResource, z } from "@northgraindata/dsui-adapter-sdk";
-import { readArtifact, readArtifacts, readLocalRunLog } from "../artifacts.js";
+import {
+  defineResource,
+  type ResourceRuntimeContext,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
+import {
+  artifactSource,
+  readArtifact,
+  readArtifacts,
+  readLocalRunLog,
+} from "../artifacts.js";
 import type { DbtContext } from "../context.js";
+import { readRun, summarizeRun } from "../run-history.js";
 
 const input = z.object({ runId: z.string().min(1) });
 
 export const runDetail = defineResource({
   id: "run-detail",
   input,
-  query: async ({ runId }, ctx: DbtContext) => {
+  query: async ({ runId }, ctx: DbtContext & ResourceRuntimeContext) => {
     if (ctx.cloud) return ctx.cloud.getRun(runId);
-    if (ctx.config.method !== "local")
-      throw new Error("Unsupported dbt connection");
-    const artifact = await readArtifact(ctx.config, "run_results.json");
+    if (ctx.config.method === "push") {
+      const archived = await readRun(ctx.blobs, runId);
+      if (archived) {
+        const run = summarizeRun(runId, archived);
+        return {
+          id: run.id,
+          resultCount: run.total,
+          startedAt: run.startedAt,
+          status: run.status,
+        };
+      }
+    }
+    const artifact = await readArtifact(
+      artifactSource(ctx),
+      "run_results.json",
+    );
     if (runId === "local-latest") {
       const rows = Array.isArray(artifact.data?.results)
         ? artifact.data.results
@@ -48,16 +71,17 @@ export const runDetail = defineResource({
 export const runLogs = defineResource({
   id: "run-logs",
   input,
-  query: async ({ runId }, ctx: DbtContext) => {
+  query: async ({ runId }, ctx: DbtContext & ResourceRuntimeContext) => {
     if (ctx.cloud) {
       const content = await ctx.cloud.getRunLogs(runId);
       return { content };
     }
-    if (ctx.config.method !== "local")
-      throw new Error("Unsupported dbt connection");
-    const content = await readLocalRunLog(ctx.config);
+    const source = artifactSource(ctx);
+    // A pushed build has no log on this host, only the artifacts CI sent.
+    const content =
+      source.method === "local" ? await readLocalRunLog(source) : undefined;
     if (content) return { content };
-    const results = await readArtifact(ctx.config, "run_results.json");
+    const results = await readArtifact(source, "run_results.json");
     return {
       content: results.data
         ? JSON.stringify(results.data, null, 2)
@@ -69,11 +93,9 @@ export const runLogs = defineResource({
 export const runArtifacts = defineResource({
   id: "run-artifacts",
   input,
-  query: async ({ runId }, ctx: DbtContext) => {
+  query: async ({ runId }, ctx: DbtContext & ResourceRuntimeContext) => {
     if (ctx.cloud) return ctx.cloud.listArtifacts(runId);
-    if (ctx.config.method !== "local")
-      throw new Error("Unsupported dbt connection");
-    const artifacts = await readArtifacts(ctx.config);
+    const artifacts = await readArtifacts(artifactSource(ctx));
     return artifacts
       .filter((artifact) => artifact.present)
       .map((artifact) => ({

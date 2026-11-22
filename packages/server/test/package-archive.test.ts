@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test";
 import {
-  extractTar,
+  extractGzipTar,
   MAX_ARCHIVE_BYTES,
   MAX_PACKAGE_BYTES,
   readResponseBytes,
 } from "../src/adapters/build";
 
-function tar(entries: Array<{ path: string; size: number }>): Uint8Array {
+function gzipTar(entries: Array<{ path: string; size: number }>): Uint8Array {
   const length = entries.reduce(
     (total, entry) => total + 512 + Math.ceil(entry.size / 512) * 512,
     1024,
@@ -19,40 +19,40 @@ function tar(entries: Array<{ path: string; size: number }>): Uint8Array {
     archive[offset + 156] = 48;
     offset += 512 + Math.ceil(entry.size / 512) * 512;
   }
-  return archive;
+  return Bun.gzipSync(archive);
 }
 
-test("repository files outside the package do not consume its size budget", () => {
-  const archive = tar([
+test("repository files outside the package do not consume its size budget", async () => {
+  const archive = gzipTar([
     { path: "site/screenshot.png", size: MAX_PACKAGE_BYTES + 1 },
     { path: "packages/adapter/package.json", size: 2 },
     { path: "packages/adapter-other/index.ts", size: 100 },
   ]);
-  const files = extractTar(archive, "owner/repo", "packages/adapter");
+  const files = await extractGzipTar(archive, "owner/repo", "packages/adapter");
   expect([...files.keys()]).toEqual(["packages/adapter/package.json"]);
   expect(files.get("packages/adapter/package.json")?.byteLength).toBe(2);
 });
 
-test("oversized selected packages are still rejected", () => {
-  const archive = tar([
+test("oversized selected packages are still rejected", async () => {
+  const archive = gzipTar([
     { path: "packages/adapter/source.ts", size: MAX_PACKAGE_BYTES + 1 },
   ]);
-  expect(() => extractTar(archive, "owner/repo", "packages/adapter")).toThrow(
-    "Selected package expands beyond size limit",
-  );
+  await expect(
+    extractGzipTar(archive, "owner/repo", "packages/adapter"),
+  ).rejects.toThrow("Selected package expands beyond size limit");
 });
 
-test("selected package paths cannot escape the extraction root", () => {
-  expect(() => extractTar(tar([]), "owner/repo", "../adapter")).toThrow(
-    "unsafe path segment",
-  );
-  expect(() =>
-    extractTar(
-      tar([{ path: "packages/adapter/../escape", size: 1 }]),
+test("selected package paths cannot escape the extraction root", async () => {
+  await expect(
+    extractGzipTar(gzipTar([]), "owner/repo", "../adapter"),
+  ).rejects.toThrow("unsafe path segment");
+  await expect(
+    extractGzipTar(
+      gzipTar([{ path: "packages/adapter/../escape", size: 1 }]),
       "owner/repo",
       "packages/adapter",
     ),
-  ).toThrow("unsafe path segment");
+  ).rejects.toThrow("unsafe path segment");
 });
 
 test("repository downloads allow 80 MiB while retaining a separate cap", async () => {

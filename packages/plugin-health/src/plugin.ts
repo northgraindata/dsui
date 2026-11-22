@@ -15,6 +15,7 @@ import {
   type ServiceSummary,
 } from "./context.js";
 import { recordChecks } from "./history.js";
+import { iconUrl } from "./logo";
 import { healthOverviewPage } from "./pages/overview.js";
 import {
   summaryOutputSchema as healthSummarySchema,
@@ -70,6 +71,8 @@ export function createHealthPlugin() {
       name: "Service health",
       version: "1.0.0",
       apiVersion: 1,
+      category: "Monitoring",
+      iconUrl,
     },
     configSchema: configSchema,
     setup(registry, config) {

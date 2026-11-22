@@ -1,0 +1,18 @@
+{
+  "name": "Grid",
+  "description": "CSS grid with 1-6 columns.",
+  "props": {
+    "content": {
+      "description": "Child nodes"
+    },
+    "columns": {
+      "description": "Number of grid columns",
+      "default": "1"
+    },
+    "gap": {
+      "description": "Spacing between items",
+      "default": "\"md\""
+    }
+  },
+  "example": "Grid({\n  columns: 3,\n  gap: \"md\",\n  content: [\n    Card({ title: \"One\" }),\n    Card({ title: \"Two\" }),\n    Card({ title: \"Three\" }),\n  ],\n})"
+}

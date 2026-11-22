@@ -1,0 +1,50 @@
+---
+import type { Node } from "fumadocs-core/page-tree";
+import { normalizePath, pageUrls } from "@/lib/tree";
+import SidebarNode from "./SidebarNode.astro";
+
+interface Props {
+  nodes: Node[];
+  current: string;
+}
+
+const { nodes, current } = Astro.props;
+---
+<ul>
+  {nodes.map((node) => {
+    if (node.type === "page") {
+      return (
+        <li>
+          <a
+            class="sidebar-link"
+            href={node.url}
+            aria-current={normalizePath(node.url) === current ? "page" : undefined}
+          >{node.name}</a>
+        </li>
+      );
+    }
+    if (node.type === "folder") {
+      return (
+        <li>
+          <details open={pageUrls(node).includes(current)}>
+            <summary class="sidebar-subheading">{node.name}</summary>
+            <SidebarNode
+              nodes={[
+                ...(node.index
+                  ? [
+                      node.index.name === node.name
+                        ? { ...node.index, name: "Overview" }
+                        : node.index,
+                    ]
+                  : []),
+                ...node.children,
+              ]}
+              current={current}
+            />
+          </details>
+        </li>
+      );
+    }
+    return null;
+  })}
+</ul>

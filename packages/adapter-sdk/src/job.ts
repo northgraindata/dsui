@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { BlobStore } from "./blob";
 import type { AnySignalDefinition } from "./signal";
 import type { StoreDefinition, StoreInstance } from "./store";
 
@@ -25,6 +26,8 @@ export interface JobRunInput<
   readonly context: TContext;
   readonly runId: string;
   readonly signal: AbortSignal;
+  /** Binary storage private to this service. */
+  readonly blobs: BlobStore;
   /** Access persistent adapter-scoped state from scheduled work. */
   readonly store: <
     TState extends Record<string, unknown>,

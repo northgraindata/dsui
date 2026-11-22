@@ -9,6 +9,7 @@ import {
   postgresqlConnectionSchema,
 } from "./context.js";
 import { postgresqlHealth } from "./health.js";
+import { postgresqlIconUrl } from "./logo.js";
 import { activityPage } from "./pages/activity.js";
 import { dataPage } from "./pages/data.js";
 import { databasePage } from "./pages/database.js";
@@ -16,6 +17,7 @@ import { overviewPage } from "./pages/overview.js";
 import { databaseQueryPage, queryPage } from "./pages/query.js";
 import { relationPage } from "./pages/relation.js";
 import { schemaPage } from "./pages/schema.js";
+import { presentation } from "./presentation";
 import { activity } from "./resources/activity.js";
 import { capabilities } from "./resources/capabilities.js";
 import {
@@ -55,7 +57,8 @@ export function createPostgreSQLAdapter() {
       version: "0.1.0",
       author: "DSUI",
       description: "Inspect PostgreSQL databases and run SQL queries.",
-      iconUrl: "https://www.postgresql.org/media/img/about/press/elephant.png",
+      iconUrl: postgresqlIconUrl,
+      presentation,
     },
     connectionMethods: {
       postgresql: {

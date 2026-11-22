@@ -74,3 +74,36 @@ Run affected adapter tests and typechecks when changing SDK behavior. See [CONTR
 ## License
 
 [Apache License 2.0](../../LICENSE), developed by [Northgrain Data](https://northgraindata.com).
+
+## Adapter catalog presentation
+
+Declare optional `metadata.presentation` inside `defineAdapter` to describe your adapter in the host's catalog and detail page.
+The host uses the same content in connection help; community adapters use the same contract as bundled adapters.
+
+```ts
+metadata: {
+  id: "example",
+  name: "Example database",
+  version: "1.0.0",
+  author: "Example team",
+  presentation: {
+    category: "Databases",
+    overview: "Explore this database from your DSUI workspace.",
+    features: [
+      { title: "Schema explorer", description: "Browse schemas and tables." },
+    ],
+    compatibility: ["Describe the versions or deployment variants you support."],
+    limitations: ["Describe required permissions or feature limitations."],
+    links: [
+      { kind: "documentation", label: "Documentation", href: "https://example.com/docs" },
+    ],
+  },
+},
+```
+
+Every presentation field is optional; missing sections are omitted.
+Link URLs must be absolute HTTP or HTTPS URLs.
+Use optional link `kind` values `website`, `documentation` or `source` for the standard icons; additional links without a kind use the website icon.
+Only list capabilities the adapter implements: presentation metadata does not register runtime resources, actions or pages.
+The host derives the available connection methods from `connectionMethods`, and shows the installed adapter version and author from its metadata.
+Existing adapters without presentation content retain their description and connection form.

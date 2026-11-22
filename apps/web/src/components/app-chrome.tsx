@@ -2,21 +2,18 @@ import type { PluginCatalog } from "@northgraindata/dsui-plugin-sdk";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { getPluginCatalog } from "../api";
+import { groupPluginNavigation } from "../features/plugins/plugin-navigation";
 import {
   PluginShellActions,
   PluginSlot,
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
-import { useSettings } from "../features/settings/settings-context";
 import { Icon } from "./icon";
+import { NavigationMark } from "./navigation-mark";
+import { PluginMark } from "./plugin-mark";
+import { SidebarConnections } from "./sidebar-connections";
 import { TopbarTabsSlot } from "./topbar-slot";
 import { Wordmark } from "./wordmark";
-
-const destinations = [
-  { to: "/", label: "Home", icon: "home" },
-  { to: "/services", label: "Adapters", icon: "plug" },
-  { to: "/settings", label: "Settings", icon: "gear" },
-];
 
 const SIDEBAR_KEY = "dsui.sidebar.collapsed";
 
@@ -49,15 +46,15 @@ export function AppChrome({
   pathname: string;
   openSearch(): void;
 }) {
-  const { snapshot } = useSettings();
   const profile = usePluginSlotBatch("sidebar.profile");
   const inAdapter =
     pathname.startsWith("/services/") && pathname !== "/services/new";
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
   const [tabsSlot, setTabsSlot] = useState<HTMLDivElement | null>(null);
-  const [pluginNavigation, setPluginNavigation] = useState<
-    PluginCatalog["navigation"]
-  >([]);
+  const [pluginCatalog, setPluginCatalog] = useState<
+    Pick<PluginCatalog, "plugins" | "navigation">
+  >({ plugins: [], navigation: [] });
+  const pluginGroups = groupPluginNavigation(pluginCatalog);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Navigation refreshes the caller profile even when its pathname is not read.
   useEffect(() => {
     let active = true;
@@ -66,7 +63,7 @@ export function AppChrome({
     const loadPluginNavigation = async (retry = true) => {
       try {
         const catalog = await getPluginCatalog();
-        if (active) setPluginNavigation(catalog.navigation);
+        if (active) setPluginCatalog(catalog);
       } catch {
         if (!active) return;
         // The API can still be starting while the web app is already open.
@@ -93,23 +90,6 @@ export function AppChrome({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [pathname]);
-  const navigation = destinations.map((item) => (
-    <Link
-      key={item.to}
-      activeOptions={{ exact: true }}
-      to={item.to}
-      className="app-nav-link"
-      title={item.label}
-      aria-current={
-        (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to))
-          ? "page"
-          : undefined
-      }
-    >
-      <Icon name={item.icon} />
-      <span>{item.label}</span>
-    </Link>
-  ));
   return (
     <div
       className={`app-chrome ${inAdapter ? "app-chrome--adapter" : ""}`}
@@ -120,11 +100,12 @@ export function AppChrome({
       </a>
       <header className="app-topbar">
         <div className="app-topbar-brand">
-          <Wordmark />
+          <Wordmark className="app-wordmark" />
           <button
             type="button"
             className="app-sidebar-toggle"
             onClick={toggleSidebar}
+            aria-controls={inAdapter ? undefined : "workspace-sidebar"}
             aria-expanded={!sidebarCollapsed}
             aria-label={
               sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
@@ -150,29 +131,72 @@ export function AppChrome({
       </header>
       <div className="app-body">
         {!inAdapter && (
-          <aside className="app-sidebar">
-            <nav aria-label="Main navigation">{navigation}</nav>
-            {pluginNavigation.length > 0 && (
-              <nav aria-label="Extensions">
-                {pluginNavigation.map((item) => (
-                  <Link
-                    key={`${item.pluginId}/${item.id}`}
-                    to="/plugins/$pluginId/$"
-                    params={{ pluginId: item.pluginId, _splat: item.pageId }}
-                    className="app-nav-link"
-                    title={item.label}
-                    aria-current={
-                      pathname === `/plugins/${item.pluginId}/${item.pageId}`
-                        ? "page"
-                        : undefined
-                    }
-                  >
-                    <Icon name="plug" />
-                    <span>{item.label}</span>
-                  </Link>
-                ))}
+          <aside
+            id="workspace-sidebar"
+            className="app-sidebar"
+            aria-label="Workspace"
+          >
+            <div className="app-sidebar-navigation">
+              <nav aria-label="Main navigation">
+                <Link
+                  to="/"
+                  className="app-nav-link"
+                  title="Home"
+                  aria-label="Home"
+                  aria-current={pathname === "/" ? "page" : undefined}
+                >
+                  <NavigationMark name="home" />
+                  <span>Home</span>
+                </Link>
+                <SidebarConnections
+                  pathname={pathname}
+                  collapsed={sidebarCollapsed}
+                  expandSidebar={toggleSidebar}
+                />
+                <Link
+                  to="/settings"
+                  className="app-nav-link"
+                  title="Settings"
+                  aria-label="Settings"
+                  aria-current={
+                    pathname.startsWith("/settings") ? "page" : undefined
+                  }
+                >
+                  <NavigationMark name="settings" />
+                  <span>Settings</span>
+                </Link>
               </nav>
-            )}
+              {pluginGroups.map((group) => (
+                <nav
+                  key={group.label}
+                  aria-label={`${group.label} plugins`}
+                  className="app-sidebar-group"
+                >
+                  <h2 className="app-sidebar-group-label" title={group.label}>
+                    {group.label}
+                  </h2>
+                  {group.items.map((item) => (
+                    <Link
+                      key={`${item.pluginId}/${item.id}`}
+                      to="/plugins/$pluginId/$"
+                      params={{ pluginId: item.pluginId, _splat: item.pageId }}
+                      className="app-nav-link"
+                      title={item.label}
+                      aria-label={item.label}
+                      aria-current={
+                        pathname ===
+                        `/plugins/${encodeURIComponent(item.pluginId)}/${item.pageId}`
+                          ? "page"
+                          : undefined
+                      }
+                    >
+                      <PluginMark iconUrl={item.iconUrl} />
+                      <span>{item.label}</span>
+                    </Link>
+                  ))}
+                </nav>
+              ))}
+            </div>
             <div className="app-sidebar-bottom">
               <a
                 className="sidebar-star-banner"
@@ -190,15 +214,6 @@ export function AppChrome({
                 serviceId=""
                 results={profile.results}
                 error={profile.error}
-                fallback={
-                  <Link to="/settings" className="workspace-profile">
-                    <span>
-                      {snapshot?.installation.name ?? "My workspace"}
-                      <small>Manage settings</small>
-                    </span>
-                    <Icon name="chevron" />
-                  </Link>
-                }
               />
             </div>
           </aside>
@@ -208,16 +223,6 @@ export function AppChrome({
           className="app-content"
           data-dsui-overlay-target="app.content"
         >
-          {snapshot?.installation.environment !== "local" &&
-            snapshot?.installation.environment && (
-              <div
-                className="workspace-environment"
-                data-environment={snapshot.installation.environment}
-              >
-                {snapshot.installation.name} ·{" "}
-                {snapshot.installation.environment}
-              </div>
-            )}
           <TopbarTabsSlot.Provider value={tabsSlot}>
             <Outlet />
           </TopbarTabsSlot.Provider>

@@ -1,0 +1,112 @@
+---
+title: Slots and overlays
+description: Reference for defineSlot, which lets a plugin add content to named places in the host interface, and for overlays that guide people across the workspace.
+contentType: reference
+---
+
+A slot is a named place in the host interface where a plugin can add content. A plugin adds a status badge to each service card, a note under a service header, or a button in the sidebar. The host decides where a slot sits and what it passes in. An overlay is a slot that the host shows above the current screen, such as a help panel or a guided tour.
+
+## Contribute to a slot
+
+Define the contribution with `defineSlot`, and register it in `setup`:
+
+```ts
+import { Card, defineSlot } from "@northgraindata/dsui-plugin-sdk";
+
+export const workspaceNote = defineSlot({
+  id: "workspace-note",
+  slot: "service.workspace.after-header",
+  order: 10,
+  render: ({ service }) => Card({ title: `Note for ${service.name}` }),
+});
+
+// Inside setup(registry):
+registry.slot(workspaceNote);
+```
+
+`id` is unique within the plugin, and `order` sorts contributions to the same slot. `render` returns components, and it can be asynchronous.
+
+## Available slots
+
+| Slot | Where it appears | `render` receives |
+| --- | --- | --- |
+| `dashboard.service-card.trailing` | The trailing region of each service card on the dashboard | `service` |
+| `service.workspace.after-header` | Under the header of a service workspace | `service` |
+| `app.shell.actions` | The actions area of the workspace shell | No service |
+| `sidebar.profile` | The profile area of the sidebar. A contribution replaces the default workspace and settings link | No service |
+| `overlay` | Above the current screen. See below | No service |
+
+Service slots render once for each service that the host asks about. The other slots are global and render once. Every `render` also receives the `context` of your plugin and the `principal`, the person who is signed in, when there is one.
+
+A slot that the host doesn't publish shows nothing, and DSUI doesn't treat it as an error. A request for an unknown slot name through the HTTP API returns `404`.
+
+## Show an overlay
+
+An overlay is a contribution to the `overlay` slot with a `presentation`. Your plugin owns the content, and the host owns the frame, the position, and how people dismiss it, including the Escape key and focus. Overlay IDs are local to the plugin, and a trigger can only open an overlay of its own plugin.
+
+```ts
+const helpOverlay = defineSlot({
+  id: "help",
+  slot: "overlay",
+  presentation: { mode: "modal", label: "Help" },
+  render: () => [Section({ title: "Help", content: Card({ title: "Hello" }) })],
+});
+
+const profile = defineSlot({
+  id: "profile",
+  slot: "sidebar.profile",
+  render: () => [Button({ label: "Help", overlay: "help" })],
+});
+```
+
+A `Button` opens an overlay with `overlay`, and it opens a follow-up overlay only after its action succeeds with `successOverlay`.
+
+### Presentation modes
+
+| Mode | Behavior |
+| --- | --- |
+| `modal` | A dialog above the screen |
+| `drawer` | A panel on the right side. `width` is in pixels, defaults to 520, and is limited to 320 to 900 |
+| `anchored` | A panel next to a named target in the interface, without blocking the screen |
+
+An `anchored` overlay takes these options:
+
+- **`target`**: the name of a host target. You can't pass a CSS selector
+- **`path`**: a path to open in the current tab before the host finds the target
+- **`highlight`**: dims the screen around the target
+- **`placement`**: `top`, `right`, `bottom`, or `left`
+- **`dock`**: `bottom-right` keeps the panel in a corner while its target changes
+- **`advanceOn`**: opens another overlay after the person completes an interaction
+
+If the target isn't on the screen yet, the host shows a waiting state with a close control. It waits for pages that load later, scrolls the target into view, and keeps the panel inside the window.
+
+### Targets
+
+The host publishes these targets:
+
+- **Workspace**: `app.content`, `dashboard.services`, `dashboard.service.<service id>`, `service.workspace.header`, `service.workspace.navigation`, `service.workspace.content`, and `service.workspace.page.<page>`
+- **Query pages**: `query.editor`, `query.run`, and `query.results`
+- **Other**: `code.block`, `dbt.model.source`, `airflow.dag.graph`, and `s3.object.<object key>`
+
+A page can publish its own target with the `Target` component from the SDK, such as `Target({ id: "team.runbook", content: … })`.
+
+### Guide people through a task
+
+Combine an anchored overlay with `advanceOn` to move on after someone completes a step. The PostgreSQL and DuckDB query pages accept `?sql=` in their path to fill the editor without running it:
+
+```ts
+presentation: {
+  mode: "anchored",
+  path: "/services/warehouse/query?sql=SELECT%201",
+  target: "query.editor",
+  dock: "bottom-right",
+  advanceOn: {
+    serviceId: "warehouse",
+    target: "query.results",
+    event: "success",
+    overlay: "query-result",
+  },
+}
+```
+
+`advanceOn` matches the target, the event, and the service where the interaction happened. For a plugin component, set `pluginId` instead of `serviceId`. A custom component reports an interaction with `client.notifyInteraction({ target, event })`. The event carries no input or result data.

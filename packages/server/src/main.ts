@@ -105,7 +105,17 @@ async function serve(): Promise<never> {
   const port = Number(process.env.DSUI_PORT ?? DEFAULT_PORT);
   // server.port is the port actually bound, which differs from the request
   // when DSUI_PORT is 0 and the OS picks one.
-  const server = Bun.serve({ fetch: runtime.app.fetch, hostname, port });
+  await runtime.startConnectors();
+  const server = Bun.serve({
+    // The agent tunnel upgrades to a WebSocket before the HTTP app sees it.
+    fetch: (request, bunServer) =>
+      runtime.tunnel.matches(request)
+        ? runtime.tunnel.handleUpgrade(request, bunServer)
+        : runtime.app.fetch(request, bunServer),
+    websocket: runtime.tunnel.websocket,
+    hostname,
+    port,
+  });
   const telemetry = telemetryEnabled(process.env, config)
     ? createTelemetry(telemetrySnapshotOptions(runtime, () => config))
     : undefined;
@@ -115,7 +125,12 @@ async function serve(): Promise<never> {
     if (stopping) return;
     stopping = true;
     telemetry?.stop();
-    await server.stop(true);
+    // Close agent tunnels first: open WebSockets would otherwise hold the stop.
+    runtime.tunnel.close();
+    await Promise.race([
+      server.stop(true),
+      new Promise((resolve) => setTimeout(resolve, 3_000)),
+    ]);
     await runtime.close();
     process.exit(0);
   };

@@ -3,21 +3,28 @@ import { Link } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   type Adapter,
+  CONNECTOR_KEY,
   connectionTopEntries,
   createService,
   firstLeaf,
+  getSecretProviders,
   type HealthStatus,
+  type SecretProvider,
+  type SecretReference,
   testService,
 } from "../api";
 import { connectionTestMessage } from "../service-pages";
 import { ConnectionAbout } from "./connection-about";
 import { ConnectionFields } from "./connection-fields";
+import { ConnectorRoute, type Route } from "./connector-route";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
 
 type TestResult =
   | { kind: "health"; health: HealthStatus }
   | { kind: "error"; message: string };
+// Adapters that read a file on the DSUI server have no network path to route.
+const localOnlyAdapters = new Set(["duckdb"]);
 const steps = [
   { title: "Connection", detail: "Provide connection details" },
   { title: "Test", detail: "Verify connection" },
@@ -59,6 +66,16 @@ export function ConnectionDialog({
   const [values, setValues] = useState<Record<string, string>>({
     name: `My ${adapter.name}`,
   });
+  // Fields that point at a secret manager instead of holding a value. Providers
+  // come from plugins; without any, the form offers values only.
+  const [providers, setProviders] = useState<SecretProvider[]>([]);
+  const [references, setReferences] = useState<Record<string, SecretReference>>(
+    {},
+  );
+  const [route, setRoute] = useState<Route>("direct");
+  const [connectorId, setConnectorId] = useState<string>();
+  const routable = !localOnlyAdapters.has(adapter.id);
+  const missingAgent = routable && route === "agent" && !connectorId;
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<TestResult>();
@@ -84,32 +101,61 @@ export function ConnectionDialog({
     };
   }, []);
   useEffect(() => {
+    // Offering secret managers is optional, so a failure here only hides it.
+    getSecretProviders()
+      .then((found) => {
+        if (alive.current) setProviders(found);
+      })
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
     if (step > 0) stageRef.current?.focus();
     else dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
   }, [step]);
   function chooseMethod(id: string | undefined) {
     setMethodId(id);
     setValues((previous) => ({ name: previous.name ?? "" }));
+    setReferences({});
     setResult(undefined);
     setSaveError(undefined);
   }
   const update = (key: string, value: string) =>
     setValues((previous) => ({ ...previous, [key]: value }));
+  const updateReference = (
+    key: string,
+    reference: SecretReference | undefined,
+  ) => {
+    setReferences((previous) => {
+      const { [key]: _removed, ...rest } = previous;
+      return reference ? { ...rest, [key]: reference } : rest;
+    });
+    setResult(undefined);
+  };
+  const secrets = { providers, references, update: updateReference };
   function input() {
     // The display name is not part of the adapter's connection schema. Omit
     // untouched optional fields so the adapter can apply its own defaults.
     const connection = Object.fromEntries(
-      fields
-        .filter(
-          (field) =>
-            values[field.key] !== undefined && values[field.key] !== "",
-        )
-        .map((field) => [field.key, values[field.key]]),
+      fields.flatMap((field): Array<[string, unknown]> => {
+        const reference = references[field.key];
+        if (reference)
+          return reference.reference
+            ? [[field.key, { $secret: reference }]]
+            : [];
+        const value = values[field.key];
+        return value !== undefined && value !== "" ? [[field.key, value]] : [];
+      }),
     );
+    const routed =
+      routable && route === "agent" && connectorId
+        ? { [CONNECTOR_KEY]: connectorId }
+        : {};
     return {
       adapter: adapter.id,
       name: values.name || adapter.name,
-      connection: method ? { ...connection, method: method.id } : connection,
+      connection: method
+        ? { ...connection, method: method.id, ...routed }
+        : { ...connection, ...routed },
     };
   }
   async function test(event?: FormEvent) {
@@ -303,11 +349,23 @@ export function ConnectionDialog({
                   <small>{method?.description}</small>
                 </div>
               )}
+              {routable && (
+                <ConnectorRoute
+                  route={route}
+                  connectorId={connectorId}
+                  onRoute={(next) => {
+                    setRoute(next);
+                    setResult(undefined);
+                  }}
+                  onConnector={setConnectorId}
+                />
+              )}
               <ConnectionFields
                 fields={fields.filter((field) => field.required)}
                 values={values}
                 copy={fieldCopy}
                 update={update}
+                secrets={secrets}
               />
               <div className="connection-field">
                 <label htmlFor="connection-name">Connection name</label>
@@ -328,6 +386,7 @@ export function ConnectionDialog({
                       values={values}
                       copy={fieldCopy}
                       update={update}
+                      secrets={secrets}
                     />
                   </div>
                 </details>
@@ -412,6 +471,7 @@ export function ConnectionDialog({
               type="submit"
               form="connection-form"
               className="connection-primary"
+              disabled={missingAgent}
             >
               Test connection <span aria-hidden="true">→</span>
             </Button>

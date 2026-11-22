@@ -51,6 +51,8 @@ export const iconPaths: Record<string, string> = {
   warning: "M12 3 2.5 20h19L12 3ZM12 9v5m0 3h.01",
   eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
   terminal: "m6 7 5 5-5 5M13 17h6",
+  plug: "M9 2v5m6-5v5M6 7h12v4a6 6 0 0 1-12 0V7Zm6 10v5",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 9a8 8 0 0 1 16 0",
 };
 export function WorkbenchIcon({
   name,

@@ -5,120 +5,171 @@ import { cloudUrl } from "@/lib/cloud-url";
 const docsBaseUrl = import.meta.env.DEV
   ? "http://localhost:4322/docs"
   : "/docs";
+const discordUrl = "https://discord.gg/6vgtDbVggc";
+const calendarUrl =
+  "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ3iuWDoljrMQ03OLD1igxjaM_ksj4CRUxuDstDgoNgsuNve12C_0Mkb0XnyS09HZYFiF4jL2dEN";
+const navigation = [
+  {
+    title: "Product",
+    links: [
+      {
+        label: "Get started",
+        href: `${docsBaseUrl}/getting-started/quickstart`,
+      },
+      { label: "Live demo", href: "https://dsui.northgraindata.com/demo" },
+      { label: "DSUI Cloud", href: cloudUrl("footer") },
+      { label: "Pricing", href: "/#pricing" },
+    ],
+  },
+  {
+    title: "Build",
+    links: [
+      { label: "Documentation", href: docsBaseUrl },
+      { label: "Adapters", href: "/#adapters" },
+      { label: "Adapter SDK", href: `${docsBaseUrl}/adapter-sdk/overview` },
+      { label: "Plugin SDK", href: `${docsBaseUrl}/plugin-sdk/overview` },
+    ],
+  },
+  {
+    title: "Community",
+    links: [
+      { label: "Discord", href: discordUrl },
+      { label: "GitHub", href: "https://github.com/northgraindata/dsui" },
+      { label: "Contribute", href: `${docsBaseUrl}/contributing` },
+      {
+        label: "Releases",
+        href: "https://github.com/northgraindata/dsui/releases",
+      },
+    ],
+  },
+];
 ---
 
-<footer class="relative overflow-hidden bg-canvas text-foreground">
-  <div
-    aria-hidden="true"
-    class="pointer-events-none absolute inset-0 bg-[url('/assets/footer-ascii-blue.png')] bg-cover bg-center bg-no-repeat opacity-70"
-    style="-webkit-mask-image: var(--ds-mask-footer); mask-image: var(--ds-mask-footer);"
-  >
-  </div>
-  <div
-    aria-hidden="true"
-    class="pointer-events-none absolute inset-0 bg-footer-overlay"
-  >
-  </div>
-
-  <div class="relative mx-auto max-w-6xl px-6">
-    <div
-      class="flex min-h-[34rem] items-center justify-center py-24 text-center sm:min-h-[40rem] sm:py-32"
-    >
-      <div class="max-w-2xl">
-        <h2
-          class="mt-5 text-balance text-4xl font-semibold tracking-tight sm:text-6xl"
-        >
-          Build the capabilities your data stack needs.
-        </h2>
-        <p
-          class="mx-auto mt-6 max-w-lg text-pretty text-base leading-7 text-copy sm:text-lg"
-        >
-          Connect your tools, install plugins, and build capabilities tailored to your infrastructure.
-        </p>
-        <div class="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-          <a
-            class="hero-action inline-flex h-12 items-center justify-center rounded-xl bg-action-primary px-6 text-sm font-semibold text-foreground shadow-action-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
-            href="https://dsui.northgraindata.com/demo"
-          >
-            Try Live Demo
-            <span
-              class="hero-action-icon ml-2 text-brand-softest"
-              aria-hidden="true">→</span
-            >
-          </a>
-          <a
-            class="hero-action hero-action--external inline-flex h-12 items-center justify-center rounded-xl border border-brand-muted/15 bg-canvas/70 px-6 text-sm font-semibold text-copy backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-muted focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
-            href={`${docsBaseUrl}/getting-started/quickstart`}
-          >
-            Get Started
-            <span
-              class="hero-action-icon ml-2 text-brand-muted"
-              aria-hidden="true">↗</span
-            >
-          </a>
+<footer id="community" class="site-footer bg-canvas text-foreground">
+  <div class="mx-auto max-w-6xl px-6">
+    <div class="footer-grid">
+      <section class="conversation" aria-labelledby="conversation-title">
+        <div class="conversation-art" aria-hidden="true"></div>
+        <div class="conversation-copy">
+          <p class="footer-eyebrow">Let’s talk</p>
+          <h2 id="conversation-title">Let’s talk about your stack.</h2>
+          <p class="conversation-description">I’m Joachim, building DSUI. Bring your setup, questions, or ideas. Let’s see where DSUI fits.</p>
         </div>
+        <div class="conversation-action">
+          <a class="call-link" href={calendarUrl} target="_blank" rel="noopener noreferrer">
+            <img src="/assets/joachim-hodana.jpg" alt="" width="40" height="40" loading="lazy" />
+            <span>Talk to Joachim</span>
+            <span class="call-arrow" aria-hidden="true">↗</span>
+          </a>
+          <p>30 minutes. Your stack, on the agenda.</p>
+        </div>
+      </section>
+      <div class="footer-directory">
+        <nav class="footer-navigation" aria-label="Footer navigation">
+          {navigation.map((group) => (
+            <div class="footer-link-group">
+              <h2 class="footer-eyebrow">{group.title}</h2>
+              <ul>{group.links.map((link) => (<li><a href={link.href}>{link.label}</a></li>))}</ul>
+            </div>
+          ))}
+        </nav>
+        <a class="community-link" href={discordUrl} target="_blank" rel="noopener noreferrer">
+          <span class="discord-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.32 4.37a19.79 19.79 0 0 0-4.89-1.52c-.21.38-.45.89-.61 1.29a18.4 18.4 0 0 0-5.43 0c-.17-.4-.41-.91-.62-1.29a19.74 19.74 0 0 0-4.89 1.52C.79 8.96-.05 13.44.37 17.86a19.9 19.9 0 0 0 6 3.03c.49-.66.92-1.36 1.29-2.1-.71-.27-1.39-.6-2.03-.98.17-.12.34-.25.5-.38 3.92 1.81 8.18 1.81 12.05 0 .16.13.33.26.5.38-.65.38-1.33.71-2.04.98.37.74.8 1.44 1.29 2.1a19.85 19.85 0 0 0 6-3.03c.5-5.13-.85-9.57-3.61-13.49ZM8.02 15.15c-1.18 0-2.14-1.08-2.14-2.4s.94-2.4 2.14-2.4c1.19 0 2.16 1.09 2.14 2.4 0 1.32-.95 2.4-2.14 2.4Zm7.96 0c-1.18 0-2.14-1.08-2.14-2.4s.94-2.4 2.14-2.4c1.19 0 2.16 1.09 2.14 2.4 0 1.32-.94 2.4-2.14 2.4Z" />
+            </svg>
+          </span>
+          <span class="community-copy">
+            <strong>Join the conversation.</strong>
+            <span>Ask questions, share your setup, and help shape DSUI.</span>
+            <span class="community-cta">Join us on Discord <span aria-hidden="true">↗</span></span>
+          </span>
+        </a>
       </div>
     </div>
-
-    <div
-      class="relative flex flex-col gap-6 border-t border-foreground/10 py-7 text-sm text-copy-subtle sm:flex-row sm:items-center sm:justify-between"
-    >
-      <a
-        href="/"
-        class="inline-flex w-fit items-center gap-2 font-semibold text-copy transition-colors hover:text-brand-muted"
-        aria-label="DSUI home"
-      >
-        <img
-          src="/branding/logo-icon.svg"
-          alt=""
-          width="20"
-          height="20"
-          class="size-5"
-        />
-        DSUI
-      </a>
-      <nav
-        class="flex flex-wrap gap-x-6 gap-y-3 sm:absolute sm:left-1/2 sm:-translate-x-1/2"
-        aria-label="Footer navigation"
-      >
-        <a class="transition-colors hover:text-foreground" href="#product"
-          >Product</a
-        >
-        <a class="transition-colors hover:text-foreground" href="#adapters"
-          >Adapters</a
-        >
-        <a class="transition-colors hover:text-foreground" href={cloudUrl("footer")}
-          >Cloud</a
-        >
-        <a class="transition-colors hover:text-foreground" href={docsBaseUrl}
-          >Documentation</a
-        >
-        <a class="transition-colors hover:text-foreground" href={`${docsBaseUrl}/contributing`}
-          >Contribute</a
-        >
-        <a class="transition-colors hover:text-foreground" href="/privacy"
-          >Privacy</a
-        >
-        <ConsentDialogLink class="transition-colors hover:text-foreground"
-          >Cookie settings</ConsentDialogLink
-        >
-      </nav>
-      <p class="inline-flex items-center gap-1.5 text-xs text-copy-muted">
-        <span>Built by</span>
-        <a
-          class="inline-flex items-center gap-1.5 transition-colors hover:text-copy"
-          href="https://northgraindata.com"
-        >
-          <img
-            src="/assets/northgrain-mark.svg"
-            alt=""
-            width="16"
-            height="16"
-            class="size-4 rounded-sm bg-white p-0.5 object-contain"
-          />
-          Northgrain Data
+    <div class="footer-bottom">
+      <div class="footer-brand">
+        <a href="/" class="brand-link" aria-label="DSUI home">
+          <img src="/branding/logo-icon.svg" alt="" width="24" height="24" loading="lazy" />DSUI
         </a>
-      </p>
+        <p>The AI-native control plane for your data stack.</p>
+      </div>
+      <div class="footer-meta">
+        <div class="footer-legal">
+          <a href="/privacy">Privacy</a>
+          <ConsentDialogLink>Cookie settings</ConsentDialogLink>
+        </div>
+        <p class="footer-credit">
+          <span>Built by</span>
+          <a href="https://northgraindata.com" class="inline-flex items-center gap-1.5 transition-colors">
+            <img src="/assets/northgrain-mark.svg" alt="" width="16" height="16" loading="lazy" class="size-4 rounded-sm bg-white p-0.5 object-contain" />
+            <span>Northgrain Data</span>
+          </a>
+        </p>
+      </div>
     </div>
   </div>
 </footer>
+
+<style>
+  .site-footer { padding: 72px 0 28px; }
+  .footer-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr); gap: 12px; }
+  .conversation { position: relative; display: flex; flex-direction: column; justify-content: space-between; isolation: isolate; overflow: hidden; min-height: 398px; padding: 36px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 18%, transparent); border-radius: 8px; background: var(--ds-color-surface); }
+  .conversation-art { position: absolute; z-index: -1; inset: 0; background: url('/assets/footer-ascii-blue.png') center / cover; opacity: .42; }
+  .footer-eyebrow { color: var(--ds-color-copy-subtle); font-family: monospace; font-size: 10px; font-weight: 400; letter-spacing: .1em; text-transform: uppercase; }
+  .conversation .footer-eyebrow { color: var(--ds-color-brand-soft); }
+  .conversation h2 { max-width: 300px; margin-top: 20px; font-size: clamp(30px, 3.4vw, 42px); font-weight: 500; letter-spacing: -.045em; line-height: 1.1; text-wrap: balance; }
+  .conversation-description { max-width: 300px; margin-top: 18px; color: var(--ds-color-copy); font-size: 14px; line-height: 1.75; }
+  .conversation-action { margin-top: 40px; }
+  .call-link { display: inline-flex; min-height: 56px; align-items: center; gap: 12px; padding: 8px 16px 8px 8px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 25%, transparent); border-radius: 6px; background: var(--ds-color-canvas); color: var(--ds-color-foreground); font-size: 14px; font-weight: 500; transition: border-color 160ms ease, transform 160ms ease; }
+  .call-link img { flex-shrink: 0; border-radius: 50%; object-fit: cover; }
+  .call-arrow { margin-left: 12px; color: var(--ds-color-brand-muted); }
+  .conversation-action > p { margin-top: 12px; color: var(--ds-color-copy-subtle); font-size: 11px; }
+  .footer-directory { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .footer-navigation { display: grid; flex: 1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--ds-color-copy) 8%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--ds-color-copy) 8%, transparent); }
+  .footer-link-group { padding: 28px 22px; background: var(--ds-color-canvas); }
+  .footer-link-group ul { display: grid; gap: 4px; margin-top: 20px; }
+  .footer-link-group a { display: inline-flex; align-items: center; min-height: 32px; color: var(--ds-color-copy); font-size: 13px; line-height: 1.5; transition: color 160ms ease; }
+  .community-link { display: flex; align-items: flex-start; gap: 18px; padding: 24px 28px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 14%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--ds-color-surface) 50%, var(--ds-color-canvas)); transition: border-color 160ms ease; }
+  .discord-mark { display: grid; flex-shrink: 0; place-items: center; width: 40px; height: 40px; border: 1px solid color-mix(in srgb, var(--ds-color-brand-muted) 16%, transparent); border-radius: 10px; color: var(--ds-color-brand-muted); }
+  .discord-mark svg { width: 22px; height: 22px; }
+  .community-copy { display: flex; flex-direction: column; gap: 6px; }
+  .community-copy strong { font-size: 16px; font-weight: 500; letter-spacing: -.02em; }
+  .community-copy > span { color: var(--ds-color-copy-subtle); font-size: 12px; line-height: 1.6; }
+  .community-copy .community-cta { margin-top: 7px; color: var(--ds-color-brand-muted); font-size: 12px; font-weight: 500; }
+  .community-cta > span { display: inline-block; margin-left: 5px; }
+  .footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 40px; padding-top: 24px; border-top: 1px solid color-mix(in srgb, var(--ds-color-copy) 10%, transparent); }
+  .brand-link { display: inline-flex; align-items: center; gap: 9px; font-size: 17px; font-weight: 600; letter-spacing: -.03em; }
+  .footer-brand > p { margin-top: 8px; color: var(--ds-color-copy-subtle); font-size: 11px; }
+  .footer-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; color: var(--ds-color-copy-subtle); font-size: 11px; }
+  .footer-legal { display: flex; flex-wrap: wrap; gap: 20px; }
+  .footer-legal :global(button) { cursor: pointer; }
+  .footer-credit { display: inline-flex; align-items: center; gap: 6px; color: var(--ds-color-copy-subtle); }
+  .site-footer a:focus-visible, .footer-legal :global(button:focus-visible) { outline: 2px solid var(--ds-color-brand-muted); outline-offset: 5px; }
+  @media (hover: hover) {
+    .call-link:hover, .community-link:hover { border-color: var(--ds-color-brand-hover); }
+    .footer-link-group a:hover, .footer-meta a:hover, .footer-legal :global(button:hover) { color: var(--ds-color-foreground); }
+  }
+  .call-link:active { transform: scale(.98); }
+  @media (max-width: 900px) {
+    .footer-grid { grid-template-columns: 1fr; }
+    .conversation { min-height: 330px; }
+    .conversation h2, .conversation-description { max-width: 420px; }
+    .footer-link-group { padding: 24px; }
+  }
+  @media (max-width: 540px) {
+    .site-footer { padding-top: 40px; }
+    .conversation { min-height: 350px; padding: 28px 24px; }
+    .footer-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .footer-link-group:last-child { grid-column: 1 / -1; }
+    .footer-link-group:last-child ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .footer-link-group { padding: 22px; }
+    .community-link { padding: 24px 22px; gap: 14px; }
+    .footer-bottom { flex-direction: column; align-items: flex-start; margin-top: 28px; }
+    .footer-meta { align-items: flex-start; gap: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .call-link, .community-link, .footer-link-group a { transition: none; }
+    .call-link:active { transform: none; }
+  }
+</style>

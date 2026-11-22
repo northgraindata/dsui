@@ -1,24 +1,71 @@
 ---
 title: Actions and procedures
-description: Expose validated operations with explicit permissions.
+description: Reference for procedures and actions, the two ways a plugin offers validated operations, with their permissions, argument order, and errors.
+contentType: reference
 ---
 
-Register a procedure using `registry.procedure({ id, permission, input,
-output?, handler })`. The handler receives `(context, input)`. Its input schema
-validates requests, and its optional output schema validates returned values.
+A plugin offers operations in two forms. A **procedure** is an operation that callers invoke by name over HTTP. An **action** is an operation that a component or another plugin's code can run by reference. Both validate their input, both declare the permission a caller needs, and both change things. Put reads in [resources](/docs/plugin-sdk/resources).
 
-Use `defineAction` and `registry.action(action)` when a declarative component
-needs an action reference. Action handlers receive `(input, context)`; this
-argument order differs from procedure handlers.
+## Register a procedure
 
-Declare `inspect` for reads, `execute` for operations or `manage` for configuration.
-For a service-specific operation, also call `context.access.require(serviceId,
-permission)`; a procedure's plugin permission does not authorize an arbitrary
-service. See [host capabilities](/docs/plugin-sdk/host-capabilities).
+`registry.procedure` takes an `id`, a `permission`, an `input` schema, an optional `output` schema, and a `handler`. The handler receives the plugin `context` first, then the input:
 
-## Errors
+```ts
+registry.procedure({
+  id: "greet",
+  permission: "inspect",
+  input: z.object({ name: z.string().min(1) }),
+  output: z.string(),
+  handler: (context, input) => `Hello, ${input.name}`,
+});
+```
 
-Throw `PluginRequestError(message, status)` for an intentional message safe for a
-caller to see. Supported statuses are 400, 403, 404, 409 and 422. Unknown exceptions
-remain redacted by the host. A job throwing `PluginRequestError` fails without
-retry; other failures follow its configured retry policy.
+The input schema validates requests, and the output schema validates what the handler returns. A caller sends the input as the body of `POST /api/v1/plugins/<plugin id>/procedures/<procedure id>`, and DSUI answers `{"data": …}`:
+
+| Status | Cause |
+| --- | --- |
+| `422` | The input or the output doesn't match its schema |
+| `404` | The plugin has no procedure with that ID |
+| `403` | The caller lacks the permission |
+
+## Register an action
+
+`defineAction` takes an `id`, an `input` schema, an optional `output` schema, a `permission`, and `run`. Unlike a procedure handler, `run` receives the input first, then the context:
+
+```ts
+import { defineAction, z } from "@northgraindata/dsui-plugin-sdk";
+
+const shout = defineAction({
+  id: "shout",
+  input: z.object({ text: z.string() }),
+  permission: "execute",
+  run: (input) => input.text.toUpperCase(),
+});
+
+// Inside setup(registry):
+registry.action(shout);
+```
+
+Run an action from your plugin with the plugin catalog, which takes the plugin's ID, the action's ID, and the input: `context.plugins.executeAction("my-plugin", "shout", { text: "quiet" })`. The AI assistant can run plugin actions in the same way.
+
+## Choose a permission
+
+Declare the lowest permission that allows the operation:
+
+- **`inspect`**: reads state and changes nothing
+- **`execute`**: runs the plugin's work
+- **`manage`**: changes configuration, membership, or grants
+
+A permission on a procedure or an action covers the plugin, not each service. When an operation affects a specific service, also call `context.access.require(serviceId, permission)`, so the caller must hold that permission for the service. See [host capabilities](/docs/plugin-sdk/host-capabilities).
+
+## Report errors
+
+Throw `PluginRequestError(message, status)` for a problem that the caller should see. The status is `400` (default), `403`, `404`, `409`, `422`, or `429`. DSUI sends the message and the status as they are:
+
+```ts
+import { PluginRequestError } from "@northgraindata/dsui-plugin-sdk";
+
+throw new PluginRequestError("Team already exists", 409);
+```
+
+Any other error that a handler throws reaches the caller as `500` with `Plugin procedure failed`, and DSUI keeps its message out of the response. A job that throws a `PluginRequestError` fails without retrying. Other failures follow the job's retry policy.

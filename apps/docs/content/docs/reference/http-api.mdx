@@ -1,0 +1,85 @@
+---
+title: HTTP API
+description: Reference for the two HTTP interfaces that scripts and CI can call, the event log and the routes that adapters publish.
+contentType: reference
+---
+
+DSUI's server exposes two HTTP interfaces for scripts, CI jobs, and other tools: the event log and the routes that adapters declare. The workspace also calls other endpoints under `/api/v1`. This page doesn't cover them, and they can change between releases.
+
+The examples use `http://localhost:4192`. Replace it with the address of your DSUI instance.
+
+## Authentication
+
+Without an authentication plugin, DSUI treats every request as the local owner, so you send no credentials. With an authentication plugin, send whatever credentials that plugin expects. See [access control](/docs/guides/access-control).
+
+## Read events
+
+`GET /api/v1/events` returns the events that adapters and plugins have published, newest first. It needs the `inspect` permission.
+
+```bash
+curl "http://localhost:4192/api/v1/events?signalId=airflow.dag-failed&limit=10"
+```
+
+### Query parameters
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `limit` | `100` | Number of events to return, from 1 to 500 |
+| `after` | None | An ISO timestamp. Returns only events that occurred after it |
+| `serviceId` | None | Returns only events for this service |
+| `signalId` | None | Returns only this signal, written as `<source id>.<signal id>`, such as `airflow.dag-failed` |
+
+### Response
+
+The response is a JSON object with an `items` array. Each item has these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Unique ID of the event |
+| `signalId` | The signal, written as `<source id>.<signal id>` |
+| `type` | `info`, `success`, `warning`, or `error` |
+| `sourceType` | `adapter`, `plugin`, or `host` |
+| `sourceId` | For an adapter event, the ID of the service that it came from. For a plugin event, the ID of the plugin. For a host event, `dsui` |
+| `serviceId` | The service the event is about. Absent when the event isn't about one service |
+| `payload` | The data of the signal. Each signal defines its own fields |
+| `occurredAt` | When the event happened, as an ISO timestamp |
+| `actor` | The principal ID of the person whose request caused the event, such as someone running an action. Absent for background work and in local single-user mode |
+
+To poll for new events, send the `occurredAt` of the newest event you've seen as `after`.
+
+### Errors
+
+| Status | Cause |
+| --- | --- |
+| `400` | `limit` isn't an integer from 1 to 500, or `after` isn't a valid timestamp |
+| `403` | The caller lacks the `inspect` permission |
+
+## Call an adapter route
+
+An adapter can publish HTTP routes. DSUI serves every one of them under one address:
+
+```text
+/adapters/v1/services/<service id>/<route path>
+```
+
+Routes live outside `/api/v1`, so a caller that holds a token doesn't need a DSUI sign-in. The adapter declares each route's method, path, and how it authenticates. DSUI handles authentication, body size limits, timeouts, and the reply headers, so an adapter never sees the caller's credentials.
+
+### How a route authenticates
+
+- **Token**: the caller sends `Authorization: Bearer <token>`. The token is a field of the service's connection. DSUI compares it in constant time and answers `401` when it's missing or wrong
+- **Principal**: the caller authenticates as a DSUI user, and DSUI checks the route's permission against the service. DSUI answers `401` when the caller isn't authenticated and `403` when the permission is missing
+
+An unknown route answers `404`.
+
+### Example
+
+The dbt adapter's `push` method uses a token route to receive artifacts from CI:
+
+```bash
+curl --fail --request PUT \
+  --header "Authorization: Bearer $DBT_PUSH_TOKEN" \
+  --data-binary "@target/run_results.json" \
+  "http://localhost:4192/adapters/v1/services/dbt/artifacts/run_results.json"
+```
+
+See [dbt](/docs/integrations/dbt#artifacts-pushed-from-ci) for the details. To declare routes in your own adapter, see [routes](/docs/adapter-sdk/routes).

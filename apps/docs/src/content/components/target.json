@@ -1,0 +1,13 @@
+{
+  "name": "Target",
+  "description": "Publishes a stable element ID so a plugin overlay can point at its content.",
+  "props": {
+    "id": {
+      "description": "Element ID, unique within the page"
+    },
+    "content": {
+      "description": "Child node or nodes the ID is attached to"
+    }
+  },
+  "example": "Target({\n  id: \"service-health\",\n  content: Value({ source: health(), field: \"score\" }),\n})"
+}

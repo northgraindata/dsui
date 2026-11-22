@@ -53,9 +53,26 @@ export interface PublicConnectionMethod {
   };
 }
 
+/** Author-declared catalog content, separate from executable adapter capabilities. */
+export interface AdapterPresentation {
+  category?: string;
+  overview?: string;
+  features?: Array<{ title: string; description?: string }>;
+  compatibility?: string[];
+  limitations?: string[];
+  links?: Array<{
+    kind?: "website" | "documentation" | "source";
+    label: string;
+    href: string;
+  }>;
+}
+
 /** One adapter as served by GET /api/v1/adapters. */
 export interface PublicAdapter {
   id: string;
+  version?: string;
+  author?: string;
+  presentation?: AdapterPresentation;
   name: string;
   description: string;
   iconUrl?: string;

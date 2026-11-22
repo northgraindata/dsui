@@ -13,4 +13,9 @@ export type {
 } from "./components/option-select";
 export { OptionSelect } from "./components/option-select";
 export { Status } from "./components/status";
+export type {
+  SuggestInputProps,
+  SuggestOption,
+} from "./components/suggest-input";
+export { SuggestInput } from "./components/suggest-input";
 export { Surface } from "./components/surface";

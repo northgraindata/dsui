@@ -1,0 +1,41 @@
+{
+  "name": "Button",
+  "description": "Clickable action trigger.",
+  "props": {
+    "label": {
+      "description": "Button text"
+    },
+    "action": {
+      "description": "Action to execute on click"
+    },
+    "link": {
+      "description": "URL to navigate to"
+    },
+    "icon": {
+      "description": "Icon name"
+    },
+    "description": {
+      "description": "Tooltip text"
+    },
+    "kbd": {
+      "description": "Keyboard shortcut hint"
+    },
+    "variant": {
+      "description": "Visual style",
+      "default": "\"secondary\""
+    },
+    "confirmation": {
+      "description": "Confirmation dialog before execution"
+    },
+    "successLink": {
+      "description": "Navigate after success"
+    },
+    "overlay": {
+      "description": "Open a host overlay surface by its contribution ID, when the host supports it"
+    },
+    "successOverlay": {
+      "description": "Open an overlay only after the action succeeds"
+    }
+  },
+  "example": "Button({ label: \"Submit\", action: save(), variant: \"primary\" })\n\nButton({\n  label: \"Delete\",\n  action: deleteItem({ id: row.id }),\n  variant: \"danger\",\n  confirmation: { title: \"Delete item?\", description: \"This cannot be undone.\" },\n})"
+}

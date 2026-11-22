@@ -1,0 +1,54 @@
+---
+title: Access control
+description: Decide who can reach DSUI and what they can do, using roles, a reverse proxy, or an authentication plugin.
+contentType: how-to
+---
+
+DSUI has roles and permissions, but no sign-in of its own. By default, every request runs as one local user with the owner role, so anyone who can reach DSUI can do everything. This guide shows how to put sign-in in front of DSUI and how roles limit what people can do.
+
+## Roles and permissions
+
+A role grants a fixed set of permissions:
+
+| Role | `inspect` | `execute` | `manage` |
+| --- | --- | --- | --- |
+| `viewer` | Yes | No | No |
+| `operator` | Yes | Yes | No |
+| `admin` | Yes | Yes | Yes |
+| `owner` | Yes | Yes | Yes |
+
+- **`inspect`**: see services, pages, and data
+- **`execute`**: run actions, such as a query or a job
+- **`manage`**: add and delete services, and open the **Agents**, **Extensions**, and **System** sections of Settings
+
+Roles are a ceiling. An authorization plugin can narrow what a role allows for a person, but it can never widen it.
+
+## Put sign-in in front of DSUI
+
+Choose one of these. Neither ships with DSUI itself.
+
+### Use a reverse proxy
+
+Run DSUI on a private network and put a reverse proxy in front of it that handles sign-in and TLS. This is the simplest option for a single team. See [run DSUI in production](/docs/guides/production#put-dsui-behind-a-reverse-proxy).
+
+DSUI can't tell people apart behind a proxy. Every request still runs as the local owner, so everyone who passes the proxy has full access, and DSUI can't attribute requests to a person.
+
+### Add an authentication plugin
+
+An authentication plugin identifies each person and assigns a role. For every API request, DSUI asks the plugin to authenticate the request. The plugin returns a person's ID and role, or refuses.
+
+- The plugin serves its own sign-in, sign-out, and session endpoints. DSUI mounts them ahead of authentication, so a signed-out browser can reach them
+- A plugin that handles authentication or authorization must declare `security: true`
+- You must load it with `critical: true`. DSUI refuses to start if a security plugin isn't critical, or if it can't load
+
+```yaml
+plugins:
+  sign-in:
+    source: git
+    repository: "git+https://github.com/your_org/your_sign_in_plugin"
+    critical: true
+```
+
+With an authentication plugin, each person has their own preferences, and **System** shows the authentication as **Provided by a plugin**.
+
+DSUI doesn't include an authentication plugin, so you write one with the Plugin SDK. See [host capabilities](/docs/plugin-sdk/host-capabilities) for the plugin API.

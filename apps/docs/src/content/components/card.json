@@ -1,0 +1,33 @@
+{
+  "name": "Card",
+  "description": "Versatile container with title, badge, and link.",
+  "props": {
+    "content": {
+      "description": "Child nodes"
+    },
+    "title": {
+      "description": "Card heading"
+    },
+    "description": {
+      "description": "Subtext"
+    },
+    "icon": {
+      "description": "Icon name"
+    },
+    "badge": {
+      "description": "Badge label"
+    },
+    "badgeTone": {
+      "description": "Badge color",
+      "default": "\"info\""
+    },
+    "link": {
+      "description": "Navigate on click"
+    },
+    "variant": {
+      "description": "Visual style",
+      "default": "\"default\""
+    }
+  },
+  "example": "Card({\n  title: \"Status\",\n  content: Value({ source: status(), field: \"ok\" }),\n  variant: \"metric\",\n  badge: { label: \"Healthy\", tone: \"healthy\" },\n})"
+}

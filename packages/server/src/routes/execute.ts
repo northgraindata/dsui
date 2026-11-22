@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { AdapterExecutionError } from "../adapters/types.js";
-import { allowed } from "../auth.js";
+import { allowed, LOCAL_PRINCIPAL_ID } from "../auth.js";
 import { errorMessage, httpStatus } from "./errors.js";
 import {
   executeServiceAction,
@@ -90,6 +90,7 @@ export function registerExecuteRoutes(
         body.input,
         actionSignal(context.req.raw.signal),
         principal.id,
+        principal.id === LOCAL_PRINCIPAL_ID ? {} : { actor: principal.id },
       );
       return context.json(result.result);
     } catch (error) {

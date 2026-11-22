@@ -45,6 +45,24 @@ export const configSchema = z.object({
   refreshMinutes: z.number().int().min(0).max(10080).default(15),
 
   githubToken: z.string().min(1).optional(),
+  /**
+   * Short-lived tokens from a service, instead of one kept here. A token in
+   * `githubToken` wins. The address must be HTTPS, or loopback for development.
+   */
+  githubTokenSource: z
+    .object({ url: z.string().url(), secret: z.string().min(1) })
+    .refine(
+      ({ url }) => {
+        const { protocol, hostname } = new URL(url);
+        return (
+          protocol === "https:" ||
+          (protocol === "http:" &&
+            ["localhost", "127.0.0.1", "[::1]"].includes(hostname))
+        );
+      },
+      { message: "The token service must use HTTPS", path: ["url"] },
+    )
+    .optional(),
   gitlab: z
     .array(
       z.object({

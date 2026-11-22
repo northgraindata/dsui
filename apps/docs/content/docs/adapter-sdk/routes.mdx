@@ -1,0 +1,99 @@
+---
+title: Routes and blobs
+description: Reference for defineRoute, which publishes an HTTP endpoint for each service, and for blob storage, which keeps files that are too large for a store.
+contentType: reference
+---
+
+A route is an HTTP endpoint that your adapter publishes for each configured service. Use one when something outside DSUI has to send data in, such as a CI job that uploads a file or a webhook. DSUI handles authentication, body limits, and timeouts, so your handler only sees a request that is already allowed.
+
+## Define a route
+
+```ts
+import {
+  defineRoute,
+  routeJson,
+} from "@northgraindata/dsui-adapter-sdk";
+import type { MyContext } from "./context.js";
+
+export const putFile = defineRoute<MyContext>({
+  id: "put-file",
+  method: "PUT",
+  path: "/files/:name",
+  auth: { token: "ingestToken" },
+  maxBodyBytes: 1024 * 1024,
+  handle: async ({ request, blobs }) => {
+    await blobs.put(`files/${request.params.name}`, request.body);
+    return routeJson({ size: request.body.byteLength }, 201);
+  },
+});
+```
+
+Register the route in `routes` of `defineAdapter`. DSUI serves it at `/adapters/v1/services/<service id><path>`, outside `/api/v1`, so a caller that isn't a DSUI user can reach it with a token.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `id` | Required | Kebab-case |
+| `method` | Required | `GET`, `POST`, `PUT`, `PATCH`, or `DELETE` |
+| `path` | Required | Starts with `/`. A segment is letters, digits, `.`, `_`, `~`, `-`, or `:name` for a param. `..` isn't allowed |
+| `auth` | Required | `"principal"` or `{ token: "field" }`. See below |
+| `permission` | `inspect` for `GET`, `execute` otherwise | What a `principal` caller needs |
+| `maxBodyBytes` | 1 MiB | Largest request body. DSUI never accepts more than 256 MiB |
+| `timeoutMs` | `60000` | Milliseconds that the handler may run |
+
+## Choose who may call a route
+
+A route is never public. Choose one of two kinds of caller:
+
+- **`"principal"`**: a DSUI user. DSUI authenticates the caller like it does for the rest of the workspace, and it checks the route's permission against the service. DSUI answers `401` when the caller isn't signed in and `403` when the permission is missing
+- **`{ token: "ingestToken" }`**: a machine, such as a CI job. `token` names a field of the service's connection that holds a shared secret. The caller sends `Authorization: Bearer <secret>`. DSUI answers `401` when the header is missing or wrong, and it rejects every request while the field is empty
+
+Add the token field to your connection schema, and generate a long random value for it.
+
+## Write the handler
+
+`handle` receives these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `request` | The request. See below |
+| `context` | The adapter context |
+| `signal` | An `AbortSignal` that fires when the route times out |
+| `store(definition)` | The live instance of an adapter store |
+| `blobs` | Binary storage private to the service |
+| `emit(signal, payload, options?)` | Publishes a declared signal |
+
+The `request` has `method`, `path`, `params` (the `:name` segments), `query` as an object, `headers` with lower-case names, `body` as bytes, and the readers `text()` and `json()`. DSUI never passes `authorization`, `cookie`, or `proxy-authorization` headers to your code.
+
+### Answer with a status
+
+Return a response, `{ status, headers?, body? }`, or use `routeJson(value, status)` for JSON. DSUI keeps only the `content-type`, `cache-control`, and `etag` headers of your response, and it sends no body for `204` and `304`.
+
+```ts
+handle: async ({ request, blobs }) => {
+  const bytes = await blobs.get(`files/${request.params.name}`);
+  if (!bytes) return routeJson({ message: "No such file" }, 404);
+  return { status: 200, headers: { "content-type": "text/plain" }, body: bytes };
+},
+```
+
+To answer with an error status, return the response. The SDK also exports `RouteError`, but in the version that this page was verified against, a `RouteError` that you throw reaches the caller as `500 Route failed`. Any other error that your handler throws gives the same answer, and DSUI keeps its message in the server log so that it doesn't leak host names or paths.
+
+### Limits and unknown routes
+
+A body larger than `maxBodyBytes` gets `413`. A path or method that no route matches gets `404`.
+
+## Store files in blobs
+
+Stores hold small JSON state. A blob is for data that is too large or too opaque for that, such as an artifact that a pipeline uploaded. Blobs are private to one service, and they're available as `blobs` in resources, actions, jobs, routes, and the health function.
+
+| Method | Meaning |
+| --- | --- |
+| `put(key, data)` | Writes bytes or text. The write is atomic, so a reader sees the old or the new data, never a mix |
+| `get(key)` | Returns the bytes, or `null` when the key doesn't exist |
+| `stat(key)` | Returns the size and the time of the last write, or `null` |
+| `list(prefix?)` | Lists the blobs whose key starts with `prefix`, ordered by key |
+| `delete(key)` | Removes a blob, and returns `false` when it didn't exist |
+
+A key is a path of segments separated by `/`, such as `runs/42/manifest.json`. A key is at most 256 characters, and each segment starts with a letter or digit and contains only letters, digits, `.`, `_`, and `-`.
+
+The official dbt adapter's `push` method uses a token route and blobs to keep the artifacts that CI uploads. See [dbt](/docs/integrations/dbt#artifacts-pushed-from-ci).

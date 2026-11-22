@@ -1,5 +1,6 @@
 import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext } from "../context.js";
+import { formatRunTimestamp } from "./format.js";
 
 export const assetInput = z.object({
   assetId: z.coerce.number().int().nonnegative(),
@@ -7,7 +8,17 @@ export const assetInput = z.object({
 
 export const assets = defineResource({
   id: "assets",
-  query: (_, ctx: AirflowContext) => ctx.client.listAssets(),
+  query: async (_, ctx: AirflowContext) =>
+    (await ctx.client.listAssets()).map((asset) => {
+      const updated = formatRunTimestamp(asset.updatedAt);
+      return {
+        ...asset,
+        producerLabel: asset.producingTasks
+          ? `Produced by ${asset.producingTasks}`
+          : "",
+        updatedLabel: updated === "—" ? "" : `Updated ${updated}`,
+      };
+    }),
   refresh: poll("30s"),
 });
 

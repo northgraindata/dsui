@@ -1,0 +1,28 @@
+{
+  "name": "CodeExplorer",
+  "description": "Read-only source browser with file search, breadcrumbs, and a Monaco preview.",
+  "props": {
+    "files": {
+      "description": "File metadata, as `{ path, size? }` with paths relative to the source root"
+    },
+    "path": {
+      "description": "The selected file or directory, relative to the source root"
+    },
+    "file": {
+      "description": "Resource reference that reads one file. The component adds the selected path to its input."
+    },
+    "basePath": {
+      "description": "Relative host navigation prefix. Each path segment is URL encoded."
+    },
+    "title": {
+      "description": "Title shown above the browser"
+    },
+    "version": {
+      "description": "Changing it refetches the selected file"
+    },
+    "emptyMessage": {
+      "description": "Text shown when there are no files"
+    }
+  },
+  "example": "CodeExplorer({\n  title: \"Project source\",\n  files: [{ path: \"src/index.ts\", size: 120 }],\n  path: params.path,\n  basePath: \"source/files\",\n  file: { resourceId: \"source-file\", input: { projectId } },\n  version: snapshotVersion,\n})"
+}

@@ -1,0 +1,71 @@
+---
+title: Airflow
+description: Connect DSUI to Apache Airflow to browse DAGs, runs, task logs, and assets, trigger and retry work, and react to finished runs.
+contentType: reference
+---
+
+The Airflow adapter talks to the Airflow REST API of an Airflow 3 or Airflow 2.10 deployment. It has two connection methods, so you must set `method` on every service.
+
+## Add an Airflow service
+
+Declare the adapter and the service in `dsui.yaml`:
+
+```yaml {12}
+adapters:
+  airflow:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-airflow
+
+services:
+  - id: airflow
+    adapter: airflow
+    name: Production Airflow
+    connection:
+      method: airflow
+      baseUrl: http://airflow:8080
+      username: ${AIRFLOW_USERNAME}
+      password: ${AIRFLOW_PASSWORD}
+```
+
+In Docker Compose, use the service name of the Airflow container in `baseUrl`. `localhost` is the DSUI container itself. See [connect a service](/docs/guides/connect-a-service) for how credentials work.
+
+## Connection methods
+
+| Method | Airflow version | How DSUI signs in |
+| --- | --- | --- |
+| `airflow` | Airflow 3 | Username and password. DSUI handles the JWT token for you |
+| `airflow-2` | Airflow 2.10 | Basic authentication against the stable REST API |
+
+Both methods take the same three fields, and all are required:
+
+| Field | Meaning |
+| --- | --- |
+| `baseUrl` | URL of the Airflow deployment, such as `http://airflow:8080` |
+| `username` | Airflow user to sign in with |
+| `password` | Password of that user |
+
+DSUI can only do what this user is allowed to do in Airflow. Use an account with the permissions you want people to have.
+
+## What you can do
+
+- **DAGs**: list DAGs, and open one to see its tasks, its structure, and its source
+- **Runs**: inspect DAG runs, task instances, task logs, and the task graph of a run
+- **Operate**: trigger a DAG, pause and unpause it, terminate a DAG run, and retry or clear a task
+- **Assets**: browse assets and their events
+- **Administration**: list, create, edit, and delete connections, variables, and pools, and list users and event logs
+
+## Signals
+
+The adapter emits a signal when a DAG run finishes:
+
+- **`dag-succeeded`**: a run ended in the `success` state
+- **`dag-failed`**: a run ended in the `failed` state
+
+The payload holds `dagId`, `dagRunId`, `runType`, `logicalDate`, `startDate`, `endDate`, and `note`.
+
+A background job checks every DAG once every 60 seconds. It emits one signal for each run that finished after the previous check, and it never emits the same run twice. The first check starts from the moment DSUI first polls, so runs that finished earlier don't emit. A plugin job can react with `onSignals: ["airflow.dag-failed"]`, where the part before the dot is the adapter's ID.
+
+## Use with a DSUI Agent
+
+The Airflow adapter has no proxy-specific code and calls Airflow with `fetch`, so routing it through a DSUI Agent isn't verified. See [private networks](/docs/guides/private-networks#adapter-support).

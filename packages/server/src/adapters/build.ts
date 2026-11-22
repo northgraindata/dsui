@@ -16,6 +16,8 @@
  */
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { Readable } from "node:stream";
+import { createGunzip } from "node:zlib";
 import {
   assertBrowserBundleCovers,
   type ComponentDeclaration as DeclaredComponent,
@@ -54,6 +56,8 @@ export interface AdapterBuildOptions {
   dataDir: string;
   /** Root of the prepared SDK tree holding `node_modules/@northgraindata/*`. */
   sdkPackageRoot: string;
+  /** Build here instead of `<dataDir>/adapters/build/<id>`, so a live build stays intact. */
+  buildDirectory?: string;
   fetch?: AdapterFetch;
   /** Reuse a stored bundle instead of rebuilding; never opens the network. */
   offline?: boolean;
@@ -120,62 +124,6 @@ function tarNumber(block: Uint8Array, start: number, length: number): number {
   return raw ? Number.parseInt(raw, 8) : 0;
 }
 
-/** Minimal tar reader. Regular files and directories only; no links. */
-export function extractTar(
-  archive: Uint8Array,
-  repository: string,
-  subdirectory?: string,
-): Map<string, Uint8Array> {
-  const [owner, name] = repository.split("/");
-  if (!owner || !name)
-    throw new ExternalAdapterError("Invalid GitHub repository");
-  const rootPrefixes = [`${name}-`, `${owner}-${name}-`];
-  if (archive.length > MAX_TAR_BYTES)
-    throw new ExternalAdapterError("Repository archive exceeds size limit");
-  const packagePrefix = subdirectory
-    ? `${assertSafeRelativePath(subdirectory)}/`
-    : undefined;
-  const files = new Map<string, Uint8Array>();
-  let offset = 0;
-  let total = 0;
-  while (offset + 512 <= archive.length) {
-    const header = archive.slice(offset, offset + 512);
-    if (header.every((value) => value === 0)) break;
-    const prefix = tarString(header, 345, 155);
-    const name = `${prefix ? `${prefix}/` : ""}${tarString(header, 0, 100)}`;
-    const type = String.fromCharCode(header[156] || 48);
-    const size = tarNumber(header, 124, 12);
-    const dataStart = offset + 512;
-    const padded = Math.ceil(size / 512) * 512;
-    if (dataStart + padded > archive.length)
-      throw new ExternalAdapterError("Truncated adapter source archive");
-    offset = dataStart + padded;
-    if (type !== "0" && type !== "\0" && type !== "5") continue;
-    const normalized = name.replace(/\/+$/, "");
-    const separator = normalized.indexOf("/");
-    if (separator === -1) continue;
-    const archiveRoot = normalized.slice(0, separator);
-    if (!rootPrefixes.some((prefix) => archiveRoot.startsWith(prefix)))
-      continue;
-    if (type === "5") continue;
-    const relative = normalized.slice(separator + 1);
-    if (!relative) continue;
-    if (packagePrefix && !relative.startsWith(packagePrefix)) continue;
-    assertSafeRelativePath(relative);
-    total += size;
-    if (total > MAX_PACKAGE_BYTES)
-      throw new ExternalAdapterError(
-        "Selected package expands beyond size limit",
-      );
-    if (files.has(relative))
-      throw new ExternalAdapterError(
-        "Adapter source contains a duplicate file",
-      );
-    files.set(relative, archive.slice(dataStart, dataStart + size));
-  }
-  return files;
-}
-
 export async function readResponseBytes(
   response: Response,
   limit: number,
@@ -209,22 +157,100 @@ export async function readResponseBytes(
   return result;
 }
 
-export async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
+/** Inflate incrementally, retaining only files in the requested package. */
+export async function extractGzipTar(
+  archive: Uint8Array,
+  repository: string,
+  subdirectory?: string,
+): Promise<Map<string, Uint8Array>> {
+  const [owner, repo] = repository.split("/");
+  if (!owner || !repo)
+    throw new ExternalAdapterError("Invalid GitHub repository");
+  const roots = [`${repo}-`, `${owner}-${repo}-`];
+  const prefix = subdirectory ? `${assertSafeRelativePath(subdirectory)}/` : "";
+  const input = Readable.from([archive]);
+  const stream = input.pipe(createGunzip());
+  const iterator = stream[Symbol.asyncIterator]();
+  const files = new Map<string, Uint8Array>();
+  let chunk = new Uint8Array(0);
+  let expanded = 0;
+  let selected = 0;
+
+  const refill = async (): Promise<boolean> => {
+    const next = await iterator.next();
+    if (next.done) return false;
+    chunk = next.value;
+    expanded += chunk.length;
+    if (expanded > MAX_TAR_BYTES)
+      throw new ExternalAdapterError("Repository archive exceeds size limit");
+    return true;
+  };
+  const consume = async (
+    length: number,
+    output?: Uint8Array,
+  ): Promise<number> => {
+    let consumed = 0;
+    while (consumed < length) {
+      if (!chunk.length && !(await refill())) break;
+      const count = Math.min(length - consumed, chunk.length);
+      output?.set(chunk.subarray(0, count), consumed);
+      chunk = chunk.subarray(count);
+      consumed += count;
+    }
+    return consumed;
+  };
+
   try {
-    const stream = new Blob([new Uint8Array(bytes)])
-      .stream()
-      .pipeThrough(new DecompressionStream("gzip"));
-    return await readResponseBytes(
-      new Response(stream),
-      MAX_TAR_BYTES,
-      "Repository archive",
-    );
+    const header = new Uint8Array(512);
+    while ((await consume(header.length, header)) === header.length) {
+      if (header.every((byte) => byte === 0)) break;
+      const directory = tarString(header, 345, 155);
+      const name = `${directory ? `${directory}/` : ""}${tarString(header, 0, 100)}`;
+      const size = tarNumber(header, 124, 12);
+      const slash = name.indexOf("/");
+      const relative = slash < 0 ? "" : name.slice(slash + 1);
+      const root = name.slice(0, slash);
+      const regularFile = header[156] === 0 || header[156] === 48;
+      let file: Uint8Array | undefined;
+      if (
+        regularFile &&
+        relative &&
+        relative.startsWith(prefix) &&
+        roots.some((candidate) => root.startsWith(candidate))
+      ) {
+        assertSafeRelativePath(relative);
+        selected += size;
+        if (selected > MAX_PACKAGE_BYTES)
+          throw new ExternalAdapterError(
+            "Selected package expands beyond size limit",
+          );
+        if (files.has(relative))
+          throw new ExternalAdapterError(
+            "Adapter source contains a duplicate file",
+          );
+        file = new Uint8Array(size);
+        files.set(relative, file);
+      }
+      const padding = Math.ceil(size / 512) * 512 - size;
+      if (
+        (await consume(size, file)) !== size ||
+        (await consume(padding)) !== padding
+      )
+        throw new ExternalAdapterError("Truncated adapter source archive");
+    }
+    while (await refill()) {
+      // Drain to validate gzip integrity and enforce the limit even after tar EOF.
+    }
+    return files;
   } catch (error) {
     if (error instanceof ExternalAdapterError) throw error;
     throw new ExternalAdapterError(
       "Adapter source archive is not a valid gzip tarball",
       error,
     );
+  } finally {
+    input.destroy();
+    stream.destroy();
   }
 }
 
@@ -478,7 +504,8 @@ export async function buildAdapter(
 ): Promise<BuiltAdapter> {
   if (!/^[a-z][a-z0-9-]*$/.test(id))
     throw new ExternalAdapterError("Invalid adapter id");
-  const buildDir = join(options.dataDir, "adapters", "build", id);
+  const buildDir =
+    options.buildDirectory ?? join(options.dataDir, "adapters", "build", id);
   const sourceDir = join(buildDir, "src");
   // Inside the source tree so an external dependency resolves through the
   // `node_modules` installed beside it when `adapter-host` runs the bundle.
@@ -510,8 +537,8 @@ export async function buildAdapter(
       MAX_ARCHIVE_BYTES,
       "Adapter source",
     );
-    const files = extractTar(
-      await gunzip(archive),
+    const files = await extractGzipTar(
+      archive,
       location.repository,
       location.subdirectory,
     );

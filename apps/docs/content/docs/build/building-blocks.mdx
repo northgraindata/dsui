@@ -1,0 +1,41 @@
+---
+title: Building blocks
+description: Learn the shared building blocks of adapters and plugins, which ones each SDK offers, and when to use each.
+contentType: conceptual
+---
+
+Adapters and plugins are built from the same few blocks: resources, actions, pages, stores, jobs, signals, and components. The names match in both SDKs, but they run in different places and follow different rules. This page explains each block once and shows where the SDKs differ.
+
+## What each block is
+
+- **Resource**: a read of data, with an input and a refresh policy. Pages and components bind to a resource to show its data
+- **Action**: a command that changes something, with a validated input. Running one is a deliberate act that DSUI can check against the caller's permissions
+- **Page**: a route that composes components into a screen
+- **Store**: state that a page, an adapter, or a plugin keeps, optionally across restarts
+- **Job**: background work that runs on a schedule or in response to events
+- **Signal**: a typed event with a payload. Signals go to DSUI's event log, which people and plugins can read
+- **Component**: a reusable piece of interface. DSUI ships [33 builtin components](/docs/build/components), and you can add [your own](/docs/build/custom-components)
+
+Keep reads in resources and changes in actions, so DSUI can cache, refresh, and authorize them correctly.
+
+## Where the SDKs differ
+
+| Block | In an adapter | In a plugin |
+| --- | --- | --- |
+| Resource | `defineResource`. Bound to a service | `defineResource`, read through the host |
+| Action | `defineAction`. Runs against one service | `defineAction`, plus procedures that carry their own permission |
+| Page | `definePage`. Rendered for each service | `definePage`, with navigation entries, slots, and overlays |
+| Store | `defineStore`, scoped to the adapter or a page | `defineStore`, plus private SQLite storage and migrations |
+| Job | `defineJob`. Runs once for every configured service | `defineJob`, with durable queueing and `onSignals` triggers |
+| Signal | `defineSignal`. Emitted from jobs and actions | Registered in the plugin, and read from the event log |
+| Component | `defineComponent` | `defineComponent` |
+
+Some blocks exist in only one SDK:
+
+- **Adapters only**: connection methods, health checks (`healthReport`, `reachabilityCheck`, `scoreChecks`), and HTTP routes (`defineRoute`)
+- **Plugins only**: configuration, lifecycle hooks, slots and overlays, authentication and authorization, and host capabilities for reading services and other plugins
+
+## Where to read more
+
+- **Adapter SDK**: [resources](/docs/adapter-sdk/resources), [actions](/docs/adapter-sdk/actions), [pages](/docs/adapter-sdk/pages), [stores](/docs/adapter-sdk/stores), [jobs](/docs/adapter-sdk/jobs), [signals](/docs/adapter-sdk/signals), and [routes](/docs/adapter-sdk/routes)
+- **Plugin SDK**: [resources](/docs/plugin-sdk/resources), [actions](/docs/plugin-sdk/actions), [pages](/docs/plugin-sdk/pages), [stores](/docs/plugin-sdk/stores), [jobs](/docs/plugin-sdk/jobs), [signals](/docs/plugin-sdk/signals), and [host capabilities](/docs/plugin-sdk/host-capabilities)

@@ -22,10 +22,16 @@ const MAX_PAUSED_SHARE = 0.9;
  * health check needs no per-method branching.
  */
 export async function airflowHealth(ctx: AirflowContext) {
-  const started = Date.now();
   let version: string;
+  let responseMs: number;
   try {
+    // Signing in is not Airflow answering, so it happens before the clock
+    // starts. The response time is that of one call, not of the whole check:
+    // listing every DAG below is a separate, larger request.
+    await ctx.client.authenticate();
+    const started = Date.now();
     version = (await ctx.client.getVersion()).version;
+    responseMs = Date.now() - started;
   } catch (error) {
     return healthReport({
       checks: [
@@ -40,7 +46,7 @@ export async function airflowHealth(ctx: AirflowContext) {
   }
 
   const checks = [
-    reachabilityCheck(true, Date.now() - started),
+    reachabilityCheck(true, responseMs),
     {
       id: "version",
       label: "Airflow version",
@@ -80,6 +86,6 @@ export async function airflowHealth(ctx: AirflowContext) {
       version: 0,
       scheduler: 0.25,
     },
-    latencyMs: Date.now() - started,
+    latencyMs: responseMs,
   });
 }

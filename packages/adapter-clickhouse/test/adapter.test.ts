@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
   type ActionRuntimeContext,
+  createMemoryBlobStore,
   serializeNodes,
 } from "@northgraindata/dsui-adapter-sdk";
 import { tableCommand } from "../src/actions";
@@ -49,7 +50,9 @@ test("initialization failure disposes its client; health only requires authentic
   expect(disposed).toBe(1);
   const healthy = createClickHouseAdapter(() => fakeClient());
   const ctx = await healthy.createContext(config);
-  expect((await healthy.health(ctx)).status).toBe("healthy");
+  expect(
+    (await healthy.health(ctx, { blobs: createMemoryBlobStore() })).status,
+  ).toBe("healthy");
   expect(
     healthy.connectionMethods?.every(
       (method) => method.contextIdleTimeoutMs === 300_000,
@@ -106,6 +109,7 @@ test("table management requires matching confirmation and rejects read-only mode
   const runtime: ActionRuntimeContext = {
     invalidate: () => undefined,
     emit: () => undefined,
+    blobs: createMemoryBlobStore(),
     stores: {
       get: () => {
         throw new Error("No stores expected");
