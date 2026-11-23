@@ -1,0 +1,24 @@
+{
+  "name": "@northgraindata/dsui-adapter-shaper",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/adapter.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "@northgraindata/dsui-ui": "workspace:*",
+    "react": "^19.0.0"
+  },
+  "dsui": {
+    "browser": "./src/browser.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0"
+  }
+}

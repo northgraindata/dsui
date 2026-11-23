@@ -9,6 +9,7 @@
     "dbt",
     "postgresql",
     "s3",
+    "shaper",
     "snowflake"
   ]
 }
