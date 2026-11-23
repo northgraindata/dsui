@@ -8,15 +8,14 @@
  */
 import type { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
-import type { Health } from "./context.js";
-import { readRollups, readStates, type StateRow } from "./repo.js";
 import {
-  availabilityOf,
+  availability,
+  type Counters,
   DAY_MS,
-  mergeRollups,
-  type Rollup,
-} from "./rollups.js";
-import { suppressionAt } from "./suppressions.js";
+  type Health,
+  type HealthData,
+  mergeCounts,
+} from "./health-data.js";
 
 export const COMPONENT_STATUSES = [
   "operational",
@@ -547,7 +546,7 @@ export type ComponentView = {
   days: DayBar[];
 };
 
-function dayStatus(rollup: Rollup | undefined): ComponentStatus | null {
+function dayStatus(rollup: Counters | undefined): ComponentStatus | null {
   if (!rollup) return null;
   if (rollup.unavailable > 0)
     return rollup.healthy + rollup.warning > 0
@@ -562,15 +561,20 @@ function dayStatus(rollup: Rollup | undefined): ComponentStatus | null {
 export const STATUS_DAYS = 90;
 
 function componentDays(
-  db: Database,
+  health: HealthData | undefined,
   serviceIds: readonly string[],
   now: number,
   days: number,
 ): { days: DayBar[]; availability: number | null } {
   const end = Math.floor(now / DAY_MS) * DAY_MS;
   const from = end - (days - 1) * DAY_MS;
-  const perService = serviceIds.map((id) =>
-    readRollups(db, id, "day", from, now),
+  const perService = serviceIds.map(
+    (id) =>
+      new Map(
+        (health?.services.find((service) => service.id === id)?.days ?? [])
+          .filter((day) => day.time >= from && day.time <= now)
+          .map((day) => [day.time, day]),
+      ),
   );
   const bars = Array.from({ length: days }, (_, index) => {
     const time = from + index * DAY_MS;
@@ -578,17 +582,17 @@ function componentDays(
       const rollup = rollups.get(time);
       return rollup ? [rollup] : [];
     });
-    const merged = present.length > 0 ? mergeRollups(present) : undefined;
+    const merged = present.length > 0 ? mergeCounts(present) : undefined;
     return {
       time,
       status: dayStatus(merged),
-      availability: merged ? availabilityOf(merged).availability : null,
+      availability: merged ? availability(merged) : null,
     };
   });
-  const total = mergeRollups(
+  const total = mergeCounts(
     perService.flatMap((rollups) => [...rollups.values()]),
   );
-  return { days: bars, availability: availabilityOf(total).availability };
+  return { days: bars, availability: availability(total) };
 }
 
 /** Components with their current status and daily history. */
@@ -598,20 +602,27 @@ export function buildComponents(
   activeNotices: readonly Notice[],
   now: number,
   days = STATUS_DAYS,
+  health?: HealthData,
 ): ComponentView[] {
-  const states: Map<string, StateRow> = readStates(db);
+  const states = new Map(
+    health?.services.map((service) => [service.id, service]),
+  );
   return listComponents(db, pageId).map((component) => {
     const fromHealth = statusFromHealth(
       component.serviceIds.map((id) => states.get(id)?.health ?? null),
-      component.serviceIds.some((id) => suppressionAt(db, id, now).maintenance),
+      component.serviceIds.some((id) => states.get(id)?.maintenance ?? false),
     );
     const fromNotices = activeNotices
-      .filter((notice) => notice.componentIds.includes(component.id))
+      .filter(
+        (notice) =>
+          notice.componentIds.length === 0 ||
+          notice.componentIds.includes(component.id),
+      )
       .reduce<ComponentStatus>(
         (status, notice) => worse(status, notice.impact),
         "unknown",
       );
-    const history = componentDays(db, component.serviceIds, now, days);
+    const history = componentDays(health, component.serviceIds, now, days);
     return {
       id: component.id,
       name: component.name,

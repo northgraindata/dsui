@@ -1,7 +1,9 @@
+import { Database } from "bun:sqlite";
 import { expect, test } from "bun:test";
 import { statusPageDetailSchema, statusPageListSchema } from "./contract.js";
-import { recordProbeResult } from "./engine.js";
-import { DAY_MS } from "./rollups.js";
+import { applyMigrations } from "./db.js";
+import type { HealthData } from "./health-data.js";
+import { DAY_MS } from "./health-data.js";
 import {
   createPage,
   deletePage,
@@ -16,16 +18,26 @@ import {
   updatePage,
 } from "./status-pages.js";
 import {
-  buildStatusPageDetail,
   buildStatusPageList,
+  buildStatusPageDetail as detail,
   noticeServiceIds,
 } from "./status-view.js";
-import { createSuppression } from "./suppressions.js";
-import { probe, service, testConfig, testDb } from "./testing.js";
+
+const snapshots = new WeakMap<Database, HealthData>();
+function testDb() {
+  const db = applyMigrations(new Database(":memory:"));
+  snapshots.set(db, { version: 1, services: [] });
+  return db;
+}
+const buildStatusPageDetail = (
+  db: Database,
+  page: Parameters<typeof detail>[1],
+  can: Parameters<typeof detail>[2],
+  now: number,
+) => detail(db, page, can, now, snapshots.get(db));
 
 const NOW = Date.UTC(2026, 5, 15, 12, 0, 0);
 const MIN = 60_000;
-const config = testConfig({ failureThreshold: 1, recoveryThreshold: 1 });
 
 function financePage(db: ReturnType<typeof testDb>) {
   return createPage(
@@ -49,7 +61,27 @@ function record(
   health: "healthy" | "warning" | "unavailable",
   time = NOW,
 ) {
-  recordProbeResult(db, config, service(id), probe(id, health), time);
+  const snapshot = snapshots.get(db)!;
+  let service = snapshot.services.find((service) => service.id === id);
+  if (!service) {
+    service = { id, health, maintenance: false, days: [] };
+    snapshot.services.push(service);
+  }
+  service.health = health;
+  const bucket = Math.floor(time / DAY_MS) * DAY_MS;
+  let day = service.days.find((day) => day.time === bucket);
+  if (!day) {
+    day = {
+      time: bucket,
+      healthy: 0,
+      warning: 0,
+      unavailable: 0,
+      unknown: 0,
+      maintenance: 0,
+    };
+    service.days.push(day);
+  }
+  day[health] += 1;
 }
 
 test("a component's status follows the worst of its services", () => {
@@ -93,18 +125,8 @@ test("the page shows component status from recorded health and never probes", ()
 test("maintenance on a service shows the component as under maintenance", () => {
   const db = testDb();
   const page = financePage(db);
-  createSuppression(
-    db,
-    {
-      kind: "maintenance",
-      serviceId: "wh",
-      startsAt: NOW - MIN,
-      endsAt: NOW + 60 * MIN,
-      createdBy: "t",
-    },
-    NOW,
-  );
   record(db, "wh", "healthy");
+  snapshots.get(db)!.services[0]!.maintenance = true;
   const detail = buildStatusPageDetail(
     db,
     page,
@@ -340,4 +362,33 @@ test("day bars show partial outages and uptime per day", () => {
   const day = detail.components[1]?.days.at(-2);
   expect(day).toMatchObject({ status: "partial-outage", availability: 50 });
   expect(detail.components[1]?.days.at(-1)?.status).toBeNull();
+});
+
+test("manual notices work without a Health snapshot and do not invent uptime", () => {
+  const db = testDb();
+  const page = financePage(db);
+  postNotice(
+    db,
+    {
+      pageId: page.id,
+      title: "Delayed reports",
+      impact: "degraded",
+      status: "investigating",
+      message: "Working on it",
+      componentIds: [],
+    },
+    "operator",
+    NOW,
+  );
+  const value = detail(db, page, { edit: true, post: true }, NOW);
+  expect(value.status).toBe("degraded");
+  expect(
+    value.components.every((component) => component.status === "degraded"),
+  ).toBe(true);
+  expect(
+    value.components.every((component) => component.availability === null),
+  ).toBe(true);
+  expect(value.components[0]?.days.every((day) => day.status === null)).toBe(
+    true,
+  );
 });

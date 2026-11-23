@@ -18,24 +18,10 @@ import type { ServiceSummary } from "./context.js";
 import { fleetSchema } from "./contract.js";
 import { openHealthDb } from "./db.js";
 import { emitWeeklyReport } from "./digest.js";
-import { iconUrl, statusPagesIconUrl } from "./logo.js";
-import {
-  overviewPage,
-  statusPagesPage,
-  statusPageView,
-} from "./pages/index.js";
+import { iconUrl } from "./logo.js";
+import { overviewPage } from "./pages/index.js";
 import { resources } from "./resources/health.js";
 import { registerSignals } from "./signals.js";
-import {
-  createStatusPage,
-  deleteStatusPage,
-  postStatusNotice,
-  resolveStatusNotice,
-  statusPage,
-  statusPages,
-  updateStatusNotice,
-  updateStatusPage,
-} from "./status-actions.js";
 import { runTick } from "./tick.js";
 import { buildFleet, listServices } from "./view.js";
 
@@ -113,14 +99,6 @@ export function createHealthPlugin() {
 
       registerSignals(registry);
       for (const resource of resources) registry.resource(resource);
-      registry.resource(statusPages);
-      registry.resource(statusPage);
-      registry.action(createStatusPage);
-      registry.action(updateStatusPage);
-      registry.action(deleteStatusPage);
-      registry.action(postStatusNotice);
-      registry.action(updateStatusNotice);
-      registry.action(resolveStatusNotice);
       registry.action(checkNow);
       registry.action(setSlo);
       registry.action(removeSlo);
@@ -146,16 +124,6 @@ export function createHealthPlugin() {
         id: "overview",
         title: "Service health",
         description: "Current status, uptime and outages for every service.",
-      });
-      registry.page(statusPagesPage, {
-        id: "status-pages",
-        title: "Status pages",
-        description:
-          "Pages that tell a team how the services they rely on are doing.",
-      });
-      registry.page(statusPageView, {
-        id: "status-page",
-        title: "Status pages",
       });
       registry.page(
         definePage({
@@ -197,14 +165,6 @@ export function createHealthPlugin() {
         label: "Service health",
         pageId: "overview",
         order: 50,
-      });
-      registry.navigation({
-        id: "health-status-pages",
-        area: "secondary",
-        label: "Status pages",
-        pageId: "status-pages",
-        order: 51,
-        iconUrl: statusPagesIconUrl,
       });
 
       registry.slot(serviceCardSlot);

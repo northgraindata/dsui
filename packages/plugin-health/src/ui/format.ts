@@ -35,7 +35,4 @@ export function dateTime(time: number): string {
 
 export const pagePath = {
   overview: "health",
-  statusPages: "health/status-pages",
-  statusPage: (slug: string) =>
-    `health/status-pages/${encodeURIComponent(slug)}`,
 };

@@ -14,7 +14,10 @@ import {
 } from "@northgraindata/dsui-plugin-sdk";
 import type { HealthConfig } from "../config.js";
 import { openHealthDb } from "../db.js";
+import { readRollups, readState } from "../repo.js";
 import { buildReport } from "../report.js";
+import { DAY_MS } from "../rollups.js";
+import { suppressionAt } from "../suppressions.js";
 import {
   buildFleet,
   buildServiceDetail,
@@ -98,7 +101,42 @@ export const report = defineResource({
   refresh: poll("60s"),
 });
 
+/** Recorded health and daily counters for optional consumers such as Status pages. */
+export const statusHistory = defineResource({
+  id: "status-history",
+  input: z.object({}).optional(),
+  refresh: poll("30s"),
+  query: async (_input, context: HealthContext) => {
+    const db = openHealthDb(context.storage);
+    const now = Date.now();
+    const from = Math.floor(now / DAY_MS) * DAY_MS - 89 * DAY_MS;
+    const services = await listServices(
+      context.services,
+      context.config.maxServices,
+    );
+    return {
+      version: 1,
+      services: services.map(({ id }) => ({
+        id,
+        health: readState(db, id)?.health ?? "unknown",
+        maintenance: suppressionAt(db, id, now).maintenance,
+        days: [...readRollups(db, id, "day", from, now)].map(
+          ([time, value]) => ({
+            time,
+            healthy: value.healthy,
+            warning: value.warning,
+            unavailable: value.unavailable,
+            unknown: value.unknown,
+            maintenance: value.maintenance,
+          }),
+        ),
+      })),
+    };
+  },
+});
+
 export const resources = [
+  statusHistory,
   serviceHealth,
   serviceDetail,
   suppressions,

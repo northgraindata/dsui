@@ -5,7 +5,7 @@ import {
   type StatusPageDetail,
   type StatusPageList,
 } from "./contract.js";
-import { DAY_MS } from "./rollups.js";
+import { DAY_MS, type HealthData } from "./health-data.js";
 import {
   buildComponents,
   listComponents,
@@ -55,6 +55,7 @@ export function buildStatusPageList(
   visible: ReadonlySet<string>,
   canCreate: boolean,
   now: number,
+  health?: HealthData,
 ): StatusPageList {
   return {
     version: CONTRACT_VERSION,
@@ -66,7 +67,7 @@ export function buildStatusPageList(
         const active = listNotices(db, page.id, now).filter(
           (notice) => notice.resolvedAt === null,
         );
-        const components = buildComponents(db, page.id, active, now, 1);
+        const components = buildComponents(db, page.id, active, now, 1, health);
         return {
           id: page.id,
           slug: page.slug,
@@ -86,10 +87,18 @@ export function buildStatusPageDetail(
   page: StatusPage,
   can: { edit: boolean; post: boolean },
   now: number,
+  health?: HealthData,
 ): StatusPageDetail {
   const notices = listNotices(db, page.id, now - NOTICE_HISTORY_MS);
   const active = notices.filter((notice) => notice.resolvedAt === null);
-  const components = buildComponents(db, page.id, active, now);
+  const components = buildComponents(
+    db,
+    page.id,
+    active,
+    now,
+    undefined,
+    health,
+  );
   return {
     version: CONTRACT_VERSION,
     generatedAt: now,

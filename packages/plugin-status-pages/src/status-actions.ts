@@ -15,10 +15,12 @@ import {
   poll,
   z,
 } from "@northgraindata/dsui-plugin-sdk";
-import type { HealthConfig } from "./config.js";
+import type { StatusConfig } from "./config.js";
 import { noticeImpactSchema, noticeStatusSchema } from "./contract.js";
-import { openHealthDb } from "./db.js";
+import { openStatusDb } from "./db.js";
+import { readHealth } from "./health-data.js";
 import { statusPagesIconUrl } from "./logo.js";
+import { listServices } from "./services.js";
 import {
   createPage,
   deletePage,
@@ -38,15 +40,14 @@ import {
   canSee,
   noticeServiceIds,
 } from "./status-view.js";
-import { listServices } from "./view.js";
 
-type HealthContext = PluginContext<HealthConfig>;
+type StatusContext = PluginContext<StatusConfig>;
 type Permission = "inspect" | "execute" | "manage";
 
-const actorOf = (context: HealthContext) =>
+const actorOf = (context: StatusContext) =>
   context.access.principal?.()?.id ?? "local";
 
-async function visibleIds(context: HealthContext): Promise<Set<string>> {
+async function visibleIds(context: StatusContext): Promise<Set<string>> {
   const services = await listServices(
     context.services,
     context.config.maxServices,
@@ -54,7 +55,7 @@ async function visibleIds(context: HealthContext): Promise<Set<string>> {
   return new Set(services.map((service) => service.id));
 }
 
-async function isAdmin(context: HealthContext): Promise<boolean> {
+async function isAdmin(context: StatusContext): Promise<boolean> {
   if (!context.access.requireAdmin) return false;
   try {
     await context.access.requireAdmin();
@@ -71,7 +72,7 @@ async function isAdmin(context: HealthContext): Promise<boolean> {
  * covers, so it takes an administrator.
  */
 async function allowedOn(
-  context: HealthContext,
+  context: StatusContext,
   serviceIds: readonly string[],
   permission: Permission,
 ): Promise<boolean> {
@@ -85,7 +86,7 @@ async function allowedOn(
 }
 
 async function requireOn(
-  context: HealthContext,
+  context: StatusContext,
   serviceIds: readonly string[],
   permission: Permission,
 ): Promise<void> {
@@ -97,7 +98,8 @@ async function requireOn(
 }
 
 function failure(error: unknown): Error {
-  if (!(error instanceof StatusPageError)) return error as Error;
+  if (!(error instanceof StatusPageError))
+    return error instanceof Error ? error : new Error(String(error));
   switch (error.reason) {
     case "not-found":
       return new PluginRequestError(error.message, 404);
@@ -110,10 +112,10 @@ function failure(error: unknown): Error {
 
 /** A page the requester can see; unknown and hidden look the same. */
 async function visiblePage(
-  context: HealthContext,
+  context: StatusContext,
   key: { id: string } | { slug: string },
 ): Promise<StatusPage> {
-  const db = openHealthDb(context.storage);
+  const db = openStatusDb(context.storage);
   const page = getPage(db, key);
   if (!page || !canSee(db, page, await visibleIds(context)))
     throw new PluginRequestError("Status page not found", 404);
@@ -123,35 +125,47 @@ async function visiblePage(
 export const statusPages = defineResource({
   id: "status-pages",
   input: z.object({}).optional(),
-  query: async (_input, context: HealthContext) => ({
-    ...buildStatusPageList(
-      openHealthDb(context.storage),
-      await visibleIds(context),
-      await isAdmin(context),
-      Date.now(),
-    ),
-    // Plugins that post to status pages, like Incidents, mark them with it.
-    iconUrl: statusPagesIconUrl,
-  }),
+  query: async (_input, context: StatusContext) => {
+    const visible = await visibleIds(context);
+    const health = await readHealth(context);
+    return {
+      ...buildStatusPageList(
+        openStatusDb(context.storage),
+        visible,
+        await isAdmin(context),
+        Date.now(),
+        health.data,
+      ),
+      iconUrl: statusPagesIconUrl,
+      healthAvailable: Boolean(health.data),
+      healthError: health.error,
+    };
+  },
   refresh: poll("30s"),
 });
 
 export const statusPage = defineResource({
   id: "status-page",
   input: z.object({ slug: z.string().min(1) }),
-  query: async (input, context: HealthContext) => {
+  query: async (input, context: StatusContext) => {
     const page = await visiblePage(context, { slug: input.slug });
-    const db = openHealthDb(context.storage);
+    const db = openStatusDb(context.storage);
     const serviceIds = pageServiceIds(db, page.id);
-    return buildStatusPageDetail(
-      db,
-      page,
-      {
-        edit: await allowedOn(context, serviceIds, "manage"),
-        post: await allowedOn(context, serviceIds, "execute"),
-      },
-      Date.now(),
-    );
+    const health = await readHealth(context);
+    return {
+      ...buildStatusPageDetail(
+        db,
+        page,
+        {
+          edit: await allowedOn(context, serviceIds, "manage"),
+          post: await allowedOn(context, serviceIds, "execute"),
+        },
+        Date.now(),
+        health.data,
+      ),
+      healthAvailable: Boolean(health.data),
+      healthError: health.error,
+    };
   },
   refresh: poll("30s"),
 });
@@ -180,7 +194,7 @@ const servicesOf = (input: z.infer<typeof pageInput>) => [
 ];
 
 async function requireVisible(
-  context: HealthContext,
+  context: StatusContext,
   serviceIds: readonly string[],
 ): Promise<void> {
   const visible = await visibleIds(context);
@@ -192,13 +206,13 @@ export const createStatusPage = defineAction({
   id: "create-status-page",
   input: pageInput,
   permission: "manage",
-  run: async (input, context: HealthContext) => {
+  run: async (input, context: StatusContext) => {
     const serviceIds = servicesOf(input);
     await requireVisible(context, serviceIds);
     await requireOn(context, serviceIds, "manage");
     try {
       const page = createPage(
-        openHealthDb(context.storage),
+        openStatusDb(context.storage),
         input,
         actorOf(context),
         Date.now(),
@@ -214,9 +228,9 @@ export const updateStatusPage = defineAction({
   id: "update-status-page",
   input: pageInput.extend({ id: z.string().min(1) }),
   permission: "manage",
-  run: async ({ id, ...input }, context: HealthContext) => {
+  run: async ({ id, ...input }, context: StatusContext) => {
     const page = await visiblePage(context, { id });
-    const db = openHealthDb(context.storage);
+    const db = openStatusDb(context.storage);
     const serviceIds = servicesOf(input);
     await requireVisible(context, serviceIds);
     // Both the services leaving the page and those joining it change what
@@ -239,9 +253,9 @@ export const deleteStatusPage = defineAction({
   id: "delete-status-page",
   input: z.object({ id: z.string().min(1) }),
   permission: "manage",
-  run: async (input, context: HealthContext) => {
+  run: async (input, context: StatusContext) => {
     const page = await visiblePage(context, { id: input.id });
-    const db = openHealthDb(context.storage);
+    const db = openStatusDb(context.storage);
     await requireOn(context, pageServiceIds(db, page.id), "manage");
     deletePage(db, page.id);
     return { ok: true };
@@ -274,12 +288,12 @@ export const postStatusNotice = defineAction({
       message: "Name the status page by id or slug",
     }),
   permission: "execute",
-  run: async (input, context: HealthContext) => {
+  run: async (input, context: StatusContext) => {
     const page = await visiblePage(
       context,
       input.pageId ? { id: input.pageId } : { slug: input.slug ?? "" },
     );
-    const db = openHealthDb(context.storage);
+    const db = openStatusDb(context.storage);
     await requireOn(
       context,
       noticeServiceIds(db, page.id, input.componentIds),
@@ -307,8 +321,8 @@ export const postStatusNotice = defineAction({
   },
 });
 
-async function authorizeNotice(context: HealthContext, noticeId: string) {
-  const db = openHealthDb(context.storage);
+async function authorizeNotice(context: StatusContext, noticeId: string) {
+  const db = openStatusDb(context.storage);
   const notice = getNotice(db, noticeId);
   if (!notice) throw new PluginRequestError("Notice not found", 404);
   const page = getPage(db, { id: notice.pageId });
@@ -331,7 +345,7 @@ export const updateStatusNotice = defineAction({
     impact: noticeImpactSchema.optional(),
   }),
   permission: "execute",
-  run: async (input, context: HealthContext) => {
+  run: async (input, context: StatusContext) => {
     const { db } = await authorizeNotice(context, input.noticeId);
     try {
       const notice = updateNotice(
@@ -359,7 +373,7 @@ export const resolveStatusNotice = defineAction({
     message: noticeMessage.default("This is resolved."),
   }),
   permission: "execute",
-  run: async (input, context: HealthContext) => {
+  run: async (input, context: StatusContext) => {
     const { db } = await authorizeNotice(context, input.noticeId);
     try {
       const notice = updateNotice(

@@ -14,7 +14,7 @@ This is currently a private workspace package.
 ## What you get
 
 - **Overview** with the current state of every service, response time and an hourly history strip with 7-day uptime.
-- **Status pages** that tell a team how the services they rely on are doing, with notices people post during a problem.
+- **Recorded status history** exposed to optional consumers such as the separate [Status pages plugin](../plugin-status-pages).
 - **Objectives** with an availability target per service and the error budget that is left.
 - **Outages** that start when a service stays unhealthy and end when it recovers.
 - **Maintenance windows and silences** so planned work does not count as downtime or raise signals.

@@ -1,10 +1,10 @@
 import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
 import {
   type ComponentStatusView,
-  fleetSchema,
   type NoticeView,
   type StatusComponentView,
   type StatusPageDetail,
+  servicesSchema,
   statusPageDetailSchema,
   statusPageListSchema,
 } from "../contract";
@@ -79,6 +79,13 @@ export function StatusPagesPage({ client }: ComponentProps) {
       <style>{statusStyles}</style>
 
       {list.error && <Notice tone="error">{list.error}</Notice>}
+      {data?.healthError && <Notice tone="error">{data.healthError}</Notice>}
+      {data && !data.healthAvailable && !data.healthError && (
+        <p className="h-muted">
+          Enable Service health for automatic status and uptime. You can publish
+          notices without it.
+        </p>
+      )}
 
       {creating && (
         <PageEditor
@@ -180,6 +187,13 @@ export function StatusPageView({ client, node }: ComponentProps) {
       </PageLink>
 
       {detail.error && <Notice tone="error">{detail.error}</Notice>}
+      {data?.healthError && <Notice tone="error">{data.healthError}</Notice>}
+      {data && !data.healthAvailable && !data.healthError && (
+        <p className="h-muted">
+          Enable Service health for automatic status and uptime. You can publish
+          notices without it.
+        </p>
+      )}
       {!data && !detail.error && <PageSkeleton />}
 
       {data && mode === "edit" && (
@@ -662,7 +676,7 @@ function PageEditor({
   onDeleted?: () => void;
 }) {
   const { useState } = React;
-  const services = useResource(client, "service-health", {}, fleetSchema);
+  const services = useResource(client, "services", {}, servicesSchema);
   const [name, setName] = useState(page?.page.name ?? "");
   const [slug, setSlug] = useState(page?.page.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(Boolean(page));

@@ -41,6 +41,7 @@ const KNOWN_PLUGINS = [
   "auth-pro",
   "code-repository",
   "health",
+  "status-pages",
   "monitoring",
   "notifications-pro",
 ] as const;
