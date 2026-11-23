@@ -82,6 +82,23 @@ await run([
 ]);
 
 await bundle(
+  "packages/plugin-status-pages/src/plugin.ts",
+  join(output, "dist", "runtime", "plugins", "status-pages.mjs"),
+);
+await run([
+  "bun",
+  "build",
+  "packages/plugin-status-pages/src/browser.tsx",
+  "--bundle",
+  "--target",
+  "browser",
+  "--format",
+  "esm",
+  "--outfile",
+  join(output, "dist", "runtime", "plugins", "status-pages.browser.mjs"),
+]);
+
+await bundle(
   "packages/plugin-monitoring/src/plugin.ts",
   join(output, "dist", "runtime", "plugins", "monitoring.mjs"),
 );
