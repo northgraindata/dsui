@@ -28,6 +28,7 @@ export {
   type AdapterHealthReport,
   type AdapterHealthRuntime,
   type AdapterInfo,
+  type AdapterPresentation,
   type ConnectionMethodDefinition,
   type ConnectionRequestConcurrency,
   type DefineAdapterOptions,

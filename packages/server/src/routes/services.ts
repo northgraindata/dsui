@@ -10,7 +10,96 @@ import type { ConnectionCipher } from "../db/crypto.js";
 import type { DsuiDatabase, UiServiceRow } from "../db/database.js";
 import type { SignalBus } from "../events/signal-bus.js";
 import type { PluginRuntime } from "../plugins/runtime.js";
+import { restoreReferences } from "../secrets/reference.js";
+import type { SecretResolver } from "../secrets/resolver.js";
+import type { SecretSuggestions } from "../secrets/suggestions.js";
 import { errorMessage, httpStatus } from "./errors.js";
+
+// Keep one stalled adapter from holding a service response open.
+const SERVICE_HEALTH_TIMEOUT_MS = 8_000;
+// A health result is reused this long, so listing services never waits on a
+// slow adapter (for example a cold remote warehouse connection) once measured.
+const HEALTH_TTL_MS = 30_000;
+
+interface HealthEntry {
+  status: HealthStatus;
+  measuredAt: number;
+  pending?: Promise<void>;
+}
+
+function unmeasured(
+  status: "unknown" | "unavailable",
+  detail?: string,
+): HealthStatus {
+  return {
+    status,
+    checkedAt: new Date().toISOString(),
+    ...(detail ? { detail } : {}),
+  };
+}
+
+const healthCache = new WeakMap<ServiceDeps, Map<string, HealthEntry>>();
+
+type Adapter = ReturnType<AdapterRegistry["get"]>;
+
+function startHealthRefresh(
+  entries: Map<string, HealthEntry>,
+  id: string,
+  adapter: Adapter,
+  connection: Awaited<ReturnType<typeof connectionFor>>,
+): Promise<void> {
+  const existing = entries.get(id);
+  if (existing?.pending) return existing.pending;
+  const entry: HealthEntry = existing ?? {
+    status: unmeasured("unknown"),
+    measuredAt: 0,
+  };
+  entries.set(id, entry);
+  entry.pending = adapter.backend
+    .checkHealth(connection, {
+      persistenceNamespace: id,
+      timeoutMs: SERVICE_HEALTH_TIMEOUT_MS,
+    })
+    .then((status) => {
+      entry.status = status;
+      entry.measuredAt = Date.now();
+    })
+    .catch((error: unknown) => {
+      entry.status = unmeasured("unavailable", errorMessage(error));
+      entry.measuredAt = Date.now();
+    })
+    .finally(() => {
+      entry.pending = undefined;
+    });
+  return entry.pending;
+}
+
+/**
+ * Stale-while-revalidate health: fresh results are served as-is, stale ones are
+ * served while a refresh runs; only a never-measured service waits.
+ */
+async function serviceHealth(
+  deps: ServiceDeps,
+  id: string,
+  adapter: Adapter,
+  connection: Awaited<ReturnType<typeof connectionFor>>,
+  waitForResult: boolean,
+): Promise<HealthStatus> {
+  let entries = healthCache.get(deps);
+  if (!entries) {
+    entries = new Map();
+    healthCache.set(deps, entries);
+  }
+  const entry = entries.get(id);
+  if (entry && Date.now() - entry.measuredAt < HEALTH_TTL_MS && !waitForResult)
+    return entry.status;
+  const refresh = startHealthRefresh(entries, id, adapter, connection);
+  const current = entries.get(id);
+  // An unmeasured service waits for its first result: nothing re-reads the list
+  // to replace an `unknown` placeholder (the health timeout still bounds it).
+  if (waitForResult || !current || current.measuredAt === 0) await refresh;
+  return entries.get(id)?.status ?? unmeasured("unknown");
+}
 
 export const createServiceSchema = z.object({
   adapter: z.string().min(1),
@@ -60,7 +149,15 @@ export function serviceSource(
 }
 
 /** Resolves and decrypts a service connection. Never logs or returns secrets. */
-export function connectionFor(
+export async function connectionFor(
+  deps: Pick<ServiceDeps, "cipher" | "secrets">,
+  source: ServiceSource,
+): Promise<Record<string, unknown>> {
+  return deps.secrets.resolveConnection(storedConnection(deps.cipher, source));
+}
+
+/** The connection as stored: secret references are still references. */
+function storedConnection(
   cipher: ConnectionCipher | undefined,
   source: ServiceSource,
 ): Record<string, unknown> {
@@ -81,7 +178,12 @@ export function connectionFor(
 export async function queryServiceResource(
   deps: Pick<
     ServiceDeps,
-    "registry" | "database" | "cipher" | "getConfig" | "refreshConfig"
+    | "registry"
+    | "database"
+    | "cipher"
+    | "secrets"
+    | "getConfig"
+    | "refreshConfig"
   >,
   serviceId: string,
   resourceId: string,
@@ -93,7 +195,7 @@ export async function queryServiceResource(
   const adapter = deps.registry.get(source.service.adapter);
   return adapter.backend.executeResource(
     resourceId,
-    connectionFor(deps.cipher, source),
+    await connectionFor(deps, source),
     input,
     { persistenceNamespace: serviceId },
   );
@@ -105,6 +207,7 @@ export async function executeServiceAction(
     | "registry"
     | "database"
     | "cipher"
+    | "secrets"
     | "getConfig"
     | "refreshConfig"
     | "signalBus"
@@ -121,19 +224,56 @@ export async function executeServiceAction(
   input: unknown,
   signal: AbortSignal,
   auditActor: string,
-  options: { origin?: { pluginId: string; runId?: string } } = {},
+  options: {
+    origin?: { pluginId: string; runId?: string };
+    /** Principal id of the person who asked for this, recorded on the signals it causes. */
+    actor?: string;
+  } = {},
 ) {
   await deps.refreshConfig();
   const source = serviceSource(deps.getConfig(), deps.database, serviceId);
   if (!source) throw new Error("Service not found");
   const adapter = deps.registry.get(source.service.adapter);
-  const result = await adapter.backend.executeAction(
-    actionId,
-    connectionFor(deps.cipher, source),
-    input,
-    signal,
-    { persistenceNamespace: serviceId },
-  );
+  const actor = options.actor ? { actor: options.actor } : {};
+  // One signal per run, so a timeline can show who ran what. When the
+  // adapter reports the run itself (a query, an upload), its signals carry
+  // the actor and are that record; otherwise the host records the run. The
+  // host record carries the action id and outcome, never the input, and is
+  // `info` even on failure: the failure is the caller's to report, not an
+  // alert for notification or diagnosis plugins.
+  const recordRun = (
+    outcome: { status: "success" } | { status: "error"; message: string },
+  ) =>
+    deps.signalBus.publish({
+      signalId: "dsui.action-executed",
+      type: "info",
+      sourceType: "host",
+      sourceId: "dsui",
+      serviceId,
+      payload: {
+        action: actionId,
+        adapter: adapter.id,
+        ...outcome,
+        ...(options.origin ? { plugin: options.origin.pluginId } : {}),
+      },
+      ...actor,
+    });
+  let result: Awaited<ReturnType<typeof adapter.backend.executeAction>>;
+  try {
+    result = await adapter.backend.executeAction(
+      actionId,
+      await connectionFor(deps, source),
+      input,
+      signal,
+      { persistenceNamespace: serviceId },
+    );
+  } catch (error) {
+    recordRun({
+      status: "error",
+      message: error instanceof Error ? error.message : "Action failed",
+    });
+    throw error;
+  }
   for (const emission of result.emissions) {
     const declared = adapter.catalog.signals.find(
       (signalDefinition) => signalDefinition.id === emission.signalId,
@@ -152,8 +292,15 @@ export async function executeServiceAction(
       ...(emission.idempotencyKey
         ? { idempotencyKey: emission.idempotencyKey }
         : {}),
+      ...actor,
     });
   }
+  if (!result.emissions.length)
+    recordRun(
+      result.result.status === "success"
+        ? { status: "success" }
+        : { status: "error", message: result.result.message },
+    );
   deps.audit(auditActor, "action.execute", serviceId, {
     action: actionId,
     ...(options.origin?.runId ? { runId: options.origin.runId } : {}),
@@ -167,6 +314,10 @@ export interface ServiceDeps {
   signalBus: SignalBus;
   database: DsuiDatabase;
   cipher: ConnectionCipher | undefined;
+  /** Reads the credentials a connection refers to in a secret manager. */
+  secrets: SecretResolver;
+  /** Offers secrets to pick from, when a provider can list them. */
+  secretSuggestions: SecretSuggestions;
   getConfig(): DsuiConfig;
   refreshConfig(): Promise<DsuiConfig>;
   refreshJobs?(): void;
@@ -177,6 +328,7 @@ export interface ServiceDeps {
 export async function publicService(
   deps: ServiceDeps,
   id: string,
+  options: { waitForHealth?: boolean } = {},
 ): Promise<PublicService> {
   const source = serviceSource(deps.getConfig(), deps.database, id);
   if (!source) throw new Error("Service not found");
@@ -195,10 +347,14 @@ export async function publicService(
       actions: [],
     };
   }
-  const connection = connectionFor(deps.cipher, source);
-  const health = await adapter.backend.checkHealth(connection, {
-    persistenceNamespace: source.service.id,
-  });
+  const connection = await connectionFor(deps, source);
+  const health = await serviceHealth(
+    deps,
+    source.service.id,
+    adapter,
+    connection,
+    options.waitForHealth === true,
+  );
   return {
     id: source.service.id,
     name: source.service.name ?? adapter.metadata.name,
@@ -219,7 +375,9 @@ export async function testConnection(
   raw: Record<string, unknown>,
 ): Promise<HealthStatus> {
   const adapter = deps.registry.get(adapterId);
-  const connection = adapter.backend.validateConnection(raw);
+  const connection = adapter.backend.validateConnection(
+    await deps.secrets.resolveConnection(raw),
+  );
   return adapter.backend.checkHealth(connection);
 }
 
@@ -265,6 +423,48 @@ export function registerServiceRoutes(
     }
   });
 
+  // What the connection form offers for pointing a field at a secret manager.
+  app.get("/api/v1/secret-providers", async (context) => {
+    if (
+      deps.pluginRuntime &&
+      !(await deps.pluginRuntime.authorize(context.get("principal"), "inspect"))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
+    return context.json(
+      (deps.pluginRuntime?.secretProviders() ?? []).map(
+        ({ id, label, description, reference, search }) => ({
+          id,
+          label,
+          ...(description ? { description } : {}),
+          reference,
+          searchable: search !== undefined,
+        }),
+      ),
+    );
+  });
+
+  // Listing secret names tells a person what exists, so it needs the same
+  // role as creating a service.
+  app.get("/api/v1/secret-providers/:id/suggestions", async (context) => {
+    const principal = context.get("principal");
+    if (
+      !allowed(principal, "manage") ||
+      (deps.pluginRuntime &&
+        !(await deps.pluginRuntime.authorize(principal, "manage")))
+    )
+      return context.json({ message: "Insufficient permission" }, 403);
+    try {
+      return context.json(
+        await deps.secretSuggestions.suggest(
+          context.req.param("id"),
+          context.req.query("q") ?? "",
+        ),
+      );
+    } catch (error) {
+      return context.json({ message: errorMessage(error) }, 404);
+    }
+  });
+
   app.post("/api/v1/services/test", async (context) => {
     if (
       deps.pluginRuntime &&
@@ -294,7 +494,14 @@ export function registerServiceRoutes(
       await deps.refreshConfig();
       const input = createServiceSchema.parse(await context.req.json());
       const adapter = deps.registry.get(input.adapter);
-      const connection = adapter.backend.validateConnection(input.connection);
+      // Validate the real values, which also proves each reference can be read,
+      // then store the references: the credential itself must not be kept.
+      const connection = restoreReferences(
+        adapter.backend.validateConnection(
+          await deps.secrets.resolveConnection(input.connection),
+        ),
+        input.connection,
+      );
       if (!deps.cipher)
         throw new Error(
           "DSUI_MASTER_KEY is required to persist UI-managed connections",
@@ -308,7 +515,10 @@ export function registerServiceRoutes(
       deps.audit(principal.id, "service.create", id, {
         adapter: input.adapter,
       });
-      return context.json(await publicService(deps, id), 201);
+      return context.json(
+        await publicService(deps, id, { waitForHealth: true }),
+        201,
+      );
     } catch (error) {
       return context.json({ message: errorMessage(error) }, httpStatus(error));
     }
@@ -338,6 +548,7 @@ export function registerServiceRoutes(
           "Configuration-managed services cannot be deleted here",
         );
       deps.database.deleteUiService(source.service.id);
+      healthCache.get(deps)?.delete(source.service.id);
       await deps.removeServiceData?.(source.service.id);
       await deps.registry
         .list()
@@ -401,7 +612,7 @@ export function registerServiceRoutes(
       if (!source) throw new Error("Service not found");
       const adapter = deps.registry.get(source.service.adapter);
       const document = await adapter.backend.renderPage(
-        connectionFor(deps.cipher, source),
+        await connectionFor(deps, source),
         path,
         { persistenceNamespace: source.service.id },
       );

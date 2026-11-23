@@ -121,7 +121,7 @@ async function authenticate(
   deps: AdapterRouteDeps,
   route: RouteCatalogEntry,
   serviceId: string,
-  connection: () => Record<string, unknown>,
+  connection: () => Promise<Record<string, unknown>>,
 ): Promise<string> {
   if (route.auth === "principal") {
     const runtime = deps.pluginRuntime;
@@ -144,7 +144,7 @@ async function authenticate(
     return principal.id;
   }
   // An unset secret must reject everything, never match an absent header.
-  const secret = connection()[route.auth.token];
+  const secret = (await connection())[route.auth.token];
   const given = bearer(context);
   if (
     typeof secret !== "string" ||
@@ -194,7 +194,7 @@ export function registerAdapterRouteEndpoints(
       const { route, params } = found;
 
       const actor = await authenticate(context, deps, route, serviceId, () =>
-        connectionFor(deps.cipher, source),
+        connectionFor(deps, source),
       );
       bodyPath = await spoolBody(
         context.req.raw,
@@ -219,7 +219,7 @@ export function registerAdapterRouteEndpoints(
       ]);
       const reply = await adapter.backend.executeRoute(
         route.id,
-        connectionFor(deps.cipher, source),
+        await connectionFor(deps, source),
         call,
         { signal, timeoutMs: route.timeoutMs },
         { persistenceNamespace: serviceId },

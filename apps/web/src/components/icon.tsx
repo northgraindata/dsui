@@ -20,6 +20,24 @@ export const iconPaths: Record<string, ReactNode> = {
       <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1" />
     </>
   ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v6m0-10v.01" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" />
+      <path d="M3 12h18" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M12 6v15M3 4c4-1 6 0 9 2 3-2 5-3 9-2v15c-4-1-6 0-9 2-3-2-5-3-9-2Z" />
+    </>
+  ),
   sparkle: <path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" />,
   check: <path d="m5 12 4 4L19 6" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
@@ -134,6 +152,12 @@ export const iconPaths: Record<string, ReactNode> = {
   format: <path d="M8 4H4v4m12-4h4v4M4 16v4h4m8 0h4v-4M9 8h6m-6 4h4m-4 4h6" />,
   edit: <path d="M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4" />,
   "chevron-down": <path d="m7 10 5 5 5-5" />,
+  key: (
+    <>
+      <circle cx="7.5" cy="12" r="3.5" />
+      <path d="M11 12h10m-4 0v3m3-3v2.5" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 16 }: { name: string; size?: number }) {

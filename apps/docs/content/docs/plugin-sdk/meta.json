@@ -12,6 +12,7 @@
     "stores",
     "host-capabilities",
     "auth-providers",
+    "secret-providers",
     "testing",
     "release"
   ]

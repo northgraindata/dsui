@@ -16,6 +16,10 @@ import { migration_0012_event_sequence } from "./0012_event_sequence.js";
 import { migration_0014_settings } from "./0014_settings";
 import { migration_0015_connectors } from "./0015_connectors";
 
+import { migration_0016_event_actor } from "./0016_event_actor.js";
+import { migration_0017_active_plugin_jobs } from "./0017_active_plugin_jobs.js";
+import { migration_0018_scheduled_job_retention } from "./0018_scheduled_job_retention.js";
+
 /** All migrations in version order. Add new files here, never reorder. */
 export const migrations: Migration[] = [
   migration_0001_init,
@@ -32,4 +36,7 @@ export const migrations: Migration[] = [
   migration_0012_event_sequence,
   migration_0014_settings,
   migration_0015_connectors,
+  migration_0016_event_actor,
+  migration_0017_active_plugin_jobs,
+  migration_0018_scheduled_job_retention,
 ];

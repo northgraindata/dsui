@@ -1,82 +1,38 @@
 import type { Adapter } from "../api";
 import { Icon } from "./icon";
 
-// Editorial product information only. Connection behavior and fields always
-// come from the adapter's public schema, never from this presentation copy.
-const duckdbFeatures = [
-  {
-    icon: "activity",
-    title: "Local analytics",
-    detail: "Query data directly on your machine",
-  },
-  {
-    icon: "file",
-    title: "Supports multiple file formats",
-    detail: "Parquet, CSV, JSON, and more",
-  },
-  {
-    icon: "database",
-    title: "No server required",
-    detail: "Just a single file",
-  },
-  {
-    icon: "terminal",
-    title: "Great for development",
-    detail: "Fast and lightweight",
-  },
-];
-
+/** Connection help uses the same author-declared content as the catalog. */
 export function ConnectionAbout({ adapter }: { adapter: Adapter }) {
-  const isDuckDb = adapter.id === "duckdb";
-  const features = isDuckDb
-    ? duckdbFeatures
-    : [
-        {
-          icon: "plug",
-          title: "One connected workspace",
-          detail: "Work with your data stack in DSUI",
-        },
-        {
-          icon: "check",
-          title: "Test before connecting",
-          detail: "Verify your connection settings",
-        },
-        {
-          icon: "gear",
-          title: "Your configuration",
-          detail: "Manage your connection in one place",
-        },
-      ];
+  const features = adapter.presentation?.features?.slice(0, 3) ?? [];
+  const guide = adapter.presentation?.links?.[0];
   return (
     <aside className="connection-about" aria-label={`About ${adapter.name}`}>
       <h3>About {adapter.name}</h3>
-      <p>
-        {isDuckDb
-          ? "DuckDB is an embeddable analytical database that runs directly on your machine. It’s fast, easy to use, and perfect for local analytics."
-          : adapter.description}
-      </p>
-      <ul>
-        {features.map((feature) => (
-          <li key={feature.title}>
-            <span className="connection-feature-icon">
-              <Icon name={feature.icon} size={20} />
-            </span>
-            <div>
-              <h4>{feature.title}</h4>
-              <p>{feature.detail}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {isDuckDb && (
+      {adapter.description && <p>{adapter.description}</p>}
+      {!!features.length && (
+        <ul>
+          {features.map((feature) => (
+            <li key={feature.title}>
+              <span className="connection-feature-icon">
+                <Icon name="check" size={18} />
+              </span>
+              <div>
+                <h4>{feature.title}</h4>
+                {feature.description && <p>{feature.description}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {guide && (
         <a
           className="connection-learn"
-          href="https://duckdb.org/docs/"
+          href={guide.href}
           target="_blank"
-          rel="noreferrer"
+          rel="noreferrer noopener"
         >
           <span>
-            Learn more<strong>DuckDB documentation ↗</strong>
+            Documentation<strong>{guide.label} ↗</strong>
           </span>
           <span aria-hidden="true">↗</span>
         </a>

@@ -6,6 +6,7 @@ import {
   AdapterHostClient,
   type AdapterHostRequest,
 } from "../src/adapters/host";
+import { RemoteBackend } from "../src/adapters/loader";
 import { DsuiDatabase } from "../src/db/database";
 
 const hostPath = new URL("../src/adapter-host.ts", import.meta.url).pathname;
@@ -187,6 +188,18 @@ test("timeout and active abort retire the process without replaying requests", a
   expect((await inspect(host)).data.pid).not.toBe(second.data.pid);
 });
 
+test("connection health honors its timeout and stops the adapter host", async () => {
+  const host = client();
+  const backend = new RemoteBackend(host, "retained-test", [
+    { id: "cached", requestConcurrency: "parallel", contextIdleTimeoutMs: 100 },
+  ]);
+  const connection = request().connection;
+  const health = await backend.checkHealth(connection, { timeoutMs: 10 });
+  expect(health.status).toBe("unavailable");
+  expect(health.detail).toBe("Adapter host timed out");
+  expect(await inspect(host)).toHaveProperty("data.pid");
+});
+
 test("crash fails the request and next call starts a fresh host", async () => {
   const host = client();
   const first = await inspect(host);
@@ -317,7 +330,9 @@ test("DuckDB file lock is available to another process after each resource respo
     const stderr = await new Response(external.stderr).text();
     expect(await external.exited, stderr).toBe(0);
   }
-});
+  // Starts the adapter host and two separate DuckDB processes, which takes
+  // longer than the default 5 s when the whole suite runs in parallel.
+}, 30_000);
 
 test("isolated actions and jobs do not block reads and their persisted updates are visible", async () => {
   const database = new DsuiDatabase(join(directory, "state.sqlite"));
@@ -358,4 +373,22 @@ test("describes resources and actions with their descriptions", async () => {
   expect(
     described.resources.find((r) => r.id === "inspect")?.description,
   ).toBeUndefined();
+});
+
+test("retiring a host lets a running action finish", async () => {
+  const database = new DsuiDatabase(join(directory, "state.sqlite"));
+  database.close();
+  const host = client();
+  const action = host.request(
+    request({ method: "action", target: "update", input: { delayMs: 200 } }),
+  );
+
+  const retired = host.close(true);
+  await expect(host.request(request())).rejects.toThrow("client closed");
+  await action;
+  await retired;
+
+  expect(await client().request(request({ target: "stored" }))).toEqual({
+    data: { value: 1 },
+  });
 });

@@ -18,6 +18,7 @@ import {
   type PluginPrincipal,
   PluginRequestError,
   type PluginResource,
+  type PluginSecretProvider,
   type PluginServiceCatalog,
   type PluginServiceSummary,
   type PluginStores,
@@ -85,6 +86,7 @@ type Contributions = {
   jobs: RuntimePluginJob[];
   authentication?: PluginAuthenticationProvider;
   authorization?: PluginAuthorizationProvider;
+  secrets: PluginSecretProvider[];
 };
 
 type PluginLoadRequest = {
@@ -261,6 +263,10 @@ function isRuntimePluginDefinition(
     /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value.metadata.version) &&
     (value.metadata.security === undefined ||
       typeof value.metadata.security === "boolean") &&
+    (value.metadata.category === undefined ||
+      typeof value.metadata.category === "string") &&
+    (value.metadata.iconUrl === undefined ||
+      typeof value.metadata.iconUrl === "string") &&
     typeof value.metadata.apiVersion === "number" &&
     typeof value.configSchema.parse === "function" &&
     typeof value.prepare === "function" &&
@@ -318,6 +324,7 @@ function emptyContributions(): Contributions {
     actions: [],
     resources: [],
     jobs: [],
+    secrets: [],
   };
 }
 
@@ -775,6 +782,34 @@ export class PluginRuntime {
             throw new Error("Duplicate authorization provider");
           contributions.authorization = provider;
         },
+        secrets: (provider: PluginSecretProvider) => {
+          if (
+            !provider ||
+            typeof provider.resolve !== "function" ||
+            typeof provider.label !== "string" ||
+            !provider.label ||
+            typeof provider.reference?.label !== "string"
+          )
+            throw new Error("Invalid secret provider");
+          if (
+            provider.search !== undefined &&
+            typeof provider.search !== "function"
+          )
+            throw new Error("Invalid secret provider search");
+          if (!pluginIdPattern.test(provider.id))
+            throw new Error(
+              `Secret provider id "${provider.id}" must be kebab-case`,
+            );
+          if (
+            contributions.secrets.some((entry) => entry.id === provider.id) ||
+            this.secretProvider(provider.id) ||
+            [...pendingContributions.values()].some((pending) =>
+              pending.secrets.some((entry) => entry.id === provider.id),
+            )
+          )
+            throw new Error(`Duplicate secret provider "${provider.id}"`);
+          contributions.secrets.push(provider);
+        },
       };
       try {
         request.prepared.setup(registry);
@@ -899,6 +934,17 @@ export class PluginRuntime {
     }
   }
 
+  /** Secret providers from plugins that started, in load order. */
+  secretProviders(): PluginSecretProvider[] {
+    return [...this.contributions.values()].flatMap(
+      (contribution) => contribution.secrets,
+    );
+  }
+
+  secretProvider(id: string): PluginSecretProvider | undefined {
+    return this.secretProviders().find((provider) => provider.id === id);
+  }
+
   catalog(): PluginCatalog {
     const plugins = [...this.readiness.entries()].map(([id, readiness]) => {
       const active = this.active.get(id);
@@ -906,6 +952,12 @@ export class PluginRuntime {
         id,
         name: active?.definition.metadata.name ?? id,
         version: active?.definition.metadata.version ?? "unknown",
+        ...(active?.definition.metadata.category
+          ? { category: active.definition.metadata.category }
+          : {}),
+        ...(active?.definition.metadata.iconUrl
+          ? { iconUrl: active.definition.metadata.iconUrl }
+          : {}),
         ...readiness,
       };
     });
@@ -1215,6 +1267,19 @@ export class PluginRuntime {
       }))
     )
       throw new PluginRequestError("Insufficient service permission", 403);
+  }
+
+  /**
+   * The person the current plugin call acts for, to record on the signals it
+   * causes. None in background work, where no person is asking, and none in
+   * local single-user mode, where every request is the same anonymous owner.
+   */
+  actingPrincipalId(): string | undefined {
+    if (this.backgroundContext.getStore()) return undefined;
+    const principal = this.principalContext.getStore();
+    return principal && principal.id !== LOCAL_PRINCIPAL_ID
+      ? principal.id
+      : undefined;
   }
 
   async canAccessGlobalEvents(): Promise<boolean> {

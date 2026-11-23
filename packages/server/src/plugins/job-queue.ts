@@ -286,6 +286,7 @@ export class JobQueue {
     idempotencyKey?: string;
     scheduledFor?: Date;
     coalesce?: boolean;
+    origin?: "manual" | "schedule";
   }): { run: JobRunRow; created: boolean } {
     return this.db
       .transaction(() => {
@@ -332,8 +333,8 @@ export class JobQueue {
             `INSERT INTO plugin_job_runs
            (run_id, job_id, plugin_id, status, input_json, attempt_count,
             max_attempts, idempotency_key, request_hash, scheduled_for,
-            enqueued_at, updated_at)
-         VALUES (?, ?, ?, 'queued', ?, 0, ?, ?, ?, ?, ?, ?)`,
+            origin, enqueued_at, updated_at)
+         VALUES (?, ?, ?, 'queued', ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             runId,
@@ -344,6 +345,7 @@ export class JobQueue {
             request.idempotencyKey ?? null,
             requestHash,
             request.scheduledFor?.toISOString() ?? null,
+            request.origin ?? "manual",
             stamp,
             stamp,
           );
@@ -645,6 +647,32 @@ export class JobQueue {
       }
     }
     return reclaimed;
+  }
+
+  /** Remove a bounded batch of successful scheduled runs and their attempts. */
+  pruneScheduledSuccesses(retentionMs: number): number {
+    const cutoff = new Date(this.now().getTime() - retentionMs).toISOString();
+    return this.db.transaction(() => {
+      const rows = this.db
+        .query<{ run_id: string }, [string]>(
+          `SELECT run_id FROM plugin_job_runs
+          WHERE status = 'succeeded' AND origin = 'schedule'
+            AND idempotency_key IS NULL AND finished_at < ?
+          ORDER BY finished_at LIMIT 500`,
+        )
+        .all(cutoff);
+      const deleteAttempts = this.db.query(
+        "DELETE FROM plugin_job_attempts WHERE run_id = ?",
+      );
+      const deleteRun = this.db.query(
+        "DELETE FROM plugin_job_runs WHERE run_id = ?",
+      );
+      for (const { run_id } of rows) {
+        deleteAttempts.run(run_id);
+        deleteRun.run(run_id);
+      }
+      return rows.length;
+    })();
   }
 
   /** Purges finished runs older than the retention window. */

@@ -227,12 +227,25 @@ interface HostSlot {
 export class AdapterHostClient {
   private readonly slots = new Map<string, HostSlot>();
   private closed = false;
+  private retiring = false;
+  private readonly requests = new Set<Promise<unknown>>();
   private allocation = Promise.resolve();
 
   constructor(private readonly options: AdapterHostClientOptions) {}
 
   async request(request: AdapterHostRequest): Promise<unknown> {
-    if (this.closed) throw new AdapterHostError("Adapter host client closed");
+    if (this.retiring || this.closed)
+      throw new AdapterHostError("Adapter host client closed");
+    const active = this.dispatch(request);
+    this.requests.add(active);
+    try {
+      return await active;
+    } finally {
+      this.requests.delete(active);
+    }
+  }
+
+  private async dispatch(request: AdapterHostRequest): Promise<unknown> {
     request.signal?.throwIfAborted();
     const namespace = request.persistenceNamespace;
     if (
@@ -344,7 +357,9 @@ export class AdapterHostClient {
     await slot.session?.close();
   }
 
-  async close(): Promise<void> {
+  async close(drain = false): Promise<void> {
+    this.retiring = true;
+    if (drain) await Promise.allSettled(this.requests);
     this.closed = true;
     await this.allocation;
     await Promise.all(

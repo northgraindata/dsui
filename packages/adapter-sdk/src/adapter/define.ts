@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { InvalidDefinitionError } from "../shared/errors";
+import { adapterPresentationSchema } from "./presentation";
 import {
   ADAPTER_API_VERSION,
   ADAPTER_SDK_VERSION,
@@ -44,6 +45,14 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
   if (!SEMVER.test(metadata.version))
     throw new InvalidDefinitionError(
       `Adapter version must be SemVer: ${metadata.version}`,
+    );
+
+  const presentation = adapterPresentationSchema
+    .optional()
+    .safeParse(metadata.presentation);
+  if (!presentation.success)
+    throw new InvalidDefinitionError(
+      `Invalid adapter presentation: ${presentation.error.message}`,
     );
 
   if (typeof options.health !== "function")
@@ -105,7 +114,10 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
     kind: "adapter",
     sdkVersion: ADAPTER_SDK_VERSION,
     apiVersion: ADAPTER_API_VERSION,
-    metadata: { ...metadata },
+    metadata: {
+      ...metadata,
+      ...(presentation.data ? { presentation: presentation.data } : {}),
+    },
     connectionSchema,
     connectionMethods,
     createContext,

@@ -18,6 +18,9 @@ type ActiveRun = { controller: AbortController; done: Promise<void> };
 export const DEFAULT_MAX_CONCURRENT_RUNS = 8;
 
 /** Persistence operations the in-process worker needs from a queue backend. */
+const SCHEDULED_SUCCESS_RETENTION_MS = 48 * 60 * 60 * 1000;
+const HISTORY_CLEANUP_INTERVAL_MS = 30_000;
+
 export type PluginJobQueueBackend = Pick<
   JobQueue,
   | "advanceSchedule"
@@ -35,7 +38,8 @@ export type PluginJobQueueBackend = Pick<
   | "renew"
   | "succeed"
   | "upsertDefinition"
->;
+> &
+  Partial<Pick<JobQueue, "pruneScheduledSuccesses">>;
 
 /**
  * In-process worker and scheduler for plugin jobs.
@@ -52,6 +56,7 @@ export class PluginJobService {
   private readonly queue: PluginJobQueueBackend;
   private timer: ReturnType<typeof setInterval> | undefined;
   private polling: Promise<void> | undefined;
+  private nextHistoryCleanup = Date.now() + HISTORY_CLEANUP_INTERVAL_MS;
   private readonly activeRuns = new Set<ActiveRun>();
   private readonly maxConcurrentRuns: number;
   private stopped = false;
@@ -165,6 +170,10 @@ export class PluginJobService {
 
   private async poll(): Promise<void> {
     if (this.stopped) return;
+    if (Date.now() >= this.nextHistoryCleanup) {
+      this.nextHistoryCleanup = Date.now() + HISTORY_CLEANUP_INTERVAL_MS;
+      this.queue.pruneScheduledSuccesses?.(SCHEDULED_SUCCESS_RETENTION_MS);
+    }
     this.queue.reclaimExpiredLeases();
     const now = new Date();
     for (const definition of this.queue.dueDefinitions(now)) {
@@ -183,6 +192,7 @@ export class PluginJobService {
         maxAttempts: definition.maxAttempts,
         scheduledFor,
         coalesce: true,
+        origin: "schedule",
       });
       const nextRunAt =
         definition.intervalMs !== null
