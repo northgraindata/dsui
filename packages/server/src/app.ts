@@ -27,6 +27,7 @@ import { removeServiceBlobs } from "./db/blob-storage.js";
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
+import { createOperationDiagnostics } from "./diagnostics/operations.js";
 import { registerEventRoutes } from "./events/routes.js";
 import { SignalBus } from "./events/signal-bus.js";
 import type { PluginFetch } from "./plugins/build.js";
@@ -125,7 +126,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     process.env.DSUI_CONFIG ??
     (existsSync("/etc/dsui/dsui.yaml") ? "/etc/dsui/dsui.yaml" : undefined);
   const errors = createErrorCounter();
-  const registry = new AdapterRegistry();
+  const diagnostics = createOperationDiagnostics();
+  const registry = new AdapterRegistry([], (adapter) => ({
+    ...adapter,
+    backend: diagnostics.wrap(adapter.id, adapter.backend),
+  }));
   const readiness = new Map<string, AdapterReadiness>();
   const database = new DsuiDatabase(databasePath);
   const signalBus = new SignalBus(database);
@@ -378,6 +383,16 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       plugins: () => pluginRuntime.pluginCapabilities(),
       audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
+        diagnostics: {
+          read: async () => {
+            if (!(await pluginRuntime.canAccessGlobalEvents()))
+              throw new PluginRequestError(
+                "Administrator access required",
+                403,
+              );
+            return diagnostics.snapshot();
+          },
+        },
         jobs: {
           enqueue: async (jobId, input) => ({
             runId: pluginJobs.enqueue(pluginId, jobId, input, undefined, true)

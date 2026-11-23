@@ -51,6 +51,7 @@ export interface AdapterLoadOptions {
     }): Promise<unknown>;
     close?(drain?: boolean): Promise<void>;
     invalidateService?(namespace: string): Promise<void>;
+    processes?(): { pid: number; serviceId: string | null }[];
   };
   /** Host call budget in ms (actions run long). */
   hostTimeoutMs?: number;
@@ -268,6 +269,7 @@ type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
   close?(drain?: boolean): Promise<void>;
   invalidateService?(namespace: string): Promise<void>;
+  processes?(): { pid: number; serviceId: string | null }[];
 };
 
 const serialRequestQueues = new Map<string, Promise<void>>();
@@ -291,6 +293,9 @@ function queueSerialRequest(
 }
 
 export class RemoteBackend implements AdapterBackend {
+  processes() {
+    return this.host.processes?.() ?? [];
+  }
   async close(drain = false): Promise<void> {
     await this.host.close?.(drain);
   }

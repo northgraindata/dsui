@@ -1,3 +1,10 @@
+export type {
+  DiagnosticOperation,
+  DiagnosticProcess,
+  DiagnosticSnapshot,
+} from "./diagnostics";
+
+import type { DiagnosticSnapshot } from "./diagnostics";
 import type { PluginEventPage, PluginEventReadOptions } from "./events";
 
 export {
@@ -644,6 +651,7 @@ export interface PluginRegistry<TConfig = unknown> {
 }
 
 export interface PluginCapabilities {
+  readonly diagnostics?: { read(): Promise<DiagnosticSnapshot> };
   readonly access: {
     /** Identity of the authenticated request; absent in background work. */
     principal?(): PluginPrincipal | null;
@@ -831,6 +839,7 @@ export function definePlugin<TConfig>(
         },
         logger: host.logger,
         access: host.access ?? { require: async () => unavailableCapability() },
+        diagnostics: host.diagnostics,
         jobs: host.jobs ?? { enqueue: async () => unavailableCapability() },
         events: {
           read: async (options) => {
@@ -948,6 +957,7 @@ export function definePlugin<TConfig>(
                       storage: context.storage,
                       stores: context.stores,
                       access: context.access,
+                      diagnostics: context.diagnostics,
                       jobs: context.jobs,
                       events: context.events,
                       signal: runContext.signal,

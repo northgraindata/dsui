@@ -126,6 +126,7 @@ export interface AdapterHealthContext {
  * on adapter origin.
  */
 export interface AdapterBackend {
+  processes?(): { pid: number; serviceId: string | null }[];
   /** Release isolated hosts during runtime shutdown or adapter replacement. */
   close?(drain?: boolean): Promise<void>;
   /** Release the host for a removed or reconfigured service. */
