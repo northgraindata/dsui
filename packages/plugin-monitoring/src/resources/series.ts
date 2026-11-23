@@ -29,6 +29,8 @@ import {
 import { appendDiagnostic } from "../stores/log.js";
 import { WINDOWS } from "../stores/series.js";
 
+const loggedOperations = new WeakMap<PluginStorage, Set<string>>();
+
 /** The plugin's own config, as the series resources read it. */
 type MonitoringConfig = {
   paths: { path: string; mount: string }[];
@@ -135,13 +137,20 @@ export async function sampleAll(
     loadAverage: cpu.loadAverage,
   });
   const directory = storage.directory?.();
-  if (directory)
+  if (directory) {
+    const seen = loggedOperations.get(storage) ?? new Set<string>();
+    loggedOperations.set(storage, seen);
+    const operations =
+      diagnostics?.operations.filter(
+        (operation) =>
+          operation.outcome === "active" || !seen.has(operation.id),
+      ) ?? [];
     await appendDiagnostic(
       directory,
       {
         type: "resource",
         ...runtime,
-        diagnostics,
+        diagnostics: diagnostics ? { ...diagnostics, operations } : undefined,
         loadAverage: cpu.loadAverage,
         memoryUsedPercent: memory.usedPercent,
         memoryUsedBytes: memory.usedBytes,
@@ -152,4 +161,12 @@ export async function sampleAll(
       },
       time,
     );
+    for (const operation of operations)
+      if (operation.outcome !== "active") seen.add(operation.id);
+    while (seen.size > 1000) {
+      const first = seen.values().next().value;
+      if (first === undefined) break;
+      seen.delete(first);
+    }
+  }
 }

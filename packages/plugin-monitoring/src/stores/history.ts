@@ -116,12 +116,17 @@ export function recentRuntime(
   storage: PluginStorage,
 ): { time: number; metrics: Record<string, unknown> }[] {
   const db = database(storage);
+  recordOperations(storage, []);
   db.exec(
     "CREATE TABLE IF NOT EXISTS runtime_samples (time INTEGER PRIMARY KEY, metrics TEXT NOT NULL)",
   );
   return db
     .query<{ time: number; metrics: string }, []>(
-      "SELECT * FROM runtime_samples ORDER BY time DESC LIMIT 30",
+      `SELECT * FROM (SELECT * FROM runtime_samples ORDER BY time DESC LIMIT 30)
+       UNION SELECT * FROM runtime_samples WHERE time IN (
+         SELECT (SELECT time FROM runtime_samples WHERE time <= operations.startedAt ORDER BY time DESC LIMIT 1)
+         FROM (SELECT startedAt FROM operations ORDER BY startedAt DESC LIMIT 50) operations
+       ) ORDER BY time DESC`,
     )
     .all()
     .map((row) => ({ time: row.time, metrics: JSON.parse(row.metrics) }));

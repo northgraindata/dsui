@@ -14,8 +14,22 @@ test("continuous samples use host-managed storage and survive reopening it", asy
   const directory = await mkdtemp(join(tmpdir(), "dsui-monitoring-"));
   const storage = createPluginStorage(directory, "monitoring");
   try {
-    await sampleAll(storage, [], { operations: [], droppedOperations: 0 });
-    await sampleAll(storage, [], { operations: [], droppedOperations: 0 });
+    const snapshot = {
+      operations: [
+        {
+          id: "completed",
+          adapterId: "test",
+          serviceId: null,
+          kind: "resource",
+          startedAt: Date.now(),
+          durationMs: 10,
+          outcome: "success" as const,
+        },
+      ],
+      droppedOperations: 0,
+    };
+    await sampleAll(storage, [], snapshot);
+    await sampleAll(storage, [], snapshot);
     expect(readWindow(storage, "cpu", 3600, "1h").sampleCount).toBeGreaterThan(
       0,
     );
@@ -38,6 +52,8 @@ test("continuous samples use host-managed storage and survive reopening it", asy
       .trim()
       .split("\n");
     expect(rows).toHaveLength(2);
+    expect(JSON.parse(rows[0] ?? "{}").diagnostics.operations).toHaveLength(1);
+    expect(JSON.parse(rows[1] ?? "{}").diagnostics.operations).toHaveLength(0);
     expect(JSON.parse(rows[1] ?? "{}").processCpuPercent).toBeNumber();
   } finally {
     storage.close();

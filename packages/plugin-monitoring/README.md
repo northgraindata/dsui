@@ -67,7 +67,9 @@ every tick. Old samples expire after seven days. Operation history is also cappe
 at 10,000 entries. Existing array-based history is not migrated.
 
 Host resources includes an incident history combining recent resource samples
-and adapter operations on one UTC timeline. Samples include host CPU utilization,
+and adapter operations on one UTC timeline, including the resource sample before
+each retained operation. Completed operations are logged once rather than copied
+into every later sample. Samples include host CPU utilization,
 DSUI process CPU/RSS/heap, event loop delay, swap where available, and isolated
 adapter process CPU/RSS on Linux. Process CPU uses one core as 100% and can exceed
 100%; host utilization is normalized across host CPUs. Container views reflect

@@ -6,7 +6,9 @@ import { join } from "node:path";
 import {
   readWindow,
   recentOperations,
+  recentRuntime,
   recordOperations,
+  recordRuntime,
   recordSample,
 } from "../src/stores/history.js";
 
@@ -50,6 +52,22 @@ test("SQLite history expires old samples and bounds chart output", async () => {
     recordOperations(storage, [operation]);
     expect(recentOperations(storage)[0].outcome).toBe("error");
     expect(recentOperations(storage)[0].durationMs).toBe(30);
+    recordRuntime(storage, now - 3600000, { marker: "before incident" });
+    for (let i = 0; i < 31; i++)
+      recordRuntime(storage, now - i * 10000, { marker: "recent" });
+    recordOperations(storage, [
+      {
+        ...operation,
+        id: "older",
+        startedAt: now - 3600000 + 1,
+        outcome: "error",
+      },
+    ]);
+    expect(
+      recentRuntime(storage).some(
+        (sample) => sample.metrics.marker === "before incident",
+      ),
+    ).toBe(true);
   } finally {
     db.close();
     await rm(directory, { recursive: true, force: true });
