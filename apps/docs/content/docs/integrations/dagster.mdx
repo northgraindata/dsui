@@ -1,0 +1,63 @@
+---
+title: Dagster
+description: Browse and run Dagster jobs from DSUI.
+contentType: reference
+---
+
+## Add a service
+
+Declare the adapter and the service in `dsui.yaml`.
+
+```yaml
+adapters:
+  dagster:
+    source: git
+    repository: "git+https://github.com/northgraindata/dsui"
+    path: packages/adapter-dagster
+
+services:
+  - id: dagster
+    adapter: dagster
+    name: Dagster
+    connection:
+      method: dagster
+      baseUrl: http://127.0.0.1:3006
+```
+
+The URL points to the Dagster webserver, whose GraphQL endpoint is at `/graphql`. If DSUI runs in a container, use an address reachable from that container.
+
+## Connection methods
+
+| Method | Use | Required fields |
+| --- | --- | --- |
+| `dagster` | Open source webserver without API authentication | `baseUrl` |
+| `dagster-basic` | Self-hosted webserver behind a Basic-auth proxy | `baseUrl`, `username`, `password` |
+| `dagster-plus` | Dagster+ deployment | `baseUrl`, `apiToken` |
+
+For Dagster+, use the deployment root URL, such as `https://my-org.dagster.cloud/prod`, and a Dagster+ **user** token. The adapter adds `/graphql` and sends the token in the `Dagster-Cloud-Api-Token` header. Authenticated connections require HTTPS except for local loopback URLs.
+
+## Dagster terminology
+
+A **job** is the unit you launch and monitor. An op-based job contains a dependency **graph** of **ops**, which forms a DAG. An asset-based job instead materializes a selection of assets. Dagster does not have a separate Airflow-style DAG object.
+
+## Available
+
+- **Lineage**: an interactive graph of every asset, framed by asset group and
+  tagged with its kinds (dbt, Python, Snowflake, and others). Hover a node to
+  trace its full upstream and downstream lineage, filter by kind, and
+  materialize from the inspector.
+- **Assets**: status (materialized, stale, failed, never materialized), kinds,
+  checks, owners, materialization history, and the jobs that build each asset
+- **Jobs**: asset jobs show their assets with neighbouring assets from other
+  jobs; op jobs show their op graph. Launch jobs and terminate active runs.
+- **Runs**: a step graph coloured by each step's outcome, the assets a run
+  materialized, and execution events
+- **Automation**: start and stop schedules and sensors
+
+## Kinds and groups
+
+Kinds and groups come from your Dagster definitions, not from DSUI. Set them with `@asset(kinds={"dbt", "snowflake"}, group_name="marts")`; integrations such as `dagster-dbt` set kinds automatically. Common kinds get a recognisable colour; any other kind is shown as a neutral tag.
+
+## Limitations
+
+Jobs and asset materializations launch with an empty run configuration, so use the Dagster UI for runs that need configuration or partitions.

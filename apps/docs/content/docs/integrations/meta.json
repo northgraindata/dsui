@@ -3,10 +3,12 @@
   "pages": [
     "index",
     "airflow",
+    "dagster",
     "clickhouse",
     "duckdb",
     "dbt",
     "postgresql",
-    "s3"
+    "s3",
+    "snowflake"
   ]
 }
