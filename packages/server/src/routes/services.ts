@@ -325,6 +325,19 @@ export interface ServiceDeps {
   removeServiceData?(serviceId: string): Promise<void>;
 }
 
+/** Explain the most recent failing checks alongside the status on service cards. */
+export function healthDetail(health: HealthStatus): string | undefined {
+  const failedChecks = (health.checks ?? [])
+    .filter((check) => !check.ok)
+    .map((check) =>
+      check.detail
+        ? `${check.label}: ${check.detail}`
+        : `${check.label} failed`,
+    )
+    .join("; ");
+  return failedChecks || health.detail;
+}
+
 export async function publicService(
   deps: ServiceDeps,
   id: string,
@@ -355,12 +368,13 @@ export async function publicService(
     connection,
     options.waitForHealth === true,
   );
+  const detail = healthDetail(health);
   return {
     id: source.service.id,
     name: source.service.name ?? adapter.metadata.name,
     adapter: adapter.id,
     health: health.status,
-    ...(health.detail ? { detail: health.detail } : {}),
+    ...(detail ? { detail } : {}),
     ...(health.latencyMs !== undefined ? { latencyMs: health.latencyMs } : {}),
     managedBy: source.managedBy,
     resources: adapter.catalog.resources.map((resource) => resource.id),

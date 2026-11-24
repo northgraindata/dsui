@@ -15,6 +15,44 @@ import {
 const NOW = Date.UTC(2026, 5, 1, 12, 30);
 const config = testConfig();
 
+test("fleet explains failing checks and a pending recovery", () => {
+  const db = testDb();
+  const item = service("a");
+  const failure = probe("a", "warning", {
+    checks: [
+      { id: "disk", label: "Disk space", ok: false, detail: "8% free" },
+      { id: "scheduler", label: "Scheduler", ok: false },
+    ],
+  });
+  recordProbeResult(db, config, item, failure, NOW);
+  expect(buildFleet(db, [item], NOW).items[0]?.detail).toBe(
+    "Disk space: 8% free; Scheduler failed",
+  );
+  recordProbeResult(db, config, item, probe("a", "unknown"), NOW + 0.5);
+  expect(buildFleet(db, [item], NOW + 0.5).items[0]?.detail).toBe(
+    "Latest check did not provide a result.",
+  );
+  recordProbeResult(
+    db,
+    config,
+    item,
+    probe("a", "healthy", { checks: [] }),
+    NOW + 1,
+  );
+  expect(buildFleet(db, [item], NOW + 1).items[0]).toMatchObject({
+    health: "warning",
+    detail: "Latest check passed; waiting for confirmation.",
+  });
+  recordProbeResult(
+    db,
+    config,
+    item,
+    probe("a", "healthy", { checks: [] }),
+    NOW + 2,
+  );
+  expect(buildFleet(db, [item], NOW + 2).items[0]?.detail).toBeUndefined();
+});
+
 test("a service that was never checked reads as unknown with an empty strip", () => {
   const db = testDb();
   const fleet = buildFleet(db, [service("a")], NOW);

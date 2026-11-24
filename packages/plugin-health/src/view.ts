@@ -152,13 +152,27 @@ function itemFor(
   );
   const availability = availabilityOf(mergeRollups([...rollups.values()]));
   const outage = activeOutage(db, service.id);
+  const failing = (state?.lastChecks ?? []).filter((check) => !check.ok);
+  const checkDetail = failing
+    .map((check) =>
+      check.detail
+        ? `${check.label}: ${check.detail}`
+        : `${check.label} failed`,
+    )
+    .join("; ");
+  let detail = checkDetail || state?.lastDetail;
+  if (state?.lastHealth === "unknown") {
+    detail = state.lastDetail ?? "Latest check did not provide a result.";
+  } else if (state?.lastHealth === "healthy" && state.health !== "healthy") {
+    detail = "Latest check passed; waiting for confirmation.";
+  }
   return {
     ...service,
     health: state?.health ?? "unknown",
     since: state?.since ?? null,
     lastCheckedAt: state?.lastCheckedAt ?? null,
     nextCheckAt: state?.nextDueAt ?? null,
-    ...(state?.lastDetail ? { detail: state.lastDetail } : {}),
+    ...(detail ? { detail } : {}),
     ...(state?.lastLatencyMs != null ? { latencyMs: state.lastLatencyMs } : {}),
     ...(state?.lastScore != null ? { score: state.lastScore } : {}),
     availability7d: availability.availability,
