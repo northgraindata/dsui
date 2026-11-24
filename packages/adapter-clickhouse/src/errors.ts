@@ -1,4 +1,5 @@
 const explanations: Record<string, string> = {
+  "38": "ClickHouse could not parse a date. Check date values and formats in the query or input data.",
   "60": "The requested table does not exist or is not visible.",
   "62": "SQL syntax is invalid. Check the statement and object identifiers.",
   "81": "The selected database does not exist or is not visible.",
