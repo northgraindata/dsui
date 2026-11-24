@@ -202,6 +202,28 @@ export { CodeExplorer } from "./components/primitives/code-explorer";
 export type { ComponentClient, ComponentProps } from "./components/runtime";
 export { componentProps } from "./components/runtime";
 export {
+  DATASET_LIST_MAX_LIMIT,
+  DATASET_OBSERVE_MAX_REFS,
+  type DatasetColumn,
+  type DatasetInfo,
+  type DatasetListInput,
+  type DatasetObservation,
+  type DatasetObserveInput,
+  type DatasetPage,
+  type DatasetRef,
+  type DatasetsCapability,
+  datasetColumnSchema,
+  datasetInfoSchema,
+  datasetKindSchema,
+  datasetListInputSchema,
+  datasetObservationSchema,
+  datasetObservationsSchema,
+  datasetObserveInputSchema,
+  datasetPageSchema,
+  datasetRefSchema,
+  defineDatasets,
+} from "./dataset/index";
+export {
   type AnyJobDefinition,
   type DefineJobOptions,
   defineJob,

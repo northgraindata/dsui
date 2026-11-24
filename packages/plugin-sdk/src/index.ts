@@ -14,9 +14,26 @@ export {
   signalEventSchema,
 } from "./events";
 
-import type { PageNode, SignalType } from "@northgraindata/dsui-adapter-sdk";
+import type {
+  DatasetObservation,
+  DatasetPage,
+  DatasetRef,
+  PageNode,
+  SignalType,
+} from "@northgraindata/dsui-adapter-sdk";
 
-export type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
+export type {
+  ComponentProps,
+  DatasetColumn,
+  DatasetInfo,
+  DatasetObservation,
+  DatasetPage,
+  DatasetRef,
+} from "@northgraindata/dsui-adapter-sdk";
+export {
+  DATASET_LIST_MAX_LIMIT,
+  DATASET_OBSERVE_MAX_REFS,
+} from "@northgraindata/dsui-adapter-sdk";
 
 import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
 import { z } from "zod";
@@ -239,6 +256,12 @@ export type PluginServiceSummary = {
   readonly adapterName?: string;
   readonly managedBy: "configuration" | "ui";
   readonly iconUrl?: string;
+  /**
+   * Optional abilities the service's adapter declares, such as `datasets`.
+   * Open strings: check for the one you need and ignore the rest. Absent on a
+   * host that predates the field, which a plugin must read as "none declared".
+   */
+  readonly capabilities?: readonly string[];
 };
 
 export type PluginServiceHealth =
@@ -287,6 +310,11 @@ export type PluginServiceAction = {
   readonly description?: string;
   readonly inputSchema?: Record<string, unknown>;
 };
+export type PluginDatasetOptions = {
+  readonly signal?: AbortSignal;
+  /** Upper bound for one call; the host applies its own ceiling. */
+  readonly timeoutMs?: number;
+};
 export type PluginInvocationOptions = {
   signal?: AbortSignal;
   origin?: { pluginId: string; runId?: string };
@@ -314,6 +342,33 @@ export interface PluginServiceCatalog {
   signals?(
     id: string,
   ): Promise<readonly { id: string; type: SignalType }[] | null>;
+  /**
+   * Reads what a service's adapter says about the data it holds.
+   *
+   * Only services whose `capabilities` include `datasets` answer; asking any
+   * other fails with a request error, so check first. Both reads come from the
+   * system's own catalog or statistics and never change anything. The host
+   * owns the connection, so a plugin never sees credentials. `null` means the
+   * service is unknown to the host or not visible to the caller.
+   *
+   * Absent on a host that predates the capability.
+   */
+  datasets?: {
+    list(
+      id: string,
+      input?: { readonly cursor?: string; readonly limit?: number },
+      options?: PluginDatasetOptions,
+    ): Promise<DatasetPage | null>;
+    /**
+     * Measures up to `DATASET_OBSERVE_MAX_REFS` datasets in one call. A
+     * dataset that no longer exists is missing from the result.
+     */
+    observe(
+      id: string,
+      refs: readonly DatasetRef[],
+      options?: PluginDatasetOptions,
+    ): Promise<DatasetObservation[] | null>;
+  };
   /**
    * Asks the host to probe a service connection and report its health.
    *

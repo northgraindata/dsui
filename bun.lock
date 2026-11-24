@@ -292,6 +292,10 @@
       },
       "devDependencies": {
         "@types/bun": "^1.3.0",
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
         "typescript": "^5.9.2",
       },
     },
@@ -871,6 +875,7 @@
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
 
     "@northgraindata/dsui-adapter-shaper": ["@northgraindata/dsui-adapter-shaper@workspace:packages/adapter-shaper"],
+
     "@northgraindata/dsui-adapter-snowflake": ["@northgraindata/dsui-adapter-snowflake@workspace:packages/adapter-snowflake"],
 
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],

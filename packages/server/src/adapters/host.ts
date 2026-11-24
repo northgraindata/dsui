@@ -7,7 +7,8 @@ export type HostMethod =
   | "resource"
   | "action"
   | "job"
-  | "route";
+  | "route"
+  | "datasets";
 
 export interface AdapterHostRequest {
   id?: string | number;

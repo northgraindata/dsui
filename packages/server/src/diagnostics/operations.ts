@@ -117,6 +117,22 @@ export function createOperationDiagnostics() {
           run(adapterId, context?.persistenceNamespace, "job", () =>
             backend.executeJob(id, connection, input, options, context),
           ),
+        ...(backend.listDatasets
+          ? {
+              listDatasets: (connection, input, options, context) =>
+                run(adapterId, context?.persistenceNamespace, "resource", () =>
+                  backend.listDatasets!(connection, input, options, context),
+                ),
+            }
+          : {}),
+        ...(backend.observeDatasets
+          ? {
+              observeDatasets: (connection, refs, options, context) =>
+                run(adapterId, context?.persistenceNamespace, "resource", () =>
+                  backend.observeDatasets!(connection, refs, options, context),
+                ),
+            }
+          : {}),
         executeRoute: (id, connection, call, options, context) =>
           run(adapterId, context?.persistenceNamespace, "route", () =>
             backend.executeRoute(id, connection, call, options, context),
