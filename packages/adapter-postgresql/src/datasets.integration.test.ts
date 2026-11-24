@@ -184,11 +184,16 @@ describe.skipIf(!url)("PostgreSQL datasets against a real server", () => {
   test("the change counter grows with writes", async () => {
     const read = async () =>
       (await observe(`${SCHEMA}.orders`))[0]?.changeCounter ?? 0;
+    // PostgreSQL flushes a backend's pending statistics when it exits.
+    await admin.end();
+    admin = postgres(url as string);
     const before = await until(read, (value) => value > 0);
     expect(before).toBeGreaterThan(0);
     await admin.unsafe(
       `insert into ${SCHEMA}.orders select g, now(), null from generate_series(101, 140) g`,
     );
+    await admin.end();
+    admin = postgres(url as string);
     const after = await until(read, (value) => value > before);
     expect(after).toBeGreaterThanOrEqual(before + 40);
   }, 30_000);
