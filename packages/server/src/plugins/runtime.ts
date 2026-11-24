@@ -163,7 +163,9 @@ export type PluginHostCapabilities = {
   plugins(): PluginCapabilityCatalog;
   /** Writes the same audit record as a user-invoked plugin action route. */
   audit?(actor: string, action: string, target: string): void;
-  capabilities?(pluginId: string): Pick<PluginCapabilities, "jobs" | "events">;
+  capabilities?(
+    pluginId: string,
+  ): Pick<PluginCapabilities, "jobs" | "events" | "diagnostics">;
 };
 
 function resolveInstalledBundle(specifier: string): string {

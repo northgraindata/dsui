@@ -56,3 +56,35 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for repository checks.
 ## License
 
 [Apache License 2.0](../../LICENSE), developed by [Northgrain Data](https://northgraindata.com).
+
+## Continuous incident diagnostics
+
+The background sampler runs every ten seconds, independently of open pages.
+Resource history is stored as indexed rows in `resource-history.sqlite` in the
+plugin's persistent storage directory. Charts aggregate inside SQLite to roughly
+400 points; the sampler no longer clones and serializes seven days of arrays on
+every tick. Old samples expire after seven days. Operation history is also capped
+at 10,000 entries. Existing array-based history is not migrated.
+
+Host resources includes an incident history combining recent resource samples
+and adapter operations on one UTC timeline, including the resource sample before
+each retained operation. Completed operations are logged once rather than copied
+into every later sample. Samples include host CPU utilization,
+DSUI process CPU/RSS/heap, event loop delay, swap where available, and isolated
+adapter process CPU/RSS on Linux. Process CPU uses one core as 100% and can exceed
+100%; host utilization is normalized across host CPUs. Container views reflect
+what the OS exposes and may include the host beyond a container's allocation.
+
+Shared-process adapters cannot be assigned honest per-adapter CPU or RAM: their
+operations record service/adapter identity, category, elapsed time and outcome.
+Remote data services' own CPU/RAM are not measured by this host plugin. No SQL,
+connection settings, inputs, results, exception messages or credentials are
+recorded. Global diagnostics require administrator access.
+
+`diagnostic-*.log` contains JSON Lines in the same persistent plugin directory.
+Files rotate daily or at 10 MB and expire after seven days, with a total 100 MB
+budget that can shorten retention under heavy activity. The independent Cloud
+agent supplies external measurements during a DSUI stall. Recent in-memory
+operation tracking is bounded (500 completed, 1,000 active); overwritten entries
+are counted. Abrupt termination can lose operations between ten-second samples.
+The process boot identifier and uptime help distinguish restarts from gaps.
