@@ -7,7 +7,8 @@ export type HostMethod =
   | "resource"
   | "action"
   | "job"
-  | "route";
+  | "route"
+  | "datasets";
 
 export interface AdapterHostRequest {
   id?: string | number;
@@ -76,6 +77,10 @@ class HostSession {
     this.reader = this.child.stdout.getReader();
     // Continuously drain stderr: a verbose adapter must not block on its pipe.
     void this.drainStderr();
+  }
+
+  get pid(): number {
+    return this.child.pid;
   }
 
   private async drainStderr(): Promise<void> {
@@ -232,6 +237,18 @@ export class AdapterHostClient {
   private allocation = Promise.resolve();
 
   constructor(private readonly options: AdapterHostClientOptions) {}
+
+  processes(): { pid: number; serviceId: string | null }[] {
+    return [
+      ...Array.from(this.slots.entries()).flatMap(([serviceId, slot]) =>
+        slot.session ? [{ pid: slot.session.pid, serviceId }] : [],
+      ),
+      ...Array.from(this.ephemeralSessions, (session) => ({
+        pid: session.pid,
+        serviceId: null,
+      })),
+    ];
+  }
 
   async request(request: AdapterHostRequest): Promise<unknown> {
     if (this.retiring || this.closed)

@@ -20,8 +20,10 @@ The `context` that a plugin receives is more than its settings. It carries capab
 | `executeAction(id, actionId, input)` | The result of an action |
 | `signals(id)` | The signals that the service's adapter can publish, as qualified IDs with their types, or `null`. Optional |
 | `probe(id, { timeoutMs? })` | The service's health, score, and checks, or `null`. The host opens the connection and calls the adapter's health check |
+| `datasets.list(id, { cursor?, limit? }, { signal?, timeoutMs? })` | A page of the datasets that the service's adapter describes, or `null`. Optional |
+| `datasets.observe(id, refs, { signal?, timeoutMs? })` | The measurements of up to 500 datasets, or `null`. Optional |
 
-A summary has an `id`, a `name`, the `adapter` ID, an optional `adapterName` and `iconUrl`, and `managedBy`, which is `configuration` or `ui`.
+A summary has an `id`, a `name`, the `adapter` ID, an optional `adapterName` and `iconUrl`, and `managedBy`, which is `configuration` or `ui`. It also has `capabilities`, the optional abilities that the adapter declares, such as `datasets`. A host that predates the field omits it, so read a missing value as no capabilities.
 
 ```ts
 const resources = await context.services.listResources(serviceId);
@@ -30,6 +32,21 @@ const result = await context.services.executeAction(serviceId, "check-now", {});
 ```
 
 Discovery doesn't open a connection. The host validates every input against the adapter's declaration, and it checks the `inspect` permission for resources and `execute` for actions. An optional method, such as `signals`, is missing on a host that doesn't support it, so check that it exists before you rely on it.
+
+### Read datasets
+
+`datasets` reads what an adapter says about the tables, files, or assets behind a service. It needs only the `inspect` permission, because neither call changes anything in the connected system. Check that `capabilities` includes `datasets` first. A service whose adapter doesn't declare it fails with a request error, status 422. The adapter side is described in [Datasets](/docs/adapter-sdk/datasets).
+
+```ts
+const service = await context.services.get(serviceId);
+if (service?.capabilities?.includes("datasets")) {
+  const page = await context.services.datasets?.list(serviceId, { limit: 500 });
+  const refs = page?.items.map((item) => item.ref) ?? [];
+  const observed = await context.services.datasets?.observe(serviceId, refs);
+}
+```
+
+Each call stops at `timeoutMs`, which defaults to 30,000 and which the host caps at 60,000. Pass a `signal` to cancel earlier. `observe` accepts at most `DATASET_OBSERVE_MAX_REFS` references, which is 500, so split a longer list into several calls. The host checks the caller's access again after the adapter answers and drops the result if the access was revoked meanwhile.
 
 ## Read other plugins
 

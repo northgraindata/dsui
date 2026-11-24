@@ -163,3 +163,43 @@ test("plugins can discover and invoke other plugin capabilities with host permis
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("service-scoped plugin signals are listed for every service, global ones are not", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dsui-plugin-signals-"));
+  const health = definePlugin({
+    metadata: { id: "health", name: "Health", version: "1.0.0", apiVersion: 1 },
+    configSchema: z.object({}),
+    setup(registry) {
+      registry.signal({
+        id: "service-unavailable",
+        type: "error",
+        scope: "service",
+        payload: z.object({}),
+      });
+      registry.signal({
+        id: "weekly-report",
+        type: "info",
+        payload: z.object({}),
+      });
+    },
+  });
+  const runtime = createRuntime({
+    dataDir: join(root, "state"),
+    config: {
+      services: [],
+      plugins: {
+        health: { package: "health-test", enabled: true, config: {} },
+      },
+    },
+    pluginModuleLoader: async () => ({ default: health }),
+  });
+  try {
+    await runtime.refreshConfig();
+    expect(runtime.pluginRuntime.serviceSignals()).toEqual([
+      { id: "health.service-unavailable", type: "error" },
+    ]);
+  } finally {
+    await runtime.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

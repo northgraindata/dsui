@@ -1,9 +1,14 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type {
-  AdapterInfo,
-  PageDocument,
-  StorePersistenceProvider,
+import {
+  type AdapterInfo,
+  type DatasetObservation,
+  type DatasetPage,
+  type DatasetRef,
+  datasetObservationsSchema,
+  datasetPageSchema,
+  type PageDocument,
+  type StorePersistenceProvider,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
 import { routeConnection } from "../connectors/routing.js";
@@ -51,6 +56,7 @@ export interface AdapterLoadOptions {
     }): Promise<unknown>;
     close?(drain?: boolean): Promise<void>;
     invalidateService?(namespace: string): Promise<void>;
+    processes?(): { pid: number; serviceId: string | null }[];
   };
   /** Host call budget in ms (actions run long). */
   hostTimeoutMs?: number;
@@ -86,7 +92,7 @@ function unhealthy(started: number, error: unknown): HealthStatus {
   };
 }
 
-function assertHealthReport(
+export function assertHealthReport(
   value: unknown,
   fallbackLatencyMs: number,
 ): HealthStatus {
@@ -115,6 +121,7 @@ function assertHealthReport(
           label?: unknown;
           ok?: unknown;
           detail?: unknown;
+          href?: unknown;
         };
         if (typeof check?.id !== "string" || typeof check.ok !== "boolean")
           return [];
@@ -126,6 +133,7 @@ function assertHealthReport(
             ...(typeof check.detail === "string"
               ? { detail: check.detail }
               : {}),
+            ...(isWorkspacePath(check.href) ? { href: check.href } : {}),
           },
         ];
       })
@@ -140,6 +148,24 @@ function assertHealthReport(
     ...(score !== undefined ? { score } : {}),
     ...(checks !== undefined ? { checks } : {}),
   };
+}
+
+/**
+ * A path inside a service workspace, as an adapter may offer for a failing
+ * check. Anything else, including absolute URLs and protocol-relative paths,
+ * is dropped: an adapter must not be able to send a user to another site
+ * through the health page.
+ */
+function isWorkspacePath(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= 200 &&
+    value.startsWith("/") &&
+    !value.startsWith("//") &&
+    !Array.from(value).some(
+      (character) => character === "\\" || character.charCodeAt(0) < 32,
+    )
+  );
 }
 
 function assertCatalog(value: unknown, from: string): AdapterCatalog {
@@ -200,6 +226,11 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
     jobs: Array.isArray(catalog.jobs) ? catalog.jobs : [],
     signals,
     routes: assertRoutes(catalog.routes, from),
+    capabilities: Array.isArray(catalog.capabilities)
+      ? catalog.capabilities.filter(
+          (entry): entry is string => typeof entry === "string",
+        )
+      : [],
   } as AdapterCatalog;
 }
 
@@ -268,6 +299,7 @@ type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
   close?(drain?: boolean): Promise<void>;
   invalidateService?(namespace: string): Promise<void>;
+  processes?(): { pid: number; serviceId: string | null }[];
 };
 
 const serialRequestQueues = new Map<string, Promise<void>>();
@@ -291,6 +323,9 @@ function queueSerialRequest(
 }
 
 export class RemoteBackend implements AdapterBackend {
+  processes() {
+    return this.host.processes?.() ?? [];
+  }
   async close(drain = false): Promise<void> {
     await this.host.close?.(drain);
   }
@@ -478,6 +513,52 @@ export class RemoteBackend implements AdapterBackend {
         | { status: "error"; message: string },
       emissions,
     };
+  }
+
+  async listDatasets(
+    connection: unknown,
+    input: { cursor?: string; limit: number },
+    options: { signal?: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<DatasetPage> {
+    const result = await this.request({
+      method: "datasets",
+      connection,
+      target: "list",
+      input,
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      persistenceNamespace: context?.persistenceNamespace,
+    });
+    const parsed = datasetPageSchema.safeParse(result);
+    if (!parsed.success)
+      throw new AdapterExecutionError(
+        `Adapter host returned an invalid dataset page: ${parsed.error.issues[0]?.message ?? "unknown error"}`,
+      );
+    return parsed.data;
+  }
+
+  async observeDatasets(
+    connection: unknown,
+    refs: readonly DatasetRef[],
+    options: { signal?: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<DatasetObservation[]> {
+    const result = await this.request({
+      method: "datasets",
+      connection,
+      target: "observe",
+      input: { refs },
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      persistenceNamespace: context?.persistenceNamespace,
+    });
+    const parsed = datasetObservationsSchema.safeParse(result);
+    if (!parsed.success)
+      throw new AdapterExecutionError(
+        `Adapter host returned invalid dataset observations: ${parsed.error.issues[0]?.message ?? "unknown error"}`,
+      );
+    return parsed.data;
   }
 
   async executeJob(
@@ -738,6 +819,7 @@ export async function loadAdapter(
         jobs: catalog.jobs,
         signals: catalog.signals,
         routes: catalog.routes,
+        capabilities: catalog.capabilities,
       },
       ...(described.connectionSchema
         ? { connectionSchema: described.connectionSchema }

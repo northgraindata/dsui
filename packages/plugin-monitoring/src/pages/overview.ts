@@ -105,6 +105,36 @@ async function renderOverview(input: {
           ],
         }),
         resourceHistory(cpu),
+        Section({
+          title: "Incident history",
+          description:
+            "Resource history above and recent adapter operations below share UTC timestamps. Inputs and result contents are never recorded.",
+          content: Resource({
+            source: {
+              kind: "resource-binding",
+              resourceId: "incident-history",
+              input: {},
+              refresh: { kind: "poll", intervalMs: 10000 },
+            },
+            content: [
+              KeyValue({ title: "Diagnostics", field: "summary" }),
+              Collection({
+                field: "processes",
+                content: Card({
+                  title: { field: "title" },
+                  content: KeyValue({ field: "details" }),
+                }),
+              }),
+              Collection({
+                field: "items",
+                content: Card({
+                  title: { field: "title" },
+                  content: KeyValue({ field: "details" }),
+                }),
+              }),
+            ],
+          }),
+        }),
         storageSection(disks),
         KeyValue({ title: "Runtime", field: "runtime" }),
       ],
@@ -160,7 +190,7 @@ function seriesSource(resourceId: string) {
     kind: "resource-binding" as const,
     resourceId,
     input: { window: "1h" },
-    refresh: { kind: "poll" as const, intervalMs: 2_000 },
+    refresh: { kind: "poll" as const, intervalMs: 10_000 },
   };
 }
 

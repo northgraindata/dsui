@@ -1,0 +1,76 @@
+---
+title: Datasets
+description: Reference for the optional datasets capability, which lets an adapter list and measure the tables, files, or assets behind a service so plugins can watch them.
+contentType: reference
+---
+
+An adapter can describe the data it holds. A plugin uses that description to track freshness, volume, and schema without knowing which system sits behind the service. The capability is optional. An adapter that doesn't declare it works as before, and plugins skip its services.
+
+## Declare the capability
+
+`defineDatasets` takes two functions, `list` and `observe`. Pass the result to `defineAdapter` as `datasets`. Both functions receive the adapter's context as the last argument.
+
+```ts
+import {
+  defineAdapter,
+  defineDatasets,
+} from "@northgraindata/dsui-adapter-sdk";
+
+export default defineAdapter({
+  // …
+  datasets: defineDatasets<HelloContext>({
+    list: async ({ cursor, limit }, ctx) => ctx.listTables(cursor, limit),
+    observe: async (refs, ctx) => ctx.measureTables(refs),
+  }),
+});
+```
+
+`defineDatasets` throws an `InvalidDefinitionError` when either function is missing. DSUI announces the capability to plugins as `datasets` in the service's `capabilities`.
+
+## List datasets
+
+`list` returns one page of the datasets that the connection can see. It receives a `cursor` from the previous page, if any, and a `limit` from 1 to 1,000. Return a `nextCursor` while more pages remain.
+
+Each item has these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `ref` | The dataset's name. See [Name and kind](#name-and-kind) |
+| `kind` | What the dataset is, such as `table` or `file-set` |
+| `title` | A readable name, when it differs from the reference. Optional |
+| `columns` | Up to 5,000 columns, each with a `name` and an optional `type` and `nullable`. Optional |
+
+## Observe datasets
+
+`observe` measures datasets in one call. It receives 1 to 500 references and returns one observation for each dataset that exists. Leave out a dataset that no longer exists. Don't fail the call for it.
+
+Every observation has the `ref` and the time `at` of the measurement as an ISO 8601 string. All other fields are optional, because systems differ in what they can report cheaply:
+
+| Field | Meaning |
+| --- | --- |
+| `rowCount` | The number of rows, as a whole number of 0 or more |
+| `rowCountExact` | `false` when `rowCount` is a statistic or an estimate |
+| `bytes` | The size in bytes |
+| `lastModifiedAt` | When the data last changed, for systems that record it |
+| `changeCounter` | A number that never decreases and grows with every write, for systems that record no modification time |
+| `columns` | The current columns, in the same shape as in `list` |
+
+Report only what the system tells you. A plugin reads an absent field as "not reported", never as zero.
+
+## Keep both reads cheap
+
+Answer from the system's own catalog or statistics, and don't scan the data. Plugins call `observe` on a schedule for every dataset they watch, so a scan multiplies into a heavy load. Neither function may change anything in the connected system.
+
+## Name and kind
+
+`ref.name` is what the system calls the dataset: `analytics.public.orders` for a table, `landing/orders/` for an object prefix, `orders_daily` for an asset. It must be unique within one service and at most 512 characters. Leave `ref.namespace` unset. It is reserved for identifying one dataset across services.
+
+`kind` is an open string in kebab-case. Use `table`, `view`, `materialized-view`, `file-set`, `model`, or `asset` when one fits. Any other kebab-case value works, and no change in DSUI is needed.
+
+## What DSUI validates
+
+The adapter host and the server both validate every answer against the schemas above. An answer that breaks a rule, such as a negative `rowCount` or an `at` that isn't a timestamp, fails the call with a message that names the problem. The plugin never receives the data.
+
+The plugin's call also carries a timeout. It defaults to 30 seconds and the host caps it at 60 seconds. A call that runs longer stops, and the plugin sees an error.
+
+Plugins read datasets with `context.services.datasets`. See [Host capabilities](/docs/plugin-sdk/host-capabilities) for the plugin side.

@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { AnyActionDefinition } from "../action/index";
 import type { BlobStore } from "../blob";
+import type { DatasetsCapability } from "../dataset/index";
 import type { AnyJobDefinition } from "../job";
 import type { AnyPageDefinition } from "../page/index";
 import type { AnyResourceDefinition } from "../resource/index";
@@ -118,6 +119,12 @@ export interface AdapterHealthCheck {
   readonly ok: boolean;
   /** Optional measured value or explanation. */
   readonly detail?: string;
+  /**
+   * Where to look when this signal fails, as a path inside the service's
+   * workspace such as `/dags`. A consumer may offer it as a link; it never
+   * runs anything. Must start with a single `/`.
+   */
+  readonly href?: string;
 }
 
 /**
@@ -205,6 +212,13 @@ export interface AdapterDefinition<TContext = unknown, TConfig = unknown> {
   readonly signals: readonly AnySignalDefinition[];
   /** HTTP endpoints each configured service serves. */
   readonly routes: readonly AnyRouteDefinition<TContext>[];
+  /**
+   * Describes the data this system holds, when it can do so cheaply.
+   *
+   * Optional: a plugin that needs it skips services whose adapter does not
+   * declare it, so an adapter adopts it when it is ready.
+   */
+  readonly datasets?: DatasetsCapability<TContext>;
 }
 
 /**
@@ -287,4 +301,10 @@ export interface DefineAdapterOptions<TContext, TConfig> {
   signals?: readonly AnySignalDefinition[];
   /** HTTP endpoints, served per configured service. */
   routes?: readonly AnyRouteDefinition<TContext>[];
+  /**
+   * Lists and measures the datasets (tables, files, assets) behind a service.
+   *
+   * @see {@link DatasetsCapability}
+   */
+  datasets?: DatasetsCapability<TContext>;
 }

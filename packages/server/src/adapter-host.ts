@@ -4,6 +4,10 @@ import { pathToFileURL } from "node:url";
 import {
   type ActionBinding,
   createAdapterInstance,
+  datasetListInputSchema,
+  datasetObservationsSchema,
+  datasetObserveInputSchema,
+  datasetPageSchema,
   type ResourceBinding,
   serializeNodes,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -20,7 +24,8 @@ type HostMethod =
   | "resource"
   | "action"
   | "job"
-  | "route";
+  | "route"
+  | "datasets";
 
 interface HostParams {
   connection?: unknown;
@@ -306,6 +311,7 @@ export async function runAdapterHost(): Promise<number> {
               schema: jsonSchemaOf(signal.schema, `signal "${signal.id}"`),
             })),
             components: [],
+            capabilities: definition.datasets ? ["datasets"] : [],
           });
           break;
         }
@@ -442,6 +448,33 @@ export async function runAdapterHost(): Promise<number> {
               result: { status: "success", data: result.data },
               emissions,
             });
+          break;
+        }
+        case "datasets": {
+          const capability = definition.datasets;
+          if (!capability)
+            throw new Error("This adapter does not describe datasets");
+          const instance = await acquire();
+          // Output is validated here as well as by the server: a malformed
+          // answer should fail at its source, with the adapter's own stack.
+          if (params.target === "list") {
+            const input = datasetListInputSchema.parse(params.input ?? {});
+            respond(
+              request.id,
+              datasetPageSchema.parse(
+                await capability.list(input, instance.context),
+              ),
+            );
+          } else if (params.target === "observe") {
+            const { refs } = datasetObserveInputSchema.parse(params.input);
+            respond(
+              request.id,
+              datasetObservationsSchema.parse(
+                await capability.observe(refs, instance.context),
+              ),
+            );
+          } else
+            throw new Error(`Unknown datasets operation: ${params.target}`);
           break;
         }
         case "job": {

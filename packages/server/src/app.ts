@@ -3,13 +3,19 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
+  DATASET_OBSERVE_MAX_REFS,
+  type PluginDatasetOptions,
   PluginRequestError,
   type PluginServiceProbe,
 } from "@northgraindata/dsui-plugin-sdk";
 import { Hono } from "hono";
 import { type AdapterLoadOptions, loadAdapter } from "./adapters/loader.js";
 import { AdapterRegistry } from "./adapters/registry.js";
-import type { AdapterReadiness, LoadedAdapter } from "./adapters/types.js";
+import type {
+  AdapterBackend,
+  AdapterReadiness,
+  LoadedAdapter,
+} from "./adapters/types.js";
 import {
   type AdapterSource,
   type DsuiConfig,
@@ -27,6 +33,7 @@ import { removeServiceBlobs } from "./db/blob-storage.js";
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
+import { createOperationDiagnostics } from "./diagnostics/operations.js";
 import { registerEventRoutes } from "./events/routes.js";
 import { SignalBus } from "./events/signal-bus.js";
 import type { PluginFetch } from "./plugins/build.js";
@@ -56,6 +63,16 @@ export type Runtime = ReturnType<typeof createRuntime>;
 
 /** Upper bound on a plugin-triggered health probe. */
 const DEFAULT_PROBE_TIMEOUT_MS = 5_000;
+/**
+ * A dataset read answers from the system's own catalog, so it is meant to be
+ * quick; the ceiling stops a plugin holding a connection open on a slow system.
+ */
+const DEFAULT_DATASET_TIMEOUT_MS = 30_000;
+const MAX_DATASET_TIMEOUT_MS = 60_000;
+
+type DatasetBackend = Required<
+  Pick<AdapterBackend, "listDatasets" | "observeDatasets">
+>;
 
 export type CreateRuntimeOptions = {
   dataDir?: string;
@@ -125,7 +142,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     process.env.DSUI_CONFIG ??
     (existsSync("/etc/dsui/dsui.yaml") ? "/etc/dsui/dsui.yaml" : undefined);
   const errors = createErrorCounter();
-  const registry = new AdapterRegistry();
+  const diagnostics = createOperationDiagnostics();
+  const registry = new AdapterRegistry([], (adapter) => ({
+    ...adapter,
+    backend: diagnostics.wrap(adapter.id, adapter.backend),
+  }));
   const readiness = new Map<string, AdapterReadiness>();
   const database = new DsuiDatabase(databasePath);
   const signalBus = new SignalBus(database);
@@ -141,6 +162,10 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     provider: (id) => pluginRuntime.secretProvider(id),
   });
   let config = options.config ?? { services: [] };
+  const capabilitiesOf = (adapterId: string): string[] =>
+    registry.has(adapterId)
+      ? [...(registry.get(adapterId).catalog.capabilities ?? [])]
+      : [];
   const listPluginServiceSummaries = () => {
     const configured = config.services.map((service) => {
       let name = service.name;
@@ -162,6 +187,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           .list()
           .find((adapter) => adapter.id === service.adapter)?.metadata.iconUrl,
         managedBy: "configuration" as const,
+        capabilities: capabilitiesOf(service.adapter),
       };
     });
     const uiManaged = database
@@ -184,6 +210,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             .list()
             .find((adapter) => adapter.id === service.adapter)?.metadata.name,
           managedBy: "ui" as const,
+          capabilities: capabilitiesOf(service.adapter),
           iconUrl: registry
             .list()
             .find((adapter) => adapter.id === service.adapter)?.metadata
@@ -247,6 +274,56 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
           ...(result.score !== undefined ? { score: result.score } : {}),
           ...(result.checks !== undefined ? { checks: result.checks } : {}),
         };
+  };
+  const resolveDatasets = async (id: string) => {
+    if (!(await pluginRuntime.canAccessService(id))) return null;
+    const source = serviceSource(config, database, id);
+    if (!source || !registry.has(source.service.adapter)) return null;
+    const adapter = registry.get(source.service.adapter);
+    const { listDatasets, observeDatasets } = adapter.backend;
+    if (
+      !adapter.catalog.capabilities?.includes("datasets") ||
+      !listDatasets ||
+      !observeDatasets
+    )
+      throw new PluginRequestError(
+        "This service's adapter does not describe datasets",
+        422,
+      );
+    return {
+      source,
+      backend: adapter.backend as DatasetBackend & AdapterBackend,
+    };
+  };
+  const datasetCallOptions = (options?: PluginDatasetOptions) => ({
+    ...(options?.signal ? { signal: options.signal } : {}),
+    timeoutMs: Math.min(
+      Math.max(options?.timeoutMs ?? DEFAULT_DATASET_TIMEOUT_MS, 1),
+      MAX_DATASET_TIMEOUT_MS,
+    ),
+  });
+  /**
+   * Runs one dataset read and rechecks access afterwards, as a resource read
+   * does: a permission revoked while the adapter was answering must not hand
+   * the result over.
+   */
+  const guardDatasetCall = async <T>(
+    id: string,
+    read: () => Promise<T>,
+  ): Promise<T> => {
+    let result: T;
+    try {
+      result = await read();
+    } catch (error) {
+      if (error instanceof PluginRequestError) throw error;
+      throw new PluginRequestError(
+        error instanceof Error ? error.message : "Dataset read failed",
+        422,
+      );
+    }
+    if (!(await pluginRuntime.canAccessService(id)))
+      throw new Error("Service permission was revoked during the dataset read");
+    return result;
   };
   const pluginRuntime: PluginRuntime = new PluginRuntime(
     {
@@ -314,10 +391,13 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         if (!source) return null;
         if (!registry.has(source.service.adapter)) return null;
         const adapter = registry.get(source.service.adapter);
-        return adapter.catalog.signals.map((signal) => ({
-          id: `${adapter.id}.${signal.id}`,
-          type: signal.type,
-        }));
+        return [
+          ...adapter.catalog.signals.map((signal) => ({
+            id: `${adapter.id}.${signal.id}`,
+            type: signal.type,
+          })),
+          ...pluginRuntime.serviceSignals(),
+        ];
       },
       listResources: async (id) => {
         if (!(await pluginRuntime.canAccessService(id))) return null;
@@ -369,6 +449,44 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         (await pluginRuntime.canAccessService(id))
           ? probePluginService(id, probeOptions)
           : null,
+      datasets: {
+        list: async (id, input, datasetOptions) => {
+          const target = await resolveDatasets(id);
+          if (!target) return null;
+          const page = await guardDatasetCall(id, async () =>
+            target.backend.listDatasets(
+              await connectionFor({ cipher, secrets }, target.source),
+              {
+                ...(input?.cursor !== undefined
+                  ? { cursor: input.cursor }
+                  : {}),
+                limit: input?.limit ?? 500,
+              },
+              datasetCallOptions(datasetOptions),
+              { persistenceNamespace: target.source.service.id },
+            ),
+          );
+          return page;
+        },
+        observe: async (id, refs, datasetOptions) => {
+          const target = await resolveDatasets(id);
+          if (!target) return null;
+          if (refs.length > DATASET_OBSERVE_MAX_REFS)
+            throw new PluginRequestError(
+              `At most ${DATASET_OBSERVE_MAX_REFS} datasets can be observed at once`,
+              422,
+            );
+          if (!refs.length) return [];
+          return guardDatasetCall(id, async () =>
+            target.backend.observeDatasets(
+              await connectionFor({ cipher, secrets }, target.source),
+              refs,
+              datasetCallOptions(datasetOptions),
+              { persistenceNamespace: target.source.service.id },
+            ),
+          );
+        },
+      },
     },
     options.pluginModuleLoader,
     { dataDir, fetch: options.pluginFetch, offline: options.offlinePlugins },
@@ -378,6 +496,16 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       plugins: () => pluginRuntime.pluginCapabilities(),
       audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
+        diagnostics: {
+          read: async () => {
+            if (!(await pluginRuntime.canAccessGlobalEvents()))
+              throw new PluginRequestError(
+                "Administrator access required",
+                403,
+              );
+            return diagnostics.snapshot();
+          },
+        },
         jobs: {
           enqueue: async (jobId, input) => ({
             runId: pluginJobs.enqueue(pluginId, jobId, input, undefined, true)

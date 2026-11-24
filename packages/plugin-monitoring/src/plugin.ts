@@ -22,6 +22,7 @@ import {
   hostOverview,
   hostRuntime,
 } from "./resources/host.js";
+import { incidentHistory } from "./resources/incidents.js";
 import {
   hostCpuSeries,
   hostDiskSeries,
@@ -29,6 +30,7 @@ import {
   LIVE_INTERVAL_MS,
   sampleAll,
 } from "./resources/series.js";
+import { stopRuntimeMetrics } from "./runtime-metrics.js";
 
 /**
  * Built-in host resource monitoring.
@@ -94,6 +96,7 @@ export function createMonitoringPlugin() {
       iconUrl,
     },
     configSchema,
+    stop: stopRuntimeMetrics,
     setup(registry, config) {
       const volumes = config.paths.slice(0, config.maxVolumes);
 
@@ -107,6 +110,7 @@ export function createMonitoringPlugin() {
 
       // The historical series behind the charts, read independently of the
       // sampler so history accumulates even when nobody opens the page.
+      registry.resource(incidentHistory);
       registry.resource(hostCpuSeries);
       registry.resource(hostMemorySeries);
       registry.resource(hostDiskSeries);
@@ -117,7 +121,12 @@ export function createMonitoringPlugin() {
           intervalMs: LIVE_INTERVAL_MS,
           timeoutMs: 5_000,
           retry: { maxAttempts: 2, backoffMs: 1_000 },
-          run: async ({ context }) => sampleAll(context.stores, volumes),
+          run: async ({ context }) =>
+            sampleAll(
+              context.storage,
+              volumes,
+              await context.diagnostics?.read(),
+            ),
         }),
       );
 
@@ -156,7 +165,7 @@ export function createMonitoringPlugin() {
               title: "Host monitoring configuration",
               data: {
                 "Live readings": "Every 5 seconds while the page is open",
-                "Chart refresh": "Every 2 seconds while the page is open",
+                "Chart refresh": "Every 10 seconds while the page is open",
                 "Maximum volumes": config.maxVolumes,
                 "Monitored paths":
                   volumes

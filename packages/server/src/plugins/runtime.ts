@@ -29,6 +29,7 @@ import {
   type RuntimePluginPage,
   type RuntimePluginProcedure,
   type RuntimePluginResource,
+  type RuntimePluginSignal,
   type RuntimePluginSlot,
   resolvePluginPage,
 } from "@northgraindata/dsui-plugin-sdk";
@@ -84,6 +85,8 @@ type Contributions = {
    * fails to load leaves nothing scheduled.
    */
   jobs: RuntimePluginJob[];
+  /** Declared signals, so the host can list service-scoped ones per service. */
+  signals: RuntimePluginSignal[];
   authentication?: PluginAuthenticationProvider;
   authorization?: PluginAuthorizationProvider;
   secrets: PluginSecretProvider[];
@@ -160,7 +163,9 @@ export type PluginHostCapabilities = {
   plugins(): PluginCapabilityCatalog;
   /** Writes the same audit record as a user-invoked plugin action route. */
   audit?(actor: string, action: string, target: string): void;
-  capabilities?(pluginId: string): Pick<PluginCapabilities, "jobs" | "events">;
+  capabilities?(
+    pluginId: string,
+  ): Pick<PluginCapabilities, "jobs" | "events" | "diagnostics">;
 };
 
 function resolveInstalledBundle(specifier: string): string {
@@ -324,6 +329,7 @@ function emptyContributions(): Contributions {
     actions: [],
     resources: [],
     jobs: [],
+    signals: [],
     secrets: [],
   };
 }
@@ -630,6 +636,17 @@ export class PluginRuntime {
       const seenActions: RuntimePluginAction[] = [];
       const seenResources: RuntimePluginResource[] = [];
       const registry = {
+        signal: (signal: RuntimePluginSignal) => {
+          if (
+            !/^[a-z][a-z0-9-]*$/.test(signal.id) ||
+            !["info", "success", "warning", "error"].includes(signal.type) ||
+            (signal.scope !== "service" && signal.scope !== "global")
+          )
+            throw new Error(
+              `Plugin "${request.id}" declares an invalid signal "${String(signal.id)}"`,
+            );
+          uniqueId(contributions.signals, signal, "signal", request.id);
+        },
         page: (page: RuntimePluginPage) => {
           // Re-checked here, not only in `definePlugin`: the host validates a
           // duck-typed definition it did not construct, and an unauthenticated
@@ -657,8 +674,13 @@ export class PluginRuntime {
             );
           uniqueId(seenPages, page, "page", request.id);
         },
-        navigation: (item: PluginNavigationItem) =>
-          uniqueId(seenNavigation, item, "navigation", request.id),
+        navigation: (item: PluginNavigationItem) => {
+          if (item.iconUrl !== undefined && typeof item.iconUrl !== "string")
+            throw new Error(
+              `Plugin "${request.id}" navigation "${item.id}" has an invalid iconUrl`,
+            );
+          uniqueId(seenNavigation, item, "navigation", request.id);
+        },
         slot: (slot: RuntimePluginSlot) => {
           validateSlot(slot);
           uniqueId(seenSlots, slot, "slot", request.id);
@@ -1292,6 +1314,20 @@ export class PluginRuntime {
     );
   }
 
+  /**
+   * Signals active plugins emit about individual services, published under
+   * `<plugin>.<signal>`. Every service can carry them, so they are listed for
+   * each one alongside its adapter's own signals.
+   */
+  serviceSignals(): { id: string; type: RuntimePluginSignal["type"] }[] {
+    const result: { id: string; type: RuntimePluginSignal["type"] }[] = [];
+    for (const pluginId of this.active.keys())
+      for (const signal of this.contributions.get(pluginId)?.signals ?? [])
+        if (signal.scope === "service")
+          result.push({ id: `${pluginId}.${signal.id}`, type: signal.type });
+    return result;
+  }
+
   async canAccessService(id: string): Promise<boolean> {
     const principal = this.principalContext.getStore();
     if (!principal) {
@@ -1314,6 +1350,7 @@ export class PluginRuntime {
               name: plugin.name,
               version: plugin.version,
               status: plugin.status,
+              ...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
             });
         return visible;
       },
@@ -1328,6 +1365,7 @@ export class PluginRuntime {
               name: plugin.name,
               version: plugin.version,
               status: plugin.status,
+              ...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
             }
           : null;
       },

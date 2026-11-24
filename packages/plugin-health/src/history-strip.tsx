@@ -1,16 +1,24 @@
-import { bucketHistory, type HistoryPoint } from "./history-model";
+import type { StripBucket } from "./contract";
 import { React } from "./react";
 
-export function HistoryStrip({ points }: { points: readonly HistoryPoint[] }) {
-  const buckets = React.useMemo(
-    () => bucketHistory(points, Date.now()),
-    [points],
-  );
-  const measured = points.filter((point) => point.health !== "unknown");
-  const healthy = measured.filter((point) => point.health === "healthy").length;
-  const caption = measured.length
-    ? `${Math.round((healthy / measured.length) * 100)}% healthy checks`
-    : "Waiting for history";
+/**
+ * One bar per hour for the last week, worst status first.
+ *
+ * Grey bars mean nothing was measured that hour, not that the service was
+ * fine, so a stopped DSUI never reads as uptime.
+ */
+export function HistoryStrip({
+  buckets,
+  availability,
+}: {
+  buckets: readonly StripBucket[];
+  availability: number | null;
+}) {
+  const caption = React.useMemo(() => {
+    if (availability === null) return "Waiting for history";
+    const floored = Math.floor(availability * 100) / 100;
+    return `${floored >= 100 ? "100" : floored.toFixed(2)}% uptime`;
+  }, [availability]);
   return (
     <div className="health-history">
       <svg

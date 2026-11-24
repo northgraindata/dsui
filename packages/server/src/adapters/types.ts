@@ -1,6 +1,9 @@
 import type {
   AdapterDefinition,
   AdapterInfo,
+  DatasetObservation,
+  DatasetPage,
+  DatasetRef,
   PageDocument,
   SignalType,
 } from "@northgraindata/dsui-adapter-sdk";
@@ -104,6 +107,12 @@ export interface AdapterCatalog {
   jobs: JobCatalogEntry[];
   signals: SignalCatalogEntry[];
   routes: RouteCatalogEntry[];
+  /**
+   * Optional abilities the adapter declares beyond resources and actions, for
+   * example `datasets`. Open strings: the host carries them to plugins and
+   * never branches on a value it does not implement.
+   */
+  capabilities?: string[];
 }
 
 export interface AdapterHealth extends HealthStatus {}
@@ -126,6 +135,7 @@ export interface AdapterHealthContext {
  * on adapter origin.
  */
 export interface AdapterBackend {
+  processes?(): { pid: number; serviceId: string | null }[];
   /** Release isolated hosts during runtime shutdown or adapter replacement. */
   close?(drain?: boolean): Promise<void>;
   /** Release the host for a removed or reconfigured service. */
@@ -185,6 +195,20 @@ export interface AdapterBackend {
     options: { signal: AbortSignal; timeoutMs: number },
     context?: AdapterExecutionContext,
   ): Promise<RouteReply>;
+  /** Page through the datasets of an adapter that declares `datasets`. */
+  listDatasets?(
+    connection: unknown,
+    input: { cursor?: string; limit: number },
+    options: { signal?: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<DatasetPage>;
+  /** Measure datasets of an adapter that declares `datasets`. */
+  observeDatasets?(
+    connection: unknown,
+    refs: readonly DatasetRef[],
+    options: { signal?: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<DatasetObservation[]>;
 }
 
 /** One HTTP request for an adapter route, with its body already on disk. */

@@ -16,7 +16,10 @@ export interface AdapterMetadataPatch {
 export class AdapterRegistry {
   private readonly adapters = new Map<string, LoadedAdapter>();
 
-  constructor(adapters: readonly LoadedAdapter[] = []) {
+  constructor(
+    adapters: readonly LoadedAdapter[] = [],
+    private readonly observe?: (adapter: LoadedAdapter) => LoadedAdapter,
+  ) {
     for (const adapter of adapters) this.register(adapter);
   }
 
@@ -27,7 +30,7 @@ export class AdapterRegistry {
       );
     if (this.adapters.has(adapter.id))
       throw new Error(`Adapter is already registered: ${adapter.id}`);
-    this.adapters.set(adapter.id, adapter);
+    this.adapters.set(adapter.id, this.observe?.(adapter) ?? adapter);
   }
 
   /** Restores the given definitions, dropping previously applied overrides. */

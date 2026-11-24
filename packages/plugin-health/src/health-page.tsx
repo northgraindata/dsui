@@ -1,9 +1,9 @@
 import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
 import { createOptionSelect } from "@northgraindata/dsui-ui/option-select-factory";
-import { type HistoryPoint, historyPointSchema } from "./history-model";
+import { type FleetItem, fleetSchema } from "./contract";
 import { HistoryStrip } from "./history-strip";
+import { historyStyles, overviewStyles } from "./overview-styles";
 import { React } from "./react";
-import { historyStyles, styles } from "./styles";
 
 const OptionSelect = createOptionSelect(() => React);
 
@@ -15,7 +15,8 @@ type HealthRow = {
   adapter: string;
   iconUrl?: string;
   health: HealthStatus;
-  history?: HistoryPoint[];
+  strip: FleetItem["strip"];
+  availability7d: number | null;
   detail?: string;
   latencyMs?: number;
 };
@@ -34,10 +35,6 @@ const statusLabel: Record<HealthStatus, string> = {
   unknown: "Unknown",
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 function isHealthStatus(value: unknown): value is HealthStatus {
   return (
     value === "healthy" ||
@@ -47,36 +44,21 @@ function isHealthStatus(value: unknown): value is HealthStatus {
   );
 }
 
+/** Rows from recorded results; reading them never probes a service. */
 function readHealthRows(value: unknown): HealthRow[] {
-  if (!isRecord(value) || !Array.isArray(value.items))
-    throw new Error("Health response is missing the service list.");
-  return value.items.map((item: unknown) => {
-    if (
-      !isRecord(item) ||
-      typeof item.id !== "string" ||
-      typeof item.name !== "string" ||
-      typeof item.adapter !== "string" ||
-      !isHealthStatus(item.health) ||
-      (item.detail !== undefined && typeof item.detail !== "string") ||
-      (item.latencyMs !== undefined &&
-        (typeof item.latencyMs !== "number" ||
-          !Number.isFinite(item.latencyMs)))
-    )
-      throw new Error("Health response contains an invalid service.");
-    return {
-      id: item.id,
-      name: item.name,
-      adapter: item.adapter,
-      ...(typeof item.iconUrl === "string" ? { iconUrl: item.iconUrl } : {}),
-      health: item.health,
-      history:
-        item.history === undefined
-          ? []
-          : historyPointSchema.array().parse(item.history),
-      ...(item.detail !== undefined ? { detail: item.detail } : {}),
-      ...(item.latencyMs !== undefined ? { latencyMs: item.latencyMs } : {}),
-    };
-  });
+  return fleetSchema.parse(value).items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    adapter: item.adapter,
+    ...(item.iconUrl ? { iconUrl: item.iconUrl } : {}),
+    health: item.health,
+    strip: item.strip,
+    availability7d: item.availability7d,
+    ...(item.detail !== undefined ? { detail: item.detail } : {}),
+    ...(item.latencyMs !== undefined
+      ? { latencyMs: Math.round(item.latencyMs) }
+      : {}),
+  }));
 }
 
 function useHealthData(client: ComponentProps["client"]) {
@@ -117,7 +99,26 @@ function useHealthData(client: ComponentProps["client"]) {
         });
     };
 
-    refresh.current = load;
+    // The refresh button asks for new checks; the scheduler limits how often
+    // one service can be checked by hand, so this cannot hammer a system.
+    refresh.current = () => {
+      setLoading(true);
+      void client
+        .executeAction({ actionId: "check-now", input: {} })
+        .then((result) => {
+          if (active && result.status === "error")
+            setError(result.message ?? "Could not check services.");
+        })
+        .catch((cause: unknown) => {
+          if (active)
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : "Could not check services.",
+            );
+        })
+        .finally(load);
+    };
     load();
     const unsubscribe = client.watchResource?.(
       { resourceId: "service-health", input: {} },
@@ -182,11 +183,11 @@ export function HealthPage({ client }: ComponentProps) {
 
   return (
     <div className="health-page">
-      <style>{styles + historyStyles}</style>
+      <style>{overviewStyles + historyStyles}</style>
 
       <div className="health-page-summary">
         <strong>
-          {rows?.length ?? "—"} {rows?.length === 1 ? "service" : "services"}{" "}
+          {rows?.length ?? "-"} {rows?.length === 1 ? "service" : "services"}{" "}
           checked
         </strong>
         <span data-health="healthy">{counts.healthy} healthy</span>
@@ -297,14 +298,17 @@ export function HealthPage({ client }: ComponentProps) {
                     </td>
                     <td className="health-page-ping">
                       {row.latencyMs === undefined
-                        ? "—"
+                        ? "-"
                         : `${row.latencyMs} ms`}
                     </td>
                     <td>
-                      <HistoryStrip points={row.history ?? []} />
+                      <HistoryStrip
+                        buckets={row.strip}
+                        availability={row.availability7d}
+                      />
                     </td>
                     <td className="health-page-detail" title={row.detail}>
-                      {row.detail ?? "—"}
+                      {row.detail ?? "-"}
                     </td>
                   </tr>
                 ))}

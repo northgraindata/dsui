@@ -1,3 +1,10 @@
+export type {
+  DiagnosticOperation,
+  DiagnosticProcess,
+  DiagnosticSnapshot,
+} from "./diagnostics";
+
+import type { DiagnosticSnapshot } from "./diagnostics";
 import type { PluginEventPage, PluginEventReadOptions } from "./events";
 
 export {
@@ -7,9 +14,26 @@ export {
   signalEventSchema,
 } from "./events";
 
-import type { PageNode, SignalType } from "@northgraindata/dsui-adapter-sdk";
+import type {
+  DatasetObservation,
+  DatasetPage,
+  DatasetRef,
+  PageNode,
+  SignalType,
+} from "@northgraindata/dsui-adapter-sdk";
 
-export type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
+export type {
+  ComponentProps,
+  DatasetColumn,
+  DatasetInfo,
+  DatasetObservation,
+  DatasetPage,
+  DatasetRef,
+} from "@northgraindata/dsui-adapter-sdk";
+export {
+  DATASET_LIST_MAX_LIMIT,
+  DATASET_OBSERVE_MAX_REFS,
+} from "@northgraindata/dsui-adapter-sdk";
 
 import { serializeNodes } from "@northgraindata/dsui-adapter-sdk";
 import { z } from "zod";
@@ -191,6 +215,8 @@ export type PluginNavigationItem = {
   readonly label: string;
   readonly pageId: string;
   readonly order?: number;
+  /** An icon for this entry alone, when a plugin has several; otherwise the plugin's `iconUrl`. */
+  readonly iconUrl?: string;
 };
 
 export type PluginUiSlot = {
@@ -230,6 +256,12 @@ export type PluginServiceSummary = {
   readonly adapterName?: string;
   readonly managedBy: "configuration" | "ui";
   readonly iconUrl?: string;
+  /**
+   * Optional abilities the service's adapter declares, such as `datasets`.
+   * Open strings: check for the one you need and ignore the rest. Absent on a
+   * host that predates the field, which a plugin must read as "none declared".
+   */
+  readonly capabilities?: readonly string[];
 };
 
 export type PluginServiceHealth =
@@ -249,6 +281,8 @@ export type PluginServiceHealthCheck = {
   readonly label: string;
   readonly ok: boolean;
   readonly detail?: string;
+  /** Path inside the service workspace where this signal can be investigated. */
+  readonly href?: string;
 };
 
 export type PluginServiceProbe = {
@@ -275,6 +309,11 @@ export type PluginServiceAction = {
   readonly id: string;
   readonly description?: string;
   readonly inputSchema?: Record<string, unknown>;
+};
+export type PluginDatasetOptions = {
+  readonly signal?: AbortSignal;
+  /** Upper bound for one call; the host applies its own ceiling. */
+  readonly timeoutMs?: number;
 };
 export type PluginInvocationOptions = {
   signal?: AbortSignal;
@@ -304,6 +343,33 @@ export interface PluginServiceCatalog {
     id: string,
   ): Promise<readonly { id: string; type: SignalType }[] | null>;
   /**
+   * Reads what a service's adapter says about the data it holds.
+   *
+   * Only services whose `capabilities` include `datasets` answer; asking any
+   * other fails with a request error, so check first. Both reads come from the
+   * system's own catalog or statistics and never change anything. The host
+   * owns the connection, so a plugin never sees credentials. `null` means the
+   * service is unknown to the host or not visible to the caller.
+   *
+   * Absent on a host that predates the capability.
+   */
+  datasets?: {
+    list(
+      id: string,
+      input?: { readonly cursor?: string; readonly limit?: number },
+      options?: PluginDatasetOptions,
+    ): Promise<DatasetPage | null>;
+    /**
+     * Measures up to `DATASET_OBSERVE_MAX_REFS` datasets in one call. A
+     * dataset that no longer exists is missing from the result.
+     */
+    observe(
+      id: string,
+      refs: readonly DatasetRef[],
+      options?: PluginDatasetOptions,
+    ): Promise<DatasetObservation[] | null>;
+  };
+  /**
    * Asks the host to probe a service connection and report its health.
    *
    * The host owns connection decryption and the adapter call, so a plugin
@@ -323,6 +389,8 @@ export type PluginCapabilitySummary = {
   readonly name: string;
   readonly version: string;
   readonly status: PluginReadinessStatus;
+  /** The plugin's icon, so another plugin can show where something it embeds comes from. */
+  readonly iconUrl?: string;
 };
 export type PluginActionSummary = {
   readonly id: string;
@@ -540,6 +608,8 @@ export type RuntimePluginResource = {
 };
 
 export interface RuntimePluginRegistry {
+  /** Optional so a plugin still loads on a host that does not publish signals. */
+  signal?(signal: RuntimePluginSignal): void;
   page(page: RuntimePluginPage): void;
   navigation(item: PluginNavigationItem): void;
   slot(slot: RuntimePluginSlot): void;
@@ -644,6 +714,7 @@ export interface PluginRegistry<TConfig = unknown> {
 }
 
 export interface PluginCapabilities {
+  readonly diagnostics?: { read(): Promise<DiagnosticSnapshot> };
   readonly access: {
     /** Identity of the authenticated request; absent in background work. */
     principal?(): PluginPrincipal | null;
@@ -680,6 +751,20 @@ export type PluginSignalDefinition = {
   id: string;
   payload: z.ZodTypeAny;
   type?: SignalType;
+  /**
+   * `"service"` when the plugin emits this signal about individual services,
+   * as Service health does for an outage. The host then lists it among every
+   * service's signals, so pickers such as workflow editors can offer it.
+   * Defaults to `"global"`.
+   */
+  scope?: "service" | "global";
+};
+
+/** A declared plugin signal as the host publishes it. */
+export type RuntimePluginSignal = {
+  readonly id: string;
+  readonly type: SignalType;
+  readonly scope: "service" | "global";
 };
 
 function unavailableCapability(): never {
@@ -831,6 +916,7 @@ export function definePlugin<TConfig>(
         },
         logger: host.logger,
         access: host.access ?? { require: async () => unavailableCapability() },
+        diagnostics: host.diagnostics,
         jobs: host.jobs ?? { enqueue: async () => unavailableCapability() },
         events: {
           read: async (options) => {
@@ -862,6 +948,11 @@ export function definePlugin<TConfig>(
                   "Invalid or duplicate plugin signal",
                 );
               signals.set(signal.id, signal);
+              runtimeRegistry.signal?.({
+                id: signal.id,
+                type: signal.type ?? "info",
+                scope: signal.scope ?? "global",
+              });
             },
             page: (page, presentation) => {
               if (presentation.public && !definition.metadata.security)
@@ -948,6 +1039,7 @@ export function definePlugin<TConfig>(
                       storage: context.storage,
                       stores: context.stores,
                       access: context.access,
+                      diagnostics: context.diagnostics,
                       jobs: context.jobs,
                       events: context.events,
                       signal: runContext.signal,
