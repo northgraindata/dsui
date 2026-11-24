@@ -49,55 +49,6 @@ export type ServiceSummary = z.infer<typeof serviceSummarySchema>;
 
 export type ProbeResult = ServiceSummary & Probe;
 
-/**
- * Upper bound on concurrent outbound probes.
- *
- * Probing reaches external systems, so a large estate must not open an
- * unbounded number of connections at once. The limit is deliberately a
- * property of the plugin rather than the host: the host exposes the probe,
- * this plugin decides how aggressively to use it.
- */
-export const MAX_CONCURRENT_PROBES = 8;
-
-/**
- * Probes many services with bounded concurrency.
- *
- * One unreachable host must not serialize the whole dashboard, so probes run
- * in parallel up to the cap. A probe that throws is reported as unavailable
- * rather than rejected: one broken service should not fail a batch that also
- * contains healthy ones.
- */
-export async function probeServices(
-  probe: (id: string) => Promise<Probe | null>,
-  services: readonly ServiceSummary[],
-): Promise<Map<string, Probe>> {
-  const results = new Map<string, Probe>();
-  let cursor = 0;
-  const worker = async () => {
-    while (cursor < services.length) {
-      const service = services[cursor++];
-      if (!service) return;
-      try {
-        const result = await probe(service.id);
-        if (result) results.set(service.id, result);
-      } catch {
-        results.set(service.id, {
-          id: service.id,
-          health: "unavailable",
-          detail: "Health probe failed",
-        });
-      }
-    }
-  };
-  await Promise.all(
-    Array.from(
-      { length: Math.min(MAX_CONCURRENT_PROBES, services.length) },
-      worker,
-    ),
-  );
-  return results;
-}
-
 /** Joins service identity with its probe result for rendering. */
 export function joinProbes(
   services: readonly ServiceSummary[],

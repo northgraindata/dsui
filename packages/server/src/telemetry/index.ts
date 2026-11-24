@@ -31,6 +31,7 @@ const KNOWN_ADAPTERS = [
   "duckdb",
   "postgresql",
   "s3",
+  "shaper",
   "trino",
 ] as const;
 
@@ -41,6 +42,7 @@ const KNOWN_PLUGINS = [
   "auth-pro",
   "code-repository",
   "health",
+  "status-pages",
   "monitoring",
   "notifications-pro",
 ] as const;

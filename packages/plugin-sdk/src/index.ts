@@ -1,3 +1,10 @@
+export type {
+  DiagnosticOperation,
+  DiagnosticProcess,
+  DiagnosticSnapshot,
+} from "./diagnostics";
+
+import type { DiagnosticSnapshot } from "./diagnostics";
 import type { PluginEventPage, PluginEventReadOptions } from "./events";
 
 export {
@@ -208,6 +215,8 @@ export type PluginNavigationItem = {
   readonly label: string;
   readonly pageId: string;
   readonly order?: number;
+  /** An icon for this entry alone, when a plugin has several; otherwise the plugin's `iconUrl`. */
+  readonly iconUrl?: string;
 };
 
 export type PluginUiSlot = {
@@ -272,6 +281,8 @@ export type PluginServiceHealthCheck = {
   readonly label: string;
   readonly ok: boolean;
   readonly detail?: string;
+  /** Path inside the service workspace where this signal can be investigated. */
+  readonly href?: string;
 };
 
 export type PluginServiceProbe = {
@@ -378,6 +389,8 @@ export type PluginCapabilitySummary = {
   readonly name: string;
   readonly version: string;
   readonly status: PluginReadinessStatus;
+  /** The plugin's icon, so another plugin can show where something it embeds comes from. */
+  readonly iconUrl?: string;
 };
 export type PluginActionSummary = {
   readonly id: string;
@@ -494,6 +507,59 @@ export interface PluginAuthenticationProvider {
   routes?(request: Request): Promise<Response> | Response;
 }
 
+/**
+ * A source of credentials that lives outside DSUI, such as a cloud secret
+ * manager.
+ *
+ * A connection field may hold a reference instead of a value. The host asks the
+ * provider for the value just before it calls the adapter, so DSUI stores the
+ * reference and never the credential. A reference is opaque to the host: only
+ * the provider that issued the format parses it.
+ */
+/** A secret a person can pick instead of typing its reference. */
+export type PluginSecretSuggestion = {
+  /** What goes into the field. */
+  reference: string;
+  /** Shown instead of the reference when it reads better. */
+  label?: string;
+  description?: string;
+};
+
+export interface PluginSecretProvider {
+  /** Kebab-case and unique across plugins; it is what a stored reference names. */
+  id: string;
+  /** Shown in the connection form, e.g. "AWS Secrets Manager". */
+  label: string;
+  description?: string;
+  /** Describes the input a person fills in to point at a secret. */
+  reference: { label: string; placeholder?: string; hint?: string };
+  /**
+   * Returns the secret's current value.
+   *
+   * Throw with a message that names what was asked for and why it failed. The
+   * host never logs or returns the resolved value, and an error that contains
+   * one would defeat that.
+   */
+  resolve(
+    reference: string,
+    options: { signal?: AbortSignal },
+  ): Promise<string>;
+  /**
+   * Lists secrets whose reference starts with, or matches, `query`.
+   *
+   * Optional, because listing usually needs a broader permission than reading
+   * one secret. The form offers suggestions only when this exists and works.
+   * Throw when the caller may not list: the host remembers that and falls back
+   * to a plain input without asking again for a few minutes. Return at most a
+   * few dozen entries, never a secret's value, and treat an empty query as
+   * "show the first ones".
+   */
+  search?(
+    query: string,
+    options: { signal?: AbortSignal },
+  ): Promise<PluginSecretSuggestion[]>;
+}
+
 export interface PluginAuthorizationProvider {
   /**
    * Narrows what the principal's role already allows.
@@ -542,6 +608,8 @@ export type RuntimePluginResource = {
 };
 
 export interface RuntimePluginRegistry {
+  /** Optional so a plugin still loads on a host that does not publish signals. */
+  signal?(signal: RuntimePluginSignal): void;
   page(page: RuntimePluginPage): void;
   navigation(item: PluginNavigationItem): void;
   slot(slot: RuntimePluginSlot): void;
@@ -551,6 +619,7 @@ export interface RuntimePluginRegistry {
   job(job: RuntimePluginJob): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
+  secrets(provider: PluginSecretProvider): void;
 }
 
 /** A declared job as the host publishes it. */
@@ -635,9 +704,17 @@ export interface PluginRegistry<TConfig = unknown> {
   job(job: JobDefinition): void;
   authentication(provider: PluginAuthenticationProvider): void;
   authorization(provider: PluginAuthorizationProvider): void;
+  /**
+   * Offers a secret manager that connection fields can point at.
+   *
+   * Unlike authentication, several providers may coexist; each id must be
+   * unique across plugins.
+   */
+  secrets(provider: PluginSecretProvider): void;
 }
 
 export interface PluginCapabilities {
+  readonly diagnostics?: { read(): Promise<DiagnosticSnapshot> };
   readonly access: {
     /** Identity of the authenticated request; absent in background work. */
     principal?(): PluginPrincipal | null;
@@ -674,6 +751,20 @@ export type PluginSignalDefinition = {
   id: string;
   payload: z.ZodTypeAny;
   type?: SignalType;
+  /**
+   * `"service"` when the plugin emits this signal about individual services,
+   * as Service health does for an outage. The host then lists it among every
+   * service's signals, so pickers such as workflow editors can offer it.
+   * Defaults to `"global"`.
+   */
+  scope?: "service" | "global";
+};
+
+/** A declared plugin signal as the host publishes it. */
+export type RuntimePluginSignal = {
+  readonly id: string;
+  readonly type: SignalType;
+  readonly scope: "service" | "global";
 };
 
 function unavailableCapability(): never {
@@ -825,6 +916,7 @@ export function definePlugin<TConfig>(
         },
         logger: host.logger,
         access: host.access ?? { require: async () => unavailableCapability() },
+        diagnostics: host.diagnostics,
         jobs: host.jobs ?? { enqueue: async () => unavailableCapability() },
         events: {
           read: async (options) => {
@@ -856,6 +948,11 @@ export function definePlugin<TConfig>(
                   "Invalid or duplicate plugin signal",
                 );
               signals.set(signal.id, signal);
+              runtimeRegistry.signal?.({
+                id: signal.id,
+                type: signal.type ?? "info",
+                scope: signal.scope ?? "global",
+              });
             },
             page: (page, presentation) => {
               if (presentation.public && !definition.metadata.security)
@@ -942,6 +1039,7 @@ export function definePlugin<TConfig>(
                       storage: context.storage,
                       stores: context.stores,
                       access: context.access,
+                      diagnostics: context.diagnostics,
                       jobs: context.jobs,
                       events: context.events,
                       signal: runContext.signal,
@@ -996,6 +1094,7 @@ export function definePlugin<TConfig>(
                 );
               runtimeRegistry.authorization(provider);
             },
+            secrets: (provider) => runtimeRegistry.secrets(provider),
           };
           definition.setup(registry, config);
         },

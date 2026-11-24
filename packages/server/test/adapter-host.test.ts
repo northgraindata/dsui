@@ -6,6 +6,7 @@ import {
   AdapterHostClient,
   type AdapterHostRequest,
 } from "../src/adapters/host";
+import { RemoteBackend } from "../src/adapters/loader";
 import { DsuiDatabase } from "../src/db/database";
 
 const hostPath = new URL("../src/adapter-host.ts", import.meta.url).pathname;
@@ -187,6 +188,18 @@ test("timeout and active abort retire the process without replaying requests", a
   expect((await inspect(host)).data.pid).not.toBe(second.data.pid);
 });
 
+test("connection health honors its timeout and stops the adapter host", async () => {
+  const host = client();
+  const backend = new RemoteBackend(host, "retained-test", [
+    { id: "cached", requestConcurrency: "parallel", contextIdleTimeoutMs: 100 },
+  ]);
+  const connection = request().connection;
+  const health = await backend.checkHealth(connection, { timeoutMs: 10 });
+  expect(health.status).toBe("unavailable");
+  expect(health.detail).toBe("Adapter host timed out");
+  expect(await inspect(host)).toHaveProperty("data.pid");
+});
+
 test("crash fails the request and next call starts a fresh host", async () => {
   const host = client();
   const first = await inspect(host);
@@ -343,6 +356,23 @@ test("isolated actions and jobs do not block reads and their persisted updates a
     request({ method: "job", target: "update-job", runId: "run-1" }),
   );
   expect(await stored()).toEqual({ data: { value: 2 } });
+});
+
+test("describes resources and actions with their descriptions", async () => {
+  const host = client();
+  const described = (await host.request({ method: "describe" })) as {
+    resources: { id: string; description?: string }[];
+    actions: { id: string; description?: string }[];
+  };
+  expect(described.actions.find((a) => a.id === "update")?.description).toBe(
+    "Increment the stored counter.",
+  );
+  expect(described.resources.find((r) => r.id === "stored")?.description).toBe(
+    "Read the stored counter.",
+  );
+  expect(
+    described.resources.find((r) => r.id === "inspect")?.description,
+  ).toBeUndefined();
 });
 
 test("retiring a host lets a running action finish", async () => {

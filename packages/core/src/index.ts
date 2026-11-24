@@ -18,6 +18,8 @@ export interface ServiceHealthCheck {
   label: string;
   ok: boolean;
   detail?: string;
+  /** Path inside the service workspace where this signal can be investigated. */
+  href?: string;
 }
 
 export interface HealthStatus {

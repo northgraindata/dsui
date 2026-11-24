@@ -152,6 +152,12 @@ export const iconPaths: Record<string, ReactNode> = {
   format: <path d="M8 4H4v4m12-4h4v4M4 16v4h4m8 0h4v-4M9 8h6m-6 4h4m-4 4h6" />,
   edit: <path d="M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4" />,
   "chevron-down": <path d="m7 10 5 5 5-5" />,
+  key: (
+    <>
+      <circle cx="7.5" cy="12" r="3.5" />
+      <path d="M11 12h10m-4 0v3m3-3v2.5" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 16 }: { name: string; size?: number }) {

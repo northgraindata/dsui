@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { statfs } from "node:fs/promises";
 import {
   availableParallelism,
@@ -62,7 +63,14 @@ export function sampleCpu(): CpuSample {
 
 export function sampleMemory(): MemorySample {
   const totalBytes = totalmem();
-  const freeBytes = freemem();
+  let freeBytes = freemem();
+  try {
+    const text = readFileSync("/proc/meminfo", "utf8");
+    const available = /^MemAvailable:\s+(\d+)\s+kB/m.exec(text);
+    if (available) freeBytes = Number(available[1]) * 1024;
+  } catch {
+    // Other platforms expose free memory without Linux cache accounting.
+  }
   const usedBytes = totalBytes - freeBytes;
   return {
     totalBytes,

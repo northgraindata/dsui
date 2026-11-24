@@ -1,0 +1,24 @@
+{
+  "name": "@northgraindata/dsui-adapter-dagster",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/adapter.ts"
+  },
+  "scripts": {
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "tsc --noEmit",
+    "sync:kind-icons": "bun scripts/sync-kind-icons.ts"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "react": "^19.0.0"
+  },
+  "dsui": {
+    "browser": "./src/browser.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0"
+  }
+}

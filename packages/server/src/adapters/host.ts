@@ -79,6 +79,10 @@ class HostSession {
     void this.drainStderr();
   }
 
+  get pid(): number {
+    return this.child.pid;
+  }
+
   private async drainStderr(): Promise<void> {
     const reader = this.child.stderr.getReader();
     try {
@@ -233,6 +237,18 @@ export class AdapterHostClient {
   private allocation = Promise.resolve();
 
   constructor(private readonly options: AdapterHostClientOptions) {}
+
+  processes(): { pid: number; serviceId: string | null }[] {
+    return [
+      ...Array.from(this.slots.entries()).flatMap(([serviceId, slot]) =>
+        slot.session ? [{ pid: slot.session.pid, serviceId }] : [],
+      ),
+      ...Array.from(this.ephemeralSessions, (session) => ({
+        pid: session.pid,
+        serviceId: null,
+      })),
+    ];
+  }
 
   async request(request: AdapterHostRequest): Promise<unknown> {
     if (this.retiring || this.closed)

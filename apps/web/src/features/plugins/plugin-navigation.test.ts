@@ -72,3 +72,25 @@ test("does not invent entries or show orphaned, disabled or unavailable contribu
     }),
   ).toEqual([]);
 });
+
+test("an entry with its own icon keeps it; the plugin's other entries use the plugin icon", () => {
+  const [group] = groupPluginNavigation({
+    plugins: [
+      plugin("health", {
+        category: "Monitoring",
+        iconUrl: "data:image/webp;base64,health",
+      }),
+    ],
+    navigation: [
+      navigation("health"),
+      {
+        ...navigation("health", "status-pages"),
+        iconUrl: "data:image/webp;base64,pages",
+      },
+    ],
+  });
+  expect(group?.items.map((item) => item.iconUrl)).toEqual([
+    "data:image/webp;base64,health",
+    "data:image/webp;base64,pages",
+  ]);
+});

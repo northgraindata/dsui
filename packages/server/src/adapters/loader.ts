@@ -24,6 +24,7 @@ import type {
   AdapterBackend,
   AdapterCatalog,
   AdapterExecutionContext,
+  AdapterHealthContext,
   JobCatalogEntry,
   LoadedAdapter,
   LoadedConnectionMethod,
@@ -55,6 +56,7 @@ export interface AdapterLoadOptions {
     }): Promise<unknown>;
     close?(drain?: boolean): Promise<void>;
     invalidateService?(namespace: string): Promise<void>;
+    processes?(): { pid: number; serviceId: string | null }[];
   };
   /** Host call budget in ms (actions run long). */
   hostTimeoutMs?: number;
@@ -90,7 +92,7 @@ function unhealthy(started: number, error: unknown): HealthStatus {
   };
 }
 
-function assertHealthReport(
+export function assertHealthReport(
   value: unknown,
   fallbackLatencyMs: number,
 ): HealthStatus {
@@ -119,6 +121,7 @@ function assertHealthReport(
           label?: unknown;
           ok?: unknown;
           detail?: unknown;
+          href?: unknown;
         };
         if (typeof check?.id !== "string" || typeof check.ok !== "boolean")
           return [];
@@ -130,6 +133,7 @@ function assertHealthReport(
             ...(typeof check.detail === "string"
               ? { detail: check.detail }
               : {}),
+            ...(isWorkspacePath(check.href) ? { href: check.href } : {}),
           },
         ];
       })
@@ -144,6 +148,24 @@ function assertHealthReport(
     ...(score !== undefined ? { score } : {}),
     ...(checks !== undefined ? { checks } : {}),
   };
+}
+
+/**
+ * A path inside a service workspace, as an adapter may offer for a failing
+ * check. Anything else, including absolute URLs and protocol-relative paths,
+ * is dropped: an adapter must not be able to send a user to another site
+ * through the health page.
+ */
+function isWorkspacePath(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= 200 &&
+    value.startsWith("/") &&
+    !value.startsWith("//") &&
+    !Array.from(value).some(
+      (character) => character === "\\" || character.charCodeAt(0) < 32,
+    )
+  );
 }
 
 function assertCatalog(value: unknown, from: string): AdapterCatalog {
@@ -277,6 +299,7 @@ type RemoteHost = {
   request(request: RemoteHostRequest): Promise<unknown>;
   close?(drain?: boolean): Promise<void>;
   invalidateService?(namespace: string): Promise<void>;
+  processes?(): { pid: number; serviceId: string | null }[];
 };
 
 const serialRequestQueues = new Map<string, Promise<void>>();
@@ -300,6 +323,9 @@ function queueSerialRequest(
 }
 
 export class RemoteBackend implements AdapterBackend {
+  processes() {
+    return this.host.processes?.() ?? [];
+  }
   async close(drain = false): Promise<void> {
     await this.host.close?.(drain);
   }
@@ -356,7 +382,7 @@ export class RemoteBackend implements AdapterBackend {
 
   async checkHealth(
     connection: unknown,
-    context?: AdapterExecutionContext,
+    context?: AdapterHealthContext,
   ): Promise<HealthStatus> {
     const started = Date.now();
     try {
@@ -365,6 +391,8 @@ export class RemoteBackend implements AdapterBackend {
           method: "health",
           connection,
           persistenceNamespace: context?.persistenceNamespace,
+          timeoutMs: context?.timeoutMs,
+          signal: context?.signal,
         }),
         "adapter host",
       );

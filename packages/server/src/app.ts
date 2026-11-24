@@ -33,6 +33,7 @@ import { removeServiceBlobs } from "./db/blob-storage.js";
 import { ConnectionCipher, resolveMasterKey } from "./db/crypto.js";
 import { DsuiDatabase } from "./db/database.js";
 import { SqliteStorePersistenceProvider } from "./db/store-persistence.js";
+import { createOperationDiagnostics } from "./diagnostics/operations.js";
 import { registerEventRoutes } from "./events/routes.js";
 import { SignalBus } from "./events/signal-bus.js";
 import type { PluginFetch } from "./plugins/build.js";
@@ -54,6 +55,8 @@ import {
 } from "./routes/services.js";
 import { registerSettingsRoutes } from "./routes/settings";
 import { registerSystemRoutes } from "./routes/system.js";
+import { SecretResolver } from "./secrets/resolver.js";
+import { SecretSuggestions } from "./secrets/suggestions.js";
 import { createErrorCounter } from "./telemetry/errors";
 
 export type Runtime = ReturnType<typeof createRuntime>;
@@ -139,7 +142,11 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     process.env.DSUI_CONFIG ??
     (existsSync("/etc/dsui/dsui.yaml") ? "/etc/dsui/dsui.yaml" : undefined);
   const errors = createErrorCounter();
-  const registry = new AdapterRegistry();
+  const diagnostics = createOperationDiagnostics();
+  const registry = new AdapterRegistry([], (adapter) => ({
+    ...adapter,
+    backend: diagnostics.wrap(adapter.id, adapter.backend),
+  }));
   const readiness = new Map<string, AdapterReadiness>();
   const database = new DsuiDatabase(databasePath);
   const signalBus = new SignalBus(database);
@@ -148,6 +155,12 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     options.masterKey ?? process.env.DSUI_MASTER_KEY,
   );
   const cipher = new ConnectionCipher(masterKey);
+  const secrets = new SecretResolver({
+    provider: (id) => pluginRuntime.secretProvider(id),
+  });
+  const secretSuggestions = new SecretSuggestions({
+    provider: (id) => pluginRuntime.secretProvider(id),
+  });
   let config = options.config ?? { services: [] };
   const capabilitiesOf = (adapterId: string): string[] =>
     registry.has(adapterId)
@@ -226,9 +239,12 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     }
     const timeoutMs = options?.timeoutMs ?? DEFAULT_PROBE_TIMEOUT_MS;
     const probe = (async () =>
-      adapter.backend.checkHealth(connectionFor(cipher, source), {
-        persistenceNamespace: source.service.id,
-      }))();
+      adapter.backend.checkHealth(
+        await connectionFor({ cipher, secrets }, source),
+        {
+          persistenceNamespace: source.service.id,
+        },
+      ))();
     // A plugin asks for health on a user-visible surface, so a hung
     // connection must not hold that request open indefinitely. The probe is
     // not cancelled: a late result is discarded rather than reported as a
@@ -346,6 +362,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             registry,
             database,
             cipher,
+            secrets,
             getConfig: () => config,
             refreshConfig,
             signalBus,
@@ -374,10 +391,13 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         if (!source) return null;
         if (!registry.has(source.service.adapter)) return null;
         const adapter = registry.get(source.service.adapter);
-        return adapter.catalog.signals.map((signal) => ({
-          id: `${adapter.id}.${signal.id}`,
-          type: signal.type,
-        }));
+        return [
+          ...adapter.catalog.signals.map((signal) => ({
+            id: `${adapter.id}.${signal.id}`,
+            type: signal.type,
+          })),
+          ...pluginRuntime.serviceSignals(),
+        ];
       },
       listResources: async (id) => {
         if (!(await pluginRuntime.canAccessService(id))) return null;
@@ -411,6 +431,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             registry,
             database,
             cipher,
+            secrets,
             getConfig: () => config,
             refreshConfig,
           },
@@ -475,6 +496,16 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       plugins: () => pluginRuntime.pluginCapabilities(),
       audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
+        diagnostics: {
+          read: async () => {
+            if (!(await pluginRuntime.canAccessGlobalEvents()))
+              throw new PluginRequestError(
+                "Administrator access required",
+                403,
+              );
+            return diagnostics.snapshot();
+          },
+        },
         jobs: {
           enqueue: async (jobId, input) => ({
             runId: pluginJobs.enqueue(pluginId, jobId, input, undefined, true)
@@ -551,7 +582,7 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
             const currentAdapter = registry.get(current.service.adapter);
             const emissions = await currentAdapter.backend.executeJob(
               definition.id,
-              connectionFor(cipher, current),
+              await connectionFor({ cipher, secrets }, current),
               input,
               {
                 runId: context.runId,
@@ -852,6 +883,8 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
     refreshJobs: () => pluginJobs.refreshDefinitions(),
     database,
     cipher,
+    secrets,
+    secretSuggestions,
     getConfig,
     refreshConfig,
     audit,
