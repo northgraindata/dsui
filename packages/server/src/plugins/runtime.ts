@@ -601,7 +601,10 @@ export class PluginRuntime {
           built?.browserBundlePath ??
           ("browserBundle" in source && source.browserBundle
             ? resolveInstalledBundle(source.browserBundle)
-            : undefined);
+            : "package" in source &&
+                source.package === "@northgraindata/dsui-plugin-monitoring"
+              ? resolveInstalledBundle(`${source.package}/browser`)
+              : undefined);
         requests.push({
           id,
           definition,
