@@ -1875,6 +1875,7 @@ button.ov-card-title:hover {
   color: #6e85a8;
 }
 .ov-gauge {
+  --gauge-accent: var(--color-accent);
   position: relative;
   display: grid;
   place-items: center;
@@ -1886,37 +1887,39 @@ button.ov-card-title:hover {
   inline-size: 100%;
   block-size: 100%;
 }
+.ov-gauge-max,
+.ov-gauge-bar {
+  display: none;
+}
 .ov-gauge-track,
 .ov-gauge-fill {
   fill: none;
-  stroke-width: 7;
+  stroke-width: 5;
   stroke-linecap: round;
 }
 .ov-gauge-track {
-  stroke: var(--color-border);
+  stroke: var(--color-border-strong);
 }
 .ov-gauge-fill {
-  stroke: var(--color-accent);
+  stroke: var(--gauge-accent);
 }
-.ov-gauge[data-tone="healthy"] .ov-gauge-fill {
-  stroke: var(--color-healthy);
+.ov-gauge[data-tone="healthy"] {
+  --gauge-accent: var(--color-healthy);
 }
-.ov-gauge[data-tone="warning"] .ov-gauge-fill {
-  stroke: var(--color-warning);
+.ov-gauge[data-tone="warning"] {
+  --gauge-accent: var(--color-warning);
 }
-.ov-gauge[data-tone="unavailable"] .ov-gauge-fill {
-  stroke: var(--color-unavailable);
+.ov-gauge[data-tone="unavailable"] {
+  --gauge-accent: var(--color-unavailable);
 }
-.ov-gauge[data-tone="muted"] .ov-gauge-fill {
-  stroke: var(--color-muted);
+.ov-gauge[data-tone="muted"] {
+  --gauge-accent: var(--color-muted);
 }
 .ov-gauge-number {
   position: absolute;
-  font-size: 0.875rem;
+  font: 700 0.875rem / 1 var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--color-text);
+  color: var(--color-primary);
 }
 .ov-gauge[data-tone="muted"] .ov-gauge-number {
   color: var(--color-muted);

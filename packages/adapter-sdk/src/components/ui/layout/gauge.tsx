@@ -68,7 +68,13 @@ export function Gauge({ node }: { node: PageNode }) {
       ? node.props.label
       : undefined;
   return (
-    <div className="ov-gauge" data-tone={tone} role="img" aria-label={label}>
+    <div
+      className="ov-gauge"
+      data-tone={tone}
+      role="img"
+      aria-label={label ?? `${Math.round(value)} of ${max}`}
+      title={label}
+    >
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <path
           d={circlePath(radius)}
@@ -84,8 +90,14 @@ export function Gauge({ node }: { node: PageNode }) {
         />
       </svg>
       {showValue ? (
-        <span className="ov-gauge-number">{Math.round(value)}</span>
+        <span className="ov-gauge-number">
+          {Math.round(value)}
+          <small className="ov-gauge-max">/{max}</small>
+        </span>
       ) : null}
+      <span className="ov-gauge-bar" aria-hidden="true">
+        <span style={{ width: `${share * 100}%` }} />
+      </span>
     </div>
   );
 }

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { getServices, type Service } from "../../api";
 import { HomeDashboard } from "../../components/home-dashboard";
+import { readRecentAdapterPage } from "../adapter-workspace/recent-adapter-page";
 
 export function DashboardScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [recentPage] = useState(readRecentAdapterPage);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -29,6 +31,7 @@ export function DashboardScreen() {
       services={services}
       loading={loading}
       error={error}
+      recentPage={recentPage}
       onRefresh={refresh}
       onServiceRemoved={(id) =>
         setServices((current) => current.filter((service) => service.id !== id))
