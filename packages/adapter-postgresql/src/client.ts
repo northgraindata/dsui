@@ -63,6 +63,34 @@ export interface PostgreSQLColumn {
   defaultValue: string | null;
 }
 
+/** One relation as the dataset listing sees it: `schema.name` identifies it. */
+export interface PostgreSQLDatasetRow {
+  schema: string;
+  name: string;
+  kind: string;
+}
+
+/**
+ * What the statistics views say about one relation. Every measure is null for
+ * a relation the server keeps no statistics for, such as a plain view.
+ */
+export interface PostgreSQLDatasetMeasure {
+  /** `schema.name`, the dataset's reference. */
+  name: string;
+  rows: number | null;
+  /** Inserts, updates and deletes seen since the statistics were last reset. */
+  changes: number | null;
+  bytes: number | null;
+}
+
+export interface PostgreSQLDatasetColumn {
+  /** `schema.name` of the relation the column belongs to. */
+  relation: string;
+  name: string;
+  type: string;
+  nullable: boolean;
+}
+
 export interface PostgreSQLQueryResult {
   columns: string[];
   columnTypes: string[];
@@ -110,6 +138,14 @@ export interface PostgreSQLClient {
   listSchemas(): Promise<PostgreSQLSchema[]>;
   listRelations(schema: string): Promise<PostgreSQLRelation[]>;
   listColumns(schema: string, relation: string): Promise<PostgreSQLColumn[]>;
+  /** Relations after `after`, ordered by schema and name, for dataset paging. */
+  listDatasets(
+    after: { schema: string; name: string } | undefined,
+    limit: number,
+  ): Promise<PostgreSQLDatasetRow[]>;
+  /** Statistics for the relations named `schema.name`; missing ones are absent. */
+  measureDatasets(names: string[]): Promise<PostgreSQLDatasetMeasure[]>;
+  datasetColumns(names: string[]): Promise<PostgreSQLDatasetColumn[]>;
   listIndexes(schema: string, relation: string): Promise<PostgreSQLIndex[]>;
   listConstraints(
     schema: string,
@@ -295,6 +331,109 @@ export function createPostgreSQLClient(
         where n.nspname = ${schema}
           and c.relkind in ('r', 'v', 'm', 'f', 'S')
         order by c.relname
+      `;
+    },
+
+    async listDatasets(after, limit) {
+      // Partitions are left out: a partitioned table is one dataset, measured
+      // across its partitions, so a new daily partition adds nothing to watch.
+      return sql<PostgreSQLDatasetRow[]>`
+        select
+          n.nspname as schema,
+          c.relname as name,
+          case c.relkind
+            when 'r' then 'table'
+            when 'p' then 'table'
+            when 'v' then 'view'
+            when 'm' then 'materialized-view'
+            when 'f' then 'foreign-table'
+          end as kind
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where c.relkind in ('r', 'p', 'v', 'm', 'f')
+          and not c.relispartition
+          and n.nspname <> 'information_schema'
+          and n.nspname not like 'pg\\_%'
+          ${
+            after
+              ? sql`and (n.nspname, c.relname) > (${after.schema}, ${after.name})`
+              : sql``
+          }
+        order by n.nspname, c.relname
+        limit ${limit}
+      `;
+    },
+
+    async measureDatasets(names) {
+      if (!names.length) return [];
+      const rows = await sql<
+        {
+          name: string;
+          rows: number | null;
+          changes: number | null;
+          bytes: number | null;
+        }[]
+      >`
+        with target as (
+          select c.oid, c.relkind, n.nspname || '.' || c.relname as name
+          from pg_class c
+          join pg_namespace n on n.oid = c.relnamespace
+          where n.nspname || '.' || c.relname = any(${sql.array(names)})
+            and c.relkind in ('r', 'p', 'v', 'm', 'f')
+        ),
+        leaf as (
+          select t.oid as target_oid, t.relkind, p.relid
+          from target t
+          cross join lateral pg_partition_tree(t.oid) p
+          where t.relkind = 'p' and p.isleaf
+          union all
+          select t.oid, t.relkind, t.oid from target t where t.relkind <> 'p'
+        )
+        select
+          t.name,
+          -- Counters that are all zero mean the statistics know nothing yet
+          -- (just flushed, or reset by a crash), not that the table is empty:
+          -- a real mass delete leaves a non-zero delete count. In that case the
+          -- planner's estimate, which survives a restart, is the better answer.
+          sum(
+            case
+              when s.relid is null then null
+              when s.n_live_tup = 0
+                and s.n_tup_ins + s.n_tup_upd + s.n_tup_del = 0
+                and lc.reltuples > 0
+                then lc.reltuples
+              else s.n_live_tup
+            end
+          )::float8 as rows,
+          sum(s.n_tup_ins + s.n_tup_upd + s.n_tup_del)::float8 as changes,
+          case when t.relkind in ('r', 'p', 'm')
+            then sum(pg_total_relation_size(l.relid))::float8
+          end as bytes
+        from target t
+        join leaf l on l.target_oid = t.oid
+        join pg_class lc on lc.oid = l.relid
+        left join pg_stat_all_tables s on s.relid = l.relid
+        group by t.oid, t.name, t.relkind
+      `;
+      return [...rows];
+    },
+
+    async datasetColumns(names) {
+      if (!names.length) return [];
+      return sql<PostgreSQLDatasetColumn[]>`
+        select
+          n.nspname || '.' || c.relname as relation,
+          a.attname as name,
+          format_type(a.atttypid, a.atttypmod) as type,
+          not a.attnotnull as nullable
+        from pg_attribute a
+        join pg_class c on c.oid = a.attrelid
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname || '.' || c.relname = any(${sql.array(names)})
+          and c.relkind in ('r', 'p', 'v', 'm', 'f')
+          and a.attnum > 0
+          and not a.attisdropped
+        order by relation, a.attnum
       `;
     },
 

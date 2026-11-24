@@ -22,6 +22,9 @@ intentional while the SDK and renderer remain generic.
 - Create/drop schema actions with SDK confirmation UI.
 - Read-only activity resource with SDK-managed five-second polling.
 - Generic service, resource, and action execution routes.
+- Dataset capability: lists tables, views, materialized views, foreign tables and partitioned tables (partitions are measured through their parent), and measures them from the statistics views without reading data.
+  Row counts are estimates and PostgreSQL records no modification time, so freshness comes from the change counter.
+  Run `src/datasets.integration.test.ts` against a server with `DSUI_TEST_POSTGRES_URL`.
 
 ## Partial
 

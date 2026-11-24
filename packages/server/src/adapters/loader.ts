@@ -1,9 +1,14 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type {
-  AdapterInfo,
-  PageDocument,
-  StorePersistenceProvider,
+import {
+  type AdapterInfo,
+  type DatasetObservation,
+  type DatasetPage,
+  type DatasetRef,
+  datasetObservationsSchema,
+  datasetPageSchema,
+  type PageDocument,
+  type StorePersistenceProvider,
 } from "@northgraindata/dsui-adapter-sdk";
 import type { HealthStatus } from "@northgraindata/dsui-core";
 import { routeConnection } from "../connectors/routing.js";
@@ -199,6 +204,11 @@ function assertCatalog(value: unknown, from: string): AdapterCatalog {
     jobs: Array.isArray(catalog.jobs) ? catalog.jobs : [],
     signals,
     routes: assertRoutes(catalog.routes, from),
+    capabilities: Array.isArray(catalog.capabilities)
+      ? catalog.capabilities.filter(
+          (entry): entry is string => typeof entry === "string",
+        )
+      : [],
   } as AdapterCatalog;
 }
 
@@ -477,6 +487,52 @@ export class RemoteBackend implements AdapterBackend {
     };
   }
 
+  async listDatasets(
+    connection: unknown,
+    input: { cursor?: string; limit: number },
+    options: { signal?: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<DatasetPage> {
+    const result = await this.request({
+      method: "datasets",
+      connection,
+      target: "list",
+      input,
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      persistenceNamespace: context?.persistenceNamespace,
+    });
+    const parsed = datasetPageSchema.safeParse(result);
+    if (!parsed.success)
+      throw new AdapterExecutionError(
+        `Adapter host returned an invalid dataset page: ${parsed.error.issues[0]?.message ?? "unknown error"}`,
+      );
+    return parsed.data;
+  }
+
+  async observeDatasets(
+    connection: unknown,
+    refs: readonly DatasetRef[],
+    options: { signal?: AbortSignal; timeoutMs: number },
+    context?: AdapterExecutionContext,
+  ): Promise<DatasetObservation[]> {
+    const result = await this.request({
+      method: "datasets",
+      connection,
+      target: "observe",
+      input: { refs },
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      persistenceNamespace: context?.persistenceNamespace,
+    });
+    const parsed = datasetObservationsSchema.safeParse(result);
+    if (!parsed.success)
+      throw new AdapterExecutionError(
+        `Adapter host returned invalid dataset observations: ${parsed.error.issues[0]?.message ?? "unknown error"}`,
+      );
+    return parsed.data;
+  }
+
   async executeJob(
     jobId: string,
     connection: unknown,
@@ -735,6 +791,7 @@ export async function loadAdapter(
         jobs: catalog.jobs,
         signals: catalog.signals,
         routes: catalog.routes,
+        capabilities: catalog.capabilities,
       },
       ...(described.connectionSchema
         ? { connectionSchema: described.connectionSchema }

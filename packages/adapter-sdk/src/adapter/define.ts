@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type DatasetsCapability, defineDatasets } from "../dataset/index";
 import { InvalidDefinitionError } from "../shared/errors";
 import { adapterPresentationSchema } from "./presentation";
 import {
@@ -133,7 +134,15 @@ export function defineAdapter<TContext, TConfig = Record<string, never>>(
     jobs,
     signals,
     routes,
+    ...datasetsMember(options.datasets),
   };
+}
+
+/** The optional `datasets` member, validated, or nothing when undeclared. */
+function datasetsMember<TContext>(
+  capability: DefineAdapterOptions<TContext, unknown>["datasets"],
+): { datasets?: DatasetsCapability<TContext> } {
+  return capability ? { datasets: defineDatasets(capability) } : {};
 }
 
 /**
