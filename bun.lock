@@ -205,6 +205,18 @@
         "react-dom": "^19.0.0",
       },
     },
+    "packages/adapter-shaper": {
+      "name": "@northgraindata/dsui-adapter-shaper",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-ui": "workspace:*",
+        "react": "^19.0.0",
+      },
+      "devDependencies": {
+        "@types/react": "^19.2.0",
+      },
+    },
     "packages/adapter-snowflake": {
       "name": "@northgraindata/dsui-adapter-snowflake",
       "version": "0.1.0",
@@ -339,6 +351,7 @@
         "@northgraindata/dsui-adapter-postgresql": "workspace:*",
         "@northgraindata/dsui-adapter-s3": "workspace:*",
         "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-adapter-shaper": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
         "@northgraindata/dsui-plugin-sdk": "workspace:*",
         "@northgraindata/dsui-plugin-status-pages": "workspace:*",
@@ -857,6 +870,7 @@
 
     "@northgraindata/dsui-adapter-sdk": ["@northgraindata/dsui-adapter-sdk@workspace:packages/adapter-sdk"],
 
+    "@northgraindata/dsui-adapter-shaper": ["@northgraindata/dsui-adapter-shaper@workspace:packages/adapter-shaper"],
     "@northgraindata/dsui-adapter-snowflake": ["@northgraindata/dsui-adapter-snowflake@workspace:packages/adapter-snowflake"],
 
     "@northgraindata/dsui-core": ["@northgraindata/dsui-core@workspace:packages/core"],

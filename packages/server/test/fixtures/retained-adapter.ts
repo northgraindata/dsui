@@ -30,11 +30,13 @@ const state = defineStore({
 });
 const stored = defineResource({
   id: "stored",
+  description: "Read the stored counter.",
   query: (_input, ctx: Context & ResourceRuntimeContext) =>
     ctx.stores.get(state).get(),
 });
 const update = defineAction({
   id: "update",
+  description: "Increment the stored counter.",
   input: z.object({ delayMs: z.number().optional() }),
   run: async (input, ctx: Context & ActionRuntimeContext) => {
     await Bun.sleep(input.delayMs ?? 0);

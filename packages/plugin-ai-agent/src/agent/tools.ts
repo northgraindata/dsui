@@ -207,7 +207,13 @@ export async function executeTool(
         input.input,
         signal ? { signal } : undefined,
       );
-      return { serviceId: input.serviceId, actionId: input.actionId, result };
+      const navigation = resourceNavigation(input.serviceId, result);
+      return {
+        serviceId: input.serviceId,
+        actionId: input.actionId,
+        ...(navigation.length ? { navigation } : {}),
+        result,
+      };
     }
     case "list_plugin_resources": {
       const { pluginId } = toolInputSchemas.list_plugin_resources.parse(raw);

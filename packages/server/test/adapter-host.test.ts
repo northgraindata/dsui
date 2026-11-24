@@ -358,6 +358,23 @@ test("isolated actions and jobs do not block reads and their persisted updates a
   expect(await stored()).toEqual({ data: { value: 2 } });
 });
 
+test("describes resources and actions with their descriptions", async () => {
+  const host = client();
+  const described = (await host.request({ method: "describe" })) as {
+    resources: { id: string; description?: string }[];
+    actions: { id: string; description?: string }[];
+  };
+  expect(described.actions.find((a) => a.id === "update")?.description).toBe(
+    "Increment the stored counter.",
+  );
+  expect(described.resources.find((r) => r.id === "stored")?.description).toBe(
+    "Read the stored counter.",
+  );
+  expect(
+    described.resources.find((r) => r.id === "inspect")?.description,
+  ).toBeUndefined();
+});
+
 test("retiring a host lets a running action finish", async () => {
   const database = new DsuiDatabase(join(directory, "state.sqlite"));
   database.close();
