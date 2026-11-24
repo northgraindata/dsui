@@ -4,6 +4,7 @@ import {
   type ChartWindow,
   Collection,
   Columns,
+  defineComponent,
   definePage,
   Grid,
   KeyValue,
@@ -35,6 +36,11 @@ const windows: ChartWindow[] = WINDOWS.map(({ label, secs }) => ({
   label,
   secs,
 }));
+
+const IncidentHistory = defineComponent({
+  id: "monitoring/incident-history",
+  path: "./browser.tsx",
+});
 
 export const overviewPage = definePage<
   "/monitoring",
@@ -105,36 +111,7 @@ async function renderOverview(input: {
           ],
         }),
         resourceHistory(cpu),
-        Section({
-          title: "Incident history",
-          description:
-            "Resource history above and recent adapter operations below share UTC timestamps. Inputs and result contents are never recorded.",
-          content: Resource({
-            source: {
-              kind: "resource-binding",
-              resourceId: "incident-history",
-              input: {},
-              refresh: { kind: "poll", intervalMs: 10000 },
-            },
-            content: [
-              KeyValue({ title: "Diagnostics", field: "summary" }),
-              Collection({
-                field: "processes",
-                content: Card({
-                  title: { field: "title" },
-                  content: KeyValue({ field: "details" }),
-                }),
-              }),
-              Collection({
-                field: "items",
-                content: Card({
-                  title: { field: "title" },
-                  content: KeyValue({ field: "details" }),
-                }),
-              }),
-            ],
-          }),
-        }),
+        IncidentHistory(),
         storageSection(disks),
         KeyValue({ title: "Runtime", field: "runtime" }),
       ],

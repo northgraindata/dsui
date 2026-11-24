@@ -21,8 +21,10 @@ export const incidentHistory = defineResource({
           "diagnostic-*.log · 10 MB per file · 100 MB total · 7 days",
       },
       processes: (snapshot?.processes ?? []).map((entry) => ({
-        title: `${entry.adapterId} · ${entry.serviceId ?? "unassigned"} · PID ${entry.pid}`,
+        id: String(entry.pid),
+        title: `${entry.adapterId} · PID ${entry.pid}`,
         details: {
+          Service: entry.serviceId ?? "Unassigned",
           "CPU (%)":
             entry.cpuPercent === null
               ? "Not available yet"
@@ -35,6 +37,7 @@ export const incidentHistory = defineResource({
       })),
       items: [
         ...recentRuntime(context.storage).map((sample) => ({
+          id: `runtime-${sample.time}`,
           title: `Resources · ${new Date(sample.time).toISOString()}`,
           details: {
             Started: new Date(sample.time).toISOString(),
@@ -49,6 +52,7 @@ export const incidentHistory = defineResource({
           },
         })),
         ...recentOperations(context.storage).map((operation) => ({
+          id: operation.id,
           title: `${operation.adapterId} · ${operation.serviceId ?? "unassigned"} · ${operation.kind}`,
           details: {
             Started: new Date(operation.startedAt).toISOString(),

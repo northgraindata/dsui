@@ -21,6 +21,7 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
   bun build packages/plugin-status-pages/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/status-pages.mjs && \
   bun build packages/plugin-status-pages/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/status-pages.browser.mjs && \
   bun build packages/plugin-monitoring/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/monitoring.mjs && \
+  bun build packages/plugin-monitoring/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/monitoring.browser.mjs && \
   bun build packages/plugin-code-repository/src/plugin.ts --bundle --target bun --format esm --outfile /out/runtime/plugins/code-repository.mjs && \
   bun build packages/plugin-code-repository/src/browser.tsx --bundle --target browser --format esm --outfile /out/runtime/plugins/code-repository.browser.mjs && \
   bun -e "import { prepareSdk } from './packages/server/src/adapters/sdk.ts'; import { sdkVersions } from './scripts/release-packages.ts'; await prepareSdk('packages', '/app/sdk'); await Bun.write('/out/sdk-versions.json', JSON.stringify(await sdkVersions()));" && \

@@ -102,6 +102,18 @@ await bundle(
   "packages/plugin-monitoring/src/plugin.ts",
   join(output, "dist", "runtime", "plugins", "monitoring.mjs"),
 );
+await run([
+  "bun",
+  "build",
+  "packages/plugin-monitoring/src/browser.tsx",
+  "--bundle",
+  "--target",
+  "browser",
+  "--format",
+  "esm",
+  "--outfile",
+  join(output, "dist", "runtime", "plugins", "monitoring.browser.mjs"),
+]);
 
 await bundle(
   "packages/plugin-code-repository/src/plugin.ts",
