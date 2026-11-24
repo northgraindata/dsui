@@ -261,8 +261,9 @@ test("a plugin lists and measures datasets of a service it may inspect", async (
   const { runtime, call } = await runtimeWithConsumer();
   try {
     const response = await call("warehouse");
-    expect(response.status).toBe(200);
-    const { data } = await response.json();
+    const body = await response.json();
+    expect(response.status, JSON.stringify(body)).toBe(200);
+    const { data } = body;
     expect(data.summary).toMatchObject({
       id: "warehouse",
       capabilities: ["datasets"],

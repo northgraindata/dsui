@@ -453,9 +453,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
         list: async (id, input, datasetOptions) => {
           const target = await resolveDatasets(id);
           if (!target) return null;
-          const page = await guardDatasetCall(id, () =>
+          const page = await guardDatasetCall(id, async () =>
             target.backend.listDatasets(
-              connectionFor(cipher, target.source),
+              await connectionFor({ cipher, secrets }, target.source),
               {
                 ...(input?.cursor !== undefined
                   ? { cursor: input.cursor }
@@ -477,9 +477,9 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
               422,
             );
           if (!refs.length) return [];
-          return guardDatasetCall(id, () =>
+          return guardDatasetCall(id, async () =>
             target.backend.observeDatasets(
-              connectionFor(cipher, target.source),
+              await connectionFor({ cipher, secrets }, target.source),
               refs,
               datasetCallOptions(datasetOptions),
               { persistenceNamespace: target.source.service.id },
