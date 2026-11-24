@@ -6,19 +6,11 @@ import {
   PluginSlot,
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
-import { navigablePagePaths } from "../service-pages";
+import { navigablePagePaths, pageLabel } from "../service-pages";
 import { AdapterTabs } from "./adapter-tabs";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
 import { useTopbarTabsSlot } from "./topbar-slot";
-
-function pageLabel(path: string) {
-  if (path === "/") return "Overview";
-  if (path === "/data") return "Explorer";
-  const label =
-    path.split("/").filter(Boolean).at(-1)?.replaceAll("-", " ") ?? "Overview";
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
 
 function pageIcon(path: string) {
   return (

@@ -13,6 +13,7 @@ import {
 import { AdapterWorkspace } from "../../components/adapter-workspace";
 import { EmptyState, pageClass, UnavailableState } from "../../components/page";
 import { useAdapterTabs } from "./adapter-tabs-context";
+import { recordAdapterPage } from "./recent-adapter-page";
 
 /** Loads and renders the declarative page for an adapter workspace. */
 export function ServiceScreen({
@@ -28,8 +29,8 @@ export function ServiceScreen({
 }) {
   const navigate = useNavigate();
   const { state: tabs, dispatch } = useAdapterTabs();
-  const search = useRouterState({
-    select: (state) => state.location.searchStr,
+  const { searchStr: search, publicHref } = useRouterState({
+    select: (state) => state.location,
   });
   const [service, setService] = useState<Service>();
   const [services, setServices] = useState<Service[]>([]);
@@ -86,6 +87,7 @@ export function ServiceScreen({
     pagePath ??
     (viewId ? `/${decodeURIComponent(viewId)}` : paths[0]);
   const pageSearch = embedded ? (secondary?.rightSearch ?? "") : search;
+  const recentPageHref = embedded ? undefined : publicHref.split("#", 1)[0];
   const split =
     !embedded && tabs.split?.leftId === serviceId ? tabs.split : undefined;
   const selectPage = (selectedPath: string) => {
@@ -110,7 +112,13 @@ export function ServiceScreen({
     setPage(undefined);
     setPageError(undefined);
     getPage(serviceId, `${path}${pageSearch}`)
-      .then((document) => active && setPage(document))
+      .then((document) => {
+        if (!active) return;
+        setPage(document);
+        if (recentPageHref) {
+          recordAdapterPage({ serviceId, path, href: recentPageHref });
+        }
+      })
       .catch(
         (cause) =>
           active &&
@@ -121,7 +129,7 @@ export function ServiceScreen({
     return () => {
       active = false;
     };
-  }, [serviceId, path, pageSearch]);
+  }, [serviceId, path, pageSearch, recentPageHref]);
 
   if (serviceError)
     return (

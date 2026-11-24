@@ -2,23 +2,62 @@ import { Button, Dialog, DialogContent } from "@northgraindata/dsui-ui";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { deleteService, type Service } from "../api";
+import type { RecentAdapterPage } from "../features/adapter-workspace/recent-adapter-page";
 import {
   PluginSlot,
   usePluginSlotBatch,
 } from "../features/plugins/plugin-slots";
+import { pageLabel } from "../service-pages";
 import { Icon } from "./icon";
 import { ServiceMark } from "./service-mark";
+
+const healthPriority = { unavailable: 0, warning: 1, healthy: 2, unknown: 2 };
+const healthLabel = {
+  unavailable: "Unavailable",
+  warning: "Needs attention",
+  healthy: "Connected",
+  unknown: "Status unknown",
+};
+
+function ResumeAdapterPage({
+  service,
+  page,
+}: {
+  service: Service;
+  page: RecentAdapterPage;
+}) {
+  const label = pageLabel(page.path);
+  return (
+    <Link from="/" href={page.href} className="home-resume">
+      <ServiceMark
+        adapter={service.adapter}
+        logo={service.logo}
+        size={42}
+        fallback="icon"
+      />
+      <span className="home-resume-copy">
+        <strong>Continue where you left off</strong>
+        <span title={`${service.name} → ${label}`}>
+          {service.name} <span aria-hidden="true">→</span> {label}
+        </span>
+      </span>
+      <Icon name="chevron" size={16} />
+    </Link>
+  );
+}
 
 export function HomeDashboard({
   services,
   loading,
   error,
+  recentPage,
   onServiceRemoved,
   onRefresh,
 }: {
   services: Service[];
   loading: boolean;
   error?: string;
+  recentPage?: RecentAdapterPage;
   onServiceRemoved?: (id: string) => void;
   onRefresh?: () => void;
 }) {
@@ -30,242 +69,160 @@ export function HomeDashboard({
     "dashboard.service-card.trailing",
     services.map((service) => service.id).join("\0"),
   );
-  const connected = services.filter(
-    (service) => service.health === "healthy",
-  ).length;
-  const issues = services.filter(
-    (service) =>
-      service.health === "unavailable" || service.health === "warning",
-  ).length;
-  const stats = [
-    {
-      label: "Connected services",
-      value: connected,
-      icon: "layers",
-      tone: "accent",
-    },
-    {
-      label: "Issues detected",
-      value: issues,
-      icon: "alert",
-      tone: "unavailable",
-    },
-    {
-      label: "Configured adapters",
-      value: new Set(services.map((service) => service.adapter)).size,
-      icon: "check",
-      tone: "healthy",
-    },
-    {
-      label: "Estimated daily cost",
-      value: "—",
-      icon: "activity",
-      tone: "muted",
-      detail: "Coming soon",
-    },
-  ];
+  const resumeService = services.find(
+    (service) => service.id === recentPage?.serviceId,
+  );
+  const sortedServices = [...services].sort(
+    (a, b) => healthPriority[a.health] - healthPriority[b.health],
+  );
+  const isEmpty = !loading && !error && services.length === 0;
   return (
     <div className="home-dashboard">
-      <header className="home-heading">
-        <div className="home-greeting">
-          <span className="greeting-icon">
-            <Icon name="sun" size={26} />
-          </span>
-          <div>
-            <h1>Your workspace, at a glance</h1>
-            <p>Here's what's happening with your data stack today.</p>
-          </div>
-        </div>
-        <time dateTime={new Date().toISOString().slice(0, 10)}>
-          {new Intl.DateTimeFormat(undefined, {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          }).format(new Date())}
-        </time>
-      </header>
-      {error && (
-        <p role="alert" className="dashboard-error">
-          {error}
-        </p>
+      {recentPage && resumeService && (
+        <ResumeAdapterPage service={resumeService} page={recentPage} />
       )}
-      <div className="home-stats" aria-busy={loading}>
-        {stats.map((stat) => (
-          <section className="home-stat" key={stat.label}>
-            <div>
-              <strong>{loading || error ? "—" : stat.value}</strong>
-              <p>{stat.label}</p>
-            </div>
-            <div className={`stat-icon stat-icon--${stat.tone}`}>
-              <Icon name={stat.icon} size={22} />
-              {stat.detail && <small>{stat.detail}</small>}
-            </div>
-          </section>
-        ))}
-      </div>
-      <div className="home-panels">
-        <section className="stack-panel">
-          <header>
-            <div>
-              <h2>Your data stack</h2>
-              <p>All connected services in one place.</p>
-            </div>
+      <section className="stack-panel" aria-labelledby="home-adapters-heading">
+        <header>
+          <h1 id="home-adapters-heading">Adapters</h1>
+          <div className="stack-actions">
             <button
               type="button"
               className="outline-action"
               onClick={onRefresh}
               disabled={loading}
-              aria-label="Refresh connected services"
+              aria-label="Refresh connected adapters"
             >
               <Icon name="refresh" />
               {loading ? "Refreshing…" : "Refresh"}
             </button>
-          </header>
-          <div
-            className="stack-cards"
-            data-dsui-overlay-target="dashboard.services"
-            aria-busy={loading}
-          >
-            {loading && (
-              <p className="stack-loading" role="status">
-                Checking your services…
-              </p>
+            {!isEmpty && (
+              <Link to="/services/new" className="outline-action">
+                <Icon name="plus" />
+                Connect adapter
+              </Link>
             )}
-            {services.map((service) => (
-              <article
-                key={service.id}
-                className="stack-card"
-                data-dsui-overlay-target={`dashboard.service.${service.id}`}
-              >
-                <Link
-                  to="/services/$serviceId"
-                  params={{ serviceId: service.id }}
-                  className="stack-card-main"
-                >
-                  <div
-                    className={`stack-card-heading ${pluginSlots.results.some((item) => item.serviceId === service.id) ? "pr-24" : ""}`}
-                  >
-                    <ServiceMark
-                      adapter={service.adapter}
-                      logo={service.logo}
-                      size={42}
-                      variant="bare"
-                    />
-                    <div>
-                      <h3>{service.name}</h3>
-                      <span>
-                        <i
-                          className="health-dot"
-                          data-health={service.health}
-                        />
-                        {service.health === "healthy"
-                          ? "Connected"
-                          : service.health}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="stack-card-detail">
-                    <p title={service.endpoint}>
-                      {service.endpoint || service.adapter}
-                    </p>
-                    <small title={service.detail ?? undefined}>
-                      {service.detail ??
-                        (service.latencyMs !== undefined
-                          ? `${service.latencyMs} ms response time`
-                          : "Ready to explore")}
-                    </small>
-                    <Icon name="database" size={21} />
-                  </div>
+          </div>
+        </header>
+        {error && (
+          <p role="alert" className="dashboard-error">
+            {error}
+          </p>
+        )}
+        <div
+          className="stack-cards"
+          data-dsui-overlay-target="dashboard.services"
+          aria-busy={loading}
+        >
+          {loading && (
+            <p className="stack-message" role="status">
+              Checking your services…
+            </p>
+          )}
+          {isEmpty && (
+            <div className="stack-empty">
+              <Icon name="plug" size={24} />
+              <h2>No adapters connected yet</h2>
+              <p>
+                Connect an adapter to explore data and manage your services from
+                DSUI.
+              </p>
+              <Button asChild>
+                <Link to="/services/new">
+                  <Icon name="plus" />
+                  Connect adapter
                 </Link>
-                <div className="absolute right-12 top-3 z-10 max-w-[96px]">
+              </Button>
+            </div>
+          )}
+          {sortedServices.map((service) => (
+            <article
+              key={service.id}
+              className="stack-card"
+              data-health={service.health}
+              data-dsui-overlay-target={`dashboard.service.${service.id}`}
+            >
+              <Link
+                to="/services/$serviceId"
+                params={{ serviceId: service.id }}
+                className="stack-card-main"
+                title={service.endpoint}
+              >
+                <ServiceMark
+                  adapter={service.adapter}
+                  logo={service.logo}
+                  size={42}
+                  fallback="icon"
+                />
+                <div className="stack-card-identity">
+                  <div className="stack-card-title">
+                    <h3>{service.name}</h3>
+                    <Icon name="chevron" size={14} />
+                  </div>
+                  <span className="stack-card-status">
+                    <i className="health-dot" data-health={service.health} />
+                    {healthLabel[service.health]}
+                  </span>
+                </div>
+              </Link>
+              <div className="stack-card-footer">
+                <div className="stack-card-detail">
+                  {service.endpoint && <p>{service.endpoint}</p>}
+                  {service.detail && (
+                    <small title={service.detail}>{service.detail}</small>
+                  )}
+                </div>
+                <div className="stack-card-slot">
                   <PluginSlot
                     serviceId={service.id}
                     results={pluginSlots.results}
                     error={pluginSlots.error}
                   />
                 </div>
-                <div className="stack-card-menu">
-                  <button
-                    type="button"
-                    className="stack-card-menu-trigger"
-                    aria-label={`Manage ${service.name}`}
-                    aria-expanded={openMenu === service.id}
-                    onClick={() =>
-                      setOpenMenu((current) =>
-                        current === service.id ? undefined : service.id,
-                      )
-                    }
-                  >
-                    <span aria-hidden="true">⋯</span>
-                  </button>
-                  {openMenu === service.id && (
-                    <div className="stack-card-menu-popover" role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setSettingsService(service);
-                          setOpenMenu(undefined);
-                        }}
-                      >
-                        <Icon name="gear" size={15} /> Settings
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="is-danger"
-                        onClick={() => {
-                          setRemoveService(service);
-                          setOpenMenu(undefined);
-                        }}
-                      >
-                        Remove connection
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-        <aside className="home-aside">
-          <section className="activity-panel">
-            <header>
-              <h2>Recent activity</h2>
-            </header>
-            <div className="activity-empty">
-              <span className="greeting-icon">
-                <Icon name="activity" size={24} />
-              </span>
-              <h3>Your stack's story starts here</h3>
-              <p>
-                Activity across your adapters will appear here. Query history is
-                available inside each adapter.
-              </p>
-              <span className="coming-soon">Coming soon</span>
-            </div>
-          </section>
-          <section className="quick-panel">
-            <h2>Quick actions</h2>
-            <Link to="/services">
-              <Icon name="terminal" />
-              Open query editor
-              <Icon name="chevron" size={13} />
-            </Link>
-            <Link to="/services">
-              <Icon name="database" />
-              Browse data
-              <Icon name="chevron" size={13} />
-            </Link>
-            <Link to="/services/new">
-              <Icon name="gear" />
-              Manage adapters
-              <Icon name="chevron" size={13} />
-            </Link>
-          </section>
-        </aside>
-      </div>
+              </div>
+              <div className="stack-card-menu">
+                <button
+                  type="button"
+                  className="stack-card-menu-trigger"
+                  aria-label={`Manage ${service.name}`}
+                  aria-expanded={openMenu === service.id}
+                  onClick={() =>
+                    setOpenMenu((current) =>
+                      current === service.id ? undefined : service.id,
+                    )
+                  }
+                >
+                  <span aria-hidden="true">⋯</span>
+                </button>
+                {openMenu === service.id && (
+                  <div className="stack-card-menu-popover" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setSettingsService(service);
+                        setOpenMenu(undefined);
+                      }}
+                    >
+                      <Icon name="gear" size={15} /> Settings
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="is-danger"
+                      onClick={() => {
+                        setRemoveService(service);
+                        setOpenMenu(undefined);
+                      }}
+                    >
+                      Remove connection
+                    </button>
+                  </div>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
       <Dialog.Root
         open={Boolean(removeService)}
         onOpenChange={(open) => !open && setRemoveService(undefined)}
