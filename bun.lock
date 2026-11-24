@@ -305,6 +305,20 @@
         "zod": "^3.24.2",
       },
     },
+    "packages/plugin-status-pages": {
+      "name": "@northgraindata/dsui-plugin-status-pages",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-plugin-sdk": "workspace:*",
+        "@northgraindata/dsui-ui": "workspace:*",
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@types/react": "^19.1.0",
+        "react": "^19.1.1",
+      },
+    },
     "packages/renderer": {
       "name": "@northgraindata/dsui-renderer",
       "version": "0.0.0",
@@ -340,6 +354,7 @@
         "@northgraindata/dsui-adapter-shaper": "workspace:*",
         "@northgraindata/dsui-core": "workspace:*",
         "@northgraindata/dsui-plugin-sdk": "workspace:*",
+        "@northgraindata/dsui-plugin-status-pages": "workspace:*",
         "hono": "^4.11.7",
         "yaml": "^2.8.2",
         "zod": "^3.24.2",
@@ -875,6 +890,8 @@
     "@northgraindata/dsui-plugin-sdk": ["@northgraindata/dsui-plugin-sdk@workspace:packages/plugin-sdk"],
 
     "@northgraindata/dsui-plugin-secrets": ["@northgraindata/dsui-plugin-secrets@workspace:packages/plugin-secrets"],
+
+    "@northgraindata/dsui-plugin-status-pages": ["@northgraindata/dsui-plugin-status-pages@workspace:packages/plugin-status-pages"],
 
     "@northgraindata/dsui-renderer": ["@northgraindata/dsui-renderer@workspace:packages/renderer"],
 

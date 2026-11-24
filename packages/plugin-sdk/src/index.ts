@@ -191,6 +191,8 @@ export type PluginNavigationItem = {
   readonly label: string;
   readonly pageId: string;
   readonly order?: number;
+  /** An icon for this entry alone, when a plugin has several; otherwise the plugin's `iconUrl`. */
+  readonly iconUrl?: string;
 };
 
 export type PluginUiSlot = {
@@ -249,6 +251,8 @@ export type PluginServiceHealthCheck = {
   readonly label: string;
   readonly ok: boolean;
   readonly detail?: string;
+  /** Path inside the service workspace where this signal can be investigated. */
+  readonly href?: string;
 };
 
 export type PluginServiceProbe = {
@@ -323,6 +327,8 @@ export type PluginCapabilitySummary = {
   readonly name: string;
   readonly version: string;
   readonly status: PluginReadinessStatus;
+  /** The plugin's icon, so another plugin can show where something it embeds comes from. */
+  readonly iconUrl?: string;
 };
 export type PluginActionSummary = {
   readonly id: string;
@@ -540,6 +546,8 @@ export type RuntimePluginResource = {
 };
 
 export interface RuntimePluginRegistry {
+  /** Optional so a plugin still loads on a host that does not publish signals. */
+  signal?(signal: RuntimePluginSignal): void;
   page(page: RuntimePluginPage): void;
   navigation(item: PluginNavigationItem): void;
   slot(slot: RuntimePluginSlot): void;
@@ -680,6 +688,20 @@ export type PluginSignalDefinition = {
   id: string;
   payload: z.ZodTypeAny;
   type?: SignalType;
+  /**
+   * `"service"` when the plugin emits this signal about individual services,
+   * as Service health does for an outage. The host then lists it among every
+   * service's signals, so pickers such as workflow editors can offer it.
+   * Defaults to `"global"`.
+   */
+  scope?: "service" | "global";
+};
+
+/** A declared plugin signal as the host publishes it. */
+export type RuntimePluginSignal = {
+  readonly id: string;
+  readonly type: SignalType;
+  readonly scope: "service" | "global";
 };
 
 function unavailableCapability(): never {
@@ -862,6 +884,11 @@ export function definePlugin<TConfig>(
                   "Invalid or duplicate plugin signal",
                 );
               signals.set(signal.id, signal);
+              runtimeRegistry.signal?.({
+                id: signal.id,
+                type: signal.type ?? "info",
+                scope: signal.scope ?? "global",
+              });
             },
             page: (page, presentation) => {
               if (presentation.public && !definition.metadata.security)

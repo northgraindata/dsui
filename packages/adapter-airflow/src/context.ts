@@ -27,6 +27,13 @@ export interface AirflowVersion {
   version: string;
 }
 
+/** One component of the deployment as Airflow reports its own health. */
+export interface AirflowComponentHealth {
+  id: "metadatabase" | "scheduler" | "triggerer" | "dag-processor";
+  /** Airflow reports `healthy` or `unhealthy`; a component with no data is omitted. */
+  status: "healthy" | "unhealthy";
+}
+
 export interface DagSummary {
   dagId: string;
   name: string;
@@ -164,6 +171,8 @@ export interface AirflowClient {
   authenticate(signal?: AbortSignal): Promise<void>;
   dispose(): void;
   getVersion(signal?: AbortSignal): Promise<AirflowVersion>;
+  /** Components Airflow reports on, such as its scheduler heartbeat. */
+  getHealth(signal?: AbortSignal): Promise<AirflowComponentHealth[]>;
   listDags(signal?: AbortSignal): Promise<DagSummary[]>;
   getDag(dagId: string, signal?: AbortSignal): Promise<DagDetails>;
   getDagSource(dagId: string, signal?: AbortSignal): Promise<string>;
