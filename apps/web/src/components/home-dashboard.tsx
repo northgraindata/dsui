@@ -167,9 +167,6 @@ export function HomeDashboard({
               <div className="stack-card-footer">
                 <div className="stack-card-detail">
                   {service.endpoint && <p>{service.endpoint}</p>}
-                  {service.detail && (
-                    <small title={service.detail}>{service.detail}</small>
-                  )}
                 </div>
                 <div className="stack-card-slot">
                   <PluginSlot
