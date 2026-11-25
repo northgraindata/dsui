@@ -50,11 +50,7 @@ test("a healthy single node reports only what it has", async () => {
   );
   expect(report.status).toBe("healthy");
   expect(report.score).toBe(100);
-  expect(ids(report)).toEqual([
-    "authenticated-query",
-    "parts",
-    "disk",
-  ]);
+  expect(ids(report)).toEqual(["authenticated-query", "parts", "disk"]);
 });
 
 test("64-bit integers returned as strings are understood", async () => {
