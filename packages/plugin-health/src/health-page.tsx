@@ -19,6 +19,7 @@ type HealthRow = {
   availability7d: number | null;
   detail?: string;
   latencyMs?: number;
+  score?: number;
 };
 
 const statusOrder: Record<HealthStatus, number> = {
@@ -58,6 +59,7 @@ function readHealthRows(value: unknown): HealthRow[] {
     ...(item.latencyMs !== undefined
       ? { latencyMs: Math.round(item.latencyMs) }
       : {}),
+    ...(item.score !== undefined ? { score: item.score } : {}),
   }));
 }
 
@@ -257,6 +259,12 @@ export function HealthPage({ client }: ComponentProps) {
                   </th>
                   <th
                     scope="col"
+                    title="Infrastructure health score reported by the adapter"
+                  >
+                    Score
+                  </th>
+                  <th
+                    scope="col"
                     title="One bar per hour; gaps mean no recorded checks"
                   >
                     Last week
@@ -300,6 +308,11 @@ export function HealthPage({ client }: ComponentProps) {
                       {row.latencyMs === undefined
                         ? "-"
                         : `${row.latencyMs} ms`}
+                    </td>
+                    <td className="health-page-score">
+                      {row.score === undefined
+                        ? "-"
+                        : `${Math.round(row.score)}/100`}
                     </td>
                     <td>
                       <HistoryStrip
