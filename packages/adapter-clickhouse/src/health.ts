@@ -5,8 +5,6 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import type { ClickHouseContext } from "./context.js";
 
-/** A round trip slower than this is reported as degraded. */
-const SLOW_RESPONSE_MS = 1000;
 /**
  * More active parts than this in one partition means inserts are outpacing
  * merges. ClickHouse starts slowing and then rejecting inserts well above it,
@@ -46,19 +44,12 @@ export async function clickhouseHealth(ctx: ClickHouseContext) {
   const latencyMs = Date.now() - started;
   const checks: AdapterHealthCheck[] = [
     { id: "authenticated-query", label: "Authenticated SQL", ok: true },
-    {
-      id: "response-time",
-      label: "Response time",
-      ok: latencyMs <= SLOW_RESPONSE_MS,
-      detail: `${latencyMs} ms`,
-    },
     ...(await observe(ctx)),
   ];
   return healthReport({
     checks,
     weights: {
       "authenticated-query": 1,
-      "response-time": 0.25,
       replicas: 0.4,
       parts: 0.2,
       disk: 0.3,

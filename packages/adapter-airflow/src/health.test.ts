@@ -38,7 +38,6 @@ test("healthy components add checks next to the existing ones", async () => {
   expect([...byId(report).keys()]).toEqual([
     "reachability",
     "version",
-    "scheduler",
     "metadatabase",
     "scheduler-heartbeat",
   ]);
@@ -62,11 +61,11 @@ test("a dead scheduler degrades the service and links to the DAGs", async () => 
   expect(report.score).toBe(50);
 });
 
-test("the DAG availability check keeps its id", async () => {
+test("DAG availability is not part of infrastructure health", async () => {
   const report = await airflowHealth(context({ components: [] }));
-  expect(byId(report).get("scheduler")).toMatchObject({
-    label: "DAG availability",
-  });
+  expect(byId(report).has("scheduler")).toBe(false);
+  expect(report.status).toBe("healthy");
+  expect(report.score).toBe(100);
 });
 
 test("a deployment that does not expose health is not blamed", async () => {

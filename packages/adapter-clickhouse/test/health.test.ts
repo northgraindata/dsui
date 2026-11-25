@@ -50,12 +50,7 @@ test("a healthy single node reports only what it has", async () => {
   );
   expect(report.status).toBe("healthy");
   expect(report.score).toBe(100);
-  expect(ids(report)).toEqual([
-    "authenticated-query",
-    "response-time",
-    "parts",
-    "disk",
-  ]);
+  expect(ids(report)).toEqual(["authenticated-query", "parts", "disk"]);
 });
 
 test("64-bit integers returned as strings are understood", async () => {
@@ -99,14 +94,15 @@ test("views the role cannot read are left out, not failed", async () => {
     }),
   );
   expect(report.status).toBe("healthy");
-  expect(ids(report)).toEqual(["authenticated-query", "response-time"]);
+  expect(ids(report)).toEqual(["authenticated-query"]);
 });
 
-test("a slow round trip is degraded as before", async () => {
+test("a slow round trip is reported without lowering infrastructure health", async () => {
   const report = await clickhouseHealth(context({ slow: true }));
-  expect(report.status).toBe("warning");
-  expect(report.score).toBe(75);
-  expect(report.checks.find((c) => c.id === "response-time")?.ok).toBe(false);
+  expect(report.status).toBe("healthy");
+  expect(report.score).toBe(100);
+  expect(report.latencyMs).toBeGreaterThanOrEqual(1000);
+  expect(ids(report)).not.toContain("response-time");
 });
 
 test("an unreachable server is unavailable", async () => {
