@@ -53,14 +53,14 @@ function contextOf(delays: {
   };
 }
 
-test("the response time is Airflow answering one call, not the login or the DAG listing", async () => {
+test("the response time is Airflow answering one call, not the login", async () => {
   const { context } = contextOf({
     authenticate: 250,
     listDags: 250,
     version: 15,
   });
   const report = await airflowHealth(context);
-  // The whole check takes over 500 ms; the answer to `version` took about 15.
+  // Sign-in takes longer than the version call; only the latter is measured.
   expect(report.latencyMs).toBeDefined();
   expect(report.latencyMs ?? Number.POSITIVE_INFINITY).toBeLessThan(150);
   const detail = report.checks.find(
@@ -69,10 +69,10 @@ test("the response time is Airflow answering one call, not the login or the DAG 
   expect(detail).toBe(`${report.latencyMs} ms response time`);
 });
 
-test("it signs in first, then asks for the version, then lists the DAGs", async () => {
+test("it signs in, then asks for the version without listing DAGs", async () => {
   const { calls, context } = contextOf({});
   await airflowHealth(context);
-  expect(calls).toEqual(["authenticate", "version", "dags"]);
+  expect(calls).toEqual(["authenticate", "version"]);
 });
 
 test("a login that fails is reported as unreachable, with Airflow's reason, and nothing else is asked", async () => {
@@ -92,10 +92,10 @@ test("a version call that fails is reported as unreachable", async () => {
   expect(report.latencyMs).toBeUndefined();
 });
 
-test("the DAG listing still decides the scheduler check, but not the response time", async () => {
-  const { context } = contextOf({});
+test("DAG state does not affect infrastructure health", async () => {
+  const { calls, context } = contextOf({});
   const report = await airflowHealth(context);
-  expect(report.checks.find((check) => check.id === "scheduler")?.detail).toBe(
-    "2 of 2 DAGs active",
-  );
+  expect(report.status).toBe("healthy");
+  expect(report.score).toBe(100);
+  expect(calls).not.toContain("dags");
 });

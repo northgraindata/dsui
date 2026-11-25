@@ -5,23 +5,12 @@ import {
 } from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowComponentHealth, AirflowContext } from "./context.js";
 
-/**
- * Fraction of DAGs that may be paused before the scheduler is reported as
- * degraded.
- *
- * Pause rate is a proxy for whether the scheduler is actually advancing
- * work; a deployment where every DAG is paused answers every API call while
- * doing nothing.
- */
-const MAX_PAUSED_SHARE = 0.9;
-
 const COMPONENTS: Record<
   AirflowComponentHealth["id"],
   { id: string; label: string; href?: string }
 > = {
   metadatabase: { id: "metadatabase", label: "Metadata database" },
-  // Not `scheduler`: that id already names the DAG availability check, and
-  // changing it would orphan its recorded history.
+  // Keep the Airflow-reported scheduler heartbeat distinct from DAG status.
   scheduler: {
     id: "scheduler-heartbeat",
     label: "Scheduler heartbeat",
@@ -67,17 +56,16 @@ async function observeComponents(
 /**
  * Reports the health of an Airflow deployment.
  *
- * Version and DAG enumeration are the two calls that work across both the
- * Airflow 2 (stable REST API, basic auth) and Airflow 3 (JWT) methods, so the
- * health check needs no per-method branching.
+ * Authentication and the version endpoint confirm that the deployment is
+ * reachable. DAG state and run outcomes belong to Airflow's operational views;
+ * they must not lower the infrastructure score.
  */
 export async function airflowHealth(ctx: AirflowContext) {
   let version: string;
   let responseMs: number;
   try {
-    // Signing in is not Airflow answering, so it happens before the clock
-    // starts. The response time is that of one call, not of the whole check:
-    // listing every DAG below is a separate, larger request.
+    // Sign-in is required to reach the version endpoint, but its duration is
+    // not part of the service response-time measurement.
     await ctx.client.authenticate();
     const started = Date.now();
     version = (await ctx.client.getVersion()).version;
@@ -105,30 +93,6 @@ export async function airflowHealth(ctx: AirflowContext) {
     },
   ];
 
-  try {
-    const dags = await ctx.client.listDags();
-    const paused = dags.filter((dag) => dag.isPaused).length;
-    const share = dags.length === 0 ? 0 : paused / dags.length;
-    checks.push({
-      id: "scheduler",
-      label: "DAG availability",
-      ok: dags.length === 0 || share < MAX_PAUSED_SHARE,
-      detail:
-        dags.length === 0
-          ? "No DAGs visible"
-          : `${dags.length - paused} of ${dags.length} DAGs active`,
-    });
-  } catch (error) {
-    checks.push({
-      id: "scheduler",
-      label: "DAG availability",
-      ok: true,
-      detail: `Not observable: ${
-        error instanceof Error ? error.message : "permission denied"
-      }`,
-    });
-  }
-
   await observeComponents(ctx, checks);
 
   return healthReport({
@@ -136,8 +100,6 @@ export async function airflowHealth(ctx: AirflowContext) {
     weights: {
       reachability: 1,
       version: 0,
-      scheduler: 0.25,
-      // A stalled scheduler means nothing runs, even though the API answers.
       "scheduler-heartbeat": 0.5,
       metadatabase: 0.5,
       "dag-processor": 0.3,
