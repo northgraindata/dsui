@@ -119,3 +119,9 @@
   flex: none;
   white-space: nowrap;
 }
+
+/* Text placed directly in a layout item, such as a Value, may break anywhere. */
+.dsui-item > :is(span, a),
+.dsui-collection-item > :is(span, a) {
+  overflow-wrap: anywhere;
+}
