@@ -89,6 +89,9 @@ export function TableExplorer({
   const menuOpen = menu !== undefined;
   const visibleRows = exploreRows({ rows, columns, search: "", filters, sort });
   const profile = insights ? tableInsights(rows, columns) : undefined;
+  const explored =
+    sort !== undefined ||
+    Object.values(filters).some((selected) => selected.length > 0);
   const activeColumn = columns.find((column) => column.id === menu?.columnId);
   const options = activeColumn
     ? columnOptions(
@@ -202,7 +205,8 @@ export function TableExplorer({
       <div className="table-explorer-toolbar">
         <button
           type="button"
-          className="table-explorer-clear"
+          // Hidden rather than removed, so the table does not move.
+          className={`table-explorer-clear ${explored ? "" : "invisible"}`}
           onClick={() => {
             setFilters({});
             setSort(undefined);

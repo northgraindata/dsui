@@ -384,7 +384,7 @@ export const eventLogsPage = definePage({
           searchable: true,
           pageSize: 25,
           columns: [
-            { id: "timestamp", label: "Time" },
+            { id: "timestamp", label: "Time", format: "datetime" },
             { id: "event", label: "Event" },
             { id: "dagId", label: "DAG" },
             { id: "taskId", label: "Task" },

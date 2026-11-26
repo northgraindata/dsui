@@ -9,10 +9,12 @@ import type {
   TableRowMenuAction,
 } from "../primitives/table";
 import type { ComponentProps } from "../runtime";
+import { formatTimestamp } from "./format-value";
 import { WorkbenchIcon } from "./icons";
 import { positioned } from "./keys";
 import { LiveDuration } from "./live-duration";
 import { LiveEta, LiveProgress } from "./live-progress";
+import { useDisplayPreferences } from "./preferences";
 import {
   isRowActionDisabled,
   matchesWhen,
@@ -40,6 +42,7 @@ export function Table({ client, node, renderNode }: ComponentProps) {
   const [refresh, setRefresh] = useState(0);
   const reload = useCallback(() => setRefresh((value) => value + 1), []);
 
+  const preferences = useDisplayPreferences();
   useEffect(() => {
     void refresh;
     if (!props?.source) return;
@@ -96,6 +99,8 @@ export function Table({ client, node, renderNode }: ComponentProps) {
                   active={row.state === "active"}
                 />
               );
+            if (column?.format === "datetime")
+              return formatTimestamp(value, preferences);
             if (column?.format === "eta")
               return <LiveEta etaSeconds={row.etaSeconds} />;
             if (column?.format === "progress")

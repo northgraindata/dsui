@@ -2,6 +2,8 @@ import { KeyValueList, Surface } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
 import type { KeyValueProps } from "../primitives/key-value";
 import { type ComponentProps, componentProps } from "../runtime";
+import { formatTimestamp, humanizeKey } from "./format-value";
+import { useDisplayPreferences } from "./preferences";
 import { usePropState } from "./use-prop-state";
 
 export function KeyValue({ client, node, context }: ComponentProps) {
@@ -11,6 +13,7 @@ export function KeyValue({ client, node, context }: ComponentProps) {
   );
   const [error, setError] = useState<string>();
   const [loaded, setLoaded] = useState(false);
+  const preferences = useDisplayPreferences();
   useEffect(() => {
     if (!props?.source) return;
     let active = true;
@@ -46,7 +49,12 @@ export function KeyValue({ client, node, context }: ComponentProps) {
       ? (contextual as Record<string, unknown>)
       : data;
   return displayed ? (
-    <KeyValueList title={props.title} values={displayed} />
+    <KeyValueList
+      title={props.title}
+      values={displayed}
+      formatLabel={humanizeKey}
+      formatEntry={(value) => formatTimestamp(value, preferences)}
+    />
   ) : (
     <Surface className="p-4 text-[12px] text-secondary">
       {loaded ? "No details available." : "Loading details…"}

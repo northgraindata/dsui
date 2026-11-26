@@ -7,7 +7,8 @@ import type { DialogSpec } from "./dialog";
 export interface TableColumn {
   id: string;
   label: string;
-  format?: "duration" | "progress" | "eta";
+  /** `datetime` shows a zoned timestamp in the user's settings. */
+  format?: "datetime" | "duration" | "progress" | "eta";
   renderCell?: PageNode | readonly PageNode[];
 }
 

@@ -6,7 +6,6 @@ import {
   definePage,
   Grid,
   KeyValue,
-  PageHeader,
   Section,
   Stack,
   Table,
@@ -172,13 +171,5 @@ function tablesAndServer() {
 
 export const overviewPage = definePage({
   path: "/",
-  render: () => [
-    PageHeader({
-      title: "ClickHouse",
-      description: "Your data catalog at a glance.",
-    }),
-    overviewMetrics(),
-    catalogAndActions(),
-    tablesAndServer(),
-  ],
+  render: () => [overviewMetrics(), catalogAndActions(), tablesAndServer()],
 });

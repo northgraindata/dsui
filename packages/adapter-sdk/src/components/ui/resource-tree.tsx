@@ -193,7 +193,8 @@ function TreeBranch({
         expanded.has(key) ||
         Boolean(needle) ||
         Boolean(href && selectedPath?.startsWith(`${href}/`));
-      const selected = href === selectedPath;
+      // A node without a link is not "selected" just because nothing is.
+      const selected = href !== undefined && href === selectedPath;
       const toggle = () => {
         const next = new Set(expanded);
         if (next.has(key)) next.delete(key);

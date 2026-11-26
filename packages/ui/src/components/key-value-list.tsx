@@ -1,12 +1,16 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Surface } from "./surface";
 
 export function KeyValueList({
   title,
   values,
+  formatLabel = (key) => key,
+  formatEntry = formatValue,
 }: {
   title?: string;
   values: Record<string, unknown>;
+  formatLabel?: (key: string) => string;
+  formatEntry?: (value: unknown) => ReactNode;
 }) {
   return (
     <Surface className="dsui-key-value-panel p-4">
@@ -19,10 +23,10 @@ export function KeyValueList({
         {Object.entries(values).map(([key, value]) => (
           <Fragment key={key}>
             <dt className="min-w-0 text-secondary [overflow-wrap:anywhere]">
-              {key}
+              {formatLabel(key)}
             </dt>
             <dd className="m-0 min-w-0 text-primary [overflow-wrap:anywhere]">
-              {formatValue(value)}
+              {formatEntry(value)}
             </dd>
           </Fragment>
         ))}

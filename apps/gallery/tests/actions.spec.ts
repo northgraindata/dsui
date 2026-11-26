@@ -163,3 +163,36 @@ test("ClickHouse creates a database from the header", async ({ page }) => {
   await expect(modal(page)).toHaveCount(0);
   expect(await sent(page)).toEqual(["create-database"]);
 });
+
+test("a tree without a selection marks nothing selected", async ({ page }) => {
+  await open(page, "/services/clickhouse/query");
+  await expect(page.getByRole("treeitem").first()).toBeVisible();
+  await expect(
+    page.locator('[aria-selected="true"][role="treeitem"]'),
+  ).toHaveCount(0);
+});
+
+test("details read as labels and values, not raw data", async ({ page }) => {
+  await open(page, "/services/airflow/dags/daily_revenue");
+  await page.getByRole("tab", { name: "Details" }).click();
+  const details = page.locator(".dsui-key-value-panel");
+  await expect(details).toContainText("Is paused");
+  await expect(details.locator("dt", { hasText: /^isPaused$/ })).toHaveCount(0);
+  await expect(
+    details.locator("dd", { hasText: /^(true|false)$/ }),
+  ).toHaveCount(0);
+});
+
+test("Clear all appears only once a table is sorted or filtered", async ({
+  page,
+}) => {
+  await open(page, "/services/airflow/event-logs");
+  const clear = page.getByRole("button", { name: "Clear all" });
+  const table = page.locator(".dsui-page table");
+  await expect(table).toBeVisible();
+  await expect(clear).toHaveCount(0);
+  const before = await table.boundingBox();
+  await page.getByRole("button", { name: "Sort Time" }).click();
+  await expect(clear).toBeVisible();
+  expect(await table.boundingBox()).toEqual(before);
+});
