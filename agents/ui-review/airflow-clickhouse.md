@@ -29,12 +29,7 @@ The [page ledger](pages.md) records what changed on each.
   The ClickHouse explorer tree does not refresh until the page is reopened.
 - A toast raised while the native connection dialog is open is drawn under it.
 
-## Proposed convention changes
+## Convention changes
 
-These are proposals only.
-The conventions file is unchanged.
-
-- R18: say that identifier keys in detail panels get a generated label, and that adapters may pass written labels as keys.
-- R19: say that database content, such as previews and query results, is shown as stored.
-  A table column opts into date formatting with `format: "datetime"`.
-- R25: say that a control hidden because it can do nothing keeps its space, so the content does not move.
+The proposals from this pass, for R18, R19 and R25, are now in the conventions.
+Rules R27 to R45 were added after the Airflow redesign, so the pages above need another look against them.

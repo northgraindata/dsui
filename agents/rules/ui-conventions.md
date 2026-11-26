@@ -8,6 +8,15 @@ The `Enforced by` line says who should hold a rule once it is built.
 `Planned` means nothing enforces it yet.
 A rule is enforced by a component where possible, so that an adapter author cannot get it wrong.
 
+## Reference design
+
+The Airflow redesign in `apps/gallery/src/prototype/airflow` is the look to follow.
+Run `bun run gallery:dev`, open `/services/airflow?design=new`, and switch between Old and New.
+
+It is a prototype on invented data, not a model for code.
+It still breaks some rules: it draws inline SVG icons (R11), writes raw colors, has its own tooltip, and its connection modal has no header icon (R44).
+Copy what a person sees and does, then build it from shared components.
+
 ## Actions and feedback
 
 ### R1. Stable size
@@ -158,12 +167,14 @@ Enforced by: components, and a test comparing positions before and after a failu
 ### R18. No raw data
 
 Do not show JSON or technical keys, such as `uniqueId`, as ordinary content.
+In detail panels, identifier keys get a readable label, and an adapter may pass written labels instead.
 Enforced by: review. Planned.
 
 ### R19. One formatting layer
 
 Dates, durations, numbers and sizes use shared formatting that follows the user's settings.
 The full date is in a tooltip.
+Database content, such as previews and query results, is shown as stored.
 Enforced by: shared helpers and a lint rule. Planned.
 
 ### R20. Long values
@@ -207,6 +218,7 @@ Enforced by: review.
 
 No duplicate headings.
 No control that can do nothing, such as "Clear all" without a filter.
+A control hidden for this reason keeps its space, so nothing moves.
 Enforced by: components and review. Planned.
 
 ### R26. Selection means something
@@ -214,6 +226,158 @@ Enforced by: components and review. Planned.
 Only the selected item looks selected.
 Hover and focus look different from selection.
 Enforced by: components and review. Planned.
+
+## Fidelity to the source
+
+### R27. Mirror the tool
+
+An adapter shows and does what the underlying tool shows and does.
+Keep the tool's names and the patterns its users know, such as Airflow's All, Active and Paused tabs and its run grid.
+Do not add concepts the tool does not have, such as an expected freshness for an Airflow asset.
+Enforced by: review.
+
+### R28. Only real data
+
+Check in the tool's API specification that every value, filter and count exists, in each supported version, before you design with it.
+If a value needs extra requests, or is a guess, such as an error line picked from a log, say so in the proposal, and keep the source of a guess one click away.
+Enforced by: review.
+
+### R29. Every state
+
+Support every state in the tool's API, kept in one table with a test that compares it with the specification.
+A state the table does not know keeps its own name and a neutral look.
+It must never look like "not run" or success.
+A view that mixes states has a legend of the states on screen.
+Enforced by: a shared status map and a test. Partly done: the Airflow adapter has the table and test, and its graph still sets its own colors.
+
+## Lists at scale
+
+Design every list for a company with hundreds of records, for example 300 DAGs and thousands of events.
+
+### R30. Pages come from the server
+
+A list that can grow without limit fetches one page at a time, and search and filters are part of the request.
+Never cut a list off without saying so, and request the order explicitly, such as newest first.
+Where the tool cannot search or filter, say what the view does instead.
+Enforced by: `paged` on `List` and `Table`, and review. Partly done.
+
+### R31. Find things
+
+A large list has search and the filters people need, above the list.
+The main states are tabs or segments with counts, not subpages in the sidebar.
+Opening a record and coming back keeps the filters and the page.
+Enforced by: components and tests. Planned.
+
+### R32. Summaries stay short
+
+A summary shows a few items, at most three when each is tall, and links to the full filtered list.
+It looks right with none, one and hundreds.
+Do not add lists of recent items to the sidebar.
+Enforced by: components and review. Planned.
+
+### R33. The same data, the same view
+
+A record's own tab reuses the full page's view, without the columns that would not change.
+For example, a DAG's activity is the activity log filtered to that DAG.
+Enforced by: shared components and review. Planned.
+
+### R34. Rows stay one height
+
+A row shows two tags, then a "+N" chip that lists the rest on hover and on keyboard focus.
+Tags are styled chips, never plain text.
+Row actions are icon buttons at the end of the row, such as pause or play, not switches.
+A row's state is a dot at its start.
+Enforced by: components. Planned.
+
+## Overview pages
+
+### R35. Problems first, with their cause
+
+An overview starts with what needs attention.
+A failure shows what failed, the most telling error line, the attempt and the time, with the log one click away.
+Nothing is expanded until the person asks.
+The problems sit together in one card with a tone, set apart from the rest of the page.
+Enforced by: review.
+
+### R36. Design the healthy state
+
+Design what a page shows when nothing is wrong, not only when something is.
+It says so plainly and offers the next useful step.
+A page title does not depend on a count.
+Enforced by: review, with a gallery control that shows both. Planned.
+
+## Time and history
+
+### R37. Real times
+
+Show clock times, such as "Today 13:02", and clock times on chart axes, not "12 h ago".
+Where runs are inspected, show seconds, and durations as `HH:MM:SS`.
+Do not add an "as of" line that tells the person nothing.
+A daily schedule keeps its hour across a clock change.
+Enforced by: shared helpers. Planned.
+
+### R38. Dense history is readable
+
+A strip or grid of runs uses narrow columns that sit close together.
+Every mark answers on hover with its state, start time with seconds, and duration.
+The time axis labels a few columns, plus the hovered and the selected one, without overlap.
+A duration scale and round tick marks show how long things took.
+A strip is one tab stop with a summary label, not one for each mark.
+Enforced by: shared components and tests. Planned.
+
+## Navigation and identity
+
+### R39. Grouped sidebar
+
+An adapter's sidebar groups pages under short headings, such as Monitor and Configure.
+Each page has its own icon.
+A count appears only for something that needs attention.
+Enforced by: an adapter navigation declaration in the SDK. Planned.
+
+### R40. Page art
+
+Sidebar entries and page headers use DSUI's glossy blue art, generated as one set so the style matches.
+This art is separate from the line icons of R11.
+Show it in full color.
+Enforced by: review.
+
+### R41. Brands
+
+A well-known system shows its real logo, on a tile tinted with its color.
+Anything else, protocols included, gets one generic mark and color.
+Never fake a logo with letters.
+Record where each logo came from, and check the owner's brand rules before shipping it.
+Enforced by: a shared brand registry. Planned.
+
+## Controls and content
+
+### R42. Lively selects
+
+An option that stands for something with an identity shows its logo or icon.
+Labels are written for people, never raw values.
+Pick one naming convention for each set, such as the vendor's full product name.
+The menu is compact, fits its longest option, and its trigger matches the inputs beside it.
+Enforced by: the shared select. Partly done: sizing and style.
+
+### R43. Headers earn their text
+
+A header has no description that restates its title.
+Keep a second line only when it is data, such as a DAG's description or an asset's URI.
+Put an explanation that matters in an empty state.
+Enforced by: review.
+
+### R44. Modals are laid out
+
+A modal has an icon beside its title.
+Related fields sit side by side, in named groups, and rare fields are collapsed.
+The input control fits the data, such as a select for a type.
+Enforced by: form layout components. Planned.
+
+### R45. Code is shown as code
+
+A code view is one frame with line numbers and syntax coloring.
+Its top bar gives the facts about the file, such as its path and when it was last parsed, and a copy button.
+Enforced by: a shared code component. Planned.
 
 ## Known gaps
 
@@ -238,3 +402,5 @@ Reviewing a page may show that a rule is wrong, missing or too strict.
 | --- | --- | --- |
 | 2026-11-26 | R1-R26 | First agreed version. |
 | 2026-11-26 | R22 | Radix accepted for primitives with hard behaviour; extensions receive them as `ui`. |
+| 2026-11-27 | R27-R45 | Added from the maintainer's feedback on the Airflow redesign, which is now the reference design. Added by the agent at the maintainer's invitation, so each rule still awaits their reading. |
+| 2026-11-27 | R18, R19, R25 | Clarified generated labels, stored database content and the space of hidden controls. |

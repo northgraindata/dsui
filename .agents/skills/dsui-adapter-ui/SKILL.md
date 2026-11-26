@@ -5,6 +5,28 @@ description: Use when adding or changing the UI of a DSUI adapter page or a shar
 
 # Build adapter UI
 
+## A new adapter or a redesign
+
+Work in this order.
+Get the maintainer's answer at steps 2 and 4 before you go on.
+
+1. **Learn the tool.** Read its API specification and its own UI. List every state, run type and list it has, for each supported version (R27 to R29).
+2. **Plan pages by question.** For each page, say what a person comes to find out or do. Drop pages that answer nothing. Propose the pages and the sidebar groups (R39).
+3. **Prototype in the gallery.** Use data that looks real and is sized like a large company: hundreds of records, long names, many tags, every state, failures and none (R30 to R36). Mark invented data as invented.
+4. **Show it.** Put the prototype beside the current pages with the Old and New switch (`apps/gallery/src/shell/embedded.tsx`). Report which values the API cannot give and which need extra requests. Change it with the maintainer until they accept the look.
+5. **Build it for real.** Move what is reusable into shared components, make the adapter fetch what the design shows, and page every list that grows.
+6. **Verify.** Test against the real tool where you can, and say so where you could not.
+
+The look to match is the [reference design](../../../agents/rules/ui-conventions.md#reference-design).
+Open it before you design anything.
+
+### Before you show a design
+
+- Hover every dense mark and open every select: nothing is cut off, covered or unlabeled.
+- Check it with no failures, with many, and with an empty list.
+- Check a long list, a record's way back to it, and a narrow window.
+- Take a screenshot of each page and look at it. A test can pass while a card has lost its styles.
+
 ## Find what exists first
 
 - Components an adapter can use are declared in `packages/adapter-sdk/src/components/primitives/`.
