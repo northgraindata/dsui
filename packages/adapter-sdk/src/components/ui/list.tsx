@@ -10,6 +10,7 @@ import {
   performRowAction,
   resolveLink,
 } from "./row-action";
+import { usePropState } from "./use-prop-state";
 
 type Row = Record<string, unknown>;
 type Client = ComponentProps["client"];
@@ -20,7 +21,7 @@ export function List({ client, node }: ComponentProps) {
   const { rows, error, reload } = useRows(client, props);
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Selection>({});
-  const [limit, setLimit] = useState(props?.pageSize);
+  const [limit, setLimit] = usePropState(props?.pageSize);
 
   const visible = useMemo(
     () =>
@@ -138,7 +139,7 @@ function Toolbar({
 }
 
 function useRows(client: Client, props: ListProps | undefined) {
-  const [data, setData] = useState<unknown>(props?.data);
+  const [data, setData] = usePropState<unknown>(props?.data);
   const [error, setError] = useState<string>();
   const [refresh, setRefresh] = useState(0);
   const source = props?.source;

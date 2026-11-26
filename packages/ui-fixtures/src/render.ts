@@ -18,6 +18,16 @@ export function pageSlug(path: string): string {
     : path.slice(1).replaceAll(":", "_").replaceAll("/", "~");
 }
 
+/** The concrete URL a fixture page stands for inside the application. */
+export function pageHref(path: string, fixtures: AdapterFixtures): string {
+  const params = pageParams(path, fixtures);
+  const concrete = path.replace(/:([A-Za-z0-9_]+)/g, (_, name: string) =>
+    encodeURIComponent(params[name] ?? ""),
+  );
+  const query = fixtures.queries?.[path];
+  return query ? `${concrete}?${query}` : concrete;
+}
+
 function pageParams(
   path: string,
   fixtures: AdapterFixtures,
@@ -35,6 +45,8 @@ export async function renderPage(
   adapter: AnyAdapter,
   path: string,
   fixtures: AdapterFixtures,
+  /** Renders a particular URL instead of the fixture's default one. */
+  location?: { params: Record<string, string>; query: string },
 ): Promise<readonly PageNode[]> {
   const page = adapter.pages.find((candidate) => candidate.path === path);
   if (!page) throw new Error(`Unknown page ${path}`);
@@ -42,8 +54,8 @@ export async function renderPage(
   const scope = createPageScope(
     registry,
     page,
-    pageParams(path, fixtures),
-    new URLSearchParams(fixtures.queries?.[path] ?? ""),
+    location?.params ?? pageParams(path, fixtures),
+    new URLSearchParams(location?.query ?? fixtures.queries?.[path] ?? ""),
   );
   try {
     await registry.ready();

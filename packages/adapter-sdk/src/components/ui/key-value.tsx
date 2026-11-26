@@ -2,11 +2,12 @@ import { KeyValueList, Surface } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
 import type { KeyValueProps } from "../primitives/key-value";
 import { type ComponentProps, componentProps } from "../runtime";
+import { usePropState } from "./use-prop-state";
 
 export function KeyValue({ client, node, context }: ComponentProps) {
   const props = componentProps<KeyValueProps>(node);
-  const [data, setData] = useState<Record<string, unknown> | undefined>(
-    props?.data ? { ...props.data } : undefined,
+  const [data, setData] = usePropState(
+    props?.data as Record<string, unknown> | undefined,
   );
   const [error, setError] = useState<string>();
   const [loaded, setLoaded] = useState(false);

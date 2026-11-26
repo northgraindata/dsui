@@ -1,24 +1,20 @@
 import type { RendererClient } from "@northgraindata/dsui-renderer";
 import type { Scenario } from "@northgraindata/dsui-ui-fixtures";
+import { answerAction, answerResource } from "./answers";
+import type { FixtureData } from "./data";
 
 /** Serves fixture data through the same seam the product uses for adapters. */
 export function fixtureClient(
-  resources: Record<string, unknown>,
+  data: FixtureData,
   scenario: Scenario,
+  navigate: (destination: string) => void,
 ): RendererClient {
   return {
     connection: { name: "Fixture", endpoint: "fixture://local" },
-    executeResource(reference) {
-      if (scenario === "loading") return new Promise<never>(() => undefined);
-      if (scenario === "error")
-        return Promise.reject(new Error("The source is unavailable."));
-      if (!(reference.resourceId in resources))
-        return Promise.reject(
-          new Error(`No fixture for resource ${reference.resourceId}`),
-        );
-      return Promise.resolve(structuredClone(resources[reference.resourceId]));
-    },
-    executeAction: () => Promise.resolve({ status: "success" }),
-    navigate: () => undefined,
+    executeResource: (reference) =>
+      answerResource(data, scenario, reference.resourceId),
+    executeAction: (reference) =>
+      answerAction(data, scenario, reference.actionId),
+    navigate,
   };
 }

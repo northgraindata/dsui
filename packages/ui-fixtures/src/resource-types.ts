@@ -2,14 +2,26 @@ import { dirname, join } from "node:path";
 import ts from "typescript";
 
 /**
- * Finds every `defineResource` call in an adapter and records the output type
- * of its query. Resources carry no runtime output schema, so the TypeScript
- * type is the single source of truth for fixture shapes.
+ * Finds every `defineResource` and `defineAction` call in an adapter and records
+ * what its function returns. Neither carries a runtime output schema, so the
+ * TypeScript type is the single source of truth for fixture shapes.
  */
 export interface ResourceTypes {
   readonly checker: ts.TypeChecker;
+  /** Query output per resource id. */
   readonly outputs: ReadonlyMap<string, ts.Type>;
+  /** Run output per action id. */
+  readonly actions: ReadonlyMap<string, ts.Type>;
 }
+
+type Property = "query" | "run";
+type Found = Record<Property, Map<string, ts.Type>>;
+
+/** The function whose return type describes each kind of definition. */
+const DEFINITIONS: Readonly<Record<string, Property>> = {
+  defineResource: "query",
+  defineAction: "run",
+};
 
 function sourceFiles(directory: string): string[] {
   return ts.sys
@@ -32,18 +44,32 @@ function literalProperty(
   return undefined;
 }
 
-function queryOutput(
+function returnOutput(
   checker: ts.TypeChecker,
   object: ts.ObjectLiteralExpression,
+  property: Property,
 ): ts.Type | undefined {
-  const query = checker.getTypeAtLocation(object).getProperty("query");
-  if (!query) return undefined;
+  const member = checker.getTypeAtLocation(object).getProperty(property);
+  if (!member) return undefined;
   const signature = checker
-    .getTypeOfSymbolAtLocation(query, object)
+    .getTypeOfSymbolAtLocation(member, object)
     .getCallSignatures()[0];
   if (!signature) return undefined;
   const returned = signature.getReturnType();
   return checker.getAwaitedType(returned) ?? returned;
+}
+
+function collect(
+  checker: ts.TypeChecker,
+  call: ts.CallExpression,
+  found: Found,
+): void {
+  const property = DEFINITIONS[call.expression.getText()];
+  const [argument] = call.arguments;
+  if (!property || !argument || !ts.isObjectLiteralExpression(argument)) return;
+  const id = literalProperty(argument, "id");
+  const output = returnOutput(checker, argument, property);
+  if (id && output) found[property].set(id, output);
 }
 
 export function collectResourceTypes(
@@ -68,25 +94,15 @@ export function collectResourceTypes(
   });
   const checker = program.getTypeChecker();
   return filesByAdapter.map((files) => {
-    const outputs = new Map<string, ts.Type>();
+    const found: Found = { query: new Map(), run: new Map() };
     const visit = (node: ts.Node): void => {
-      if (
-        ts.isCallExpression(node) &&
-        node.expression.getText() === "defineResource"
-      ) {
-        const [argument] = node.arguments;
-        if (argument && ts.isObjectLiteralExpression(argument)) {
-          const id = literalProperty(argument, "id");
-          const output = queryOutput(checker, argument);
-          if (id && output) outputs.set(id, output);
-        }
-      }
+      if (ts.isCallExpression(node)) collect(checker, node, found);
       ts.forEachChild(node, visit);
     };
     for (const file of files) {
       const source = program.getSourceFile(file);
       if (source) visit(source);
     }
-    return { checker, outputs };
+    return { checker, outputs: found.query, actions: found.run };
   });
 }

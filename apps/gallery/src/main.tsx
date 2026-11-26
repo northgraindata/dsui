@@ -1,17 +1,10 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { App } from "./app";
-import "@northgraindata/dsui-renderer/app.css";
-import "@northgraindata/dsui-adapter-sdk/styles.css";
-// The web workspace styles own the page gutters and split panes, so the
-// gallery loads them to frame pages exactly as the product does.
-import "../../web/src/workspace.css";
-import "./gallery.css";
+/**
+ * One origin serves two things. `/` is the gallery. Every other path, and `/`
+ * with `?shell=1`, is the real web application running on fixture data.
+ */
+const isShell =
+  location.pathname !== "/" ||
+  new URLSearchParams(location.search).has("shell");
 
-const root = document.getElementById("root");
-if (root)
-  createRoot(root).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  );
+if (isShell) void import("./shell/main").then((shell) => shell.startShell());
+else void import("./gallery-main").then((gallery) => gallery.startGallery());

@@ -7,10 +7,12 @@
     "gallery": "vite",
     "preview:gallery": "vite build && vite preview",
     "test:ui": "playwright test",
+    "test": "bun test src",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "@northgraindata/dsui-core": "workspace:*",
     "@northgraindata/dsui-renderer": "workspace:*",
     "@northgraindata/dsui-ui": "workspace:*",
     "@northgraindata/dsui-ui-fixtures": "workspace:*",

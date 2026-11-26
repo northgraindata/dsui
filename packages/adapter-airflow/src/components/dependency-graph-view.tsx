@@ -4,6 +4,7 @@ import type {
   TableRowLink,
 } from "@northgraindata/dsui-adapter-sdk";
 import { resolveLink } from "@northgraindata/dsui-adapter-sdk/components/ui/table";
+import { usePropState } from "@northgraindata/dsui-adapter-sdk/components/ui/use-prop-state";
 import { cn, Surface } from "@northgraindata/dsui-ui";
 import {
   Fragment,
@@ -918,7 +919,7 @@ function DependencyGraphContent({
     idField: "id",
     dependsOnField: "dependsOn",
   };
-  const [data, setData] = useState<unknown>(props.data);
+  const [data, setData] = usePropState<unknown>(props.data);
   const [error, setError] = useState<string>();
   const cachedLayoutRef = useRef<{
     topologyKey: string;

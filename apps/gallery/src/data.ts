@@ -1,10 +1,21 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
+import type { PublicAdapter } from "@northgraindata/dsui-core";
 import type { Scenario } from "@northgraindata/dsui-ui-fixtures";
+
+export interface ManifestPage {
+  path: string;
+  slug: string;
+  /** The page's concrete URL inside the application, with fixture params. */
+  href: string;
+}
 
 export interface ManifestAdapter {
   id: string;
   name: string;
-  pages: { path: string; slug: string }[];
+  catalog: Omit<PublicAdapter, "pages" | "components">;
+  pages: ManifestPage[];
+  /** Fixture file per URL whose query changes what the page renders. */
+  variants: Record<string, string>;
 }
 
 const files = import.meta.glob("../.generated/**/*.json", {
@@ -20,9 +31,30 @@ async function load<T>(path: string): Promise<T> {
 
 export const loadManifest = () => load<ManifestAdapter[]>("manifest.json");
 
-export interface Fixture {
-  nodes: readonly PageNode[];
+export const loadNodes = (adapter: string, slug: string) =>
+  load<readonly PageNode[]>(`${adapter}/pages/${slug}.json`);
+
+export interface FixtureData {
   resources: Record<string, unknown>;
+  actions: Record<string, unknown>;
+}
+
+export async function loadData(
+  adapter: string,
+  scenario: Scenario,
+): Promise<FixtureData> {
+  // Loading and error never deliver data, so they reuse the default set.
+  const set =
+    scenario === "loading" || scenario === "error" ? "default" : scenario;
+  const [resources, actions] = await Promise.all([
+    load<Record<string, unknown>>(`${adapter}/resources.${set}.json`),
+    load<Record<string, unknown>>(`${adapter}/actions.${set}.json`),
+  ]);
+  return { resources, actions };
+}
+
+export interface Fixture extends FixtureData {
+  nodes: readonly PageNode[];
 }
 
 export async function loadFixture(
@@ -30,12 +62,9 @@ export async function loadFixture(
   slug: string,
   scenario: Scenario,
 ): Promise<Fixture> {
-  // Loading and error never deliver data, so they reuse the default set.
-  const dataScenario =
-    scenario === "loading" || scenario === "error" ? "default" : scenario;
-  const [nodes, resources] = await Promise.all([
-    load<readonly PageNode[]>(`${adapter}/pages/${slug}.json`),
-    load<Record<string, unknown>>(`${adapter}/resources.${dataScenario}.json`),
+  const [nodes, data] = await Promise.all([
+    loadNodes(adapter, slug),
+    loadData(adapter, scenario),
   ]);
-  return { nodes, resources };
+  return { nodes, ...data };
 }

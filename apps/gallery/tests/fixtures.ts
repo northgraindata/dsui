@@ -31,6 +31,7 @@ export async function openFixture(
     page: target.slug,
     scenario: target.scenario,
     width: target.width,
+    toolbar: "0",
   });
   await page.goto(`/?${search}`);
   await page.locator("[data-gallery-ready]").waitFor();

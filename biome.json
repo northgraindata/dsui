@@ -64,7 +64,12 @@
         "noNestedComponentDefinitions": "error",
         "noUndeclaredDependencies": "error",
         "noUnusedFunctionParameters": "warn",
-        "useExhaustiveDependencies": "error",
+        "useExhaustiveDependencies": {
+          "level": "error",
+          "options": {
+            "hooks": [{ "name": "usePropState", "stableResult": [1] }]
+          }
+        },
         "useHookAtTopLevel": "error"
       },
       "nursery": {

@@ -106,7 +106,9 @@ export function DataTable({
             const row = visibleRows[virtualRow.index];
             return (
               <tr
-                key={`${virtualRow.index}:${JSON.stringify(row)}`}
+                key={virtualRow.index}
+                // The virtualizer reads this to know which row it measured.
+                data-index={virtualRow.index}
                 ref={virtualizer.measureElement}
               >
                 {columns.map((column) => (

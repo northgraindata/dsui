@@ -28,7 +28,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for the canonical check requirements.
 ## UI verification
 
 ```sh
-bun run gallery:dev   # every adapter page with fixture data on :5180
+bun run gallery:dev   # adapter pages and the whole app on fixture data, :5180
 bun run test:ui       # layout checks for all pages, scenarios and widths
 ```
 

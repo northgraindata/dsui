@@ -11,3 +11,5 @@
 @source "../../adapter-*/src/**/*.{ts,tsx}";
 @source "../../plugin-*/src/**/*.{ts,tsx}";
 @source "./";
+/* The gallery runs the web app from its own root, so name its sources too. */
+@source "../../../apps/web/src";

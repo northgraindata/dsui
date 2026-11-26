@@ -8,86 +8,123 @@ import {
   loadManifest,
   type ManifestAdapter,
 } from "./data";
+import { Index } from "./index-page";
+import { toScenario } from "./scenario";
+import { Toolbar } from "./toolbar";
+import { pageOnlyUrl, resolveUrl, shellUrl } from "./urls";
 
 const WIDTHS = ["full", "360", "768", "1280", "split"] as const;
-
-function isScenario(value: string | null): value is Scenario {
-  return SCENARIOS.some((scenario) => scenario === value);
-}
 
 export function App() {
   const search = new URLSearchParams(window.location.search);
   const adapter = search.get("adapter");
   const slug = search.get("page");
-  const requested = search.get("scenario");
-  const scenario = isScenario(requested) ? requested : "default";
   if (!adapter || !slug) return <Index />;
   return (
     <FixturePage
       adapter={adapter}
       slug={slug}
-      scenario={scenario}
+      scenario={toScenario(search.get("scenario"))}
       width={search.get("width") ?? "full"}
+      at={search.get("at") ?? undefined}
+      toolbar={search.get("toolbar") !== "0"}
     />
   );
 }
 
-function Index() {
-  const [adapters, setAdapters] = useState<ManifestAdapter[]>([]);
-  const [error, setError] = useState<string>();
-  useEffect(() => {
-    loadManifest().then(setAdapters, (cause: Error) => setError(cause.message));
-  }, []);
-  return (
-    <main className="gallery-index">
-      <h1>DSUI fixture gallery</h1>
-      {error ? <p role="alert">{error}</p> : null}
-      {adapters.map((adapter) => (
-        <section key={adapter.id}>
-          <h2>{adapter.name}</h2>
-          <ul>
-            {adapter.pages.map((page) => (
-              <li key={page.slug}>
-                <code>{page.path}</code>
-                {SCENARIOS.map((scenario) => (
-                  <a
-                    key={scenario}
-                    href={`?${new URLSearchParams({ adapter: adapter.id, page: page.slug, scenario })}`}
-                  >
-                    {scenario}
-                  </a>
-                ))}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-      <p>Add &width= with one of: {WIDTHS.join(", ")}.</p>
-    </main>
-  );
-}
-
-function FixturePage({
-  adapter,
-  slug,
-  scenario,
-  width,
-}: {
+interface Target {
   adapter: string;
   slug: string;
   scenario: Scenario;
   width: string;
-}) {
+  /** The application URL on screen, when it differs from the page's default. */
+  at?: string;
+}
+
+/** The file for the URL on screen, which a query can change. */
+async function loadPage(
+  adapterId: string,
+  slug: string,
+  scenario: Scenario,
+  at: string | undefined,
+): Promise<Fixture> {
+  const adapter = (await loadManifest()).find((item) => item.id === adapterId);
+  const file = at && adapter ? resolveUrl(adapter, at)?.file : undefined;
+  return loadFixture(adapterId, file ?? slug, scenario);
+}
+
+/** Links and tabs move between fixture pages, as they do in the application. */
+async function followLink(
+  adapterId: string,
+  destination: string,
+  scenario: Scenario,
+  width: string,
+): Promise<void> {
+  const adapter = (await loadManifest()).find((item) => item.id === adapterId);
+  const match = adapter && resolveUrl(adapter, destination);
+  if (match)
+    window.location.assign(
+      pageOnlyUrl(adapterId, match.page.slug, scenario, {
+        width,
+        at: destination,
+      }),
+    );
+}
+
+function PageControls({ adapter, slug, scenario, width, at }: Target) {
+  const [manifest, setManifest] = useState<ManifestAdapter[]>([]);
+  useEffect(() => {
+    void loadManifest().then(setManifest);
+  }, []);
+  const page = manifest
+    .find((entry) => entry.id === adapter)
+    ?.pages.find((entry) => entry.slug === slug);
+  return (
+    <Toolbar
+      scenario={scenario}
+      onScenario={(next) =>
+        window.location.assign(pageOnlyUrl(adapter, slug, next, { width, at }))
+      }
+    >
+      <span>
+        {WIDTHS.map((option) => (
+          <a
+            key={option}
+            aria-current={option === width}
+            href={pageOnlyUrl(adapter, slug, scenario, { width: option, at })}
+            style={{ marginRight: 8 }}
+          >
+            {option}
+          </a>
+        ))}
+      </span>
+      {page ? (
+        <a
+          href={shellUrl(adapter, { ...page, href: at ?? page.href }, scenario)}
+        >
+          With shell
+        </a>
+      ) : null}
+    </Toolbar>
+  );
+}
+
+function FixturePage({ toolbar, ...target }: Target & { toolbar: boolean }) {
+  const { adapter, slug, scenario, width, at } = target;
   const [fixture, setFixture] = useState<Fixture>();
   const [error, setError] = useState<string>();
   useEffect(() => {
-    loadFixture(adapter, slug, scenario).then(setFixture, (cause: Error) =>
+    loadPage(adapter, slug, scenario, at).then(setFixture, (cause: Error) =>
       setError(cause.message),
     );
-  }, [adapter, slug, scenario]);
+  }, [adapter, slug, scenario, at]);
   const client = useMemo(
-    () => fixture && fixtureClient(fixture.resources, scenario),
-    [fixture, scenario],
+    () =>
+      fixture &&
+      fixtureClient(fixture, scenario, (destination) => {
+        void followLink(adapter, destination, scenario, width);
+      }),
+    [fixture, scenario, adapter, width],
   );
   if (error) return <p role="alert">{error}</p>;
   if (!fixture || !client) return null;
@@ -96,22 +133,25 @@ function FixturePage({
       <DeclarativePageRenderer client={client} nodes={fixture.nodes} />
     </div>
   );
-  if (width === "split")
-    return (
-      <div className="gallery-split" data-gallery-ready="">
-        <div className="adapter-pane-grid">
-          {page}
-          <div className="adapter-secondary-pane">{page}</div>
-        </div>
-      </div>
-    );
   return (
-    <div
-      className="gallery-frame"
-      data-gallery-ready=""
-      style={Number(width) ? { width: Number(width) } : undefined}
-    >
-      {page}
-    </div>
+    <>
+      {width === "split" ? (
+        <div className="gallery-split" data-gallery-ready="">
+          <div className="adapter-pane-grid">
+            {page}
+            <div className="adapter-secondary-pane">{page}</div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="gallery-frame"
+          data-gallery-ready=""
+          style={Number(width) ? { width: Number(width) } : undefined}
+        >
+          {page}
+        </div>
+      )}
+      {toolbar ? <PageControls {...target} /> : null}
+    </>
   );
 }

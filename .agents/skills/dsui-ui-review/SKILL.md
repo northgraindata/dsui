@@ -18,6 +18,19 @@ Set the browser viewport to the same width, or 1440 for `split`.
 
 With a browser tool such as Playwright MCP, inspect screenshots, DOM, computed styles, element sizes and console output.
 
+The toolbar in the corner switches data scenarios and widths, and toggles the application shell.
+`?toolbar=0` hides it.
+
+## Check inside the application
+
+The same server runs the real web app on fixture data.
+Open `/?shell=1` for Home, or any application path such as `/settings` or `/services/duckdb/query`.
+`src/shell/api.ts` answers `/api/v1` requests.
+Add a route there when the app starts requesting something new; the gallery reports it as "no fixture".
+
+Actions answer too.
+Results come from each action's return type, and `run-query` returns a query result, so you can run a query and inspect it.
+
 ## Run the checks
 
 ```sh
@@ -25,7 +38,7 @@ bun run lint
 bun run test:ui
 ```
 
-`test:ui` rebuilds fixtures and checks every page in every scenario and width.
+`test:ui` rebuilds fixtures and checks every page in every scenario and width, the application screens inside the shell, and a query run with and without it.
 It fails on console errors, horizontal overflow and controls with zero size.
 
 ## Compare screenshots

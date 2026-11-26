@@ -20,6 +20,7 @@ import {
   resolveLink,
 } from "./row-action";
 import { TableExplorer } from "./table-explorer";
+import { usePropState } from "./use-prop-state";
 
 export {
   actionId,
@@ -33,7 +34,7 @@ type TableNodeProps = TableProps & { component?: string };
 /** Browser implementation of the reusable SDK table component. */
 export function Table({ client, node, renderNode }: ComponentProps) {
   const props = readProps(node);
-  const [data, setData] = useState<unknown>(props?.data);
+  const [data, setData] = usePropState<unknown>(props?.data);
   const [error, setError] = useState<string>();
   const [refresh, setRefresh] = useState(0);
   const reload = useCallback(() => setRefresh((value) => value + 1), []);

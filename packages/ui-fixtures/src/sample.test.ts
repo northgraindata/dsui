@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test";
 import { join, resolve } from "node:path";
+import { parseQueryResult } from "../../adapter-sdk/src/components/ui/query-editor/query-result";
+import { queryResult } from "./query-result";
 import { collectColumns } from "./render";
 import { collectResourceTypes } from "./resource-types";
 import { sampleFromType } from "./sample";
@@ -48,4 +50,14 @@ test("fields read by value nodes are collected too", () => {
     columns,
   );
   expect([...(columns.get("overview") ?? [])]).toEqual(["size"]);
+});
+
+test("query results satisfy what the SQL editor accepts", () => {
+  const result = parseQueryResult(queryResult({ rows: 3, longText: false }));
+  expect(result.rows).toHaveLength(3);
+  expect(result.columns.map((column) => column.name)).toContain("customer");
+});
+
+test("action outputs are collected from their run functions", () => {
+  expect(postgresql?.actions.has("run-query")).toBe(true);
 });
