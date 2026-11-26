@@ -10,6 +10,7 @@ import type {
 } from "../primitives/table";
 import type { ComponentProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
+import { positioned } from "./keys";
 import { LiveDuration } from "./live-duration";
 import { LiveEta, LiveProgress } from "./live-progress";
 import {
@@ -19,7 +20,6 @@ import {
   resolveLink,
 } from "./row-action";
 import { TableExplorer } from "./table-explorer";
-import { positioned } from "./keys";
 
 export {
   actionId,

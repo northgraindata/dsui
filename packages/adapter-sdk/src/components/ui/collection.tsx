@@ -73,10 +73,7 @@ function CollectionContent({
     <div className="dsui-collection">
       {keyedRows(rows).map(({ item: row, key: rowKey }) =>
         positioned(nodes(node.props.content)).map(({ item: child, key }) => (
-          <div
-            className="dsui-collection-item"
-            key={`${rowKey}/${key}`}
-          >
+          <div className="dsui-collection-item" key={`${rowKey}/${key}`}>
             {renderNode(client, child, row)}
           </div>
         )),

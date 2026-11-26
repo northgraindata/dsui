@@ -42,7 +42,10 @@ export default function Tabs({
         ))}
       </div>
       {/* Keyed by tab so panels never inherit each other's state. */}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-component" key={selected}>
+      <div
+        className="grid grid-cols-[minmax(0,1fr)] gap-component"
+        key={selected}
+      >
         {positioned(content).map(({ item: child, key }) => (
           <Fragment key={key}>{renderNode(client, child, context)}</Fragment>
         ))}

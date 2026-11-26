@@ -18,7 +18,9 @@ export function KeyValueList({
       <dl className="grid grid-cols-[minmax(min(8rem,40%),max-content)_minmax(0,1fr)] gap-x-5 gap-y-2 text-[12px]">
         {Object.entries(values).map(([key, value]) => (
           <Fragment key={key}>
-            <dt className="min-w-0 text-secondary [overflow-wrap:anywhere]">{key}</dt>
+            <dt className="min-w-0 text-secondary [overflow-wrap:anywhere]">
+              {key}
+            </dt>
             <dd className="m-0 min-w-0 text-primary [overflow-wrap:anywhere]">
               {formatValue(value)}
             </dd>

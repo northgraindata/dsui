@@ -56,9 +56,9 @@
 .dsui-grid {
   --dsui-min-column: 18rem;
   grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(100%, var(--dsui-min-column)), 1fr)
-  );
+      auto-fit,
+      minmax(min(100%, var(--dsui-min-column)), 1fr)
+    );
 }
 .dsui-grid[data-min-column="sm"] {
   --dsui-min-column: 150px;
@@ -69,18 +69,18 @@
  */
 .dsui-grid[data-columns] {
   grid-template-columns: repeat(
-    auto-fill,
-    minmax(
-      max(
-        min(100%, var(--dsui-min-column)),
-        calc(
-          (100% - (var(--dsui-grid-columns) - 1) * var(--dsui-gap)) /
-          var(--dsui-grid-columns)
-        )
-      ),
-      1fr
-    )
-  );
+      auto-fill,
+      minmax(
+        max(
+          min(100%, var(--dsui-min-column)),
+          calc(
+            (100% - (var(--dsui-grid-columns) - 1) * var(--dsui-gap)) /
+            var(--dsui-grid-columns)
+          )
+        ),
+        1fr
+      )
+    );
 }
 .dsui-collection {
   display: grid;

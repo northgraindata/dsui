@@ -17,9 +17,7 @@ export default function Target({
   return (
     <div data-dsui-overlay-target={props.id}>
       {positioned(children).map(({ item: child, key }) => (
-        <Fragment key={key}>
-          {renderNode(client, child, context)}
-        </Fragment>
+        <Fragment key={key}>{renderNode(client, child, context)}</Fragment>
       ))}
     </div>
   );
