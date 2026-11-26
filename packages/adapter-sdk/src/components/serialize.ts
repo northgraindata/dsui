@@ -1,32 +1,11 @@
-import type { ActionReference, ActionTarget } from "../action/index";
-import type { ResourceReference } from "../resource";
-import type { DataSource } from "../resource/index";
+/**
+ * Converts live SDK page nodes into the browser-safe page protocol.
+ *
+ * One walker handles every node: it turns bindings into references and copies
+ * plain data. Only nodes whose protocol differs from their authoring props have
+ * a normalizer below, so a new prop needs no serialization code.
+ */
 import type { PageNode } from "./nodes";
-import type { CardProps } from "./primitives/card";
-import type { CollectionProps } from "./primitives/collection";
-import type { ColumnsColumn } from "./primitives/columns";
-import type { FlexProps } from "./primitives/flex";
-import type { GridProps } from "./primitives/grid";
-import type { MeterSegment } from "./primitives/meter";
-import type { NotebookBlock } from "./primitives/notebook";
-import type {
-  QueryEditorProps,
-  QueryExplorerDocument,
-} from "./primitives/query-editor";
-import type { ResourceProps } from "./primitives/resource";
-import type {
-  ResourceTreeBranchDocument,
-  ResourceTreeBranchProps,
-} from "./primitives/resource-tree";
-import type { StackProps } from "./primitives/stack";
-import type {
-  TableColumn,
-  TableFilter,
-  TableRowAction,
-  TableRowMenuAction,
-} from "./primitives/table";
-import type { TabsItem } from "./primitives/tabs";
-import type { ValueProps } from "./primitives/value";
 
 /** Thrown when a live SDK node cannot cross the server/browser boundary. */
 export class UnserializablePageError extends Error {
@@ -36,644 +15,181 @@ export class UnserializablePageError extends Error {
   }
 }
 
-function resource(source: DataSource): ResourceReference {
-  return {
-    resourceId: source.resourceId,
-    ...(source.input === undefined ? {} : { input: source.input }),
-    ...(source.refresh ? { refresh: source.refresh } : {}),
-  };
+type Props = Record<string, unknown>;
+
+/** Kinds the protocol carries. Anything else is a mistake in the page. */
+const SERIALIZABLE_KINDS: ReadonlySet<string> = new Set(
+  (
+    "badge button card code-block collection columns custom flex form gauge " +
+    "grid icon key-value link meter notebook notebook-catalog page-header " +
+    "query-editor resource resource-tree section select split-pane stack " +
+    "table tabs text-input value"
+  ).split(" "),
+);
+
+function isRecord(value: unknown): value is Props {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function action(
-  target:
-    | ActionTarget
-    | { readonly kind: "action"; readonly id: string }
-    | { readonly field: string }
-    | string,
-): ActionReference | { readonly field: string } {
+/** An action may be a definition, a binding, its id, or a context field. */
+function actionReference(target: unknown): unknown {
   if (typeof target === "string") return { actionId: target };
-  if ("field" in target) return target;
-  return target.kind === "action-binding"
-    ? { actionId: target.actionId, input: target.input }
-    : { actionId: target.id };
+  const record = target as Props;
+  if ("field" in record) return value(record);
+  return record.kind === "action-binding"
+    ? value(record)
+    : { actionId: record.id };
 }
 
-function explorer(
-  value: NonNullable<QueryEditorProps["explorer"]>,
-): QueryExplorerDocument {
-  return {
-    source: resource(value.source),
-    ...(value.nameField ? { nameField: value.nameField } : {}),
-    ...(value.typeField ? { typeField: value.typeField } : {}),
-    ...(value.children ? { children: explorer(value.children) } : {}),
-  };
+function mapDefined(
+  record: unknown,
+  convert: (item: unknown) => unknown,
+): unknown {
+  if (!isRecord(record)) return record;
+  return Object.fromEntries(
+    Object.entries(record)
+      .filter(([, item]) => item !== undefined)
+      .map(([key, item]) => [key, convert(item)]),
+  );
 }
 
-function treeBranch(
-  value: ResourceTreeBranchProps,
-): ResourceTreeBranchDocument {
-  return {
-    source: resource(value.source),
-    ...(value.nameField ? { nameField: value.nameField } : {}),
-    ...(value.typeField ? { typeField: value.typeField } : {}),
-    ...(value.rowLink
-      ? {
-          rowLink: {
-            path: value.rowLink.path,
-            params: { ...value.rowLink.params },
-          },
-        }
+/** Table actions declare `action` and `input` apart; the protocol joins them. */
+function tableAction(spec: unknown): unknown {
+  const { action, input, ...rest } = spec as Props;
+  if (!action) return rest;
+  const actionId = typeof action === "string" ? action : (action as Props).id;
+  return { ...rest, action: { actionId, ...(input ? { input } : {}) } };
+}
+
+function rejectCallback(props: Props, name: string): Props {
+  if (props.onChange)
+    throw new UnserializablePageError(`${name} callbacks cannot be serialized`);
+  return props;
+}
+
+const NORMALIZERS: Readonly<Record<string, (props: Props) => Props>> = {
+  button: (props) =>
+    props.action ? { ...props, action: actionReference(props.action) } : props,
+  "query-editor": (props) => ({
+    ...props,
+    action: actionReference(props.action),
+  }),
+  // `schema` validates on the server and is not part of the protocol.
+  form: (props) => ({
+    fields: props.fields ?? [],
+    action: actionReference(props.onSubmit),
+    ...(props.submitLabel ? { submitLabel: props.submitLabel } : {}),
+  }),
+  table: (props) => ({
+    ...props,
+    ...(Array.isArray(props.rowActions)
+      ? { rowActions: props.rowActions.map(tableAction) }
       : {}),
-    ...(value.children ? { children: treeBranch(value.children) } : {}),
-  };
+    ...(Array.isArray(props.actions)
+      ? { actions: props.actions.map(tableAction) }
+      : {}),
+  }),
+  notebook: (props) => ({
+    ...props,
+    ...(props.actions
+      ? { actions: mapDefined(props.actions, actionReference) }
+      : {}),
+    blocks: (props.blocks as Props[]).map((block) =>
+      block.kind === "code"
+        ? { ...block, action: actionReference(block.action) }
+        : block,
+    ),
+  }),
+  "notebook-catalog": (props) =>
+    props.actions
+      ? { ...props, actions: mapDefined(props.actions, actionReference) }
+      : props,
+  select: (props) => rejectCallback(props, "Select"),
+  "text-input": (props) => rejectCallback(props, "Text input"),
+};
+
+/** Props that hold nested page nodes, which need their own normalizers. */
+const CHILD_PROPS: ReadonlySet<string> = new Set([
+  "actions",
+  "content",
+  "fields",
+  "inspector",
+  "renderCell",
+  "sidebar",
+  "tags",
+]);
+
+function isPageNode(candidate: unknown): candidate is PageNode {
+  return (
+    isRecord(candidate) &&
+    typeof candidate.kind === "string" &&
+    isRecord(candidate.props)
+  );
 }
 
-function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
-  return (Array.isArray(value) ? value : [value]).map(serializeNode);
+/** Converts any authoring value into JSON-safe protocol data. */
+function value(input: unknown, key?: string): unknown {
+  if (Array.isArray(input))
+    return input.map((item) =>
+      key && CHILD_PROPS.has(key) && isPageNode(item)
+        ? serializeNode(item)
+        : value(item, key),
+    );
+  // The protocol always carries children as a list, even a single one.
+  if (key && CHILD_PROPS.has(key) && isPageNode(input))
+    return [serializeNode(input)];
+  if (typeof input === "function") {
+    const definition = input as unknown as Props;
+    if (definition.kind === "action") return { actionId: definition.id };
+    throw new UnserializablePageError(
+      `Functions cannot be serialized${key ? ` (prop "${key}")` : ""}`,
+    );
+  }
+  if (!isRecord(input)) return input;
+  const prototype = Object.getPrototypeOf(input);
+  if (prototype !== Object.prototype && prototype !== null)
+    throw new UnserializablePageError(
+      `Only plain objects can be serialized${key ? ` (prop "${key}")` : ""}`,
+    );
+  if (input.kind === "resource-binding")
+    return pick(input, ["resourceId", "input", "refresh"]);
+  if (input.kind === "action-binding")
+    return pick(input, ["actionId", "input"]);
+  return Object.fromEntries(
+    Object.entries(input)
+      .filter(([, item]) => item !== undefined)
+      .map(([name, item]) => [name, value(item, name)]),
+  );
+}
+
+function pick(record: Props, keys: readonly string[]): Props {
+  return Object.fromEntries(
+    keys
+      .filter((key) => record[key] !== undefined)
+      .map((key) => [key, record[key]]),
+  );
 }
 
 /** Converts static SDK page nodes into the browser-safe page protocol. */
 export function serializeNode(node: PageNode): PageNode {
-  switch (node.kind) {
-    case "page-header":
-      return {
-        kind: node.kind,
-        props: {
-          title: node.props.title,
-          ...(node.props.description
-            ? { description: node.props.description }
-            : {}),
-          ...(node.props.badge ? { badge: { ...node.props.badge } } : {}),
-          ...(node.props.meta ? { meta: node.props.meta } : {}),
-          ...(node.props.variant ? { variant: node.props.variant } : {}),
-          ...(node.props.tags ? { tags: nodes(node.props.tags) } : {}),
-          ...(node.props.actions ? { actions: nodes(node.props.actions) } : {}),
-        },
-      };
-    case "table":
-      return {
-        kind: node.kind,
-        props: {
-          ...(node.props.source ? { source: resource(node.props.source) } : {}),
-          ...(node.props.columnsSource
-            ? { columnsSource: resource(node.props.columnsSource) }
-            : {}),
-          ...(node.props.data ? { data: node.props.data } : {}),
-          ...(node.props.variant ? { variant: node.props.variant } : {}),
-          ...(node.props.searchable ? { searchable: true } : {}),
-          ...(node.props.filters
-            ? {
-                filters: node.props.filters.map((filter: TableFilter) => ({
-                  field: filter.field,
-                  label: filter.label,
-                  options: filter.options.map((option) => ({ ...option })),
-                })),
-              }
-            : {}),
-          ...(node.props.pageSize ? { pageSize: node.props.pageSize } : {}),
-          ...(node.props.columns
-            ? {
-                columns: node.props.columns.map((column: TableColumn) => ({
-                  id: column.id,
-                  label: column.label,
-                  ...(column.format ? { format: column.format } : {}),
-                  ...(column.renderCell
-                    ? { renderCell: nodes(column.renderCell) }
-                    : {}),
-                })),
-              }
-            : {}),
-          ...(node.props.rowLink
-            ? {
-                rowLink: {
-                  path: node.props.rowLink.path,
-                  params: { ...node.props.rowLink.params },
-                },
-              }
-            : {}),
-          ...(node.props.rowActions
-            ? {
-                rowActions: node.props.rowActions.map(
-                  (rowAction: TableRowAction) => ({
-                    label: rowAction.label,
-                    ...(rowAction.icon ? { icon: rowAction.icon } : {}),
-                    ...(rowAction.variant
-                      ? { variant: rowAction.variant }
-                      : {}),
-                    ...(rowAction.action
-                      ? {
-                          action: {
-                            actionId:
-                              typeof rowAction.action === "string"
-                                ? rowAction.action
-                                : rowAction.action.id,
-                            ...(rowAction.input
-                              ? { input: { ...rowAction.input } }
-                              : {}),
-                          },
-                        }
-                      : {}),
-                    ...(rowAction.link
-                      ? {
-                          link: {
-                            path: rowAction.link.path,
-                            params: { ...rowAction.link.params },
-                          },
-                        }
-                      : {}),
-                    ...(rowAction.successLink
-                      ? {
-                          successLink: {
-                            path: rowAction.successLink.path,
-                            params: { ...rowAction.successLink.params },
-                          },
-                        }
-                      : {}),
-                    ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
-                    ...(rowAction.disabledWhen
-                      ? { disabledWhen: { ...rowAction.disabledWhen } }
-                      : {}),
-                    ...(rowAction.confirmation
-                      ? { confirmation: { ...rowAction.confirmation } }
-                      : {}),
-                  }),
-                ),
-              }
-            : {}),
-          ...(node.props.actions
-            ? {
-                actions: node.props.actions.map(
-                  (rowAction: TableRowMenuAction) => ({
-                    label: rowAction.label,
-                    ...(rowAction.link
-                      ? {
-                          link: {
-                            path: rowAction.link.path,
-                            params: { ...rowAction.link.params },
-                          },
-                        }
-                      : {}),
-                    ...(rowAction.action
-                      ? {
-                          action: {
-                            actionId:
-                              typeof rowAction.action === "string"
-                                ? rowAction.action
-                                : rowAction.action.id,
-                            ...(rowAction.input
-                              ? { input: { ...rowAction.input } }
-                              : {}),
-                          },
-                        }
-                      : {}),
-                    ...(rowAction.successLink
-                      ? {
-                          successLink: {
-                            path: rowAction.successLink.path,
-                            params: { ...rowAction.successLink.params },
-                          },
-                        }
-                      : {}),
-                    ...(rowAction.when ? { when: { ...rowAction.when } } : {}),
-                    ...(rowAction.confirmation
-                      ? { confirmation: { ...rowAction.confirmation } }
-                      : {}),
-                  }),
-                ),
-              }
-            : {}),
-        },
-      };
-    case "button":
-      return {
-        kind: node.kind,
-        props: {
-          label: node.props.label,
-          ...(node.props.icon ? { icon: node.props.icon } : {}),
-          ...(node.props.description
-            ? { description: node.props.description }
-            : {}),
-          ...(node.props.kbd ? { kbd: node.props.kbd } : {}),
-          ...(node.props.variant ? { variant: node.props.variant } : {}),
-          ...(node.props.action ? { action: action(node.props.action) } : {}),
-          ...(node.props.successLink
-            ? {
-                successLink: {
-                  path: node.props.successLink.path,
-                  params: { ...node.props.successLink.params },
-                },
-              }
-            : {}),
-          ...(node.props.link ? { link: node.props.link } : {}),
-          ...(node.props.confirmation
-            ? { confirmation: node.props.confirmation }
-            : {}),
-        },
-      };
-    case "icon":
-      return {
-        kind: node.kind,
-        props: {
-          name: node.props.name,
-          ...(node.props.size ? { size: node.props.size } : {}),
-        },
-      };
-    case "badge":
-      return {
-        kind: node.kind,
-        props: {
-          label: node.props.label,
-          ...(node.props.tone ? { tone: node.props.tone } : {}),
-          ...(node.props.dot ? { dot: true } : {}),
-        },
-      };
-    case "tabs":
-      return {
-        kind: node.kind,
-        props: {
-          items: node.props.items.map((item: TabsItem) => ({
-            label: item.label,
-            content: nodes(item.content),
-            ...(item.link ? { link: item.link } : {}),
-          })),
-          ...(node.props.defaultIndex === undefined
-            ? {}
-            : { defaultIndex: node.props.defaultIndex }),
-          ...(node.props.variant ? { variant: node.props.variant } : {}),
-        },
-      };
-    case "key-value":
-      return {
-        kind: node.kind,
-        props: {
-          ...(node.props.title ? { title: node.props.title } : {}),
-          ...(node.props.source ? { source: resource(node.props.source) } : {}),
-          ...(node.props.data ? { data: { ...node.props.data } } : {}),
-        },
-      };
-    case "query-editor":
-      return {
-        kind: node.kind,
-        props: {
-          language: node.props.language,
-          ...(node.props.value !== undefined
-            ? { value: node.props.value }
-            : {}),
-          action: action(node.props.action),
-          ...(node.props.explorer
-            ? {
-                explorer: explorer(node.props.explorer),
-              }
-            : {}),
-        },
-      };
-    case "resource-tree":
-      return {
-        kind: node.kind,
-        props: {
-          label: node.props.label,
-          branch: treeBranch(node.props.branch),
-          ...(node.props.selectedPath
-            ? { selectedPath: node.props.selectedPath }
-            : {}),
-          ...(node.props.stateKey ? { stateKey: node.props.stateKey } : {}),
-          ...(node.props.searchPlaceholder
-            ? { searchPlaceholder: node.props.searchPlaceholder }
-            : {}),
-        },
-      };
-    case "resource": {
-      const props = node.props as ResourceProps;
-      return {
-        kind: node.kind,
-        props: {
-          ...(props.source ? { source: resource(props.source) } : {}),
-          content: nodes(props.content),
-        },
-      };
-    }
-    case "link":
-      return { kind: node.kind, props: { ...node.props } };
-    case "code-block":
-      return { kind: node.kind, props: { ...node.props } };
-    case "notebook":
-      return {
-        kind: node.kind,
-        props: {
-          ...(node.props.id ? { id: node.props.id } : {}),
-          title: node.props.title,
-          ...(node.props.description
-            ? { description: node.props.description }
-            : {}),
-          ...(node.props.notebooks
-            ? {
-                notebooks: node.props.notebooks.map(
-                  (item: { id: string; title: string }) => ({ ...item }),
-                ),
-              }
-            : {}),
-          ...(node.props.openTabs
-            ? {
-                openTabs: node.props.openTabs.map(
-                  (item: { id: string; title: string }) => ({ ...item }),
-                ),
-              }
-            : {}),
-          ...(node.props.metadata
-            ? { metadata: { ...node.props.metadata } }
-            : {}),
-          ...(node.props.actions
-            ? {
-                actions: {
-                  ...(node.props.actions.save
-                    ? { save: action(node.props.actions.save) }
-                    : {}),
-                  ...(node.props.actions.select
-                    ? { select: action(node.props.actions.select) }
-                    : {}),
-                  ...(node.props.actions.create
-                    ? { create: action(node.props.actions.create) }
-                    : {}),
-                  ...(node.props.actions.delete
-                    ? { delete: action(node.props.actions.delete) }
-                    : {}),
-                  ...(node.props.actions.duplicate
-                    ? { duplicate: action(node.props.actions.duplicate) }
-                    : {}),
-                  ...(node.props.actions.import
-                    ? { import: action(node.props.actions.import) }
-                    : {}),
-                  ...(node.props.actions.close
-                    ? { close: action(node.props.actions.close) }
-                    : {}),
-                },
-              }
-            : {}),
-          blocks: node.props.blocks.map((block: NotebookBlock) =>
-            block.kind === "code"
-              ? {
-                  ...block,
-                  action: action(block.action),
-                }
-              : { ...block },
-          ),
-        },
-      };
-    case "notebook-catalog":
-      return {
-        kind: node.kind,
-        props: {
-          notebooks: node.props.notebooks.map(
-            (item: {
-              id: string;
-              title: string;
-              description?: string;
-              environment?: string;
-              location?: string;
-              updatedAt?: string;
-              lastViewedAt?: string;
-            }) => ({ ...item }),
-          ),
-          ...(node.props.actions
-            ? {
-                actions: {
-                  ...(node.props.actions.create
-                    ? { create: action(node.props.actions.create) }
-                    : {}),
-                  ...(node.props.actions.import
-                    ? { import: action(node.props.actions.import) }
-                    : {}),
-                },
-              }
-            : {}),
-        },
-      };
-    case "split-pane":
-      return {
-        kind: node.kind,
-        props: {
-          sidebar: nodes(node.props.sidebar),
-          content: nodes(node.props.content),
-          ...(node.props.inspector
-            ? { inspector: nodes(node.props.inspector) }
-            : {}),
-          ...(node.props.sidebarLabel
-            ? { sidebarLabel: node.props.sidebarLabel }
-            : {}),
-        },
-      };
-    case "select":
-      if (node.props.onChange)
-        throw new UnserializablePageError(
-          "Select callbacks cannot be serialized",
-        );
-      return {
-        kind: node.kind,
-        props: {
-          name: node.props.name,
-          ...(node.props.label ? { label: node.props.label } : {}),
-          options: node.props.options,
-          ...(node.props.value !== undefined
-            ? { value: node.props.value }
-            : {}),
-          ...(node.props.placeholder
-            ? { placeholder: node.props.placeholder }
-            : {}),
-        },
-      };
-    case "text-input":
-      if (node.props.onChange)
-        throw new UnserializablePageError(
-          "Text input callbacks cannot be serialized",
-        );
-      return {
-        kind: node.kind,
-        props: {
-          name: node.props.name,
-          ...(node.props.label ? { label: node.props.label } : {}),
-          ...(node.props.value !== undefined
-            ? { value: node.props.value }
-            : {}),
-          ...(node.props.placeholder
-            ? { placeholder: node.props.placeholder }
-            : {}),
-          ...(node.props.secret ? { secret: true } : {}),
-        },
-      };
-    case "form":
-      return {
-        kind: node.kind,
-        props: {
-          fields: nodes(node.props.fields ?? []),
-          action: action(node.props.onSubmit),
-          ...(node.props.submitLabel
-            ? { submitLabel: node.props.submitLabel }
-            : {}),
-        },
-      };
-    case "code-editor":
-      throw new UnserializablePageError(
-        "Code editor nodes require a browser-state protocol",
-      );
-    case "custom":
-      return {
-        kind: node.kind,
-        props: {
-          component: node.props.component,
-          path: node.props.path,
-          ...(node.props.browserUrl
-            ? { browserUrl: node.props.browserUrl }
-            : {}),
-          ...(node.props.props ? { props: { ...node.props.props } } : {}),
-        },
-      };
-    case "section":
-      return {
-        kind: node.kind,
-        props: {
-          title: node.props.title,
-          ...(node.props.description
-            ? { description: node.props.description }
-            : {}),
-          ...(node.props.link ? { link: { ...node.props.link } } : {}),
-          content: nodes(node.props.content),
-        },
-      };
-    case "card": {
-      const props = node.props as CardProps;
-      return {
-        kind: node.kind,
-        props: {
-          ...(props.title ? { title: props.title } : {}),
-          ...(props.description ? { description: props.description } : {}),
-          ...(props.icon ? { icon: props.icon } : {}),
-          ...(props.badge ? { badge: props.badge } : {}),
-          ...(props.badgeTone ? { badgeTone: props.badgeTone } : {}),
-          ...(props.link ? { link: { ...props.link } } : {}),
-          ...(props.variant ? { variant: props.variant } : {}),
-          ...(props.content ? { content: nodes(props.content) } : {}),
-        },
-      };
-    }
-    case "collection": {
-      const props = node.props as CollectionProps;
-      return {
-        kind: node.kind,
-        props: {
-          ...(props.source ? { source: resource(props.source) } : {}),
-          ...(props.field ? { field: props.field } : {}),
-          content: nodes(props.content),
-        },
-      };
-    }
-    case "flex": {
-      const props = node.props as FlexProps;
-      return {
-        kind: node.kind,
-        props: {
-          direction: props.direction,
-          ...(props.gap ? { gap: props.gap } : {}),
-          ...(props.align ? { align: props.align } : {}),
-          ...(props.justify ? { justify: props.justify } : {}),
-          ...(props.wrap ? { wrap: true } : {}),
-          content: nodes(props.content),
-        },
-      };
-    }
-    case "columns":
-      return {
-        kind: node.kind,
-        props: {
-          columns: node.props.columns.map((column: ColumnsColumn) => ({
-            ...(column.weight !== undefined ? { weight: column.weight } : {}),
-            content: nodes(column.content),
-          })),
-          ...(node.props.gap ? { gap: node.props.gap } : {}),
-        },
-      };
-    case "grid": {
-      const props = node.props as GridProps;
-      return {
-        kind: node.kind,
-        props: {
-          ...(props.columns !== undefined ? { columns: props.columns } : {}),
-          ...(props.gap ? { gap: props.gap } : {}),
-          ...(props.minColumnWidth
-            ? { minColumnWidth: props.minColumnWidth }
-            : {}),
-          content: nodes(props.content),
-        },
-      };
-    }
-    case "stack": {
-      const props = node.props as StackProps;
-      return {
-        kind: node.kind,
-        props: {
-          ...(props.gap ? { gap: props.gap } : {}),
-          content: nodes(props.content),
-        },
-      };
-    }
-    case "value": {
-      const props = node.props as ValueProps;
-      return {
-        kind: node.kind,
-        props: {
-          ...(props.source ? { source: resource(props.source) } : {}),
-          field: props.field,
-          ...(props.format ? { format: props.format } : {}),
-          ...(props.fallback ? { fallback: props.fallback } : {}),
-        },
-      };
-    }
-    case "gauge":
-      return {
-        kind: node.kind,
-        props: {
-          value: node.props.value,
-          ...(node.props.max !== undefined ? { max: node.props.max } : {}),
-          ...(node.props.tone ? { tone: node.props.tone } : {}),
-          ...(node.props.scale ? { scale: node.props.scale } : {}),
-          ...(node.props.showValue === false ? { showValue: false } : {}),
-          ...(node.props.label ? { label: node.props.label } : {}),
-        },
-      };
-    case "meter":
-      return {
-        kind: node.kind,
-        props: {
-          ...(node.props.field ? { field: node.props.field } : {}),
-          ...(node.props.source ? { source: resource(node.props.source) } : {}),
-          ...(node.props.format ? { format: node.props.format } : {}),
-          ...(node.props.data
-            ? {
-                data: {
-                  segments: node.props.data.segments.map(
-                    (segment: MeterSegment) => ({
-                      ...segment,
-                    }),
-                  ),
-                  ...(node.props.data.format
-                    ? { format: node.props.data.format }
-                    : {}),
-                  ...(node.props.data.footer
-                    ? { footer: node.props.data.footer }
-                    : {}),
-                },
-              }
-            : {}),
-        },
-      };
-    default:
-      throw new UnserializablePageError(
-        `Unsupported component kind: ${node.kind}`,
-      );
-  }
+  if (node.kind === "code-editor")
+    throw new UnserializablePageError(
+      "Code editor nodes require a browser-state protocol",
+    );
+  if (!SERIALIZABLE_KINDS.has(node.kind))
+    throw new UnserializablePageError(
+      `Unsupported component kind: ${node.kind}`,
+    );
+  // `defineComponent` already made a browser reference's props JSON-safe.
+  if (node.kind === "custom")
+    return { kind: node.kind, props: { ...(node.props as Props) } };
+  const props = node.props as Props;
+  const normalized = NORMALIZERS[node.kind]?.(props) ?? props;
+  return { kind: node.kind, props: value(normalized) as Props };
 }
 
 export function serializeNodes(
-  value: PageNode | readonly PageNode[],
+  nodes: PageNode | readonly PageNode[],
 ): readonly PageNode[] {
-  return nodes(value);
+  return (Array.isArray(nodes) ? nodes : [nodes]).map(serializeNode);
 }
