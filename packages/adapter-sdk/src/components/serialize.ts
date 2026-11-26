@@ -457,6 +457,9 @@ export function serializeNode(node: PageNode): PageNode {
           ...(node.props.inspector
             ? { inspector: nodes(node.props.inspector) }
             : {}),
+          ...(node.props.sidebarLabel
+            ? { sidebarLabel: node.props.sidebarLabel }
+            : {}),
         },
       };
     case "select":
@@ -585,6 +588,7 @@ export function serializeNode(node: PageNode): PageNode {
             ...(column.weight !== undefined ? { weight: column.weight } : {}),
             content: nodes(column.content),
           })),
+          ...(node.props.gap ? { gap: node.props.gap } : {}),
         },
       };
     case "grid": {
@@ -594,6 +598,9 @@ export function serializeNode(node: PageNode): PageNode {
         props: {
           ...(props.columns !== undefined ? { columns: props.columns } : {}),
           ...(props.gap ? { gap: props.gap } : {}),
+          ...(props.minColumnWidth
+            ? { minColumnWidth: props.minColumnWidth }
+            : {}),
           content: nodes(props.content),
         },
       };

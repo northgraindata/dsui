@@ -27,6 +27,7 @@ export const overviewPage = definePage({
         "A live view of this PostgreSQL server and its data catalog.",
     }),
     Grid({
+      minColumnWidth: "sm",
       content: [
         Card({
           variant: "metric",

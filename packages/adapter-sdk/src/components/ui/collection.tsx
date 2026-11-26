@@ -3,7 +3,7 @@ import { Surface } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
 import type { CollectionNode } from "../primitives/collection";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
-import { keyedItems } from "./keyed-items";
+import { keyedRows, positioned } from "./keys";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -71,11 +71,11 @@ function CollectionContent({
   if (!rows.length) return null;
   return (
     <div className="dsui-collection">
-      {keyedItems(rows).map(({ item: row, key: rowKey }) =>
-        keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
+      {keyedRows(rows).map(({ item: row, key: rowKey }) =>
+        positioned(nodes(node.props.content)).map(({ item: child, key }) => (
           <div
             className="dsui-collection-item"
-            key={JSON.stringify([rowKey, key])}
+            key={`${rowKey}/${key}`}
           >
             {renderNode(client, child, row)}
           </div>

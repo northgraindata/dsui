@@ -2,7 +2,7 @@ import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { resolveLink } from "@northgraindata/dsui-adapter-sdk/components/ui/table";
 import type { ComponentProps as RegistryViewProps } from "../../runtime";
 import { WorkbenchIcon } from "../icons";
-import { keyedItems } from "../keyed-items";
+import { positioned } from "../keys";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -34,7 +34,7 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
         ) : null}
         <div className="dsui-card-metric">
           <strong className="dsui-card-value">
-            {keyedItems(content).map(({ item: child, key }) => (
+            {positioned(content).map(({ item: child, key }) => (
               <span key={key}>{renderNode(client, child, context)}</span>
             ))}
           </strong>
@@ -75,7 +75,7 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
         </div>
         {content.length > 0 && (
           <div className="dsui-card-content">
-            {keyedItems(content).map(({ item: child, key }) => (
+            {positioned(content).map(({ item: child, key }) => (
               <div key={key}>{renderNode(client, child, context)}</div>
             ))}
           </div>
@@ -117,7 +117,7 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
         </header>
       )}
       <div className="dsui-card-content">
-        {keyedItems(content).map(({ item: child, key }) => (
+        {positioned(content).map(({ item: child, key }) => (
           <div key={key}>{renderNode(client, child, context)}</div>
         ))}
       </div>

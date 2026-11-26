@@ -26,6 +26,7 @@ export const usagePage = definePage({
         "Credits, storage and slow queries from SNOWFLAKE.ACCOUNT_USAGE. Data can lag by up to three hours and needs IMPORTED PRIVILEGES on the SNOWFLAKE database.",
     }),
     Grid({
+      minColumnWidth: "sm",
       content: [
         Card({
           variant: "metric",

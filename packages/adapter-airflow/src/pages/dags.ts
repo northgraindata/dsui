@@ -103,6 +103,7 @@ export const dagListPage = definePage({
 
 function metricCards() {
   return Grid({
+    minColumnWidth: "sm",
     content: [
       Card({
         variant: "metric",

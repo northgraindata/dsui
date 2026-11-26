@@ -1,6 +1,6 @@
 import type { ComponentProps as RegistryViewProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
-import { keyedItems } from "./keyed-items";
+import { positioned } from "./keys";
 
 /** Page header: title with optional description. */
 export default function PageHeader({
@@ -35,7 +35,7 @@ export default function PageHeader({
           ) : null}
           {node.props.tags ? (
             <div className="dsui-page-header-tags">
-              {keyedItems(nodes(node.props.tags)).map(
+              {positioned(nodes(node.props.tags)).map(
                 ({ item: child, key }) => (
                   <span key={key}>{renderNode(client, child, context)}</span>
                 ),
@@ -49,7 +49,7 @@ export default function PageHeader({
       ) : null}
       {node.props.actions ? (
         <div className="dsui-page-header-actions">
-          {keyedItems(nodes(node.props.actions)).map(({ item: child, key }) => (
+          {positioned(nodes(node.props.actions)).map(({ item: child, key }) => (
             <span key={key}>{renderNode(client, child, context)}</span>
           ))}
         </div>

@@ -5,6 +5,8 @@ export interface SplitPaneProps {
   sidebar: PageNode | readonly PageNode[];
   content: PageNode | readonly PageNode[];
   inspector?: PageNode | readonly PageNode[];
+  /** Label of the button that opens the sidebar in narrow containers. */
+  sidebarLabel?: string;
 }
 
 export interface SplitPaneNode {

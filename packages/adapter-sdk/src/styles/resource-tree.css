@@ -235,7 +235,7 @@
 .dsui-split-content .dsui-data-table tr:hover td {
   background: var(--color-surface-raised);
 }
-@media (max-width: 1400px) {
+@container dsui-page (max-width: 1120px) {
   .dsui-split {
     grid-template-columns: 270px minmax(0, 1fr);
   }
@@ -243,7 +243,7 @@
     grid-template-columns: 270px minmax(0, 1fr) 250px;
   }
 }
-@media (max-width: 1200px) {
+@container dsui-page (max-width: 940px) {
   .dsui-split--inspector {
     grid-template-columns: 220px minmax(0, 1fr);
   }
@@ -256,10 +256,10 @@
     grid-row: span 2;
   }
 }
-@media (max-width: 900px) {
+@container dsui-page (max-width: 660px) {
   .dsui-split,
   .dsui-split--inspector {
-    grid-template-columns: 170px minmax(0, 1fr);
+    grid-template-columns: 210px minmax(0, 1fr);
   }
   .dsui-split-content {
     padding: 16px 10px;
@@ -275,7 +275,7 @@
     padding-inline: 12px;
   }
 }
-@media (max-width: 767px) {
+@container dsui-page (max-width: 600px) {
   .dsui-split,
   .dsui-split--inspector {
     display: flex;

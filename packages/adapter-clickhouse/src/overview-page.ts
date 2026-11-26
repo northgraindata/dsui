@@ -17,6 +17,7 @@ import { serverInfo } from "./resources.js";
 
 function overviewMetrics() {
   return Grid({
+    minColumnWidth: "sm",
     content: [
       Card({
         variant: "metric",

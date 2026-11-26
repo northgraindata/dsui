@@ -3,7 +3,7 @@ import { Surface } from "@northgraindata/dsui-ui";
 import { Fragment, useEffect, useState } from "react";
 import type { ResourceNode } from "../primitives/resource";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
-import { keyedItems } from "./keyed-items";
+import { positioned } from "./keys";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -71,7 +71,7 @@ function ResourceContent({
     );
   return (
     <>
-      {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
+      {positioned(nodes(node.props.content)).map(({ item: child, key }) => (
         <Fragment key={key}>{renderNode(client, child, data)}</Fragment>
       ))}
     </>

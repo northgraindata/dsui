@@ -59,6 +59,7 @@ export const overviewPage = definePage({
           ],
         }),
         Grid({
+          minColumnWidth: "sm",
           columns: 4,
           content: [
             metric("layers", "Dashboards", "dashboards"),

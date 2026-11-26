@@ -1,47 +1,31 @@
-import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
-import type { CSSProperties, ReactNode } from "react";
-import type { ComponentClient } from "../../runtime";
+import type { CSSProperties } from "react";
+import type { ColumnsColumn } from "../../primitives/columns";
+import type { ComponentProps as RegistryViewProps } from "../../runtime";
+import { LayoutItems } from "./layout-items";
 
-type RenderNode = (
-  client: ComponentClient,
-  node: PageNode,
-  context?: Record<string, unknown>,
-) => ReactNode;
-
-export function Columns({
-  client,
-  node,
-  renderNode,
-  context,
-}: {
-  client: ComponentClient;
-  node: PageNode;
-  renderNode: RenderNode;
-  context?: Record<string, unknown>;
-}) {
+export function Columns({ node, ...host }: RegistryViewProps) {
+  if (node.kind !== "columns") return null;
+  const gap = node.props.gap ?? "md";
+  const columns: readonly ColumnsColumn[] = node.props.columns;
   return (
     <div
       className="dsui-columns"
+      data-gap={gap}
       style={
         {
-          "--dsui-cols": node.props.columns
-            .map((column: any) => `${column.weight ?? 1}fr`)
+          "--dsui-cols": columns
+            .map((column) => `minmax(0, ${column.weight ?? 1}fr)`)
             .join(" "),
         } as CSSProperties
       }
     >
-      {node.props.columns.map((column: any, index: number) => {
-        const content = Array.isArray(column.content)
-          ? column.content
-          : [column.content];
-        return (
-          // Column order is adapter-declared and stable for the page lifetime.
-          // biome-ignore lint/suspicious/noArrayIndexKey: static adapter-declared column order
-          <div className="dsui-column" key={`column-${index}`}>
-            {content.map((child: any) => renderNode(client, child, context))}
-          </div>
-        );
-      })}
+      {columns.map((column, index) => (
+        // Column order is adapter-declared and stable for the page lifetime.
+        // biome-ignore lint/suspicious/noArrayIndexKey: static adapter-declared column order
+        <div className="dsui-column" data-gap={gap} key={`column-${index}`}>
+          <LayoutItems {...host} content={column.content} />
+        </div>
+      ))}
     </div>
   );
 }

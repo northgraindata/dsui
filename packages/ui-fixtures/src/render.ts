@@ -78,3 +78,35 @@ export function collectColumns(
   }
   for (const item of Object.values(record)) collectColumns(item, into);
 }
+
+function containsPageHeader(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsPageHeader);
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  if (record.kind === "page-header") return true;
+  return Object.values(record).some(containsPageHeader);
+}
+
+/**
+ * Detail pages repeat themselves once per row of a collection that wraps their
+ * header. Those resources describe one object, so they must never return more.
+ */
+export function collectSingletons(value: unknown, into: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectSingletons(item, into);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const node = value as {
+    kind?: unknown;
+    props?: { source?: { resourceId?: unknown }; content?: unknown };
+  };
+  const resourceId = node.props?.source?.resourceId;
+  if (
+    node.kind === "collection" &&
+    typeof resourceId === "string" &&
+    containsPageHeader(node.props?.content)
+  )
+    into.add(resourceId);
+  for (const item of Object.values(value)) collectSingletons(item, into);
+}

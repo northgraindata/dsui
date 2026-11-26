@@ -1,12 +1,7 @@
-import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { ComponentProps as RegistryViewProps } from "../../runtime";
-import { keyedItems } from "../keyed-items";
+import { LayoutItems } from "./layout-items";
 
-function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
-  return "kind" in value ? [value] : value;
-}
-
-export function Flex({ client, node, renderNode, context }: RegistryViewProps) {
+export function Flex({ node, ...host }: RegistryViewProps) {
   if (node.kind !== "flex") return null;
   return (
     <div
@@ -17,16 +12,7 @@ export function Flex({ client, node, renderNode, context }: RegistryViewProps) {
       data-justify={node.props.justify ?? "start"}
       data-wrap={node.props.wrap ? "true" : "false"}
     >
-      {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
-        <div
-          className={
-            child.kind === "collection" ? "dsui-transparent" : undefined
-          }
-          key={key}
-        >
-          {renderNode(client, child, context)}
-        </div>
-      ))}
+      <LayoutItems {...host} content={node.props.content} />
     </div>
   );
 }

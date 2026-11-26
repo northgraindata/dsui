@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import type { TargetProps } from "../primitives/target";
 import { type ComponentProps, componentProps } from "../runtime";
+import { positioned } from "./keys";
 
 export default function Target({
   client,
@@ -15,8 +16,8 @@ export default function Target({
     : [props.content];
   return (
     <div data-dsui-overlay-target={props.id}>
-      {children.map((child) => (
-        <Fragment key={JSON.stringify(child)}>
+      {positioned(children).map(({ item: child, key }) => (
+        <Fragment key={key}>
           {renderNode(client, child, context)}
         </Fragment>
       ))}

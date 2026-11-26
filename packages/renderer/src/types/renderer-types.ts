@@ -34,4 +34,10 @@ export interface RendererClient {
 export interface DeclarativePageRendererProps {
   client: RendererClient;
   nodes: readonly PageNode[];
+  /**
+   * `"page"` (default) makes the output the container that page layouts respond
+   * to. Use `"inline"` where the surrounding element sizes itself from this
+   * content, such as a toolbar slot: a size container would collapse there.
+   */
+  layout?: "page" | "inline";
 }

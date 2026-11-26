@@ -19,6 +19,7 @@ import {
   resolveLink,
 } from "./row-action";
 import { TableExplorer } from "./table-explorer";
+import { positioned } from "./keys";
 
 export {
   actionId,
@@ -106,8 +107,8 @@ export function Table({ client, node, renderNode }: ComponentProps) {
             const cells = Array.isArray(column.renderCell)
               ? column.renderCell
               : [column.renderCell];
-            return cells.map((cell) => (
-              <span key={JSON.stringify(cell)}>
+            return positioned(cells).map(({ item: cell, key }) => (
+              <span key={key}>
                 {renderNode(client, cell, row) as ReactNode}
               </span>
             ));

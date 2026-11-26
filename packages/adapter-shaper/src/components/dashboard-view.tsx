@@ -383,9 +383,15 @@ export default function ShaperDashboardView({
   };
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr)",
+        gap: 16,
+      }}
+    >
       <header style={headerStyle}>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
           <button
             type="button"
             style={backStyle}

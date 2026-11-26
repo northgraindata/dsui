@@ -1,31 +1,23 @@
-import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import type { CSSProperties } from "react";
 import type { ComponentProps as RegistryViewProps } from "../../runtime";
-import { keyedItems } from "../keyed-items";
+import { LayoutItems } from "./layout-items";
 
-function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
-  return "kind" in value ? [value] : value;
-}
-
-export function Grid({ client, node, renderNode, context }: RegistryViewProps) {
+export function Grid({ node, ...host }: RegistryViewProps) {
   if (node.kind !== "grid") return null;
   const columns = node.props.columns;
-  const style: CSSProperties | undefined = columns
-    ? { gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }
+  const style = columns
+    ? ({ "--dsui-grid-columns": columns } as CSSProperties)
     : undefined;
 
   return (
-    <div className="dsui-grid" data-gap={node.props.gap ?? "md"} style={style}>
-      {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
-        <div
-          className={
-            child.kind === "collection" ? "dsui-transparent" : undefined
-          }
-          key={key}
-        >
-          {renderNode(client, child, context)}
-        </div>
-      ))}
+    <div
+      className="dsui-grid"
+      data-gap={node.props.gap ?? "md"}
+      data-min-column={node.props.minColumnWidth ?? "md"}
+      data-columns={columns}
+      style={style}
+    >
+      <LayoutItems {...host} content={node.props.content} />
     </div>
   );
 }

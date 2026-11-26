@@ -1,0 +1,112 @@
+/*
+ * Data can be arbitrarily long: identifiers, paths and error messages have no
+ * natural break points. Grid and flex items default to their content's minimum
+ * width, so without these rules one value pushes the whole page sideways.
+ */
+
+/* Running text breaks anywhere rather than widening its container. */
+.dsui-page-header h1,
+.dsui-page-header p,
+.dsui-section-header h2,
+.dsui-section-header p,
+.dsui-card h3,
+.dsui-card p,
+.dsui-card-title,
+.dsui-meter-foot,
+.dsui-button-list-text > *,
+.dsui-card-value [role="alert"] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* Boxes may shrink below their content so the text inside can break. */
+.dsui-card-header,
+.dsui-meter {
+  grid-template-columns: minmax(0, 1fr);
+}
+.dsui-card-header > *,
+.dsui-card-metric,
+.dsui-section-header > div,
+.dsui-page-header-main,
+.dsui-page-header-copy,
+.dsui-button-list-text {
+  min-width: 0;
+}
+.dsui-card-value {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.dsui-meter-head {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.dsui-meter-head > *,
+.dsui-meter-legend > *,
+.dsui-meter-legend li > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Header actions wrap below the title instead of squeezing it away. */
+.dsui-page-header {
+  flex-wrap: wrap;
+}
+.dsui-page-header-main {
+  flex-basis: min(100%, 18rem);
+}
+.dsui-page-header-actions {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+.dsui-page-header-actions > *,
+.dsui-page-header-actions button,
+.dsui-page-header-tags > *,
+.dsui-page-header-tags .dsui-collection-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Badges are single-line labels, so they truncate. */
+.dsui-table-cell-badge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.dsui-page-header > [data-tone] {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+/* A long badge must not squeeze the card title out of existence. */
+.dsui-card-interactive-body {
+  flex: 1 1 auto;
+}
+.dsui-card-badge {
+  flex: 0 1 auto;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsui-table-cell-status {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.dsui-page-header-copy .dsui-page-header-tags > * {
+  overflow-wrap: anywhere;
+}
+/* Metric values wrap, including text rendered by nested value nodes. */
+.dsui-card-value * {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}

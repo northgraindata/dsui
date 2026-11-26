@@ -19,7 +19,9 @@ export default defineConfig({
   webServer: {
     command: `bunx vite build --logLevel warn && bunx vite preview --host 127.0.0.1`,
     url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse: a running preview serves its old build, so every comparison
+    // against it would pass without looking at the current code.
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 });

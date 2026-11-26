@@ -5,7 +5,12 @@
 import { existsSync, readdirSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { collectColumns, pageSlug, renderPage } from "./render";
+import {
+  collectColumns,
+  collectSingletons,
+  pageSlug,
+  renderPage,
+} from "./render";
 import { collectResourceTypes, type ResourceTypes } from "./resource-types";
 import { sampleFromType } from "./sample";
 import type { AdapterFixtures, Shape } from "./types";
@@ -74,10 +79,12 @@ async function buildAdapter(directory: string, types: ResourceTypes) {
   await mkdir(join(target, "pages"), { recursive: true });
 
   const columns = new Map<string, Set<string>>();
+  const singletons = new Set<string>();
   const pages: { path: string; slug: string }[] = [];
   for (const page of adapter.pages) {
     const nodes = await renderPage(adapter, page.path, fixtures);
     collectColumns(nodes, columns);
+    collectSingletons(nodes, singletons);
     const slug = pageSlug(page.path);
     await writeJson(join(target, "pages", `${slug}.json`), nodes);
     pages.push({ path: page.path, slug });
@@ -88,7 +95,13 @@ async function buildAdapter(directory: string, types: ResourceTypes) {
   for (const [scenario, shape] of Object.entries(DATA_SHAPES)) {
     const data: Record<string, unknown> = {};
     for (const resource of adapter.resources) {
-      const sampled = resourceData(sources, resource.id, shape);
+      const sampled = resourceData(
+        sources,
+        resource.id,
+        singletons.has(resource.id)
+          ? { ...shape, rows: Math.min(shape.rows, 1) }
+          : shape,
+      );
       data[resource.id] = sampled.data;
       if (sampled.fromColumns) untyped.add(resource.id);
     }
