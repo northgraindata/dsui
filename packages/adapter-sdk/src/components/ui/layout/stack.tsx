@@ -14,7 +14,7 @@ export function Stack({
 }: RegistryViewProps) {
   if (node.kind !== "stack") return null;
   return (
-    <div className="layout-stack" data-gap={node.props.gap ?? "md"}>
+    <div className="dsui-stack" data-gap={node.props.gap ?? "md"}>
       {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
         <div key={key}>{renderNode(client, child, context)}</div>
       ))}

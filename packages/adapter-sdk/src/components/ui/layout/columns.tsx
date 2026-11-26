@@ -21,10 +21,10 @@ export function Columns({
 }) {
   return (
     <div
-      className="ov-columns"
+      className="dsui-columns"
       style={
         {
-          "--ov-cols": node.props.columns
+          "--dsui-cols": node.props.columns
             .map((column: any) => `${column.weight ?? 1}fr`)
             .join(" "),
         } as CSSProperties
@@ -37,7 +37,7 @@ export function Columns({
         return (
           // Column order is adapter-declared and stable for the page lifetime.
           // biome-ignore lint/suspicious/noArrayIndexKey: static adapter-declared column order
-          <div className="ov-column" key={`column-${index}`}>
+          <div className="dsui-column" key={`column-${index}`}>
             {content.map((child: any) => renderNode(client, child, context))}
           </div>
         );

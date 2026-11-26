@@ -69,7 +69,7 @@ export function Gauge({ node }: { node: PageNode }) {
       : undefined;
   return (
     <div
-      className="ov-gauge"
+      className="dsui-gauge"
       data-tone={tone}
       role="img"
       aria-label={label ?? `${Math.round(value)} of ${max}`}
@@ -78,24 +78,24 @@ export function Gauge({ node }: { node: PageNode }) {
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <path
           d={circlePath(radius)}
-          className="ov-gauge-track"
+          className="dsui-gauge-track"
           strokeDasharray={`${visible} ${hidden}`}
           strokeDashoffset={offset}
         />
         <path
           d={circlePath(radius)}
-          className="ov-gauge-fill"
+          className="dsui-gauge-fill"
           strokeDasharray={`${visible * share} ${total}`}
           strokeDashoffset={offset}
         />
       </svg>
       {showValue ? (
-        <span className="ov-gauge-number">
+        <span className="dsui-gauge-number">
           {Math.round(value)}
-          <small className="ov-gauge-max">/{max}</small>
+          <small className="dsui-gauge-max">/{max}</small>
         </span>
       ) : null}
-      <span className="ov-gauge-bar" aria-hidden="true">
+      <span className="dsui-gauge-bar" aria-hidden="true">
         <span style={{ width: `${share * 100}%` }} />
       </span>
     </div>

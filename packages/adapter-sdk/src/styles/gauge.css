@@ -1,0 +1,50 @@
+.dsui-gauge {
+  --gauge-accent: var(--color-accent);
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  flex: none;
+}
+.dsui-gauge svg {
+  inline-size: 100%;
+  block-size: 100%;
+}
+.dsui-gauge-max,
+.dsui-gauge-bar {
+  display: none;
+}
+.dsui-gauge-track,
+.dsui-gauge-fill {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.dsui-gauge-track {
+  stroke: var(--color-border-strong);
+}
+.dsui-gauge-fill {
+  stroke: var(--gauge-accent);
+}
+.dsui-gauge[data-tone="healthy"] {
+  --gauge-accent: var(--color-healthy);
+}
+.dsui-gauge[data-tone="warning"] {
+  --gauge-accent: var(--color-warning);
+}
+.dsui-gauge[data-tone="unavailable"] {
+  --gauge-accent: var(--color-unavailable);
+}
+.dsui-gauge[data-tone="muted"] {
+  --gauge-accent: var(--color-muted);
+}
+.dsui-gauge-number {
+  position: absolute;
+  font: 700 0.875rem / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+}
+.dsui-gauge[data-tone="muted"] .dsui-gauge-number {
+  color: var(--color-muted);
+}

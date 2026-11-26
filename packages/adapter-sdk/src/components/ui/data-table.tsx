@@ -60,8 +60,8 @@ export function DataTable({
   const lastRow = virtualRows[virtualRows.length - 1];
   const paddingBottom = lastRow ? virtualizer.getTotalSize() - lastRow.end : 0;
   return (
-    <div className={`data-table-scroll ${className}`} ref={scrollRef}>
-      <table className="data-table">
+    <div className={`dsui-table-scroll ${className}`} ref={scrollRef}>
+      <table className="dsui-table">
         <thead>
           <tr>
             {profiles.map((profile) => (
@@ -95,7 +95,7 @@ export function DataTable({
         </thead>
         <tbody>
           {paddingTop > 0 ? (
-            <tr className="data-table-virtual-spacer">
+            <tr className="dsui-table-virtual-spacer">
               <td
                 colSpan={columns.length || 1}
                 style={{ height: paddingTop }}
@@ -118,7 +118,7 @@ export function DataTable({
             );
           })}
           {paddingBottom > 0 ? (
-            <tr className="data-table-virtual-spacer">
+            <tr className="dsui-table-virtual-spacer">
               <td
                 colSpan={columns.length || 1}
                 style={{ height: paddingBottom }}
@@ -147,7 +147,7 @@ function cellContent(
   type: string | undefined,
   preferences: DisplayPreferences,
 ) {
-  if (value === null) return <span className="data-table-null">NULL</span>;
+  if (value === null) return <span className="dsui-table-null">NULL</span>;
   if (/TIMESTAMP|DATETIME/i.test(type ?? "") && typeof value === "string")
     return formatDisplayDate(value, preferences);
   return cellText(value);

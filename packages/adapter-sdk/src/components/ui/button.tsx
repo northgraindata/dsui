@@ -26,7 +26,9 @@ export function Button({ client, node, context }: ComponentProps) {
             ? "ghost"
             : props.variant
       }
-      className={props.variant === "list-item" ? "button-list-item" : undefined}
+      className={
+        props.variant === "list-item" ? "dsui-button-list-item" : undefined
+      }
       disabled={busy}
       onClick={() => {
         if (
@@ -84,20 +86,22 @@ export function Button({ client, node, context }: ComponentProps) {
       }}
     >
       {icon ? (
-        <span className="button-list-icon">
+        <span className="dsui-button-list-icon">
           <WorkbenchIcon name={icon} />
         </span>
       ) : null}
-      <span className="button-list-text">
+      <span className="dsui-button-list-text">
         <strong>{label}</strong>
         {props.description ? (
-          <small className="button-list-description">
+          <small className="dsui-button-list-description">
             {resolve(props.description, context)}
           </small>
         ) : null}
       </span>
       {props.kbd ? (
-        <kbd className="button-list-kbd">{resolve(props.kbd, context)}</kbd>
+        <kbd className="dsui-button-list-kbd">
+          {resolve(props.kbd, context)}
+        </kbd>
       ) : null}
       {actionError ? <span role="alert">{actionError}</span> : null}
     </UiButton>

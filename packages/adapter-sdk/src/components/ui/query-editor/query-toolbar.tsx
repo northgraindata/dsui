@@ -22,7 +22,7 @@ export function QueryToolbar({
   onRun: () => void;
 }) {
   return (
-    <div className="query-editor-toolbar">
+    <div className="dsui-query-editor-toolbar">
       <QueryTabs
         tabs={tabs}
         activeId={activeId}
@@ -30,10 +30,10 @@ export function QueryToolbar({
         onClose={onClose}
         onNew={onNew}
       />
-      <div className="query-editor-actions">
+      <div className="dsui-query-editor-actions">
         <Button
           variant="secondary"
-          className="format-query"
+          className="dsui-format-query"
           disabled
           title="SQL formatting is coming soon"
         >
@@ -41,14 +41,14 @@ export function QueryToolbar({
           Format
         </Button>
         <span
-          className="query-save-state"
+          className="dsui-query-save-state"
           title="Queries are kept in this page only"
         >
           <WorkbenchIcon name="check" size={13} />
           Session only
         </span>
         <Button
-          className="run-query"
+          className="dsui-run-query"
           data-dsui-overlay-target="query.run"
           onClick={onRun}
           disabled={running || !canRun}

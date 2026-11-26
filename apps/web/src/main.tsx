@@ -3,7 +3,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { router } from "./router";
 import "@northgraindata/dsui-renderer/app.css";
-import "@northgraindata/dsui-renderer/styles.css";
 import "@northgraindata/dsui-adapter-sdk/styles.css";
 
 const rootElement = document.getElementById("root");

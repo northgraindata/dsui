@@ -8,7 +8,7 @@ export function Badge({ node, context }: ComponentProps) {
   if (!label) return null;
   return (
     <span
-      className={props.dot ? "table-cell-status" : "table-cell-badge"}
+      className={props.dot ? "dsui-table-cell-status" : "dsui-table-cell-badge"}
       data-tone={resolve(props.tone, context) ?? "muted"}
     >
       {props.dot ? <i aria-hidden="true" /> : null}

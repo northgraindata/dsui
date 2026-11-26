@@ -88,7 +88,7 @@ function QueryEditorContent({
     : undefined;
   return (
     <section
-      className={`query-workspace ${explorerNode ? "query-workspace--with-explorer" : ""}`}
+      className={`dsui-query-workspace ${explorerNode ? "query-workspace--with-explorer" : ""}`}
       aria-label="Query workspace"
     >
       {explorerNode && (
@@ -115,7 +115,7 @@ function QueryEditorContent({
       )}
       <div className="query-workspace-main">
         <div
-          className="query-editor-panel"
+          className="dsui-query-editor-panel"
           data-dsui-overlay-target="query.editor"
         >
           {props.database ? (

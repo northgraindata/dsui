@@ -20,7 +20,7 @@ export default function Tabs({
     : [];
   return (
     <div
-      className="workspace-tabs"
+      className="dsui-workspace-tabs"
       data-variant={node.props.variant ?? "default"}
     >
       <div role="tablist" className="mb-4 flex gap-1 border-b border-border">

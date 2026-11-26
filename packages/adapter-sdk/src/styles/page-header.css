@@ -1,0 +1,63 @@
+.dsui-page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+.dsui-page-header-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.dsui-page-header-copy {
+  min-width: 0;
+}
+.dsui-page-header-main > svg {
+  flex: 0 0 auto;
+  color: var(--color-secondary);
+}
+.dsui-page-header > [data-tone] {
+  flex: 0 0 auto;
+}
+.dsui-page-header-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 7px;
+}
+.dsui-page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.dsui-page-header[data-variant="detail"] {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.dsui-page-header[data-variant="detail"] .dsui-page-header-main > svg {
+  width: 72px;
+  height: 72px;
+  padding: 17px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 13px;
+  background: linear-gradient(120deg, var(--color-inset), var(--color-surface));
+  color: var(--color-text-soft);
+}
+.dsui-page-header[data-variant="detail"] h1 {
+  font-size: 26px;
+  line-height: 32px;
+  letter-spacing: -0.7px;
+}
+.dsui-page-header[data-variant="detail"] .dsui-page-header-copy > p {
+  max-width: 760px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.dsui-page-header[data-variant="detail"] .dsui-page-header-actions {
+  padding-top: 3px;
+}

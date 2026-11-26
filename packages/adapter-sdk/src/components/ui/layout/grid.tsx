@@ -15,15 +15,11 @@ export function Grid({ client, node, renderNode, context }: RegistryViewProps) {
     : undefined;
 
   return (
-    <div
-      className="layout-grid"
-      data-gap={node.props.gap ?? "md"}
-      style={style}
-    >
+    <div className="dsui-grid" data-gap={node.props.gap ?? "md"} style={style}>
       {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
         <div
           className={
-            child.kind === "collection" ? "layout-transparent" : undefined
+            child.kind === "collection" ? "dsui-transparent" : undefined
           }
           key={key}
         >

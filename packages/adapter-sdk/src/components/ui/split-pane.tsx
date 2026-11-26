@@ -10,7 +10,7 @@ export default function SplitPane({
   if (node.kind !== "split-pane") return null;
   return (
     <section
-      className={`explorer-layout ${node.props.inspector?.length ? "explorer-layout--inspector" : ""}`}
+      className={`dsui-split ${node.props.inspector?.length ? "dsui-split--inspector" : ""}`}
     >
       <div className="border-b border-border bg-surface md:hidden">
         <button
@@ -24,15 +24,15 @@ export default function SplitPane({
         </button>
       </div>
       <aside
-        className={`explorer-tree-panel ${open ? "block" : "hidden"} md:block`}
+        className={`dsui-split-sidebar ${open ? "block" : "hidden"} md:block`}
       >
         {node.props.sidebar.map((child: any) => renderNode(client, child))}
       </aside>
-      <div className="explorer-content">
+      <div className="dsui-split-content">
         {node.props.content.map((child: any) => renderNode(client, child))}
       </div>
       {node.props.inspector?.length ? (
-        <aside className="explorer-inspector" aria-label="Object details">
+        <aside className="dsui-split-inspector" aria-label="Object details">
           {node.props.inspector.map((child: any) => renderNode(client, child))}
         </aside>
       ) : null}

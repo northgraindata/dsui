@@ -1,7 +1,11 @@
 @import "tailwindcss";
 @source "./";
 
-@theme {
+/*
+ * `static` emits every token even when no utility uses it: component
+ * stylesheets outside this compilation read them with var().
+ */
+@theme static {
   /* Shared with the site's navy / electric-blue visual language. */
   --color-canvas: #040813;
   --color-background: #060b16;
@@ -23,6 +27,43 @@
   --color-danger-foreground: #fecdd3;
   --color-unknown: #8491aa;
   --color-overlay: #02050d;
+  /* Controls, text steps, data accents and syntax highlighting. */
+  --color-control: #0d1b2f;
+  --color-control-hover: #142942;
+  --color-control-active: #17365c;
+  --color-inset: #0a1729;
+  --color-control-border: #29496e;
+  --color-control-border-strong: #315f9b;
+  --color-focus: #3b82e8;
+  --color-text-bright: #dceaff;
+  --color-text-soft: #bed2f5;
+  --color-text-subtle: #93a9ca;
+  --color-text-faint: #6c83a7;
+  --color-text-link: #74abff;
+  --color-text-info: #8fd7ff;
+  --color-info: #35a8e6;
+  --color-success: #0fe39a;
+  --color-success-surface: #05342f;
+  --color-warning-surface: #33280f;
+  --color-danger-soft: #f08d8d;
+  --color-syntax-keyword: #3294ff;
+  --color-syntax-type: #31bcff;
+  --color-syntax-string: #a3b989;
+  --color-syntax-number: #dbca69;
+  --color-syntax-constant: #c99cff;
+  --color-syntax-decorator: #eae583;
+  --color-syntax-success: #70d6b2;
+  --color-action: #245df6;
+  --color-action-strong: #164aff;
+  --color-selected: #15295a;
+  --color-shadow-soft: #00000088;
+  --color-shadow-strong: #000000bb;
+  /* Spacing between and inside components. */
+  --spacing-inline: 8px;
+  --spacing-component: 16px;
+  --spacing-section: 24px;
+  --spacing-compact: 12px;
+  --spacing-card: 16px;
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -91,17 +132,17 @@
   min-height: 36px;
   margin: 0;
   padding: 6px 9px;
-  border: 1px solid #29496e;
+  border: 1px solid var(--color-control-border);
   border-radius: 8px;
-  background: #101e34;
-  color: #dceaff;
+  background: var(--color-control);
+  color: var(--color-text-bright);
   font-size: 12px;
   text-align: left;
 }
 .dsui-option-select .dsui-option-select-trigger:hover:not(:disabled),
 .dsui-option-select .dsui-option-select-trigger[aria-expanded="true"] {
-  border-color: #428af0;
-  background: #15305a;
+  border-color: var(--color-focus);
+  background: var(--color-control-active);
 }
 .dsui-option-select-trigger:disabled {
   opacity: 0.5;
@@ -117,7 +158,7 @@
   flex: none;
   width: 15px;
   height: 15px;
-  color: #8fafda;
+  color: var(--color-text-subtle);
 }
 .dsui-option-select-icon {
   display: grid;
@@ -126,8 +167,8 @@
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: #17345b;
-  color: #d9ebff;
+  background: var(--color-control-active);
+  color: var(--color-text-bright);
 }
 .dsui-option-select-icon img,
 .dsui-option-select-icon svg {
@@ -150,11 +191,15 @@
   margin: 0;
   overflow-y: auto;
   padding: 7px;
-  border: 1px solid #2c496e;
+  border: 1px solid var(--color-control-border);
   border-radius: 10px;
-  background: linear-gradient(145deg, #101f36, #081321);
-  color: #dceaff;
-  box-shadow: 0 16px 48px #000b;
+  background: linear-gradient(
+    145deg,
+    var(--color-control),
+    var(--color-surface-raised)
+  );
+  color: var(--color-text-bright);
+  box-shadow: 0 16px 48px var(--color-shadow-strong);
   scrollbar-width: thin;
 }
 .dsui-option-select-menu .dsui-option-select-option {
@@ -168,7 +213,7 @@
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
-  color: #e8f2ff;
+  color: var(--color-primary);
   text-align: left;
 }
 .dsui-option-select-option + .dsui-option-select-option {
@@ -176,12 +221,16 @@
 }
 .dsui-option-select-menu .dsui-option-select-option:hover:not(:disabled),
 .dsui-option-select-menu .dsui-option-select-option:focus-visible {
-  border-color: #315f9b;
-  background: #142b4b;
+  border-color: var(--color-control-border-strong);
+  background: var(--color-control-hover);
 }
 .dsui-option-select-menu .dsui-option-select-option[aria-selected="true"] {
-  border-color: #2c71d1;
-  background: linear-gradient(115deg, #173d78, #102b52);
+  border-color: var(--color-focus);
+  background: linear-gradient(
+    115deg,
+    var(--color-selected),
+    var(--color-control-active)
+  );
 }
 .dsui-option-select-option:disabled {
   opacity: 0.45;
@@ -203,14 +252,14 @@
 }
 .dsui-option-select-copy small {
   margin-top: 2px;
-  color: #92a9c8;
+  color: var(--color-text-subtle);
   font-size: 10px;
 }
 .dsui-option-select-check {
   width: 16px;
   height: 16px;
   flex: none;
-  color: #83beff;
+  color: var(--color-text-link);
 }
 
 @layer components {
@@ -253,11 +302,15 @@
   margin: 0;
   overflow-y: auto;
   padding: 6px;
-  border: 1px solid #2c496e;
+  border: 1px solid var(--color-control-border);
   border-radius: 10px;
-  background: linear-gradient(145deg, #101f36, #081321);
-  color: #dceaff;
-  box-shadow: 0 16px 48px #000b;
+  background: linear-gradient(
+    145deg,
+    var(--color-control),
+    var(--color-surface-raised)
+  );
+  color: var(--color-text-bright);
+  box-shadow: 0 16px 48px var(--color-shadow-strong);
   scrollbar-width: thin;
 }
 .dsui-suggest-option {
@@ -273,8 +326,8 @@
 }
 .dsui-suggest-option:hover,
 .dsui-suggest-option[aria-selected="true"] {
-  border-color: #315f9b;
-  background: #142b4b;
+  border-color: var(--color-control-border-strong);
+  background: var(--color-control-hover);
 }
 .dsui-suggest-option strong,
 .dsui-suggest-option small {
@@ -284,17 +337,17 @@
   white-space: nowrap;
 }
 .dsui-suggest-option strong {
-  color: #e8f2ff;
+  color: var(--color-primary);
   font-size: 12px;
   font-weight: 600;
 }
 .dsui-suggest-option small {
   margin-top: 2px;
-  color: #92a9c8;
+  color: var(--color-text-subtle);
   font-size: 10px;
 }
 .dsui-suggest-status {
   padding: 8px;
-  color: #92a9c8;
+  color: var(--color-text-subtle);
   font-size: 11px;
 }

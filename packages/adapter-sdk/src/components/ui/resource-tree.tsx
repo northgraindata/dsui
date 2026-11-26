@@ -214,14 +214,14 @@ function TreeBranch({
           aria-selected={selected || undefined}
         >
           <div
-            className={`resource-tree-row group flex w-full min-h-7 items-center gap-1 px-1.5 ${
+            className={`dsui-resource-tree-row group flex w-full min-h-7 items-center gap-1 px-1.5 ${
               selected ? "bg-accent/15 text-primary" : "text-secondary"
             } hover:bg-surface-hover hover:text-primary`}
           >
             {branch.children ? (
               <button
                 type="button"
-                className={`resource-tree-chevron-button ${open ? "is-open" : ""}`}
+                className={`dsui-resource-tree-chevron-button ${open ? "is-open" : ""}`}
                 aria-label={`${open ? "Collapse" : "Expand"} ${name}`}
                 aria-expanded={open}
                 onClick={toggle}
@@ -231,7 +231,7 @@ function TreeBranch({
             ) : null}
             <button
               type="button"
-              className="resource-tree-link"
+              className="dsui-resource-tree-link"
               title={
                 onItemDoubleClick
                   ? `${nextLabels.join(".")} · Double-click to insert`
@@ -250,10 +250,10 @@ function TreeBranch({
                 )}
                 size={15}
               />
-              <span className="resource-tree-name">{name}</span>
+              <span className="dsui-resource-tree-name">{name}</span>
             </button>
             {row[branch.typeField ?? "type"] && branch.children ? (
-              <span className="resource-tree-type ml-auto">
+              <span className="dsui-resource-tree-type ml-auto">
                 {relationLabel(String(row[branch.typeField ?? "type"]))}
               </span>
             ) : null}
@@ -294,25 +294,27 @@ function TreeBranch({
               setExpanded(next);
             };
             return (
-              <li className="resource-tree-section" key={key}>
+              <li className="dsui-resource-tree-section" key={key}>
                 <button
                   type="button"
-                  className="resource-tree-section-row"
+                  className="dsui-resource-tree-section-row"
                   aria-expanded={open}
                   onClick={toggle}
                 >
                   <span
-                    className={`resource-tree-section-chevron ${open ? "is-open" : ""}`}
+                    className={`dsui-resource-tree-section-chevron ${open ? "is-open" : ""}`}
                     aria-hidden="true"
                   >
                     <WorkbenchIcon name="chevron" size={18} />
                   </span>
                   <WorkbenchIcon name={relationIcon(type, depth)} size={15} />
                   <span>{groupLabel(type)}</span>
-                  <span className="resource-tree-count">{items.length}</span>
+                  <span className="dsui-resource-tree-count">
+                    {items.length}
+                  </span>
                 </button>
                 {open ? (
-                  <ul className="resource-tree-section-items">
+                  <ul className="dsui-resource-tree-section-items">
                     {renderRows(items)}
                   </ul>
                 ) : null}
@@ -371,13 +373,13 @@ export function ResourceTree({
   };
   return (
     <section
-      className="resource-tree flex min-h-0 flex-col"
+      className="dsui-resource-tree flex min-h-0 flex-col"
       aria-label={node.props.label}
     >
-      <header className="resource-tree-heading">
+      <header className="dsui-resource-tree-heading">
         <h2>Explorer</h2>
       </header>
-      <div className="resource-tree-search-wrap">
+      <div className="dsui-resource-tree-search-wrap">
         <WorkbenchIcon name="search" size={15} />
         <input
           id={`${stateKey ?? "resource-tree"}-search`}
@@ -386,7 +388,7 @@ export function ResourceTree({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={node.props.searchPlaceholder ?? "Search data…"}
-          className="resource-tree-search"
+          className="dsui-resource-tree-search"
         />
       </div>
       <div

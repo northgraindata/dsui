@@ -10,7 +10,7 @@ export function Flex({ client, node, renderNode, context }: RegistryViewProps) {
   if (node.kind !== "flex") return null;
   return (
     <div
-      className="layout-flex"
+      className="dsui-flex"
       data-direction={node.props.direction ?? "row"}
       data-gap={node.props.gap ?? "md"}
       data-align={node.props.align ?? "stretch"}
@@ -20,7 +20,7 @@ export function Flex({ client, node, renderNode, context }: RegistryViewProps) {
       {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
         <div
           className={
-            child.kind === "collection" ? "layout-transparent" : undefined
+            child.kind === "collection" ? "dsui-transparent" : undefined
           }
           key={key}
         >

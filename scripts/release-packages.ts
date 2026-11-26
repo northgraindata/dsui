@@ -71,9 +71,13 @@ async function embedUiImplementation(target: string): Promise<void> {
   await cp(uiSource, join(sourceRoot, "ui"), { recursive: true });
   await rewriteBundledUiImports(sourceRoot);
   const adapterStyles = join(sourceRoot, "styles.css");
-  const uiStyles = await readFile(join(uiSource, "styles.css"), "utf8");
   const currentStyles = await readFile(adapterStyles, "utf8");
-  await writeFile(adapterStyles, `${uiStyles}\n${currentStyles}`);
+  // Imported rather than prepended: CSS ignores any @import that follows a rule,
+  // which would drop every component stylesheet the SDK imports below it.
+  await writeFile(
+    adapterStyles,
+    `@import "./ui/styles.css";\n${currentStyles}`,
+  );
 }
 
 /** Bun-native source exports preserve all TS/TSX subpaths and their types. */

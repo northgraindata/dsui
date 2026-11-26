@@ -70,11 +70,11 @@ function CollectionContent({
     );
   if (!rows.length) return null;
   return (
-    <div className="layout-collection">
+    <div className="dsui-collection">
       {keyedItems(rows).map(({ item: row, key: rowKey }) =>
         keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
           <div
-            className="layout-collection-item"
+            className="dsui-collection-item"
             key={JSON.stringify([rowKey, key])}
           >
             {renderNode(client, child, row)}

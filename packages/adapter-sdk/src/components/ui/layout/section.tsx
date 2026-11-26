@@ -22,8 +22,8 @@ export function Section({
     : [node.props.content];
   const link = node.props.link;
   return (
-    <section className="ov-section">
-      <header className="ov-section-header">
+    <section className="dsui-section">
+      <header className="dsui-section-header">
         <div>
           <h2>{node.props.title}</h2>
           {node.props.description ? <p>{node.props.description}</p> : null}
@@ -31,7 +31,7 @@ export function Section({
         {link ? (
           <button
             type="button"
-            className="ov-section-link"
+            className="dsui-section-link"
             onClick={() => client.navigate(link.path)}
           >
             {link.label}
