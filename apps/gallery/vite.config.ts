@@ -10,7 +10,9 @@ export default defineConfig({
   resolve: { dedupe: ["react", "react-dom"] },
   // The app is loaded on demand. Without it here, the first visit makes Vite
   // re-bundle dependencies mid-session, which loads a second React.
-  optimizeDeps: { entries: ["index.html", "../web/src/main.tsx"] },
+  optimizeDeps: {
+    entries: ["index.html", "../web/src/main.tsx", "spike/page.tsx"],
+  },
   server: { port: 5180, strictPort: true },
   preview: { port: 5180, strictPort: true },
 });

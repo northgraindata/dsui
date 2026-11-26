@@ -10,3 +10,4 @@ standards and architecture documentation take precedence.
 - [Testing](testing.md)
 - [Code review](code-review.md)
 - [UI layout contract](ui-layout.md)
+- [UI conventions](ui-conventions.md)

@@ -11,6 +11,7 @@ documents remain authoritative if guidance overlaps or conflicts.
 - [Rules](rules/README.md): concise practices organized by topic.
 - [Adapter UI skill](../.agents/skills/dsui-adapter-ui/SKILL.md): composing and styling adapter pages.
 - [UI review skill](../.agents/skills/dsui-ui-review/SKILL.md): verifying rendered UI.
+- [Page review](ui-review/README.md): moving pages to the conventions, one approval at a time.
 
 Load only the guidance relevant to the current task. Keep guidance concise,
 actionable, and free of rules that merely restate existing canonical documents.

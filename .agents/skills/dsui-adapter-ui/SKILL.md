@@ -22,9 +22,11 @@ description: Use when adding or changing the UI of a DSUI adapter page or a shar
    Add the view to the registry, its styles to `adapter-sdk/src/styles/`, and a docs JSON file.
 4. Keep a custom component inside its adapter only for something domain-specific, such as a dependency graph.
 
-## Layout contract
+## Layout and behaviour
 
-Follow [agents/rules/ui-layout.md](../../../agents/rules/ui-layout.md).
+Follow [agents/rules/ui-layout.md](../../../agents/rules/ui-layout.md) and the [UI conventions](../../../agents/rules/ui-conventions.md).
+Most conventions are not built yet: do not claim a page follows one without checking.
+When you bring an existing page up to them, follow the [page review](../../../agents/ui-review/README.md), which needs the maintainer's approval.
 
 ## Styling
 
