@@ -1,3 +1,4 @@
+import type { Page, PageQuery } from "@northgraindata/dsui-adapter-sdk";
 import { z } from "@northgraindata/dsui-adapter-sdk";
 
 export const airflowConnectionSchema = z.object({
@@ -174,10 +175,20 @@ export interface AirflowClient {
   /** Components Airflow reports on, such as its scheduler heartbeat. */
   getHealth(signal?: AbortSignal): Promise<AirflowComponentHealth[]>;
   listDags(signal?: AbortSignal): Promise<DagSummary[]>;
+  listDagPage(
+    query: PageQuery & { paused?: boolean },
+    signal?: AbortSignal,
+  ): Promise<Page<DagSummary>>;
   getDag(dagId: string, signal?: AbortSignal): Promise<DagDetails>;
   getDagSource(dagId: string, signal?: AbortSignal): Promise<string>;
   listDagTasks(dagId: string, signal?: AbortSignal): Promise<DagTask[]>;
+  /** The newest 100 runs, for summaries and the latest graph. */
   listDagRuns(dagId: string, signal?: AbortSignal): Promise<DagRun[]>;
+  listDagRunPage(
+    dagId: string,
+    query: PageQuery & { state?: string },
+    signal?: AbortSignal,
+  ): Promise<Page<DagRun>>;
   getDagRun(
     dagId: string,
     dagRunId: string,
@@ -217,10 +228,17 @@ export interface AirflowClient {
     onlyFailed: boolean,
     signal?: AbortSignal,
   ): Promise<void>;
-  listAssets(signal?: AbortSignal): Promise<Asset[]>;
+  listAssetPage(query: PageQuery, signal?: AbortSignal): Promise<Page<Asset>>;
   getAsset(assetId: number, signal?: AbortSignal): Promise<Asset>;
-  listAssetEvents(assetId: number, signal?: AbortSignal): Promise<AssetEvent[]>;
-  listConnections(signal?: AbortSignal): Promise<AirflowConnection[]>;
+  listAssetEventPage(
+    assetId: number,
+    query: PageQuery,
+    signal?: AbortSignal,
+  ): Promise<Page<AssetEvent>>;
+  listConnectionPage(
+    query: PageQuery,
+    signal?: AbortSignal,
+  ): Promise<Page<AirflowConnection>>;
   createConnection(
     input: Omit<AirflowConnection, "port"> & {
       port?: number;
@@ -238,7 +256,10 @@ export interface AirflowClient {
     signal?: AbortSignal,
   ): Promise<AirflowConnection>;
   deleteConnection(connectionId: string, signal?: AbortSignal): Promise<void>;
-  listVariables(signal?: AbortSignal): Promise<AirflowVariable[]>;
+  listVariablePage(
+    query: PageQuery,
+    signal?: AbortSignal,
+  ): Promise<Page<AirflowVariable>>;
   createVariable(
     input: { key: string; value: string; description?: string },
     signal?: AbortSignal,
@@ -248,7 +269,10 @@ export interface AirflowClient {
     signal?: AbortSignal,
   ): Promise<AirflowVariable>;
   deleteVariable(key: string, signal?: AbortSignal): Promise<void>;
-  listPools(signal?: AbortSignal): Promise<AirflowPool[]>;
+  listPoolPage(
+    query: PageQuery,
+    signal?: AbortSignal,
+  ): Promise<Page<AirflowPool>>;
   createPool(
     input: { name: string; slots: number; description?: string },
     signal?: AbortSignal,
@@ -258,8 +282,15 @@ export interface AirflowClient {
     signal?: AbortSignal,
   ): Promise<AirflowPool>;
   deletePool(name: string, signal?: AbortSignal): Promise<void>;
-  listEventLogs(signal?: AbortSignal): Promise<AirflowEventLog[]>;
-  listUsers(signal?: AbortSignal): Promise<AirflowUser[]>;
+  /** Newest first. */
+  listEventLogPage(
+    query: PageQuery & { event?: string },
+    signal?: AbortSignal,
+  ): Promise<Page<AirflowEventLog>>;
+  listUserPage(
+    query: PageQuery,
+    signal?: AbortSignal,
+  ): Promise<Page<AirflowUser>>;
   supportsUserAdministration(): boolean;
 }
 

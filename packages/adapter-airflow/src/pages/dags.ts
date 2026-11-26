@@ -72,21 +72,21 @@ export const dagListPage = definePage({
       description: "Monitor schedules and start or pause workflows.",
     }),
     List({
-      source: dags(),
+      source: dags({}),
       noun: "DAG",
-      searchable: true,
-      pageSize: 25,
-      filters: [
-        {
-          field: "status",
-          label: "Status",
-          options: [
-            { label: "Active", value: "active" },
-            { label: "Paused", value: "paused" },
-          ],
-        },
-        { field: "owners", label: "Owner" },
-      ],
+      paged: {
+        search: "Search by DAG ID",
+        filters: [
+          {
+            param: "status",
+            label: "All DAGs",
+            options: [
+              { label: "Active", value: "active" },
+              { label: "Paused", value: "paused" },
+            ],
+          },
+        ],
+      },
       item: {
         icon: "network",
         title: "name",
@@ -165,9 +165,22 @@ function runsList(dagId: string, recent: boolean) {
   return List({
     source: recent ? recentDagRuns({ dagId }) : dagRuns({ dagId }),
     noun: "run",
-    searchable: !recent,
-    pageSize: recent ? undefined : 25,
-    filters: recent ? undefined : [{ field: "stateLabel", label: "State" }],
+    paged: recent
+      ? undefined
+      : {
+          filters: [
+            {
+              param: "state",
+              label: "All states",
+              options: [
+                { label: "Running", value: "running" },
+                { label: "Failed", value: "failed" },
+                { label: "Queued", value: "queued" },
+                { label: "Success", value: "success" },
+              ],
+            },
+          ],
+        },
     item: {
       icon: "history",
       title: "displayRunId",

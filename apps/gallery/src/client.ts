@@ -12,7 +12,7 @@ export function fixtureClient(
   return {
     connection: { name: "Fixture", endpoint: "fixture://local" },
     executeResource: (reference) =>
-      answerResource(data, scenario, reference.resourceId),
+      answerResource(data, scenario, reference.resourceId, reference.input),
     executeAction: (reference) =>
       answerAction(data, scenario, reference.actionId),
     navigate,

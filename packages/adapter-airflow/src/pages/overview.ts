@@ -72,7 +72,6 @@ export const overviewPage = definePage({
             content: List({
               source: overviewDags(),
               noun: "DAG",
-              searchable: true,
               item: {
                 icon: "network",
                 title: "name",

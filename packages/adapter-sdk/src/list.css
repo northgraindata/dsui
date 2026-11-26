@@ -400,3 +400,25 @@ button.dsui-list-main:focus-visible {
     animation: none;
   }
 }
+
+.dsui-paged {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.dsui-paged-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dsui-pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.dsui-pager > span {
+  margin-right: auto;
+}

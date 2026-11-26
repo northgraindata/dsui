@@ -179,11 +179,9 @@ export const connectionsPage = definePage({
           }),
         }),
         List({
-          source: connections(),
+          source: connections({}),
+          paged: { search: "Search by connection ID" },
           noun: "connection",
-          filters: [{ field: "connectionType", label: "Type" }],
-          searchable: true,
-          pageSize: 25,
           item: {
             icon: "plug",
             title: "connectionId",
@@ -240,10 +238,9 @@ export const variablesPage = definePage({
           }),
         }),
         List({
-          source: variables(),
+          source: variables({}),
+          paged: { search: "Search by key" },
           noun: "variable",
-          searchable: true,
-          pageSize: 25,
           item: {
             icon: "braces",
             title: "key",
@@ -301,10 +298,9 @@ export const poolsPage = definePage({
           }),
         }),
         List({
-          source: pools(),
+          source: pools({}),
+          paged: { search: "Search by pool name" },
           noun: "pool",
-          searchable: true,
-          pageSize: 25,
           item: {
             icon: "layers",
             title: "name",
@@ -351,10 +347,9 @@ export const usersPage = definePage({
             "Airflow 2.1 uses its legacy user API. Airflow 3 delegates identities and roles to its configured auth manager.",
         }),
         List({
-          source: users(),
+          source: users({}),
+          paged: {},
           noun: "user",
-          searchable: true,
-          pageSize: 25,
           item: {
             icon: "user",
             title: "username",
@@ -380,9 +375,8 @@ export const eventLogsPage = definePage({
             "Audit events recorded by the connected Airflow instance.",
         }),
         Table({
-          source: eventLogs(),
-          searchable: true,
-          pageSize: 25,
+          source: eventLogs({}),
+          paged: { search: "Search by DAG ID" },
           columns: [
             { id: "timestamp", label: "Time", format: "datetime" },
             { id: "event", label: "Event" },

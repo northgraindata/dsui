@@ -317,6 +317,10 @@ function getNodeStateConfig(state: string | undefined) {
     case "queued":
     case "scheduled":
     case "deferred":
+    case "restarting":
+    case "up_for_retry":
+    case "up_for_reschedule":
+    case "awaiting_input":
     case "pending":
     case "warning":
     case "waiting":
@@ -693,7 +697,13 @@ function GraphBoard({
       "upstream_failed",
       "queued",
       "scheduled",
-      "awaiting",
+      "restarting",
+      "up_for_retry",
+      "up_for_reschedule",
+      "deferred",
+      "awaiting_input",
+      "skipped",
+      "removed",
     ];
     return Array.from(counts.entries()).sort(([a], [b]) => {
       const ia = order.indexOf(a);

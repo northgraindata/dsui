@@ -17,7 +17,7 @@ export function Button({
   return (
     <Component
       className={cn(
-        "inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-transparent px-3 text-[12px] font-medium leading-none no-underline transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent active:brightness-90 disabled:cursor-not-allowed disabled:opacity-45",
+        "inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-transparent text-[12px] font-medium leading-none no-underline transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent active:brightness-90 disabled:cursor-not-allowed disabled:opacity-45",
         {
           "bg-accent font-semibold text-accent-foreground hover:bg-accent-hover":
             variant === "default",
@@ -27,6 +27,7 @@ export function Button({
             variant === "ghost",
           "border-unavailable/45 bg-unavailable/10 text-danger-foreground hover:border-unavailable hover:bg-unavailable/15":
             variant === "danger",
+          "px-3": size === "default",
           "min-h-[26px] px-[9px] text-[11px]": size === "small",
           "w-8 px-0": size === "icon",
         },

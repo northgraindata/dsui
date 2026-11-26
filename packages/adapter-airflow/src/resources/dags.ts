@@ -1,4 +1,9 @@
-import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
+import {
+  defineResource,
+  pageInput,
+  poll,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext, DagTask } from "../context.js";
 import { formatRunTimestamp } from "./format.js";
 
@@ -6,17 +11,28 @@ export const dagInput = z.object({ dagId: z.string().min(1) });
 
 export const dags = defineResource({
   id: "dags",
-  query: async (_, ctx: AirflowContext) =>
-    (await ctx.client.listDags()).map((dag) => ({
-      ...dag,
-      status: dag.isPaused ? "paused" : "active",
-      statusLabel: dag.isPaused ? "Paused" : "Active",
-      statusTone: dag.isPaused ? "warning" : "healthy",
-      nextRunLabel:
-        !dag.isPaused && dag.nextRun
-          ? `Next ${formatRunTimestamp(dag.nextRun)}`
-          : "",
-    })),
+  input: pageInput.extend({
+    status: z.enum(["", "active", "paused"]).default(""),
+  }),
+  query: async ({ status, ...query }, ctx: AirflowContext) => {
+    const { items, total } = await ctx.client.listDagPage({
+      ...query,
+      paused: status === "" ? undefined : status === "paused",
+    });
+    return {
+      total,
+      items: items.map((dag) => ({
+        ...dag,
+        status: dag.isPaused ? "paused" : "active",
+        statusLabel: dag.isPaused ? "Paused" : "Active",
+        statusTone: dag.isPaused ? "warning" : "healthy",
+        nextRunLabel:
+          !dag.isPaused && dag.nextRun
+            ? `Next ${formatRunTimestamp(dag.nextRun)}`
+            : "",
+      })),
+    };
+  },
   refresh: poll("5s"),
 });
 

@@ -209,6 +209,10 @@ export type {
   CodeExplorerProps,
 } from "./components/primitives/code-explorer";
 export { CodeExplorer } from "./components/primitives/code-explorer";
+export type {
+  ServerFilter,
+  ServerPagination,
+} from "./components/primitives/paging";
 export type { ComponentClient, ComponentProps } from "./components/runtime";
 export { componentProps } from "./components/runtime";
 export {
@@ -270,6 +274,7 @@ export {
   type ResourceReference,
   type ResourceRuntimeContext,
 } from "./resource/index";
+export { type Page, type PageQuery, pageInput } from "./resource/paging";
 export {
   type AnyRouteDefinition,
   DEFAULT_ROUTE_BODY_BYTES,

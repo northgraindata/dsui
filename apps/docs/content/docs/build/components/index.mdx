@@ -30,6 +30,27 @@ In a row action's dialog, `{field}` in the title reads from the row. A field wit
 
 Add a `confirmation` to an action that deletes, stops, or changes something. DSUI shows its own dialog. Its title and description can use `{field}` placeholders, so name the object there.
 
+## Long lists
+
+A `List` or `Table` that can grow without limit must set `paged`. The browser then asks for one page at a time.
+
+```ts
+export const connections = defineResource({
+  id: "connections",
+  input: pageInput,
+  query: ({ limit, offset, search }, ctx: Context) =>
+    ctx.client.listConnectionPage({ limit, offset, search }),
+});
+
+List({
+  source: connections({}),
+  paged: { search: "Search by connection ID" },
+  item: { title: "connectionId" },
+});
+```
+
+The resource returns `{ items, total }`, where `total` counts every match. For each entry in `paged.filters`, add an input field named by its `param`. Browser sorting and filtering are off on a paged view, because they would cover only the current page.
+
 ## Layout
 
 | Component | Purpose |

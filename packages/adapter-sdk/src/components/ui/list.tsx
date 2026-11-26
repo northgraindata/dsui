@@ -5,6 +5,7 @@ import type { TableRowAction } from "../primitives/table";
 import { type ComponentProps, componentProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
 import { ActionMenu, FilterMenu, type Selection } from "./list-menus";
+import { PagedToolbar, Pager, usePagedSource } from "./paged";
 import {
   isRowActionDisabled,
   matchesWhen,
@@ -21,10 +22,24 @@ type Client = ComponentProps["client"];
 /** Browser implementation of the SDK list: one readable row per record. */
 export function List({ client, node, renderNode }: ComponentProps) {
   const props = componentProps<ListProps>(node);
-  const { rows, error, reload } = useRows(client, props);
+  const paged = usePagedSource(
+    client,
+    props?.paged ? props.source : undefined,
+    props?.paged,
+  );
+  const all = useRows(client, props?.paged ? undefined : props);
+  const rows = props?.paged ? paged.page?.items : all.rows;
+  const error = props?.paged
+    ? paged.page
+      ? undefined
+      : paged.error
+    : all.error;
+  const reload = props?.paged ? paged.reload : all.reload;
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Selection>({});
-  const [limit, setLimit] = usePropState(props?.pageSize);
+  const [limit, setLimit] = usePropState(
+    props?.paged ? undefined : props?.pageSize,
+  );
 
   const visible = useMemo(
     () =>
@@ -50,8 +65,9 @@ export function List({ client, node, renderNode }: ComponentProps) {
   ));
 
   return (
-    <div className="dsui-list">
-      {props.searchable || props.filters?.length ? (
+    <div className="dsui-list" aria-busy={props.paged && paged.loading}>
+      {props.paged ? <PagedToolbar paging={props.paged} paged={paged} /> : null}
+      {!props.paged && (props.searchable || props.filters?.length) ? (
         <Toolbar
           props={props}
           noun={noun}
@@ -68,11 +84,13 @@ export function List({ client, node, renderNode }: ComponentProps) {
         <ul className="dsui-list-items">{items}</ul>
       ) : (
         <p className="dsui-list-empty">
-          {rows.length
+          {rows.length || paged.narrowed
             ? `No ${noun}s match.`
             : (props.emptyMessage ?? "Nothing here yet.")}
         </p>
       )}
+      {props.paged && paged.error ? <p role="alert">{paged.error}</p> : null}
+      {props.paged ? <Pager paged={paged} /> : null}
       {shown.length < visible.length ? (
         <button
           type="button"

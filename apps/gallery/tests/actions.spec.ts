@@ -186,13 +186,30 @@ test("details read as labels and values, not raw data", async ({ page }) => {
 test("Clear all appears only once a table is sorted or filtered", async ({
   page,
 }) => {
-  await open(page, "/services/airflow/event-logs");
+  await open(page, "/services/clickhouse/data");
   const clear = page.getByRole("button", { name: "Clear all" });
   const table = page.locator(".dsui-page table");
   await expect(table).toBeVisible();
   await expect(clear).toHaveCount(0);
   const before = await table.boundingBox();
-  await page.getByRole("button", { name: "Sort Time" }).click();
+  await page
+    .getByRole("button", { name: /^Sort / })
+    .first()
+    .click();
   await expect(clear).toBeVisible();
   expect(await table.boundingBox()).toEqual(before);
+});
+
+test("a long list is read one page at a time", async ({ page }) => {
+  await open(page, "/services/airflow/connections", "large");
+  const pager = page.getByRole("navigation", {
+    name: "Pages",
+    exact: true,
+  });
+  await expect(pager).toContainText("1–25 of 200");
+  await expect(page.locator(".dsui-list-items > li")).toHaveCount(25);
+  await pager.getByRole("button", { name: "Next" }).click();
+  await expect(pager).toContainText("26–50 of 200");
+  await expect(page.locator(".dsui-list-items > li")).toHaveCount(25);
+  await expect(pager.getByRole("button", { name: "Previous" })).toBeEnabled();
 });

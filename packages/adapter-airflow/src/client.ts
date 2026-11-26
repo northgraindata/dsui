@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import { z } from "@northgraindata/dsui-adapter-sdk";
+import { type Page, type PageQuery, z } from "@northgraindata/dsui-adapter-sdk";
 import type {
   AirflowClient,
   AirflowComponentHealth,
@@ -513,6 +513,31 @@ function normalizeBaseUrl(value: string): URL {
   return url;
 }
 
+function mapAssetEvent(
+  event: {
+    timestamp: string;
+    source_dag_id?: string | null;
+    source_task_id?: string | null;
+    source_run_id?: string | null;
+    source_map_index?: number | null;
+  },
+  eventId: number,
+  assetId: number,
+): AssetEvent {
+  return {
+    eventId,
+    assetId,
+    timestamp: event.timestamp,
+    sourceDagId: event.source_dag_id ?? "",
+    sourceTaskId: event.source_task_id ?? "",
+    sourceRunId: event.source_run_id ?? "",
+    sourceMapIndex: event.source_map_index ?? null,
+  };
+}
+
+/** Guards memory when a whole list is needed. */
+const MAX_RECORDS = 5000;
+
 export function createAirflowClient(
   config: AirflowHttpConfig,
   fetchFn: typeof fetch = fetch,
@@ -679,6 +704,79 @@ export function createAirflowClient(
     return parsed.data.access_token;
   }
 
+  /** One page, with Airflow's own count of everything that matches. */
+  async function page<TSchema extends z.ZodTypeAny, TItem>(
+    path: string,
+    params: Record<string, string | number | boolean | undefined>,
+    schema: TSchema,
+    read: (result: z.output<TSchema>) => TItem[],
+    signal?: AbortSignal,
+  ): Promise<Page<TItem>> {
+    const search = new URLSearchParams();
+    for (const [name, value] of Object.entries(params))
+      if (value !== undefined && value !== "") search.set(name, String(value));
+    const result = await request(`${path}?${search}`, schema, signal);
+    return {
+      items: read(result),
+      total: (result as { total_entries: number }).total_entries,
+    };
+  }
+
+  function assetPage(
+    query: PageQuery,
+    signal?: AbortSignal,
+  ): Promise<Page<Asset>> {
+    const params = { limit: query.limit, offset: query.offset, order_by: "id" };
+    return isAirflow2
+      ? page(
+          "datasets",
+          { ...params, uri_pattern: query.search },
+          datasetCollectionSchema,
+          (result) => result.datasets.map(mapDataset),
+          signal,
+        )
+      : page(
+          "assets",
+          { ...params, name_pattern: query.search },
+          assetCollectionSchema,
+          (result) => result.assets.map(mapAsset),
+          signal,
+        );
+  }
+
+  /** Every record, for what must be complete, such as a task graph. */
+  async function every<TItem>(
+    fetchPage: (limit: number, offset: number) => Promise<Page<TItem>>,
+  ): Promise<TItem[]> {
+    const items: TItem[] = [];
+    while (true) {
+      const next = await fetchPage(100, items.length);
+      items.push(...next.items);
+      if (!next.items.length || items.length >= next.total) return items;
+      if (items.length >= MAX_RECORDS)
+        throw new Error(`Airflow listing exceeded ${MAX_RECORDS} entries`);
+    }
+  }
+
+  /**
+   * Airflow 2 cannot search some lists. A search there reads the whole list
+   * and returns the requested page of the matches.
+   */
+  async function searchLocally<TItem>(
+    query: PageQuery,
+    fetchPage: (limit: number, offset: number) => Promise<Page<TItem>>,
+    text: (item: TItem) => string,
+  ): Promise<Page<TItem>> {
+    const needle = query.search.toLowerCase();
+    const matches = (await every(fetchPage)).filter((item) =>
+      text(item).toLowerCase().includes(needle),
+    );
+    return {
+      items: matches.slice(query.offset, query.offset + query.limit),
+      total: matches.length,
+    };
+  }
+
   return {
     authenticate: async (signal) => {
       if (!basicAuthorization) await getAccessToken(signal);
@@ -732,6 +830,30 @@ export function createAirflowClient(
         if (pageCount === 0) break;
       }
       return dags;
+    },
+    listDagPage: ({ limit, offset, search, paused }, signal) => {
+      const params = {
+        limit,
+        offset,
+        order_by: "dag_id",
+        dag_id_pattern: search,
+        paused,
+      };
+      return isAirflow2
+        ? page(
+            "dags",
+            params,
+            airflow2DagCollectionSchema,
+            (result) => result.dags.map(mapAirflow2Dag),
+            signal,
+          )
+        : page(
+            "dags",
+            params,
+            dagCollectionSchema,
+            (result) => result.dags.map(mapDag),
+            signal,
+          );
     },
     getDag: async (dagId, signal): Promise<DagDetails> => {
       if (isAirflow2) {
@@ -817,6 +939,19 @@ export function createAirflowClient(
       );
       return result.dag_runs.map(mapDagRun);
     },
+    listDagRunPage: (dagId, { limit, offset, state }, signal) =>
+      page(
+        `dags/${encodeURIComponent(dagId)}/dagRuns`,
+        {
+          limit,
+          offset,
+          state,
+          order_by: isAirflow2 ? "-execution_date" : "-run_after",
+        },
+        dagRunCollectionSchema,
+        (result) => result.dag_runs.map(mapDagRun),
+        signal,
+      ),
     getDagRun: async (dagId, dagRunId, signal): Promise<DagRun> =>
       mapDagRun(
         await request(
@@ -942,74 +1077,68 @@ export function createAirflowClient(
         },
       );
     },
-    listAssets: async (signal): Promise<Asset[]> => {
-      if (isAirflow2) {
-        const result = await request(
-          "datasets?limit=100&offset=0&order_by=id",
-          datasetCollectionSchema,
-          signal,
-        );
-        return result.datasets.map(mapDataset);
-      }
-      const result = await request(
-        "assets?limit=100&offset=0&order_by=id",
-        assetCollectionSchema,
-        signal,
-      );
-      return result.assets.map(mapAsset);
-    },
+    listAssetPage: (query, signal) => assetPage(query, signal),
     getAsset: async (assetId, signal): Promise<Asset> => {
       if (isAirflow2) {
-        const result = await request(
-          "datasets?limit=100&offset=0&order_by=id",
-          datasetCollectionSchema,
-          signal,
+        // Airflow 2 reads a dataset by URI only, so find it by ID.
+        const all = await every((limit, offset) =>
+          assetPage({ limit, offset, search: "" }, signal),
         );
-        const dataset = result.datasets.find((item) => item.id === assetId);
-        if (!dataset) throw new Error(`Airflow dataset ${assetId} not found`);
-        return mapDataset(dataset);
+        const found = all.find((item) => item.assetId === assetId);
+        if (!found) throw new Error(`Airflow dataset ${assetId} not found`);
+        return found;
       }
       return mapAsset(await request(`assets/${assetId}`, assetSchema, signal));
     },
-    listAssetEvents: async (assetId, signal): Promise<AssetEvent[]> => {
-      if (isAirflow2) {
-        const result = await request(
-          `datasets/events?limit=100&offset=0&order_by=-timestamp&dataset_id=${assetId}`,
-          datasetEventCollectionSchema,
+    listAssetEventPage: (assetId, { limit, offset }, signal) => {
+      const params = { limit, offset, order_by: "-timestamp" };
+      return isAirflow2
+        ? page(
+            "datasets/events",
+            { ...params, dataset_id: assetId },
+            datasetEventCollectionSchema,
+            (result) =>
+              result.dataset_events.map((event) =>
+                mapAssetEvent(
+                  event,
+                  event.id ?? event.dataset_id,
+                  event.dataset_id,
+                ),
+              ),
+            signal,
+          )
+        : page(
+            "assets/events",
+            { ...params, asset_id: assetId },
+            assetEventCollectionSchema,
+            (result) =>
+              result.asset_events.map((event) =>
+                mapAssetEvent(event, event.id, event.asset_id),
+              ),
+            signal,
+          );
+    },
+    listConnectionPage: (query, signal) => {
+      const fetchPage = (limit: number, offset: number, search = "") =>
+        page(
+          "connections",
+          {
+            limit,
+            offset,
+            order_by: "connection_id",
+            connection_id_pattern: search,
+          },
+          connectionCollectionSchema,
+          (result) => result.connections.map(mapConnection),
           signal,
         );
-        return result.dataset_events.map((event) => ({
-          eventId: event.id ?? event.dataset_id,
-          assetId: event.dataset_id,
-          timestamp: event.timestamp,
-          sourceDagId: event.source_dag_id ?? "",
-          sourceTaskId: event.source_task_id ?? "",
-          sourceRunId: event.source_run_id ?? "",
-          sourceMapIndex: event.source_map_index ?? null,
-        }));
-      }
-      const result = await request(
-        `assets/events?limit=100&offset=0&order_by=-timestamp&asset_id=${assetId}`,
-        assetEventCollectionSchema,
-        signal,
+      if (isAirflow2 && query.search)
+        return searchLocally(query, fetchPage, (item) => item.connectionId);
+      return fetchPage(
+        query.limit,
+        query.offset,
+        isAirflow2 ? "" : query.search,
       );
-      return result.asset_events.map((event) => ({
-        eventId: event.id,
-        assetId: event.asset_id,
-        timestamp: event.timestamp,
-        sourceDagId: event.source_dag_id ?? "",
-        sourceTaskId: event.source_task_id ?? "",
-        sourceRunId: event.source_run_id ?? "",
-        sourceMapIndex: event.source_map_index ?? null,
-      }));
-    },
-    listConnections: async (signal): Promise<AirflowConnection[]> => {
-      const result = await request(
-        "connections?limit=100&offset=0&order_by=connection_id",
-        connectionCollectionSchema,
-        signal,
-      );
-      return result.connections.map(mapConnection);
     },
     createConnection: async (input, signal): Promise<AirflowConnection> =>
       mapConnection(
@@ -1057,13 +1186,22 @@ export function createAirflowClient(
         { method: "DELETE" },
       );
     },
-    listVariables: async (signal): Promise<AirflowVariable[]> => {
-      const result = await request(
-        "variables?limit=100&offset=0&order_by=key",
-        variableCollectionSchema,
-        signal,
+    listVariablePage: (query, signal) => {
+      const fetchPage = (limit: number, offset: number, search = "") =>
+        page(
+          "variables",
+          { limit, offset, order_by: "key", variable_key_pattern: search },
+          variableCollectionSchema,
+          (result) => result.variables.map(mapVariable),
+          signal,
+        );
+      if (isAirflow2 && query.search)
+        return searchLocally(query, fetchPage, (item) => item.key);
+      return fetchPage(
+        query.limit,
+        query.offset,
+        isAirflow2 ? "" : query.search,
       );
-      return result.variables.map(mapVariable);
     },
     createVariable: async (input, signal): Promise<AirflowVariable> =>
       mapVariable(
@@ -1099,13 +1237,22 @@ export function createAirflowClient(
         { method: "DELETE" },
       );
     },
-    listPools: async (signal): Promise<AirflowPool[]> => {
-      const result = await request(
-        "pools?limit=100&offset=0&order_by=name",
-        poolCollectionSchema,
-        signal,
+    listPoolPage: (query, signal) => {
+      const fetchPage = (limit: number, offset: number, search = "") =>
+        page(
+          "pools",
+          { limit, offset, order_by: "name", pool_name_pattern: search },
+          poolCollectionSchema,
+          (result) => result.pools.map(mapPool),
+          signal,
+        );
+      if (isAirflow2 && query.search)
+        return searchLocally(query, fetchPage, (item) => item.name);
+      return fetchPage(
+        query.limit,
+        query.offset,
+        isAirflow2 ? "" : query.search,
       );
-      return result.pools.map(mapPool);
     },
     createPool: async (input, signal): Promise<AirflowPool> =>
       mapPool(
@@ -1140,33 +1287,39 @@ export function createAirflowClient(
         method: "DELETE",
       });
     },
-    listEventLogs: async (signal): Promise<AirflowEventLog[]> => {
-      const result = await request(
-        "eventLogs?limit=100&offset=0",
+    listEventLogPage: ({ limit, offset, search, event }, signal) =>
+      page(
+        "eventLogs",
+        {
+          limit,
+          offset,
+          // Airflow's default order is oldest first.
+          order_by: "-when",
+          event,
+          // Airflow 2 matches a whole DAG ID only.
+          [isAirflow2 ? "dag_id" : "dag_id_pattern"]: search,
+        },
         eventLogCollectionSchema,
+        (result) =>
+          result.event_logs.map((entry) => ({
+            eventLogId: String(entry.event_log_id ?? entry.id ?? ""),
+            timestamp: entry.timestamp ?? entry.when ?? "",
+            event: entry.event ?? "",
+            dagId: entry.dag_id ?? "",
+            taskId: entry.task_id ?? "",
+            owner: entry.owner ?? "",
+          })),
         signal,
-      );
-      return result.event_logs
-        .map((entry) => ({
-          eventLogId: String(entry.event_log_id ?? entry.id ?? ""),
-          timestamp: entry.timestamp ?? entry.when ?? "",
-          event: entry.event ?? "",
-          dagId: entry.dag_id ?? "",
-          taskId: entry.task_id ?? "",
-          owner: entry.owner ?? "",
-        }))
-        .sort((left, right) => right.timestamp.localeCompare(left.timestamp));
-    },
-    listUsers: async (signal): Promise<AirflowUser[]> => {
-      if (!isAirflow2) return [];
-      const result = await request(
-        "users?limit=100&offset=0",
+      ),
+    listUserPage: async ({ limit, offset }, signal) => {
+      if (!isAirflow2) return { items: [], total: 0 };
+      return page(
+        "users",
+        { limit, offset, order_by: "username" },
         userCollectionSchema,
+        (result) => result.users.map(mapUser),
         signal,
       );
-      return result.users
-        .map(mapUser)
-        .sort((left, right) => left.username.localeCompare(right.username));
     },
     supportsUserAdministration: () => isAirflow2,
   };

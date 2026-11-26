@@ -1,4 +1,9 @@
-import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
+import {
+  defineResource,
+  pageInput,
+  poll,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
 import { confirmations } from "../confirmations.js";
 import type {
   AirflowContext,
@@ -7,6 +12,7 @@ import type {
   DagTask,
   TaskInstance,
 } from "../context.js";
+import { stateName, stateTone } from "../states.js";
 import { dagInput } from "./dags.js";
 import { formatRunTimestamp } from "./format.js";
 
@@ -27,38 +33,20 @@ export const taskTryInput = taskInstanceInput.extend({
 
 export const dagRuns = defineResource({
   id: "dag-runs",
-  input: dagInput,
-  query: async ({ dagId }, ctx: AirflowContext) =>
-    (await ctx.client.listDagRuns(dagId)).map(formatDagRunForTable),
+  input: pageInput.extend({
+    dagId: z.string().min(1),
+    state: z.enum(["", "queued", "running", "success", "failed"]).default(""),
+  }),
+  query: async ({ dagId, ...query }, ctx: AirflowContext) => {
+    const { items, total } = await ctx.client.listDagRunPage(dagId, query);
+    return { total, items: items.map(formatDagRunForTable) };
+  },
   refresh: poll("5s"),
 });
 
-export function runStateTone(state: string) {
-  switch (state.toLowerCase()) {
-    case "success":
-      return "healthy";
-    case "failed":
-    case "upstream_failed":
-      return "unavailable";
-    case "running":
-    case "queued":
-    case "scheduled":
-      return "info";
-    case "up_for_retry":
-    case "up_for_reschedule":
-    case "deferred":
-      return "warning";
-    default:
-      return "muted";
-  }
-}
+export const runStateTone = stateTone;
 
-/** Airflow states such as `upstream_failed`, as "Upstream failed". */
-export function stateLabel(state: string | null | undefined) {
-  if (!state || state === "none") return "Not run";
-  const words = state.replaceAll("_", " ").toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
+export const stateLabel = stateName;
 
 export function formatRunDuration(run: Pick<DagRun, "startDate" | "endDate">) {
   const start = Date.parse(run.startDate);

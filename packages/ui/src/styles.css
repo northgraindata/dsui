@@ -133,20 +133,19 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 36px;
+  min-height: 34px;
   margin: 0;
-  padding: 6px 9px;
-  border: 1px solid var(--color-control-border);
+  padding: 5px 10px;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
-  background: var(--color-control);
-  color: var(--color-text-bright);
+  background: var(--color-surface);
+  color: var(--color-primary);
   font-size: 12px;
   text-align: left;
 }
 .dsui-select .dsui-select-trigger:hover:not(:disabled),
 .dsui-select .dsui-select-trigger[data-state="open"] {
   border-color: var(--color-focus);
-  background: var(--color-control-active);
 }
 .dsui-select-trigger:disabled {
   opacity: 0.5;
@@ -183,23 +182,24 @@
 .dsui-select-menu {
   z-index: 1000;
   box-sizing: border-box;
+  /* As wide as its longest option, so names are not cut off. */
+  width: max-content;
+  min-width: max(var(--radix-select-trigger-width), 168px);
+  max-width: min(360px, var(--radix-select-content-available-width));
+  max-height: var(--radix-select-content-available-height);
+  overflow: hidden;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 9px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 12px 32px var(--color-shadow-soft);
+}
+/* Only options with a second line need a wide menu. */
+.dsui-select-menu:has(.dsui-select-copy small) {
   width: max(
     var(--radix-select-trigger-width),
     min(300px, var(--radix-select-content-available-width))
   );
-  max-height: var(--radix-select-content-available-height);
-  overflow: hidden;
-  padding: 7px;
-  border: 1px solid var(--color-control-border);
-  border-radius: 10px;
-  background: linear-gradient(
-    145deg,
-    var(--color-control),
-    var(--color-surface-raised)
-  );
-  color: var(--color-text-bright);
-  box-shadow: 0 16px 48px var(--color-shadow-strong);
-  scrollbar-width: thin;
 }
 .dsui-select-menu .dsui-select-option {
   cursor: pointer;
@@ -211,27 +211,21 @@
   width: 100%;
   min-width: 0;
   margin: 0;
-  padding: 9px 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
   background: transparent;
-  color: var(--color-primary);
-  text-align: left;
+  color: var(--color-secondary);
 }
 .dsui-select-option + .dsui-select-option {
-  margin-top: 3px;
+  margin-top: 1px;
 }
 .dsui-select-menu .dsui-select-option[data-highlighted] {
-  border-color: var(--color-control-border-strong);
-  background: var(--color-control-hover);
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
 }
 .dsui-select-menu .dsui-select-option[data-state="checked"] {
-  border-color: var(--color-focus);
-  background: linear-gradient(
-    115deg,
-    var(--color-selected),
-    var(--color-control-active)
-  );
+  color: var(--color-primary);
 }
 .dsui-select-option[data-disabled] {
   opacity: 0.45;
@@ -249,6 +243,10 @@
 }
 .dsui-select-copy strong {
   font-size: 12px;
+  font-weight: 500;
+}
+/* A title above a description needs the weight to lead it. */
+.dsui-select-copy:has(small) strong {
   font-weight: 600;
 }
 .dsui-select-copy small {

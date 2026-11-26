@@ -1,4 +1,9 @@
-import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
+import {
+  defineResource,
+  pageInput,
+  poll,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext } from "../context.js";
 import { formatRunTimestamp } from "./format.js";
 
@@ -8,17 +13,23 @@ export const assetInput = z.object({
 
 export const assets = defineResource({
   id: "assets",
-  query: async (_, ctx: AirflowContext) =>
-    (await ctx.client.listAssets()).map((asset) => {
-      const updated = formatRunTimestamp(asset.updatedAt);
-      return {
-        ...asset,
-        producerLabel: asset.producingTasks
-          ? `Produced by ${asset.producingTasks}`
-          : "",
-        updatedLabel: updated === "—" ? "" : `Updated ${updated}`,
-      };
-    }),
+  input: pageInput,
+  query: async (input, ctx: AirflowContext) => {
+    const { items, total } = await ctx.client.listAssetPage(input);
+    return {
+      total,
+      items: items.map((asset) => {
+        const updated = formatRunTimestamp(asset.updatedAt);
+        return {
+          ...asset,
+          producerLabel: asset.producingTasks
+            ? `Produced by ${asset.producingTasks}`
+            : "",
+          updatedLabel: updated === "—" ? "" : `Updated ${updated}`,
+        };
+      }),
+    };
+  },
   refresh: poll("30s"),
 });
 
@@ -31,8 +42,8 @@ export const assetDetails = defineResource({
 
 export const assetEvents = defineResource({
   id: "asset-events",
-  input: assetInput,
-  query: ({ assetId }, ctx: AirflowContext) =>
-    ctx.client.listAssetEvents(assetId),
+  input: pageInput.extend(assetInput.shape),
+  query: ({ assetId, ...query }, ctx: AirflowContext) =>
+    ctx.client.listAssetEventPage(assetId, query),
   refresh: poll("10s"),
 });

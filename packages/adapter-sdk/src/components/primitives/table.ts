@@ -3,6 +3,7 @@ import type { DataSource } from "../../resource";
 import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
 import type { DialogSpec } from "./dialog";
+import type { ServerPagination } from "./paging";
 
 export interface TableColumn {
   id: string;
@@ -99,6 +100,11 @@ export type PageTableRowAction = {
 };
 
 export interface TableProps {
+  /**
+   * Fetches one page at a time. Use it for tables that grow without limit.
+   * Sorting and filtering in the browser are then unavailable.
+   */
+  paged?: ServerPagination;
   source?: DataSource;
   columnsSource?: DataSource;
   data?: readonly Record<string, unknown>[];

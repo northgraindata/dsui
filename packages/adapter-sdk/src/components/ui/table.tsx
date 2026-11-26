@@ -14,6 +14,7 @@ import { WorkbenchIcon } from "./icons";
 import { positioned } from "./keys";
 import { LiveDuration } from "./live-duration";
 import { LiveEta, LiveProgress } from "./live-progress";
+import { PagedToolbar, Pager, usePagedSource } from "./paged";
 import { useDisplayPreferences } from "./preferences";
 import {
   isRowActionDisabled,
@@ -40,12 +41,17 @@ export function Table({ client, node, renderNode }: ComponentProps) {
   const [data, setData] = usePropState<unknown>(props?.data);
   const [error, setError] = useState<string>();
   const [refresh, setRefresh] = useState(0);
-  const reload = useCallback(() => setRefresh((value) => value + 1), []);
+  const reloadAll = useCallback(() => setRefresh((value) => value + 1), []);
+  const paged = usePagedSource(
+    client,
+    props?.paged ? props.source : undefined,
+    props?.paged,
+  );
 
   const preferences = useDisplayPreferences();
   useEffect(() => {
     void refresh;
-    if (!props?.source) return;
+    if (!props?.source || props.paged) return;
     if (props.source.refresh?.kind === "poll" && client.watchResource) {
       return client.watchResource(props.source, (result) => setData(result));
     }
@@ -63,19 +69,113 @@ export function Table({ client, node, renderNode }: ComponentProps) {
     return () => {
       active = false;
     };
-  }, [client, props?.source, refresh]);
+  }, [client, props?.source, props?.paged, refresh]);
 
   if (!props) return null;
-  if (error) return <p role="alert">{error}</p>;
-  if (!data) return <p aria-busy="true">Loading records…</p>;
+  const failure = props.paged ? (paged.page ? undefined : paged.error) : error;
+  if (failure) return <p role="alert">{failure}</p>;
+  if (props.paged ? !paged.page : !data)
+    return <p aria-busy="true">Loading records…</p>;
 
-  const rows = normalizeRows(data);
-  if (!rows.length) return <p>No records.</p>;
+  const rows = props.paged ? (paged.page?.items ?? []) : normalizeRows(data);
+  // A narrowed page may be empty and must keep its filters on screen.
+  if (!rows.length && !paged.narrowed) return <p>No records.</p>;
   const columns: readonly TableColumn[] =
-    props.columns ?? Object.keys(rows[0]).map((id) => ({ id, label: id }));
+    props.columns ??
+    Object.keys(rows[0] ?? {}).map((id) => ({ id, label: id }));
+  const reload = props.paged ? paged.reload : reloadAll;
   const rowLink = props.rowLink;
   const rowActions = props.rowActions;
   const actions = props.actions;
+
+  const renderTable = (
+    visibleRows: Record<string, unknown>[],
+    renderHeader?: (column: TableColumn) => ReactNode,
+  ) => (
+    <DataTable
+      columns={columns}
+      rows={visibleRows}
+      renderHeader={renderHeader}
+      renderCell={(columnId, value, row) => {
+        const column = columns.find((candidate) => candidate.id === columnId);
+        if (column?.format === "duration")
+          return (
+            <LiveDuration
+              startedAt={row.queryStart}
+              active={row.state === "active"}
+            />
+          );
+        if (column?.format === "datetime")
+          return formatTimestamp(value, preferences);
+        if (column?.format === "eta")
+          return <LiveEta etaSeconds={row.etaSeconds} />;
+        if (column?.format === "progress")
+          return (
+            <LiveProgress
+              active={row.state === "active"}
+              percent={row.progressPercent}
+            />
+          );
+        if (!column?.renderCell) return formatCell(value);
+        const cells = Array.isArray(column.renderCell)
+          ? column.renderCell
+          : [column.renderCell];
+        return positioned(cells).map(({ item: cell, key }) => (
+          <span key={key}>{renderNode(client, cell, row) as ReactNode}</span>
+        ));
+      }}
+      onRowClick={
+        rowLink
+          ? (row) => {
+              const href = resolveLink(rowLink.path, rowLink.params, row);
+              if (href) client.navigate(href);
+            }
+          : undefined
+      }
+      renderRowActions={
+        rowActions?.length
+          ? (row) =>
+              rowActions.map((spec) => (
+                <RowAction
+                  key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
+                  client={client}
+                  row={row}
+                  spec={spec}
+                  onDone={reload}
+                />
+              ))
+          : undefined
+      }
+      renderRowMenu={
+        actions?.length
+          ? (row) =>
+              actions.map((spec) => (
+                <RowMenuAction
+                  key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
+                  client={client}
+                  row={row}
+                  spec={spec}
+                />
+              ))
+          : undefined
+      }
+    />
+  );
+
+  // Sorting or filtering one page would silently ignore all the others.
+  if (props.paged)
+    return (
+      <div className="dsui-paged" aria-busy={paged.loading}>
+        <PagedToolbar paging={props.paged} paged={paged} />
+        {rows.length ? (
+          renderTable(rows)
+        ) : (
+          <p className="dsui-list-empty">No records match.</p>
+        )}
+        {paged.error ? <p role="alert">{paged.error}</p> : null}
+        <Pager paged={paged} />
+      </div>
+    );
 
   return (
     <TableExplorer
@@ -83,80 +183,7 @@ export function Table({ client, node, renderNode }: ComponentProps) {
       rows={rows}
       filters={props.filters}
       insights={props.variant === "data"}
-      renderTable={(visibleRows, renderHeader) => (
-        <DataTable
-          columns={columns}
-          rows={visibleRows}
-          renderHeader={renderHeader}
-          renderCell={(columnId, value, row) => {
-            const column = columns.find(
-              (candidate) => candidate.id === columnId,
-            );
-            if (column?.format === "duration")
-              return (
-                <LiveDuration
-                  startedAt={row.queryStart}
-                  active={row.state === "active"}
-                />
-              );
-            if (column?.format === "datetime")
-              return formatTimestamp(value, preferences);
-            if (column?.format === "eta")
-              return <LiveEta etaSeconds={row.etaSeconds} />;
-            if (column?.format === "progress")
-              return (
-                <LiveProgress
-                  active={row.state === "active"}
-                  percent={row.progressPercent}
-                />
-              );
-            if (!column?.renderCell) return formatCell(value);
-            const cells = Array.isArray(column.renderCell)
-              ? column.renderCell
-              : [column.renderCell];
-            return positioned(cells).map(({ item: cell, key }) => (
-              <span key={key}>
-                {renderNode(client, cell, row) as ReactNode}
-              </span>
-            ));
-          }}
-          onRowClick={
-            rowLink
-              ? (row) => {
-                  const href = resolveLink(rowLink.path, rowLink.params, row);
-                  if (href) client.navigate(href);
-                }
-              : undefined
-          }
-          renderRowActions={
-            rowActions?.length
-              ? (row) =>
-                  rowActions.map((spec) => (
-                    <RowAction
-                      key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
-                      client={client}
-                      row={row}
-                      spec={spec}
-                      onDone={reload}
-                    />
-                  ))
-              : undefined
-          }
-          renderRowMenu={
-            actions?.length
-              ? (row) =>
-                  actions.map((spec) => (
-                    <RowMenuAction
-                      key={`${spec.label}:${spec.action ?? spec.link?.path ?? ""}`}
-                      client={client}
-                      row={row}
-                      spec={spec}
-                    />
-                  ))
-              : undefined
-          }
-        />
-      )}
+      renderTable={renderTable}
     />
   );
 }

@@ -128,7 +128,14 @@ async function serviceRoute(request: Request): Promise<Response | undefined> {
   if (kind === "actions" && itemId)
     return json(await answerAction(data, request.scenario, itemId));
   if (kind === "resources" && itemId)
-    return answerResource(data, request.scenario, itemId).then(
+    return answerResource(
+      data,
+      request.scenario,
+      itemId,
+      typeof request.body === "string"
+        ? (JSON.parse(request.body) as { input?: unknown }).input
+        : undefined,
+    ).then(
       (value) => json({ data: value }),
       (cause: Error) => failure(cause.message, 502),
     );
