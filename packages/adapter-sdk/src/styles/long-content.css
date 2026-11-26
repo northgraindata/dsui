@@ -110,3 +110,12 @@
   overflow-wrap: anywhere;
   white-space: normal;
 }
+
+/* Tab labels stay on one line; a crowded tab list scrolls. */
+.dsui-workspace-tabs > [role="tablist"] {
+  overflow-x: auto;
+}
+.dsui-workspace-tabs > [role="tablist"] > button {
+  flex: none;
+  white-space: nowrap;
+}

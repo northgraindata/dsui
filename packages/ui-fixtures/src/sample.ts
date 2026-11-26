@@ -2,7 +2,7 @@ import ts from "typescript";
 import type { Shape } from "./types";
 import { sampleNumber, sampleString } from "./values";
 
-const MAX_DEPTH = 6;
+const MAX_DEPTH = 9;
 const NESTED_ROWS = 3;
 
 interface Walk {
@@ -33,7 +33,9 @@ function sampleUnion(walk: Walk, type: ts.UnionType, at: Position): unknown {
   const literals = members.filter((member) => member.isStringLiteral());
   if (literals.length === members.length)
     return (literals[at.row % literals.length] as ts.StringLiteralType).value;
+  // An object says most about what a page renders, so it wins over primitives.
   const preferred =
+    members.find((member) => member.flags & ts.TypeFlags.Object) ??
     members.find((member) => member.flags & ts.TypeFlags.String) ??
     members.find((member) => member.flags & ts.TypeFlags.Number) ??
     members[0];
@@ -72,7 +74,8 @@ function sampleList(walk: Walk, item: ts.Type, at: Position): unknown[] {
 
 function sampleObject(walk: Walk, type: ts.Type, at: Position): unknown {
   const properties = walk.checker.getPropertiesOfType(type);
-  if (properties.length === 0) {
+  const open = walk.checker.getIndexInfosOfType(type).length > 0;
+  if (properties.length === 0 || open) {
     const keys = walk.columns.length
       ? walk.columns
       : ["name", "status", "value"];

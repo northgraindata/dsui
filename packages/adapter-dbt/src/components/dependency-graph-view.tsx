@@ -85,8 +85,8 @@ const CANVAS_GRID = {
 type Size = GraphSize;
 type Offset = GraphOffset;
 
-function plural(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+function plural(count: number, noun: string, many = `${noun}s`) {
+  return `${count} ${count === 1 ? noun : many}`;
 }
 
 /**
@@ -717,7 +717,7 @@ function GraphBoard({
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-raised px-4 py-2">
         <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
           {plural(layout.nodes.length, "node")} ·{" "}
-          {plural(layout.edges.length, "dependency")}
+          {plural(layout.edges.length, "dependency", "dependencies")}
         </span>
         {stateSummary.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">

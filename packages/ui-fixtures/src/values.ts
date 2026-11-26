@@ -14,7 +14,7 @@ const STRING_RULES: readonly [RegExp, (row: number) => string][] = [
     () => "SELECT * FROM orders LIMIT 100",
   ],
   [
-    /(at|time|date|since|timestamp|start|end)$/i,
+    /(at|time|date|since|timestamp|start|end|modified|created|updated)$/i,
     (row) => `2026-01-${String((row % 27) + 1).padStart(2, "0")}T10:15:00Z`,
   ],
   [

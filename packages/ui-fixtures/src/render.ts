@@ -55,6 +55,16 @@ export async function renderPage(
   }
 }
 
+/** Row keys a node reads: its table columns, or the single field it shows. */
+function requestedKeys(record: Record<string, unknown>): string[] {
+  const columns = Array.isArray(record.columns)
+    ? (record.columns as { id?: unknown }[]).map((column) => column.id)
+    : [];
+  return [...columns, record.field].filter(
+    (key): key is string => typeof key === "string",
+  );
+}
+
 /**
  * Collects the column ids that pages ask each resource for, so rows without a
  * declared shape still fill the columns on screen.
@@ -70,11 +80,13 @@ export function collectColumns(
   if (!value || typeof value !== "object") return;
   const record = value as Record<string, unknown>;
   const source = record.source as { resourceId?: unknown } | undefined;
-  if (typeof source?.resourceId === "string" && Array.isArray(record.columns)) {
-    const columns = into.get(source.resourceId) ?? new Set<string>();
-    for (const column of record.columns as { id?: unknown }[])
-      if (typeof column.id === "string") columns.add(column.id);
-    into.set(source.resourceId, columns);
+  if (typeof source?.resourceId === "string") {
+    const wanted = requestedKeys(record);
+    if (wanted.length) {
+      const columns = into.get(source.resourceId) ?? new Set<string>();
+      for (const key of wanted) columns.add(key);
+      into.set(source.resourceId, columns);
+    }
   }
   for (const item of Object.values(record)) collectColumns(item, into);
 }

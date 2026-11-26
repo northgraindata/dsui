@@ -9,6 +9,7 @@ export function KeyValue({ client, node, context }: ComponentProps) {
     props?.data ? { ...props.data } : undefined,
   );
   const [error, setError] = useState<string>();
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (!props?.source) return;
     let active = true;
@@ -16,12 +17,9 @@ export function KeyValue({ client, node, context }: ComponentProps) {
     client
       .executeResource(props.source)
       .then((result) => {
-        if (
-          active &&
-          result &&
-          typeof result === "object" &&
-          !Array.isArray(result)
-        )
+        if (!active) return;
+        setLoaded(true);
+        if (result && typeof result === "object" && !Array.isArray(result))
           setData(result as Record<string, unknown>);
       })
       .catch((cause: unknown) => {
@@ -50,7 +48,7 @@ export function KeyValue({ client, node, context }: ComponentProps) {
     <KeyValueList title={props.title} values={displayed} />
   ) : (
     <Surface className="p-4 text-[12px] text-secondary">
-      Loading details…
+      {loaded ? "No details available." : "Loading details…"}
     </Surface>
   );
 }

@@ -40,3 +40,12 @@ test("table columns are collected from nested nodes", () => {
   );
   expect([...(columns.get("a") ?? [])]).toEqual(["name"]);
 });
+
+test("fields read by value nodes are collected too", () => {
+  const columns = new Map<string, Set<string>>();
+  collectColumns(
+    { props: { source: { resourceId: "overview" }, field: "size" } },
+    columns,
+  );
+  expect([...(columns.get("overview") ?? [])]).toEqual(["size"]);
+});
