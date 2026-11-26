@@ -41,6 +41,28 @@
         "yaml": "^2.8.2",
       },
     },
+    "apps/gallery": {
+      "name": "@northgraindata/dsui-gallery",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "@northgraindata/dsui-renderer": "workspace:*",
+        "@northgraindata/dsui-ui": "workspace:*",
+        "@northgraindata/dsui-ui-fixtures": "workspace:*",
+        "@tailwindcss/vite": "^4.1.13",
+        "@vitejs/plugin-react": "^5.0.2",
+        "react": "^19.1.1",
+        "react-dom": "^19.1.1",
+        "tailwindcss": "^4.1.13",
+        "vite": "^7.1.7",
+      },
+      "devDependencies": {
+        "@playwright/test": "^1.56.0",
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "typescript": "^5.9.2",
+      },
+    },
     "apps/site": {
       "name": "@northgraindata/dsui-site",
       "version": "0.1.0",
@@ -389,6 +411,14 @@
       "peerDependencies": {
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
+      },
+    },
+    "packages/ui-fixtures": {
+      "name": "@northgraindata/dsui-ui-fixtures",
+      "version": "0.0.0",
+      "dependencies": {
+        "@northgraindata/dsui-adapter-sdk": "workspace:*",
+        "typescript": "^5.9.2",
       },
     },
   },
@@ -882,6 +912,8 @@
 
     "@northgraindata/dsui-docs": ["@northgraindata/dsui-docs@workspace:apps/docs"],
 
+    "@northgraindata/dsui-gallery": ["@northgraindata/dsui-gallery@workspace:apps/gallery"],
+
     "@northgraindata/dsui-plugin-ai-agent": ["@northgraindata/dsui-plugin-ai-agent@workspace:packages/plugin-ai-agent"],
 
     "@northgraindata/dsui-plugin-code-repository": ["@northgraindata/dsui-plugin-code-repository@workspace:packages/plugin-code-repository"],
@@ -906,6 +938,8 @@
 
     "@northgraindata/dsui-ui": ["@northgraindata/dsui-ui@workspace:packages/ui"],
 
+    "@northgraindata/dsui-ui-fixtures": ["@northgraindata/dsui-ui-fixtures@workspace:packages/ui-fixtures"],
+
     "@northgraindata/dsui-web": ["@northgraindata/dsui-web@workspace:apps/web"],
 
     "@number-flow/react": ["@number-flow/react@0.6.2", "", { "dependencies": { "esm-env": "^1.1.4", "number-flow": "0.6.2" }, "peerDependencies": { "react": "^18 || ^19", "react-dom": "^18 || ^19" } }, "sha512-WjZuV4aA+vhRCgCF+adGLgFVVAJ8vdvq6EchRT2FiBIgElTXtDOA3YgkcMr9UHpvpS9v4H70AB5wZv0D9jc3QA=="],
@@ -915,6 +949,8 @@
     "@oslojs/encoding": ["@oslojs/encoding@1.1.0", "", {}, "sha512-70wQhgYmndg4GCPxPPxPGevRKqTIJ2Nh4OkiMWmDAVYsTQ+Ta7Sq+rPevXyXGdzr30/qZBnyOalCszoMxlyldQ=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.146.0", "", {}, "sha512-XC0QsnnhVe7sLIWmYmdPw7x5P0h4W8vUU3Nv1ySgWXtvCz8NizoAEpGXA0sOYoJQV2Rl13LgURAHQ5cI5ILCSA=="],
+
+    "@playwright/test": ["@playwright/test@1.65.1", "", { "dependencies": { "playwright": "1.65.1" }, "bin": { "playwright": "cli.js" } }, "sha512-y+NCIRm2LvY4slUVWvGh1nujJ8RF/hEisIsq2mtUPgdQC4L701bq5hZGMhrpeXjACvwvO9tj5dJqhvM6TP9lbw=="],
 
     "@pnpm/deps.graph-sequencer": ["@pnpm/deps.graph-sequencer@1100.0.1", "", {}, "sha512-pOr5+q1fLYKwFN3LAJuGZEnfXDcQ73zqgDHMtGy+K+uIoUqyY+6MeDCWFwfu+4EFuq76I5EPFofoNAI+Bmmq4A=="],
 
@@ -1913,6 +1949,10 @@
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
     "picomatch": ["picomatch@4.0.5", "", {}, "sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A=="],
+
+    "playwright": ["playwright@1.65.1", "", { "dependencies": { "playwright-core": "1.65.1" }, "bin": { "playwright": "cli.js" } }, "sha512-vJ1FuoOrNwOKHUIVEvSt3jT1L+wjjDpwhwIstKtfvTh8XIG4FG4bIFuvNdMxi81LGfAhUgUZleVFaOLY4RIUUw=="],
+
+    "playwright-core": ["playwright-core@1.65.1", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-hqPpz7blSMPxWVdoeE1yiBSzXsKiVOd2k+kjCvmUywD2GPO2Dd9HfcWnq9NN0GHbNZDFgZ9JfBFr+X5/BLo0qw=="],
 
     "postcss": ["postcss@8.5.26", "", { "dependencies": { "nanoid": "^3.3.17", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ=="],
 

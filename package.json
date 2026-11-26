@@ -26,7 +26,10 @@
     "ci:product": "bun scripts/ci-layer.ts product",
     "package:sdk": "bun scripts/release-packages.ts",
     "changeset": "changeset",
-    "version:sdk": "changeset version"
+    "version:sdk": "changeset version",
+    "fixtures:build": "bun packages/ui-fixtures/src/build.ts",
+    "gallery:dev": "bun run fixtures:build && bun run --filter @northgraindata/dsui-gallery gallery",
+    "test:ui": "bun run fixtures:build && bun run --filter @northgraindata/dsui-gallery test:ui"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.4",
