@@ -1,12 +1,11 @@
-import { createOptionSelect } from "@northgraindata/dsui-ui/option-select-factory";
 import type * as ReactTypes from "react";
 import { z } from "zod";
 import type { Connection, ConnectionInput } from "../model";
+import { Select } from "./host-ui";
 import { SourceIcon } from "./presentation";
 import { React } from "./react";
 import { action, type Client, type overviewSchema } from "./shared";
 
-const OptionSelect = createOptionSelect(() => React);
 export function RepositoryForm({
   client,
   serviceId,
@@ -189,7 +188,7 @@ export function RepositoryForm({
           {value.provider === "gitlab" && (
             <label htmlFor={`${fieldId}-gitlab-instance`}>
               GitLab instance
-              <OptionSelect
+              <Select
                 id={`${fieldId}-gitlab-instance`}
                 value={value.instance}
                 onValueChange={(next) => {

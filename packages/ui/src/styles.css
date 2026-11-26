@@ -119,12 +119,16 @@
   }
 }
 
-/* Keep picker rules unlayered so plugin styles cannot override its menu. */
-.dsui-option-select {
+/*
+ * The select is styled outside Tailwind's layers on purpose: extension
+ * stylesheets are unlayered, so a rule such as `.some-form button` would beat
+ * any utility class. A new look is a new `data-variant` here.
+ */
+.dsui-select {
   position: relative;
   min-width: 0;
 }
-.dsui-option-select .dsui-option-select-trigger {
+.dsui-select .dsui-select-trigger {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -139,28 +143,28 @@
   font-size: 12px;
   text-align: left;
 }
-.dsui-option-select .dsui-option-select-trigger:hover:not(:disabled),
-.dsui-option-select .dsui-option-select-trigger[aria-expanded="true"] {
+.dsui-select .dsui-select-trigger:hover:not(:disabled),
+.dsui-select .dsui-select-trigger[data-state="open"] {
   border-color: var(--color-focus);
   background: var(--color-control-active);
 }
-.dsui-option-select-trigger:disabled {
+.dsui-select-trigger:disabled {
   opacity: 0.5;
 }
-.dsui-option-select-trigger-label {
+.dsui-select-trigger-label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dsui-option-select-trigger > svg:last-child {
+.dsui-select-trigger > svg:last-child {
   flex: none;
   width: 15px;
   height: 15px;
   color: var(--color-text-subtle);
 }
-.dsui-option-select-icon {
+.dsui-select-icon {
   display: grid;
   flex: none;
   place-items: center;
@@ -170,26 +174,21 @@
   background: var(--color-control-active);
   color: var(--color-text-bright);
 }
-.dsui-option-select-icon img,
-.dsui-option-select-icon svg {
+.dsui-select-icon img,
+.dsui-select-icon svg {
   width: 17px;
   height: 17px;
   object-fit: contain;
 }
-.dsui-option-select-native {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-.dsui-option-select-menu:popover-open {
-  position: fixed;
+.dsui-select-menu {
   z-index: 1000;
   box-sizing: border-box;
-  inset: auto;
-  margin: 0;
-  overflow-y: auto;
+  width: max(
+    var(--radix-select-trigger-width),
+    min(300px, var(--radix-select-content-available-width))
+  );
+  max-height: var(--radix-select-content-available-height);
+  overflow: hidden;
   padding: 7px;
   border: 1px solid var(--color-control-border);
   border-radius: 10px;
@@ -202,7 +201,10 @@
   box-shadow: 0 16px 48px var(--color-shadow-strong);
   scrollbar-width: thin;
 }
-.dsui-option-select-menu .dsui-option-select-option {
+.dsui-select-menu .dsui-select-option {
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -216,15 +218,14 @@
   color: var(--color-primary);
   text-align: left;
 }
-.dsui-option-select-option + .dsui-option-select-option {
+.dsui-select-option + .dsui-select-option {
   margin-top: 3px;
 }
-.dsui-option-select-menu .dsui-option-select-option:hover:not(:disabled),
-.dsui-option-select-menu .dsui-option-select-option:focus-visible {
+.dsui-select-menu .dsui-select-option[data-highlighted] {
   border-color: var(--color-control-border-strong);
   background: var(--color-control-hover);
 }
-.dsui-option-select-menu .dsui-option-select-option[aria-selected="true"] {
+.dsui-select-menu .dsui-select-option[data-state="checked"] {
   border-color: var(--color-focus);
   background: linear-gradient(
     115deg,
@@ -232,34 +233,50 @@
     var(--color-control-active)
   );
 }
-.dsui-option-select-option:disabled {
+.dsui-select-option[data-disabled] {
   opacity: 0.45;
 }
-.dsui-option-select-copy {
+.dsui-select-copy {
   min-width: 0;
   flex: 1;
 }
-.dsui-option-select-copy strong,
-.dsui-option-select-copy small {
+.dsui-select-copy strong,
+.dsui-select-copy small {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dsui-option-select-copy strong {
+.dsui-select-copy strong {
   font-size: 12px;
   font-weight: 600;
 }
-.dsui-option-select-copy small {
+.dsui-select-copy small {
   margin-top: 2px;
   color: var(--color-text-subtle);
   font-size: 10px;
 }
-.dsui-option-select-check {
+.dsui-select-check {
   width: 16px;
   height: 16px;
   flex: none;
   color: var(--color-text-link);
+}
+
+.dsui-select .dsui-select-trigger[data-variant="ghost"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-secondary);
+}
+.dsui-select .dsui-select-trigger[data-variant="ghost"]:hover:not(:disabled),
+.dsui-select .dsui-select-trigger[data-variant="ghost"][data-state="open"] {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.dsui-select .dsui-select-trigger[data-size="small"] {
+  min-height: 28px;
+  padding-block: 3px;
+  font-size: 11px;
 }
 
 @layer components {

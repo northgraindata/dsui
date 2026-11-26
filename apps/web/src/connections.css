@@ -632,41 +632,30 @@
 }
 
 /* Dropdowns in this dialog follow its own palette instead of the shared blue. */
-.connection-dialog .dsui-option-select .dsui-option-select-trigger {
+.connection-dialog .dsui-select .dsui-select-trigger {
   border-color: var(--color-border-strong);
   background: linear-gradient(110deg, #0b1426, #0a1221);
   color: inherit;
 }
-.connection-dialog
-  .dsui-option-select
-  .dsui-option-select-trigger:hover:not(:disabled),
-.connection-dialog
-  .dsui-option-select
-  .dsui-option-select-trigger[aria-expanded="true"] {
+.connection-dialog .dsui-select .dsui-select-trigger:hover:not(:disabled),
+.connection-dialog .dsui-select .dsui-select-trigger[data-state="open"] {
   border-color: var(--color-accent);
   background: linear-gradient(110deg, #0b1426, #0a1221);
 }
-.connection-dialog .dsui-option-select-menu:popover-open {
+.connection-dialog .dsui-select-menu {
   border-color: var(--color-border-strong);
   background: linear-gradient(115deg, #080f1d, #070e1a 50%, #090f1c);
   box-shadow: 0 24px 90px #0006;
 }
-.connection-dialog
-  .dsui-option-select-menu
-  .dsui-option-select-option:hover:not(:disabled),
-.connection-dialog
-  .dsui-option-select-menu
-  .dsui-option-select-option:focus-visible {
+.connection-dialog .dsui-select-menu .dsui-select-option[data-highlighted] {
   border-color: var(--color-border-strong);
   background: #ffffff0a;
 }
-.connection-dialog
-  .dsui-option-select-menu
-  .dsui-option-select-option[aria-selected="true"] {
+.connection-dialog .dsui-select-menu .dsui-select-option[data-state="checked"] {
   border-color: #147cff;
   background: linear-gradient(120deg, #081327, #07152e);
 }
-.connection-dialog .dsui-option-select-icon {
+.connection-dialog .dsui-select-icon {
   border-color: var(--color-border);
   background: #ffffff0a;
 }

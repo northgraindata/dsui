@@ -1,10 +1,19 @@
 # Radix spike
 
 **Question:** should DSUI primitives with hard behaviour move to Radix, styled through our own variants?
-**Status:** waiting for the maintainer's decision.
-The product is unchanged: the spike lives in `apps/gallery/spike/`.
+**Status:** accepted on 2026-11-26, with components passed to extensions by the host.
+`Select` has moved. The spike's prototype code is gone; the results below are what the decision was based on.
 
-Open it with `bun run gallery:dev` at `http://localhost:5180/?spike=1`.
+## Changes found while building the first component
+
+- **Styles are plain CSS, not `cva` utility classes.** Extension stylesheets are unlayered, so a rule such as `.some-form button` beats any Tailwind utility. Variants are `data-variant` and `data-size` attributes.
+- **A native `<dialog>` needs the list inside it.** The connection dialog opens with `showModal()`. A list in `document.body` would be drawn under it and be inert. The spike missed this, because it only tested the Radix dialog.
+- **The kit's types live in `packages/ui/src/kit.ts`,** with no implementations. Plugins compile JSX against an injected React, so importing component sources would break their type check.
+- **Empty values are handled** inside the component.
+
+## Still to migrate
+
+Dropdown menu, Popover, Tooltip, Alert dialog and Tabs. `SuggestInput` needs its own assessment, because Radix has no combobox.
 
 ## Results
 
@@ -49,12 +58,3 @@ A wrapper would have to map `""` to an internal value.
 - `Select`, `Tooltip` and `cva` without React: 103 KB minified, 35.6 KB gzip. The app already ships Radix Dialog, so shared parts make the real increase smaller. That increase was not measured.
 - The spike components are 102 lines. `option-select-factory.tsx` is 257 lines, plus its CSS.
 - This is not a like-for-like comparison. The spike has no option icons or descriptions, and no form `name` or `required`.
-
-## Recommendation
-
-Adopt Radix for Select, Dropdown menu, Popover, Tooltip, Alert dialog and Tabs.
-Give plugins those components through the host, as `ui`.
-That also keeps one dialog and toast behaviour across plugins.
-
-The cost is a new part of the plugin contract that the host must keep stable.
-Before migrating, check the SDK package, the empty value wrapper and form support with the first real component.

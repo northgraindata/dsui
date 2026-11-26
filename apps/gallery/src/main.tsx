@@ -7,6 +7,6 @@ const isShell =
   new URLSearchParams(location.search).has("shell");
 
 if (isShell) void import("./shell/main").then((shell) => shell.startShell());
-else if (new URLSearchParams(location.search).has("spike"))
-  void import("../spike/page").then((spike) => spike.startSpike());
+else if (new URLSearchParams(location.search).get("harness") === "select")
+  void import("./harness/select").then((page) => page.startSelectHarness());
 else void import("./gallery-main").then((gallery) => gallery.startGallery());

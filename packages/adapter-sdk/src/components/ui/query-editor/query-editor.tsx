@@ -1,4 +1,4 @@
-import { OptionSelect } from "@northgraindata/dsui-ui";
+import { Select } from "@northgraindata/dsui-ui";
 import { useEffect, useRef, useState } from "react";
 import type { QueryEditorProps } from "../../primitives/query-editor";
 import { type ComponentProps, componentProps } from "../../runtime";
@@ -124,7 +124,7 @@ function QueryEditorContent({
           {props.database ? (
             <div className="query-database-picker">
               <span>{props.database.label ?? "Database"}</span>
-              <OptionSelect
+              <Select
                 ariaLabel={props.database.label ?? "Database"}
                 value={database}
                 placeholder="Configured database"

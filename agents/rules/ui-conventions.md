@@ -185,6 +185,8 @@ Enforced by: review.
 ### R22. Shared controls only
 
 Use the shared button, input, select and menu components.
+Primitives with hard behaviour are built on Radix, behind our own variants. See the [Radix decision](../ui-review/radix-spike.md).
+An extension receives shared components from the host, as `ui`, and never imports them.
 Enforced by: a lint rule. Planned.
 
 ### R23. Small scale, open to growth
@@ -215,7 +217,6 @@ Enforced by: components and review. Planned.
 
 ## Open decisions
 
-- Whether DSUI primitives move to Radix behind our own variants. See the [Radix spike](../ui-review/radix-spike.md).
 - How to confirm SQL that changes data.
 
 ## Changing a convention
@@ -232,3 +233,4 @@ Reviewing a page may show that a rule is wrong, missing or too strict.
 | Date | Rules | Change |
 | --- | --- | --- |
 | 2026-11-26 | R1-R26 | First agreed version. |
+| 2026-11-26 | R22 | Radix accepted for primitives with hard behaviour; extensions receive them as `ui`. |

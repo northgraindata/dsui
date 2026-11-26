@@ -40,25 +40,25 @@ export function registryRange(
 }
 
 async function rewriteBundledUiImports(sourceRoot: string): Promise<void> {
-  const uiEntry = join(sourceRoot, "ui", "index.tsx");
+  const entries = {
+    '"@northgraindata/dsui-ui"': join(sourceRoot, "ui", "index.tsx"),
+    '"@northgraindata/dsui-ui/kit"': join(sourceRoot, "ui", "kit.ts"),
+  };
   const visit = async (directoryPath: string): Promise<void> => {
     for (const entry of await readdir(directoryPath, { withFileTypes: true })) {
       const path = join(directoryPath, entry.name);
       if (entry.isDirectory()) {
         await visit(path);
       } else if (/\.tsx?$/.test(entry.name)) {
-        const bundledUi = relative(dirname(path), uiEntry).split(sep).join("/");
-        const specifier = bundledUi.startsWith(".")
-          ? bundledUi
-          : `./${bundledUi}`;
-        const sourceText = await readFile(path, "utf8");
-        await writeFile(
-          path,
-          sourceText.replaceAll(
-            '"@northgraindata/dsui-ui"',
-            JSON.stringify(specifier),
-          ),
-        );
+        let sourceText = await readFile(path, "utf8");
+        for (const [specifier, target] of Object.entries(entries)) {
+          const bundled = relative(dirname(path), target).split(sep).join("/");
+          sourceText = sourceText.replaceAll(
+            specifier,
+            JSON.stringify(bundled.startsWith(".") ? bundled : `./${bundled}`),
+          );
+        }
+        await writeFile(path, sourceText);
       }
     }
   };

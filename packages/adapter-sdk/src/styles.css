@@ -666,7 +666,7 @@ textarea.notebook-description-input {
   color: var(--color-secondary);
   font-size: 11px;
 }
-.query-database-picker .dsui-option-select {
+.query-database-picker .dsui-select {
   min-width: 180px;
 }
 @media (prefers-reduced-motion: reduce) {

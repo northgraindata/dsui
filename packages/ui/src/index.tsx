@@ -8,11 +8,7 @@ export { Field } from "./components/field";
 export { Input } from "./components/input";
 export { KeyValueList } from "./components/key-value-list";
 export { keyedRows } from "./components/keyed-rows";
-export type {
-  OptionSelectOption,
-  OptionSelectProps,
-} from "./components/option-select";
-export { OptionSelect } from "./components/option-select";
+export { Select } from "./components/select";
 export { Status } from "./components/status";
 export type {
   SuggestInputProps,
@@ -20,3 +16,5 @@ export type {
 } from "./components/suggest-input";
 export { SuggestInput } from "./components/suggest-input";
 export { Surface } from "./components/surface";
+export { uiKit } from "./components/ui-kit";
+export type { SelectOption, SelectProps, UiKit } from "./kit";

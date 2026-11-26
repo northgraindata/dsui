@@ -4,6 +4,12 @@
  */
 import { z } from "zod";
 
+// What the host passes to a browser bundle as `createComponents`' third argument.
+export type {
+  SelectOption as UiSelectOption,
+  SelectProps as UiSelectProps,
+  UiKit,
+} from "@northgraindata/dsui-ui/kit";
 export {
   type ActionBinding,
   type ActionDefinition,

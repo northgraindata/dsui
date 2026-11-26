@@ -1,11 +1,9 @@
 import type { ComponentProps } from "@northgraindata/dsui-adapter-sdk";
-import { createOptionSelect } from "@northgraindata/dsui-ui/option-select-factory";
 import { type FleetItem, fleetSchema } from "./contract";
 import { HistoryStrip } from "./history-strip";
+import { Select } from "./host-ui";
 import { historyStyles, overviewStyles } from "./overview-styles";
 import { React } from "./react";
-
-const OptionSelect = createOptionSelect(() => React);
 
 type HealthStatus = "healthy" | "warning" | "unavailable" | "unknown";
 
@@ -354,7 +352,7 @@ function HealthFilter({
   setFilter: (value: HealthStatus | "all") => void;
 }) {
   return (
-    <OptionSelect
+    <Select
       ariaLabel="Filter by health status"
       value={filter}
       onValueChange={(value) =>

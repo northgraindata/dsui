@@ -14,6 +14,7 @@ const STYLED_COMPONENTS = [
   "query-workspace",
   "resource-tree",
   "section",
+  "select",
   "split",
   "stack",
   "table",
@@ -66,6 +67,9 @@ for (const directory of selected) {
     if (!embeddedUi.includes("./components/button"))
       throw new Error("Adapter SDK package is missing embedded UI sources");
     await assertStylesShip(join(target, "src"));
+    const sdkIndex = await readFile(join(target, "src", "index.ts"), "utf8");
+    if (sdkIndex.includes("@northgraindata/dsui-ui"))
+      throw new Error("Adapter SDK index imports the private UI package");
     if (adapterUi.includes("@northgraindata/dsui-ui"))
       throw new Error(
         "Adapter SDK package contains an unresolved private UI import",
