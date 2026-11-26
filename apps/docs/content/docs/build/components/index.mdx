@@ -8,6 +8,28 @@ DSUI ships 33 builtin components. You compose them on the server when you build 
 
 To build something that these components can't draw, see [custom components](/docs/build/custom-components).
 
+## Dialogs and confirmations
+
+A `Button` or a table or list row action can declare a `dialog`, which opens a modal with the content you give it. Use it to create or edit a record with a `Form`.
+
+```ts
+Button({
+  label: "Create database",
+  dialog: {
+    title: "Create database",
+    content: Form({
+      schema: createDatabaseInput,
+      fields: [TextInput({ name: "name", label: "Database name" })],
+      onSubmit: createDatabase,
+    }),
+  },
+});
+```
+
+In a row action's dialog, `{field}` in the title reads from the row. A field with `value: { field: "name" }` starts with the row's value. The submit button stays disabled until a value changes. Closing with unsaved input asks first. A click outside closes the modal only if you set `closeOnOutsideClick`.
+
+Add a `confirmation` to an action that deletes, stops, or changes something. DSUI shows its own dialog. Its title and description can use `{field}` placeholders, so name the object there.
+
 ## Layout
 
 | Component | Purpose |

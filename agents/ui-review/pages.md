@@ -17,36 +17,34 @@ Only the maintainer moves a page to `approved` or `done`.
 
 | Page | Status | Notes |
 | --- | --- | --- |
-| `/` | todo |  |
-| `/dags` | todo |  |
-| `/dags/:dagId` | todo | Header offers Pause or Unpause by state. Confirmation and menu still to do. |
-| `/dags/:dagId/runs/:dagRunId` | todo |  |
-| `/dags/:dagId/runs/:dagRunId/tasks/:taskId/:mapIndex/:tryNumber` | todo |  |
-| `/assets` | todo |  |
-| `/assets/:assetId` | todo |  |
-| `/connections` | todo |  |
-| `/connections/new` | todo |  |
-| `/connections/:connectionId/edit` | todo |  |
-| `/variables` | todo |  |
-| `/variables/new` | todo |  |
-| `/variables/:key/edit` | todo |  |
-| `/pools` | todo |  |
-| `/pools/new` | todo |  |
-| `/pools/:name/edit` | todo |  |
-| `/users` | todo |  |
-| `/event-logs` | todo |  |
+| `/` | changed | Row triggers ask first. Open: R14 schedule badge, R19 next-run text. |
+| `/dags` | changed | Row Trigger, Pause and Unpause ask first; icon buttons have tooltips; shared menu. Open: R14, R19. |
+| `/dags/:dagId` | changed | Header and run actions ask first; details read as labels. Open: R14, R19. |
+| `/dags/:dagId/runs/:dagRunId` | changed | Terminate and Clear task ask first; details read as labels. Open: retry confirmation, R11 graph glyphs, R19 durations. |
+| `/dags/:dagId/runs/:dagRunId/tasks/:taskId/:mapIndex/:tryNumber` | changed | Details read as labels and dates follow settings. Open: duration has no unit. |
+| `/assets` | todo | No change. Open: R14 group badge, R19 updated time. |
+| `/assets/:assetId` | changed | Details read as labels and dates follow settings. |
+| `/connections` | changed | Add and Edit are modals; Delete names the connection. Open: R14 type badge. |
+| `/variables` | changed | Add and Edit are modals; Delete names the variable. Open: R14 encrypted badge. |
+| `/pools` | changed | Add and Edit are modals; Delete names the pool. |
+| `/users` | todo | No change. Open: R14 roles badge. |
+| `/event-logs` | changed | Time follows settings; "Clear all" only when sorted or filtered. |
+
+The `new` and `edit` pages of connections, variables and pools were removed in favour of modals.
+
+Open points for both adapters are in [airflow-clickhouse.md](airflow-clickhouse.md).
 
 ## ClickHouse
 
 | Page | Status | Notes |
 | --- | --- | --- |
-| `/` | todo |  |
-| `/data` | todo |  |
-| `/data/:database` | todo |  |
-| `/data/:database/:table` | todo |  |
-| `/query` | todo |  |
-| `/query/:database` | todo |  |
-| `/activity` | todo |  |
+| `/` | changed | Duplicate header removed; server details read as labels. |
+| `/data` | changed | Create database is a modal; "Clear all" only when useful. |
+| `/data/:database` | changed | "Clear all" only when useful. |
+| `/data/:database/:table` | changed | Details read as labels; "Clear all" only when useful. Preview values are left as stored. |
+| `/query` | changed | Explorer no longer marks every database selected. Open: confirmation for SQL that changes data. |
+| `/query/:database` | changed | Same as `/query`. |
+| `/activity` | changed | Cancel query asks first and names the query. |
 
 ## Dagster
 
