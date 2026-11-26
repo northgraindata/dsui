@@ -35,7 +35,7 @@ export function pluginRendererClient(
   return {
     executeResource: async (reference) =>
       executePluginResource(pluginId, reference.resourceId, reference.input),
-    watchResource: (reference, listener) => {
+    watchResource: (reference, listener, onError) => {
       let active = true;
       let running = false;
       let timer: number | undefined;
@@ -51,9 +51,11 @@ export function pluginRendererClient(
               reference.input,
             ),
           );
-        } catch {
+        } catch (cause) {
           // A failed refresh leaves the last good value on screen rather than
           // blanking the panel, which is how an adapter resource behaves too.
+          // A component without a value yet uses this to say why.
+          onError?.(cause);
         } finally {
           running = false;
         }

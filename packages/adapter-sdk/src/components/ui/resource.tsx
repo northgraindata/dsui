@@ -37,27 +37,29 @@ function ResourceContent({
         setError(undefined);
       } else setError("Could not load resource");
     };
+    const fail = (cause: unknown) => {
+      if (active)
+        setError(
+          cause instanceof Error ? cause.message : "Could not load resource",
+        );
+    };
     if (node.props.source.refresh?.kind === "poll" && client.watchResource) {
-      const unsubscribe = client.watchResource(node.props.source, receive);
+      const unsubscribe = client.watchResource(
+        node.props.source,
+        receive,
+        fail,
+      );
       return () => {
         active = false;
         unsubscribe();
       };
     }
-    client
-      .executeResource(node.props.source)
-      .then(receive)
-      .catch((cause) => {
-        if (active)
-          setError(
-            cause instanceof Error ? cause.message : "Could not load resource",
-          );
-      });
+    client.executeResource(node.props.source).then(receive).catch(fail);
     return () => {
       active = false;
     };
   }, [client, node.props.source]);
-  if (error)
+  if (error && !data)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
         {error}

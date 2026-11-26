@@ -211,18 +211,14 @@ function detailHeader(dagId: string) {
       Badge({ label: { field: "owners" }, tone: "info" }),
     ],
     actions: [
+      // Only the action that applies to the DAG's current state is offered.
       Button({
-        label: "Ⅱ",
+        label: { field: "pauseToggle.label" },
         variant: "secondary",
-        action: pauseDag({ dagId }),
+        action: { field: "pauseToggle.action" },
       }),
       Button({
-        label: "↻",
-        variant: "secondary",
-        action: unpauseDag({ dagId }),
-      }),
-      Button({
-        label: "▷",
+        label: "Trigger",
         variant: "primary",
         action: triggerDag({ dagId, conf: {} }),
         successLink: {

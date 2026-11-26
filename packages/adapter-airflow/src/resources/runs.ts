@@ -94,6 +94,15 @@ function displayRunId(run: DagRun) {
   return `${type} · ${formatRunTimestamp(run.runAfter || run.logicalDate)}`;
 }
 
+/** The one pause control that applies to a DAG in its current state. */
+export function pauseToggle(dagId: string, isPaused: boolean) {
+  const label: "Pause" | "Unpause" = isPaused ? "Unpause" : "Pause";
+  const actionId: "pause-dag" | "unpause-dag" = isPaused
+    ? "unpause-dag"
+    : "pause-dag";
+  return { label, action: { actionId, input: { dagId } } };
+}
+
 export function buildDagOverview(dag: DagDetails, runs: readonly DagRun[]) {
   const states = runs.map((run) => run.state.toLowerCase());
   return {
@@ -105,6 +114,7 @@ export function buildDagOverview(dag: DagDetails, runs: readonly DagRun[]) {
     failedRuns: states.filter((state) => state === "failed").length,
     runningRuns: states.filter((state) => state === "running").length,
     lastRunDuration: runs[0] ? formatRunDuration(runs[0]) : "—",
+    pauseToggle: pauseToggle(dag.dagId, dag.isPaused),
   };
 }
 

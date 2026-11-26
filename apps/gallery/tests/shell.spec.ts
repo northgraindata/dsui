@@ -100,3 +100,12 @@ for (const { mode, url } of TAB_MODES)
     await expect(page.getByText("DAG details")).toBeVisible();
     expect(problems).toEqual([]);
   });
+
+test("the DAG header pauses only through a named, state-matched button", async ({
+  page,
+}) => {
+  const problems = watchProblems(page);
+  await openApp(page, "/services/airflow/dags/daily_revenue", 1440);
+  const actions = page.locator(".dsui-page-header-actions button");
+  await expect(actions).toHaveText([/^(Pause|Unpause)$/, "Trigger"]);
+});
