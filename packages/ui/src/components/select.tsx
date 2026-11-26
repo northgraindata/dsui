@@ -1,25 +1,13 @@
 import * as RadixSelect from "@radix-ui/react-select";
 import { useState } from "react";
 import type { SelectOption, SelectProps } from "../kit";
+import { useDialogContainer } from "./dialog-container";
 
 /**
  * Radix reserves `""` for "nothing selected". Our pickers also offer it as a
  * real choice, such as "All states", so such an option travels under this name.
  */
 const EMPTY = "__dsui_empty__";
-
-/**
- * A modal `<dialog>` is drawn above the whole page and makes everything outside
- * it inert, so its list has to open inside it. Elsewhere the list goes to body.
- */
-function useListContainer() {
-  const [container, setContainer] = useState<HTMLElement>();
-  const ref = (trigger: HTMLButtonElement | null) => {
-    const dialog = trigger?.closest("dialog") ?? undefined;
-    if (dialog !== container) setContainer(dialog);
-  };
-  return { container, ref };
-}
 
 const chevron = (
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -90,7 +78,7 @@ export function Select({
   size = "default",
 }: SelectProps) {
   const [own, setOwn] = useState(defaultValue);
-  const { container, ref } = useListContainer();
+  const { container, ref } = useDialogContainer();
   const current = value ?? own;
   const selected = options.find((option) => option.value === current);
   const offersEmpty = options.some((option) => option.value === "");

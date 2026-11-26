@@ -110,7 +110,13 @@ export function createComponents(
 }
 ```
 
-`ui` holds `Select`. Its `variant` is `"default"` or `"ghost"`, and its `size` is `"default"` or `"small"`.
+`ui` holds these controls:
+
+- **`Select`**: a picker. Its `variant` is `"default"` or `"ghost"`, and its `size` is `"default"` or `"small"`.
+- **`Tooltip`**: names what an icon means, on hover and keyboard focus.
+- **`Menu`**: secondary actions. It lists destructive items last.
+- **`ConfirmDialog`**: asks before an action with consequences.
+- **`notify`**: shows a toast. An error toast stays until you dismiss it.
 
 Point to the entry from `package.json`:
 

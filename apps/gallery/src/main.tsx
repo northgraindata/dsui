@@ -9,4 +9,6 @@ const isShell =
 if (isShell) void import("./shell/main").then((shell) => shell.startShell());
 else if (new URLSearchParams(location.search).get("harness") === "select")
   void import("./harness/select").then((page) => page.startSelectHarness());
+else if (new URLSearchParams(location.search).get("harness") === "overlays")
+  void import("./harness/overlays").then((page) => page.startOverlayHarness());
 else void import("./gallery-main").then((gallery) => gallery.startGallery());

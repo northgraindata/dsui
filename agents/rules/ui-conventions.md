@@ -215,6 +215,10 @@ Only the selected item looks selected.
 Hover and focus look different from selection.
 Enforced by: components and review. Planned.
 
+## Known gaps
+
+- A toast raised while a native `<dialog>` is open, such as the connection dialog, is drawn under it. Moving that dialog to the Radix modal fixes it.
+
 ## Open decisions
 
 - How to confirm SQL that changes data.

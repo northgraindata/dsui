@@ -6,8 +6,12 @@ import { z } from "zod";
 
 // What the host passes to a browser bundle as `createComponents`' third argument.
 export type {
+  ConfirmDialogProps as UiConfirmDialogProps,
+  MenuProps as UiMenuProps,
+  Notify as UiNotify,
   SelectOption as UiSelectOption,
   SelectProps as UiSelectProps,
+  TooltipProps as UiTooltipProps,
   UiKit,
 } from "@northgraindata/dsui-ui/kit";
 export {

@@ -279,6 +279,134 @@
   font-size: 11px;
 }
 
+/* Overlays are unlayered for the same reason as the select. */
+/* A modal disables pointer events outside itself; toasts must stay usable. */
+[data-sonner-toaster],
+[data-sonner-toast] {
+  pointer-events: auto;
+}
+.dsui-tooltip {
+  z-index: 1000;
+  max-width: 280px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-control-border);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 8px 24px var(--color-shadow-soft);
+  color: var(--color-text-bright);
+  font-size: 11px;
+  line-height: 16px;
+}
+.dsui-menu {
+  z-index: 1000;
+  box-sizing: border-box;
+  min-width: 168px;
+  padding: 5px;
+  border: 1px solid var(--color-control-border);
+  border-radius: 10px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 16px 48px var(--color-shadow-strong);
+}
+.dsui-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 6px;
+  color: var(--color-primary);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+.dsui-menu-item[data-highlighted] {
+  background: var(--color-control-hover);
+}
+.dsui-menu-item[data-tone="danger"] {
+  color: var(--color-danger-foreground);
+}
+.dsui-menu-item[data-tone="danger"][data-highlighted] {
+  background: color-mix(in srgb, var(--color-unavailable) 18%, transparent);
+}
+.dsui-menu-item[data-disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+.dsui-menu-icon {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+}
+.dsui-menu-separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--color-border);
+}
+.dsui-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: color-mix(in srgb, var(--color-overlay) 80%, transparent);
+}
+.dsui-confirm {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 901;
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 20px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 24px 80px var(--color-shadow-strong);
+}
+.dsui-confirm-title {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dsui-confirm-description {
+  margin: 8px 0 0;
+  color: var(--color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.dsui-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+/* The label keeps its space while a spinner covers it, so nothing moves. */
+.dsui-confirm-action[data-pending="true"] {
+  position: relative;
+  -webkit-text-fill-color: transparent;
+}
+.dsui-confirm-action[data-pending="true"]::after {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-accent-foreground);
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+  animation: dsui-spin 0.7s linear infinite;
+}
+@keyframes dsui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @layer components {
   .command-palette__backdrop {
     opacity: 0;

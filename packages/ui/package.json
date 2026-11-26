@@ -9,10 +9,14 @@
     "./styles.css": "./src/styles.css"
   },
   "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.2.1",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.2.1",
     "@radix-ui/react-select": "^2.4.1",
     "@radix-ui/react-slot": "^1.2.3",
-    "clsx": "^2.1.1"
+    "@radix-ui/react-tooltip": "^1.4.1",
+    "clsx": "^2.1.1",
+    "sonner": "^2.0.8"
   },
   "peerDependencies": {
     "react": "^19.0.0",
