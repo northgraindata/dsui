@@ -43,9 +43,7 @@ registry.signal({
 });
 ```
 
-DSUI then lists it with every service's own signals in `context.services.signals(serviceId)`, so signal pickers, such as workflow editors, can offer it before it has ever fired.
-Emit it with the service's ID.
-A signal without `scope`, or with `scope: "global"`, is not listed for services.
+DSUI then lists it with every service's own signals in `context.services.signals(serviceId)`, so signal pickers, such as workflow editors, can offer it before it has ever fired. Emit it with the service's ID. A signal without `scope`, or with `scope: "global"`, is not listed for services.
 
 ## Actions people run
 

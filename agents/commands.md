@@ -25,6 +25,16 @@ For iteration, inspect the affected package's `package.json` and run its focused
 test, typecheck, or build script. Run the relevant root checks before handoff.
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for the canonical check requirements.
 
+## UI verification
+
+```sh
+bun run gallery:dev   # every adapter page with fixture data on :5180
+bun run test:ui       # layout checks for all pages, scenarios and widths
+```
+
+Install the browser once with `cd apps/gallery && bunx playwright install chromium`.
+The [UI review skill](../.agents/skills/dsui-ui-review/SKILL.md) covers screenshot comparison and diagnostics.
+
 ## CI gates
 
 Selected layer pipelines run the repository lint before typecheck, tests, build,

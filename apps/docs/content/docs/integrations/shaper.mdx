@@ -30,13 +30,11 @@ services:
       userPassword: ${SHAPER_USER_PASSWORD}
 ```
 
-Use the Compose service name when DSUI and Shaper run in the same Compose project.
-`localhost` points back to the DSUI container, not Shaper.
+Use the Compose service name when DSUI and Shaper run in the same Compose project. `localhost` points back to the DSUI container, not Shaper.
 
 ## API key permissions
 
-Create the key in Shaper under API keys.
-The adapter works with a partial key and reports the missing permission when a feature needs it.
+Create the key in Shaper under API keys. The adapter works with a partial key and reports the missing permission when a feature needs it.
 
 | Permission | Used for |
 | --- | --- |
@@ -58,20 +56,13 @@ The adapter works with a partial key and reports the missing permission when a f
 - Run single SQL statements with a DuckDB schema explorer
 - AI agents can read a dashboard's values with `dashboard-summary` and run read-only queries with `sql-preview`, which only accepts allowlisted statements
 
-The adapter polls tasks every minute and emits `shaper.task-failed` and `shaper.task-succeeded` signals when a task's last run changes.
-The first poll only records history, so existing runs are not announced.
+The adapter polls tasks every minute and emits `shaper.task-failed` and `shaper.task-succeeded` signals when a task's last run changes. The first poll only records history, so existing runs are not announced.
 
 ## Sharing
 
-Shaper lets only signed-in users change a dashboard's visibility or password.
-An API key cannot do it, and neither can the dashboard tokens minted from one.
-To share dashboards, add the email and password of a Shaper user to the connection.
-DSUI signs in as that user only when you share a dashboard.
+Shaper lets only signed-in users change a dashboard's visibility or password. An API key cannot do it, and neither can the dashboard tokens minted from one. To share dashboards, add the email and password of a Shaper user to the connection. DSUI signs in as that user only when you share a dashboard.
 
-The `share-dashboard` action sets a dashboard to `private`, `public`, or `password-protected` and returns the link.
-For a password-protected dashboard you can choose the password.
-If you do not, DSUI generates one and returns it once, because Shaper stores only a hash and never shows it again.
-Sharing fails with a clear message when the Shaper server has disabled public or password-protected sharing.
+The `share-dashboard` action sets a dashboard to `private`, `public`, or `password-protected` and returns the link. For a password-protected dashboard you can choose the password. If you do not, DSUI generates one and returns it once, because Shaper stores only a hash and never shows it again. Sharing fails with a clear message when the Shaper server has disabled public or password-protected sharing.
 
 Use a dedicated Shaper user for this connection and give it only the access it needs.
 

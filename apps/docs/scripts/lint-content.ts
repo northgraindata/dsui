@@ -49,6 +49,7 @@ const properNouns = new Set([
   "DuckDB",
   "ClickHouse",
   "PostgreSQL",
+  "Shaper",
   "Airflow",
   "S3",
   "GitHub",

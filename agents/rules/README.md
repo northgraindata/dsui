@@ -9,3 +9,4 @@ standards and architecture documentation take precedence.
 - [Focused changes](workflow-focused-changes.md)
 - [Testing](testing.md)
 - [Code review](code-review.md)
+- [UI layout contract](ui-layout.md)

@@ -10,6 +10,10 @@
     },
     "inspector": {
       "description": "Right pane (optional)"
+    },
+    "sidebarLabel": {
+      "description": "Label of the button that opens the sidebar in containers narrower than 600 px.",
+      "default": "\"Data explorer\""
     }
   },
   "example": "SplitPane({\n  sidebar: ResourceTree({ label: \"Explorer\", branch: { source: tree() } }),\n  content: Table({ source: selected() }),\n  inspector: Card({ content: Value({ source: detail(), field: \"info\" }) }),\n})"

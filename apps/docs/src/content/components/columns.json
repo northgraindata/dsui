@@ -1,9 +1,13 @@
 {
   "name": "Columns",
-  "description": "Multi-column weighted layout.",
+  "description": "Multi-column weighted layout that stacks in containers narrower than 720 px.",
   "props": {
     "columns": {
       "description": "Column definitions. Each has `weight?` (relative width) and `content`."
+    },
+    "gap": {
+      "description": "Spacing between columns and between the items in a column: `none`, `sm`, `md`, or `lg`.",
+      "default": "\"md\""
     }
   },
   "example": "Columns({\n  columns: [\n    { weight: 2, content: Table({ source: left() }) },\n    { weight: 1, content: Card({ content: Value({ source: right(), field: \"x\" }) }) },\n  ],\n})"
