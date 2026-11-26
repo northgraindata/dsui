@@ -275,7 +275,7 @@
 .table-filter-actions > div button:last-child {
   border-color: var(--color-accent);
   background: var(--color-accent);
-  color: white;
+  color: var(--color-accent-foreground);
 }
 .table-filter-actions > div button:last-child:hover {
   background: var(--color-accent-hover);

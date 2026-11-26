@@ -3,7 +3,7 @@ import { appendFileSync } from "node:fs";
 export type Layer = "adapter-sdk" | "plugin-sdk" | "product";
 export function scopeForPaths(paths: string[], layer: Layer) {
   const shared = paths.some((path) =>
-    /^(package\.json|bun\.lock|tsconfig\.json|turbo\.json|biome\.json|\.github\/|patches\/|scripts\/)/.test(
+    /^(package\.json|bun\.lock|tsconfig\.json|turbo\.json|biome\.json|stylelint\.config\.mjs|lint\/|\.github\/|patches\/|scripts\/)/.test(
       path,
     ),
   );

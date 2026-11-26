@@ -185,6 +185,35 @@
           }
         }
       }
+    },
+    {
+      "includes": ["packages/**/*.tsx"],
+      "plugins": [
+        "./lint/no-content-keys.grit",
+        "./lint/no-raw-class-colors.grit",
+        "./lint/no-legacy-class-names.grit"
+      ]
+    },
+    {
+      "includes": [
+        "packages/adapter-sdk/src/components/**/*.tsx",
+        "packages/adapter-*/src/**/*.tsx",
+        "packages/ui/src/**/*.tsx"
+      ],
+      "plugins": ["./lint/no-viewport-variants.grit"]
+    },
+    {
+      "includes": [
+        "packages/adapter-sdk/src/components/**/*.ts",
+        "packages/adapter-sdk/src/components/**/*.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "error"
+          }
+        }
+      }
     }
   ]
 }

@@ -7,6 +7,7 @@ export { DialogContent } from "./components/dialog-content";
 export { Field } from "./components/field";
 export { Input } from "./components/input";
 export { KeyValueList } from "./components/key-value-list";
+export { keyedRows } from "./components/keyed-rows";
 export type {
   OptionSelectOption,
   OptionSelectProps,

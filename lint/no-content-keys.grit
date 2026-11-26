@@ -1,0 +1,3 @@
+`key={JSON.stringify($value)}` as $attribute where {
+  register_diagnostic(span=$attribute, message="A key derived from content remounts the subtree and drops its state. Key by position or identity (see components/ui/keys.ts).", severity="error")
+}

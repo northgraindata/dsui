@@ -1,0 +1,5 @@
+JsxAttribute() as $attribute where {
+  $attribute <: r"(?s)className=.*",
+  $attribute <: r"(?s).*[\x22'\x60 ](?:layout|ov|explorer)-[a-z].*",
+  register_diagnostic(span=$attribute, message="Shared classes are prefixed with dsui-.", severity="error")
+}

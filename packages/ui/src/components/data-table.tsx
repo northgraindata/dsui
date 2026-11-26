@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { keyedRows } from "./keyed-rows";
 import { Surface } from "./surface";
 
 export function DataTable({
@@ -41,11 +42,8 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={JSON.stringify(row)}
-              className="border-b border-border last:border-0"
-            >
+          {keyedRows(rows).map(({ item: row, key }) => (
+            <tr key={key} className="border-b border-border last:border-0">
               {columns.map((column, index) => (
                 <td
                   key={column.id}

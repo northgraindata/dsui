@@ -1,0 +1,5 @@
+JsxAttribute() as $attribute where {
+  $attribute <: r"(?s)className=.*",
+  $attribute <: r"(?s).*[\x22'\x60 {](?:max-)?(?:sm|md|lg|xl|2xl):.*",
+  register_diagnostic(span=$attribute, message="Pages render in split and narrow containers. Use a container variant such as @min-[600px]/dsui-page: instead of a viewport variant.", severity="error")
+}
