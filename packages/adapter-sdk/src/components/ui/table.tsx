@@ -20,6 +20,7 @@ import {
   resolveLink,
 } from "./row-action";
 import { TableExplorer } from "./table-explorer";
+import { useAction } from "./use-action";
 import { usePropState } from "./use-prop-state";
 
 export {
@@ -184,35 +185,34 @@ function RowAction({
   spec: TableRowAction;
   onDone: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string>();
+  const { run, pending, failed, dialog } = useAction();
   const enabled = matchesWhen(row, spec.when);
   const disabled = isRowActionDisabled(row, spec.disabledWhen);
   return (
     <>
       <button
         type="button"
-        title={actionError}
-        disabled={busy || disabled || !enabled || (!spec.action && !spec.link)}
-        onClick={() => {
-          if (
-            spec.confirmation &&
-            !window.confirm(
-              `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
-            )
-          )
-            return;
-          setBusy(true);
-          setActionError(undefined);
-          void performRowAction(client, spec, row, onDone)
-            .then(setActionError)
-            .finally(() => setBusy(false));
+        aria-busy={pending}
+        data-state={failed ? "error" : undefined}
+        disabled={
+          pending || disabled || !enabled || (!spec.action && !spec.link)
+        }
+        onClick={(event) => {
+          event.stopPropagation();
+          run({
+            id: `action:${spec.label}:${JSON.stringify(spec.input ?? {})}`,
+            label: spec.label,
+            confirmation: spec.confirmation,
+            values: row,
+            destructive: spec.variant === "danger",
+            perform: () => performRowAction(client, spec, row, onDone),
+          });
         }}
       >
         {spec.icon ? <WorkbenchIcon name={spec.icon} size={14} /> : null}
         {spec.label}
       </button>
-      {actionError ? <span role="alert">{actionError}</span> : null}
+      {dialog}
     </>
   );
 }
@@ -226,31 +226,29 @@ function RowMenuAction({
   row: Record<string, unknown>;
   spec: TableRowMenuAction;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string>();
+  const { run, pending, failed, dialog } = useAction();
   const enabled = matchesWhen(row, spec.when);
   return (
     <>
       <button
         type="button"
-        title={actionError}
-        disabled={busy || !enabled}
-        onClick={() => {
-          if (
-            spec.confirmation &&
-            !window.confirm(spec.confirmation.description)
-          )
-            return;
-          setBusy(true);
-          setActionError(undefined);
-          void performRowAction(client, spec, row)
-            .then(setActionError)
-            .finally(() => setBusy(false));
+        aria-busy={pending}
+        data-state={failed ? "error" : undefined}
+        disabled={pending || !enabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          run({
+            id: `action:${spec.label}`,
+            label: spec.label,
+            confirmation: spec.confirmation,
+            values: row,
+            perform: () => performRowAction(client, spec, row),
+          });
         }}
       >
         {spec.label}
       </button>
-      {actionError ? <span role="alert">{actionError}</span> : null}
+      {dialog}
     </>
   );
 }

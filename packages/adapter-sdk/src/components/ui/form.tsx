@@ -1,6 +1,14 @@
-import { Button, Field, Input, Select, Surface } from "@northgraindata/dsui-ui";
+import {
+  Button,
+  Field,
+  Input,
+  notify,
+  Select,
+  Surface,
+} from "@northgraindata/dsui-ui";
 import { type FormEvent, useState } from "react";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
+import { useAction } from "./use-action";
 
 type FormField = {
   kind: string;
@@ -67,19 +75,26 @@ export default function ActionForm({ client, node }: RegistryViewProps) {
       }),
     ),
   );
-  const [message, setMessage] = useState<string>();
+  const { run, pending, failed, dialog } = useAction();
   if (node.kind !== "form") return null;
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const label = node.props.submitLabel ?? "Submit";
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const result = await client.executeAction({
-      ...node.props.action,
-      input: values,
+    run({
+      id: `form:${node.props.action.actionId}`,
+      label,
+      perform: async () => {
+        const result = await client.executeAction({
+          ...node.props.action,
+          input: values,
+        });
+        if (result.status !== "success")
+          return result.message ?? "Action failed";
+        // A submitted form usually shows no effect of its own.
+        notify.success(`${label}: done`);
+        return undefined;
+      },
     });
-    setMessage(
-      result.status === "success"
-        ? "Action completed."
-        : (result.message ?? "Action failed"),
-    );
   };
   return (
     <Surface className="p-4">
@@ -119,14 +134,17 @@ export default function ActionForm({ client, node }: RegistryViewProps) {
           </Field>
         ))}
         <div>
-          <Button type="submit">{node.props.submitLabel ?? "Submit"}</Button>
+          <Button
+            type="submit"
+            disabled={pending}
+            aria-busy={pending}
+            data-state={failed ? "error" : undefined}
+          >
+            {label}
+          </Button>
         </div>
-        {message ? (
-          <p role="status" className="m-0 text-[12px] text-secondary">
-            {message}
-          </p>
-        ) : null}
       </form>
+      {dialog}
     </Surface>
   );
 }

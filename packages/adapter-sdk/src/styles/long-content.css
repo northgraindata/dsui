@@ -125,3 +125,9 @@
 .dsui-collection-item > :is(span, a) {
   overflow-wrap: anywhere;
 }
+
+/* A failed action marks its control; the message is in a toast. */
+button[data-state="error"] {
+  outline: 1px solid var(--color-unavailable);
+  outline-offset: -1px;
+}

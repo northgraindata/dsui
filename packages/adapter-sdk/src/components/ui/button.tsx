@@ -1,15 +1,14 @@
 import { Button as UiButton } from "@northgraindata/dsui-ui";
-import { useState } from "react";
 import type { ActionReference } from "../../action";
 import type { PageNode } from "../nodes";
 import type { ButtonProps } from "../primitives/button";
 import type { ComponentProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
 import { resolveLink } from "./table";
+import { type Confirmation, useAction } from "./use-action";
 
 export function Button({ client, node, context }: ComponentProps) {
-  const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string>();
+  const { run, pending, failed, dialog } = useAction();
   const props = readProps(node);
   if (!props) return null;
   const label = resolve(props.label, context) ?? "";
@@ -17,94 +16,82 @@ export function Button({ client, node, context }: ComponentProps) {
   const action = resolveAction(props.action, context);
   const icon = resolve(props.icon, context);
   const confirmation = resolveConfirmation(props.confirmation, context);
+  const perform = async (): Promise<string | undefined> => {
+    if (!action) return undefined;
+    const result = await client.executeAction(action);
+    if (result.status !== "success") return result.message ?? "Action failed";
+    if (props.successOverlay) client.openOverlay?.(props.successOverlay);
+    if (!props.successLink) return undefined;
+    const resultData =
+      result.data && typeof result.data === "object"
+        ? (result.data as Record<string, unknown>)
+        : {};
+    const href = resolveLink(props.successLink.path, props.successLink.params, {
+      ...(context ?? {}),
+      ...resultData,
+    });
+    if (!href) return "Action succeeded but the follow-up link is missing data";
+    client.navigate(href);
+    return undefined;
+  };
+  const press = () => {
+    if (props.overlay) {
+      client.openOverlay?.(props.overlay);
+      return;
+    }
+    if (link) {
+      client.navigate(link);
+      return;
+    }
+    if (!action) return;
+    run({
+      id: `action:${action.actionId}`,
+      label,
+      confirmation,
+      values: context,
+      destructive: props.variant === "danger",
+      perform,
+    });
+  };
   return (
-    <UiButton
-      variant={
-        props.variant === "primary"
-          ? "default"
-          : props.variant === "list-item"
-            ? "ghost"
-            : props.variant
-      }
-      className={
-        props.variant === "list-item" ? "dsui-button-list-item" : undefined
-      }
-      disabled={busy}
-      onClick={() => {
-        if (
-          confirmation &&
-          !window.confirm(
-            `${confirmation.title}\n\n${confirmation.description}`,
-          )
-        )
-          return;
-        if (props.overlay) {
-          client.openOverlay?.(props.overlay);
-          return;
+    <>
+      <UiButton
+        variant={
+          props.variant === "primary"
+            ? "default"
+            : props.variant === "list-item"
+              ? "ghost"
+              : props.variant
         }
-        if (link) {
-          client.navigate(link);
-          return;
+        className={
+          props.variant === "list-item" ? "dsui-button-list-item" : undefined
         }
-        if (!action) return;
-        setBusy(true);
-        setActionError(undefined);
-        client
-          .executeAction(action)
-          .then((result) => {
-            if (result.status !== "success") {
-              setActionError(result.message ?? "Action failed");
-              return;
-            }
-            if (props.successOverlay)
-              client.openOverlay?.(props.successOverlay);
-            if (!props.successLink) return;
-            const resultData =
-              result.data && typeof result.data === "object"
-                ? (result.data as Record<string, unknown>)
-                : {};
-            const href = resolveLink(
-              props.successLink.path,
-              props.successLink.params,
-              {
-                ...(context ?? {}),
-                ...resultData,
-              },
-            );
-            if (href) client.navigate(href);
-            else
-              setActionError(
-                "Action succeeded but the follow-up link is missing data",
-              );
-          })
-          .catch((cause: unknown) => {
-            setActionError(
-              cause instanceof Error ? cause.message : "Action failed",
-            );
-          })
-          .finally(() => setBusy(false));
-      }}
-    >
-      {icon ? (
-        <span className="dsui-button-list-icon">
-          <WorkbenchIcon name={icon} />
-        </span>
-      ) : null}
-      <span className="dsui-button-list-text">
-        <strong>{label}</strong>
-        {props.description ? (
-          <small className="dsui-button-list-description">
-            {resolve(props.description, context)}
-          </small>
+        disabled={pending}
+        aria-busy={pending}
+        data-state={failed ? "error" : undefined}
+        onClick={press}
+      >
+        {icon ? (
+          <span className="dsui-button-list-icon">
+            <WorkbenchIcon name={icon} />
+          </span>
         ) : null}
-      </span>
-      {props.kbd ? (
-        <kbd className="dsui-button-list-kbd">
-          {resolve(props.kbd, context)}
-        </kbd>
-      ) : null}
-      {actionError ? <span role="alert">{actionError}</span> : null}
-    </UiButton>
+        <span className="dsui-button-list-text">
+          <strong>{label}</strong>
+          {props.description ? (
+            <small className="dsui-button-list-description">
+              {resolve(props.description, context)}
+            </small>
+          ) : null}
+        </span>
+        {props.kbd ? (
+          <kbd className="dsui-button-list-kbd">
+            {resolve(props.kbd, context)}
+          </kbd>
+        ) : null}
+      </UiButton>
+      {dialog}
+    </>
   );
 }
 
@@ -151,7 +138,7 @@ function resolveAction(
 function resolveConfirmation(
   value: unknown,
   context: Record<string, unknown> | undefined,
-): { title: string; description: string } | undefined {
+): Confirmation | undefined {
   const result = resolveField(value, context);
   if (
     !isRecord(result) ||
@@ -159,7 +146,13 @@ function resolveConfirmation(
     typeof result.description !== "string"
   )
     return undefined;
-  return { title: result.title, description: result.description };
+  return {
+    title: result.title,
+    description: result.description,
+    ...(typeof result.confirmLabel === "string"
+      ? { confirmLabel: result.confirmLabel }
+      : {}),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

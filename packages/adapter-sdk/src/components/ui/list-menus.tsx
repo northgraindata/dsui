@@ -1,3 +1,4 @@
+import { Menu } from "@northgraindata/dsui-ui";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ListFilter } from "../primitives/list";
@@ -90,52 +91,28 @@ export function ActionMenu({
   disabled: boolean;
   onRun: (spec: TableRowAction) => void;
 }) {
-  const { position, trigger, panel, toggle, close } = usePopover();
   return (
-    <>
-      <button
-        ref={trigger}
-        type="button"
-        className="dsui-list-action"
-        aria-label={`More actions for ${title}`}
-        aria-haspopup="menu"
-        aria-expanded={position !== undefined}
-        disabled={disabled}
-        onClick={() => toggle(actions.length * 34 + 12)}
-      >
-        <WorkbenchIcon name="more" size={16} />
-      </button>
-      {position
-        ? createPortal(
-            <div
-              ref={panel}
-              role="menu"
-              className="dsui-list-menu"
-              style={{ ...position, width: MENU_WIDTH }}
-            >
-              {actions.map((spec) => (
-                <button
-                  key={spec.label}
-                  type="button"
-                  role="menuitem"
-                  data-variant={spec.variant}
-                  disabled={isRowActionDisabled(row, spec.disabledWhen)}
-                  onClick={() => {
-                    close();
-                    onRun(spec);
-                  }}
-                >
-                  {spec.icon ? (
-                    <WorkbenchIcon name={spec.icon} size={14} />
-                  ) : null}
-                  {spec.label}
-                </button>
-              ))}
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
+    <Menu
+      trigger={
+        <button
+          type="button"
+          className="dsui-list-action"
+          aria-label={`More actions for ${title}`}
+          disabled={disabled}
+        >
+          <WorkbenchIcon name="more" size={16} />
+        </button>
+      }
+      items={actions.map((spec) => ({
+        label: spec.label,
+        icon: spec.icon ? (
+          <WorkbenchIcon name={spec.icon} size={14} />
+        ) : undefined,
+        tone: spec.variant === "danger" ? "danger" : "default",
+        disabled: isRowActionDisabled(row, spec.disabledWhen),
+        onSelect: () => onRun(spec),
+      }))}
+    />
   );
 }
 

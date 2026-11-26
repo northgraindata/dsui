@@ -1,4 +1,5 @@
 import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
+import { confirmations } from "../confirmations.js";
 import type {
   AirflowContext,
   DagDetails,
@@ -100,7 +101,8 @@ export function pauseToggle(dagId: string, isPaused: boolean) {
   const actionId: "pause-dag" | "unpause-dag" = isPaused
     ? "unpause-dag"
     : "pause-dag";
-  return { label, action: { actionId, input: { dagId } } };
+  const confirmation = isPaused ? confirmations.unpause : confirmations.pause;
+  return { label, action: { actionId, input: { dagId } }, confirmation };
 }
 
 export function buildDagOverview(dag: DagDetails, runs: readonly DagRun[]) {

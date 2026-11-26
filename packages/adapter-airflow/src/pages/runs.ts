@@ -115,6 +115,12 @@ export const dagRunDetailPage = definePage({
                   label: "Clear",
                   icon: "reload",
                   action: clearTask,
+                  confirmation: {
+                    title: "Clear task {name}?",
+                    description:
+                      "Airflow resets this task instance so it can run again. Its current state is discarded.",
+                    confirmLabel: "Clear task",
+                  },
                   input: {
                     dagId: "dagId",
                     dagRunId: "dagRunId",

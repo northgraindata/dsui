@@ -28,11 +28,19 @@ export type ActionAnswer =
   | { status: "success"; data: unknown }
   | { status: "error"; message: string };
 
+declare global {
+  interface Window {
+    /** Every action the page asked to run, for tests and debugging. */
+    galleryActions?: string[];
+  }
+}
+
 export async function answerAction(
   data: FixtureData,
   scenario: Scenario,
   actionId: string,
 ): Promise<ActionAnswer> {
+  window.galleryActions = [...(window.galleryActions ?? []), actionId];
   if (scenario === "loading") return never();
   await new Promise((done) => setTimeout(done, ACTION_DELAY_MS));
   if (scenario === "error") return { status: "error", message: UNAVAILABLE };

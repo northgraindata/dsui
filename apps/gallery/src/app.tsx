@@ -1,4 +1,5 @@
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
+import { Toaster } from "@northgraindata/dsui-ui";
 import { SCENARIOS, type Scenario } from "@northgraindata/dsui-ui-fixtures";
 import { useEffect, useMemo, useState } from "react";
 import { fixtureClient } from "./client";
@@ -151,6 +152,7 @@ function FixturePage({ toolbar, ...target }: Target & { toolbar: boolean }) {
           {page}
         </div>
       )}
+      <Toaster />
       {toolbar ? <PageControls {...target} /> : null}
     </>
   );

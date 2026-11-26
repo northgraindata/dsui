@@ -5,13 +5,15 @@ import { dagDetailPage } from "./pages/dags";
 import { pauseToggle } from "./resources/runs";
 
 test("a running DAG offers only pause, a paused one only unpause", () => {
-  expect<unknown>(pauseToggle("a", false)).toEqual({
+  expect<unknown>(pauseToggle("a", false)).toMatchObject({
     label: "Pause",
     action: { actionId: pauseDag.id, input: { dagId: "a" } },
+    confirmation: { confirmLabel: "Pause DAG" },
   });
-  expect<unknown>(pauseToggle("a", true)).toEqual({
+  expect<unknown>(pauseToggle("a", true)).toMatchObject({
     label: "Unpause",
     action: { actionId: unpauseDag.id, input: { dagId: "a" } },
+    confirmation: { confirmLabel: "Unpause DAG" },
   });
 });
 

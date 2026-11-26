@@ -238,7 +238,7 @@ export const activityPage = definePage({
             input: { queryId: "query_id" },
             variant: "danger",
             confirmation: {
-              title: "Cancel this query?",
+              title: "Cancel query {query_id}?",
               description:
                 "Request server-side termination by query ID. Writes already applied cannot be rolled back.",
               confirmLabel: "Cancel query",

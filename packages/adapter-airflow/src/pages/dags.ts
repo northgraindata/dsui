@@ -22,6 +22,7 @@ import {
   unpauseDag,
 } from "../actions/dags.js";
 import { DependencyGraph } from "../components/dependency-graph.js";
+import { confirmations } from "../confirmations.js";
 import { dagDetails, dagSource, dags, dagTasks } from "../resources/dags.js";
 import {
   dagOverview,
@@ -39,6 +40,7 @@ export const dagActions = [
     variant: "primary" as const,
     action: triggerDag,
     input: { dagId: "dagId" },
+    confirmation: confirmations.trigger,
     successLink: {
       path: "/dags/:dagId?tab=graph&runId=:dagRunId",
       params: { dagId: "dagId", dagRunId: "dagRunId" },
@@ -49,6 +51,7 @@ export const dagActions = [
     icon: "pause",
     action: pauseDag,
     input: { dagId: "dagId" },
+    confirmation: confirmations.pause,
     when: { field: "isPaused", equals: false },
   },
   {
@@ -56,6 +59,7 @@ export const dagActions = [
     icon: "play",
     action: unpauseDag,
     input: { dagId: "dagId" },
+    confirmation: confirmations.unpause,
     when: { field: "isPaused", equals: true },
   },
 ];
@@ -185,10 +189,10 @@ function runsList(dagId: string, recent: boolean) {
         input: { dagId: "dagId", dagRunId: "dagRunId" },
         when: { field: "state", equals: "running" },
         confirmation: {
-          title: "Terminate DAG run?",
+          title: "Terminate run {dagRunId}?",
           description:
             "This marks the running DAG run as failed. Running tasks may take a moment to stop.",
-          confirmLabel: "Terminate",
+          confirmLabel: "Terminate run",
         },
       },
     ],
@@ -216,11 +220,13 @@ function detailHeader(dagId: string) {
         label: { field: "pauseToggle.label" },
         variant: "secondary",
         action: { field: "pauseToggle.action" },
+        confirmation: { field: "pauseToggle.confirmation" },
       }),
       Button({
         label: "Trigger",
         variant: "primary",
         action: triggerDag({ dagId, conf: {} }),
+        confirmation: confirmations.trigger,
         successLink: {
           path: "/dags/:dagId?tab=graph&runId=:dagRunId",
           params: { dagId: "dagId", dagRunId: "dagRunId" },

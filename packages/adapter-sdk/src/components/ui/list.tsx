@@ -1,3 +1,4 @@
+import { Tooltip } from "@northgraindata/dsui-ui";
 import { useEffect, useMemo, useState } from "react";
 import type { ListItem, ListProps } from "../primitives/list";
 import type { TableRowAction } from "../primitives/table";
@@ -10,6 +11,7 @@ import {
   performRowAction,
   resolveLink,
 } from "./row-action";
+import { useAction } from "./use-action";
 import { usePropState } from "./use-prop-state";
 
 type Row = Record<string, unknown>;
@@ -233,25 +235,21 @@ function ListRow({
   props: ListProps;
   onDone: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
+  const { run: runAction, pending: busy, dialog } = useAction();
   const { item } = props;
   const href = props.rowLink
     ? resolveLink(props.rowLink.path, props.rowLink.params, row)
     : null;
   const run = (spec: TableRowAction) => {
-    if (
-      spec.confirmation &&
-      !window.confirm(
-        `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
-      )
-    )
-      return;
-    setBusy(true);
-    setError(undefined);
-    void performRowAction(client, spec, row, onDone)
-      .then(setError)
-      .finally(() => setBusy(false));
+    const name = text(row[item.title]);
+    runAction({
+      id: `action:${spec.label}:${name}`,
+      label: spec.label,
+      confirmation: spec.confirmation,
+      values: row,
+      destructive: spec.variant === "danger",
+      perform: () => performRowAction(client, spec, row, onDone),
+    });
   };
 
   return (
@@ -262,11 +260,11 @@ function ListRow({
           className="dsui-list-main"
           onClick={() => client.navigate(href)}
         >
-          <ItemText row={row} item={item} error={error} />
+          <ItemText row={row} item={item} />
         </button>
       ) : (
         <div className="dsui-list-main">
-          <ItemText row={row} item={item} error={error} />
+          <ItemText row={row} item={item} />
         </div>
       )}
       {item.status ? <Status row={row} status={item.status} /> : null}
@@ -277,19 +275,12 @@ function ListRow({
         busy={busy}
         onRun={run}
       />
+      {dialog}
     </li>
   );
 }
 
-function ItemText({
-  row,
-  item,
-  error,
-}: {
-  row: Row;
-  item: ListItem;
-  error: string | undefined;
-}) {
+function ItemText({ row, item }: { row: Row; item: ListItem }) {
   const badge = item.badge ? text(row[item.badge]) : "";
   const secondary = [item.description, ...(item.meta ?? [])]
     .map((field) => (field ? text(row[field]) : ""))
@@ -309,11 +300,6 @@ function ItemText({
         </span>
         {secondary ? (
           <span className="dsui-list-description">{secondary}</span>
-        ) : null}
-        {error ? (
-          <span className="dsui-list-error" role="alert">
-            {error}
-          </span>
         ) : null}
       </span>
     </>
@@ -348,21 +334,21 @@ function RowActions({
     <span className="dsui-list-actions">
       {inline.map((spec) =>
         matchesWhen(row, spec.when) ? (
-          <button
-            key={spec.label}
-            type="button"
-            className="dsui-list-action"
-            title={spec.label}
-            aria-label={`${spec.label} ${title}`}
-            disabled={
-              busy ||
-              isRowActionDisabled(row, spec.disabledWhen) ||
-              (!spec.action && !spec.link)
-            }
-            onClick={() => onRun(spec)}
-          >
-            <WorkbenchIcon name={spec.icon ?? "play"} size={16} />
-          </button>
+          <Tooltip key={spec.label} label={spec.label}>
+            <button
+              type="button"
+              className="dsui-list-action"
+              aria-label={`${spec.label} ${title}`}
+              disabled={
+                busy ||
+                isRowActionDisabled(row, spec.disabledWhen) ||
+                (!spec.action && !spec.link)
+              }
+              onClick={() => onRun(spec)}
+            >
+              <WorkbenchIcon name={spec.icon ?? "play"} size={16} />
+            </button>
+          </Tooltip>
         ) : (
           <span key={spec.label} className="dsui-list-action-slot" />
         ),
