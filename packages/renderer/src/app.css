@@ -1,0 +1,13 @@
+/*
+ * Tailwind entry for every host that renders DSUI pages (web app and gallery).
+ *
+ * Tailwind only emits utilities it finds in scanned sources. Shared components,
+ * adapters and plugins live outside the host app, so they are listed here.
+ * Runtime-loaded extension bundles cannot ship CSS and rely on this output.
+ */
+@import "@northgraindata/dsui-ui/styles.css";
+
+@source "../../adapter-sdk/src";
+@source "../../adapter-*/src/**/*.{ts,tsx}";
+@source "../../plugin-*/src/**/*.{ts,tsx}";
+@source "./";
