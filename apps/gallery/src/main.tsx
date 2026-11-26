@@ -11,4 +11,8 @@ else if (new URLSearchParams(location.search).get("harness") === "select")
   void import("./harness/select").then((page) => page.startSelectHarness());
 else if (new URLSearchParams(location.search).get("harness") === "overlays")
   void import("./harness/overlays").then((page) => page.startOverlayHarness());
+else if (new URLSearchParams(location.search).get("harness") === "airflow")
+  void import("./prototype/airflow/main").then((page) =>
+    page.startAirflowPrototype(),
+  );
 else void import("./gallery-main").then((gallery) => gallery.startGallery());

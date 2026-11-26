@@ -47,3 +47,10 @@
   flex: none;
   object-fit: contain;
 }
+
+.gallery-redesign {
+  margin-left: 10px;
+  color: var(--color-accent-hover);
+  font-size: 12px;
+  font-weight: 400;
+}

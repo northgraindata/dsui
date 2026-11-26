@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { loadManifest, type ManifestAdapter } from "../data";
 import { Toolbar } from "../toolbar";
 import { pageOnlyUrl, resolveUrl } from "../urls";
+import { DesignSwitch, FailureSwitch, useDesign } from "./design-switch";
+import { hasRedesign, Redesign } from "./embedded";
 
 /** Where "without shell" leads from the application path on screen. */
 function pageOnlyTarget(
@@ -35,18 +37,28 @@ function Controls({ scenario }: { scenario: Scenario }) {
     return () => window.clearInterval(timer);
   }, []);
   const target = pageOnlyTarget(adapters, current, scenario);
+  const [design, setDesign] = useDesign();
+  const pathname = current.split("?")[0] ?? "";
+  const redesign = hasRedesign(pathname);
   return (
-    <Toolbar
-      scenario={scenario}
-      onScenario={(next) => {
-        const search = new URLSearchParams(location.search);
-        search.set("scenario", next);
-        search.set("shell", "1");
-        location.search = search.toString();
-      }}
-    >
-      {target ? <a href={target}>Without shell</a> : null}
-    </Toolbar>
+    <>
+      {redesign && design === "new" ? <Redesign pathname={pathname} /> : null}
+      <Toolbar
+        scenario={scenario}
+        onScenario={(next) => {
+          const search = new URLSearchParams(location.search);
+          search.set("scenario", next);
+          search.set("shell", "1");
+          location.search = search.toString();
+        }}
+      >
+        {redesign ? (
+          <DesignSwitch design={design} onChange={setDesign} />
+        ) : null}
+        {redesign && design === "new" ? <FailureSwitch /> : null}
+        {target ? <a href={target}>Without shell</a> : null}
+      </Toolbar>
+    </>
   );
 }
 

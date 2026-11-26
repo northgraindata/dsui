@@ -40,3 +40,36 @@
   border-radius: 6px;
   padding: 2px 6px;
 }
+
+.gallery-design {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--color-control-border);
+  border-radius: 8px;
+}
+
+.gallery-design legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.gallery-design button {
+  padding: 3px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-secondary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gallery-design button[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}

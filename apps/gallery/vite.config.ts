@@ -11,7 +11,12 @@ export default defineConfig({
   // The app is loaded on demand. Without it here, the first visit makes Vite
   // re-bundle dependencies mid-session, which loads a second React.
   optimizeDeps: {
-    entries: ["index.html", "../web/src/main.tsx", "src/harness/*.tsx"],
+    entries: [
+      "index.html",
+      "../web/src/main.tsx",
+      "src/harness/*.tsx",
+      "src/prototype/airflow/main.tsx",
+    ],
   },
   server: { port: 5180, strictPort: true },
   preview: { port: 5180, strictPort: true },
