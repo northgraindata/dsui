@@ -67,20 +67,24 @@ export const dataPage = definePage({
           title: "Data",
           description:
             "Metadata sizes and row counts are estimates; previews read up to 100 rows without FINAL.",
+          actions: Button({
+            label: "Create database",
+            variant: "primary",
+            dialog: {
+              title: "Create database",
+              content: Form({
+                schema: createDatabaseInput,
+                fields: [TextInput({ name: "name", label: "Database name" })],
+                onSubmit: createDatabase,
+                submitLabel: "Create database",
+              }),
+            },
+          }),
         }),
         Table({
           source: databases(),
           searchable: true,
           rowLink: { path: "/data/:database", params: { database: "name" } },
-        }),
-        Section({
-          title: "Create database",
-          content: Form({
-            schema: createDatabaseInput,
-            fields: [TextInput({ name: "name", label: "Database name" })],
-            onSubmit: createDatabase,
-            submitLabel: "Create database",
-          }),
         }),
       ],
     }),

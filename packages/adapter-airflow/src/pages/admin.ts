@@ -30,6 +30,133 @@ import {
   variables,
 } from "../resources/admin.js";
 
+/* The create and edit forms, shown in modals over their lists. */
+const newConnection = Form({
+  schema: createConnectionInput,
+  fields: [
+    TextInput({ name: "connectionId", label: "Connection ID" }),
+    TextInput({ name: "connectionType", label: "Connection type" }),
+    TextInput({ name: "host", label: "Host" }),
+    TextInput({ name: "login", label: "Login" }),
+    TextInput({ name: "password", label: "Password", secret: true }),
+    TextInput({ name: "schema", label: "Schema" }),
+    TextInput({ name: "port", label: "Port" }),
+    TextInput({ name: "extra", label: "Extra (JSON)" }),
+    TextInput({ name: "description", label: "Description" }),
+  ],
+  onSubmit: createConnection,
+  submitLabel: "Create connection",
+});
+
+const connectionEditor = Form({
+  schema: createConnectionInput,
+  fields: [
+    TextInput({
+      name: "connectionId",
+      label: "Connection ID",
+      value: { field: "connectionId" },
+    }),
+    TextInput({
+      name: "connectionType",
+      label: "Connection type",
+      value: { field: "connectionType" },
+    }),
+    TextInput({
+      name: "host",
+      label: "Host",
+      value: { field: "host" },
+    }),
+    TextInput({
+      name: "login",
+      label: "Login",
+      value: { field: "login" },
+    }),
+    TextInput({
+      name: "password",
+      label: "New password (optional)",
+      secret: true,
+    }),
+    TextInput({
+      name: "schema",
+      label: "Schema",
+      value: { field: "schema" },
+    }),
+    TextInput({
+      name: "port",
+      label: "Port",
+      value: { field: "port" },
+    }),
+    TextInput({ name: "extra", label: "Extra (JSON)" }),
+    TextInput({
+      name: "description",
+      label: "Description",
+      value: { field: "description" },
+    }),
+  ],
+  onSubmit: updateConnection,
+  submitLabel: "Save connection",
+});
+
+const newVariable = Form({
+  schema: createVariableInput,
+  fields: [
+    TextInput({ name: "key", label: "Key" }),
+    TextInput({ name: "value", label: "Value", secret: true }),
+    TextInput({ name: "description", label: "Description" }),
+  ],
+  onSubmit: createVariable,
+  submitLabel: "Create variable",
+});
+
+const variableEditor = Form({
+  schema: createVariableInput,
+  fields: [
+    TextInput({ name: "key", label: "Key", value: { field: "key" } }),
+    TextInput({
+      name: "value",
+      label: "Replacement value",
+      secret: true,
+    }),
+    TextInput({
+      name: "description",
+      label: "Description",
+      value: { field: "description" },
+    }),
+  ],
+  onSubmit: updateVariable,
+  submitLabel: "Save variable",
+});
+
+const newPool = Form({
+  schema: createPoolInput,
+  fields: [
+    TextInput({ name: "name", label: "Pool name" }),
+    TextInput({ name: "slots", label: "Slots" }),
+    TextInput({ name: "description", label: "Description" }),
+  ],
+  onSubmit: createPool,
+  submitLabel: "Create pool",
+});
+
+const poolEditor = Form({
+  schema: createPoolInput,
+  fields: [
+    TextInput({ name: "name", label: "Pool name", value: { field: "name" } }),
+    TextInput({
+      name: "slots",
+      label: "Slots",
+      value: { field: "slots" },
+    }),
+    TextInput({
+      name: "description",
+      label: "Description",
+      value: { field: "description" },
+    }),
+  ],
+  onSubmit: updatePool,
+  submitLabel: "Save pool",
+});
+
 export const connectionsPage = definePage({
   path: "/connections",
   render: () =>
@@ -42,7 +169,12 @@ export const connectionsPage = definePage({
             "Manage connection records in the connected Airflow instance.",
           actions: Button({
             label: "Add connection",
-            link: "/connections/new",
+            dialog: {
+              title: "Add connection",
+              description:
+                "Create a connection record in the connected Airflow instance.",
+              content: newConnection,
+            },
             variant: "primary",
           }),
         }),
@@ -63,17 +195,9 @@ export const connectionsPage = definePage({
             {
               label: "Edit",
               icon: "edit",
-              link: {
-                path: "/connections/:connectionId/edit?connectionType=:connectionType&host=:host&login=:login&schema=:schema&port=:port&description=:description",
-                params: {
-                  connectionId: "connectionId",
-                  connectionType: "connectionType",
-                  host: "host",
-                  login: "login",
-                  schema: "schema",
-                  port: "port",
-                  description: "description",
-                },
+              dialog: {
+                title: "Edit connection {connectionId}",
+                content: connectionEditor,
               },
             },
             {
@@ -94,106 +218,6 @@ export const connectionsPage = definePage({
     }),
 });
 
-export const createConnectionPage = definePage({
-  path: "/connections/new",
-  render: () =>
-    Stack({
-      gap: "md",
-      content: [
-        PageHeader({
-          title: "Add connection",
-          description:
-            "Create a connection record in the connected Airflow instance.",
-          actions: Button({
-            label: "Back to connections",
-            link: "/connections",
-          }),
-        }),
-        Form({
-          schema: createConnectionInput,
-          fields: [
-            TextInput({ name: "connectionId", label: "Connection ID" }),
-            TextInput({ name: "connectionType", label: "Connection type" }),
-            TextInput({ name: "host", label: "Host" }),
-            TextInput({ name: "login", label: "Login" }),
-            TextInput({ name: "password", label: "Password", secret: true }),
-            TextInput({ name: "schema", label: "Schema" }),
-            TextInput({ name: "port", label: "Port" }),
-            TextInput({ name: "extra", label: "Extra (JSON)" }),
-            TextInput({ name: "description", label: "Description" }),
-          ],
-          onSubmit: createConnection,
-          submitLabel: "Create connection",
-        }),
-      ],
-    }),
-});
-
-export const editConnectionPage = definePage({
-  path: "/connections/:connectionId/edit",
-  render: ({ params, query }) =>
-    Stack({
-      gap: "md",
-      content: [
-        PageHeader({
-          title: `Edit connection ${params.connectionId}`,
-          actions: Button({
-            label: "Back to connections",
-            link: "/connections",
-          }),
-        }),
-        Form({
-          schema: createConnectionInput,
-          fields: [
-            TextInput({
-              name: "connectionId",
-              label: "Connection ID",
-              value: params.connectionId,
-            }),
-            TextInput({
-              name: "connectionType",
-              label: "Connection type",
-              value: query.get("connectionType") ?? "",
-            }),
-            TextInput({
-              name: "host",
-              label: "Host",
-              value: query.get("host") ?? "",
-            }),
-            TextInput({
-              name: "login",
-              label: "Login",
-              value: query.get("login") ?? "",
-            }),
-            TextInput({
-              name: "password",
-              label: "New password (optional)",
-              secret: true,
-            }),
-            TextInput({
-              name: "schema",
-              label: "Schema",
-              value: query.get("schema") ?? "",
-            }),
-            TextInput({
-              name: "port",
-              label: "Port",
-              value: query.get("port") ?? "",
-            }),
-            TextInput({ name: "extra", label: "Extra (JSON)" }),
-            TextInput({
-              name: "description",
-              label: "Description",
-              value: query.get("description") ?? "",
-            }),
-          ],
-          onSubmit: updateConnection,
-          submitLabel: "Save connection",
-        }),
-      ],
-    }),
-});
-
 export const variablesPage = definePage({
   path: "/variables",
   render: () =>
@@ -206,7 +230,12 @@ export const variablesPage = definePage({
             "Manage values stored by the connected Airflow instance.",
           actions: Button({
             label: "Add variable",
-            link: "/variables/new",
+            dialog: {
+              title: "Add variable",
+              description:
+                "Create a variable in the connected Airflow instance.",
+              content: newVariable,
+            },
             variant: "primary",
           }),
         }),
@@ -225,9 +254,11 @@ export const variablesPage = definePage({
             {
               label: "Edit",
               icon: "edit",
-              link: {
-                path: "/variables/:key/edit?description=:description",
-                params: { key: "key", description: "description" },
+              dialog: {
+                title: "Edit variable {key}",
+                description:
+                  "Airflow does not return existing values, so enter a replacement.",
+                content: variableEditor,
               },
             },
             {
@@ -248,65 +279,6 @@ export const variablesPage = definePage({
     }),
 });
 
-export const createVariablePage = definePage({
-  path: "/variables/new",
-  render: () =>
-    Stack({
-      gap: "md",
-      content: [
-        PageHeader({
-          title: "Add variable",
-          description: "Create a variable in the connected Airflow instance.",
-          actions: Button({ label: "Back to variables", link: "/variables" }),
-        }),
-        Form({
-          schema: createVariableInput,
-          fields: [
-            TextInput({ name: "key", label: "Key" }),
-            TextInput({ name: "value", label: "Value", secret: true }),
-            TextInput({ name: "description", label: "Description" }),
-          ],
-          onSubmit: createVariable,
-          submitLabel: "Create variable",
-        }),
-      ],
-    }),
-});
-
-export const editVariablePage = definePage({
-  path: "/variables/:key/edit",
-  render: ({ params, query }) =>
-    Stack({
-      gap: "md",
-      content: [
-        PageHeader({
-          title: `Edit variable ${params.key}`,
-          description:
-            "Set a replacement value; Airflow does not return existing variable values.",
-          actions: Button({ label: "Back to variables", link: "/variables" }),
-        }),
-        Form({
-          schema: createVariableInput,
-          fields: [
-            TextInput({ name: "key", label: "Key", value: params.key }),
-            TextInput({
-              name: "value",
-              label: "Replacement value",
-              secret: true,
-            }),
-            TextInput({
-              name: "description",
-              label: "Description",
-              value: query.get("description") ?? "",
-            }),
-          ],
-          onSubmit: updateVariable,
-          submitLabel: "Save variable",
-        }),
-      ],
-    }),
-});
-
 export const poolsPage = definePage({
   path: "/pools",
   render: () =>
@@ -319,7 +291,12 @@ export const poolsPage = definePage({
             "Control concurrency pools in the connected Airflow instance.",
           actions: Button({
             label: "Add pool",
-            link: "/pools/new",
+            dialog: {
+              title: "Add pool",
+              description:
+                "Create a concurrency pool in the connected Airflow instance.",
+              content: newPool,
+            },
             variant: "primary",
           }),
         }),
@@ -339,13 +316,9 @@ export const poolsPage = definePage({
             {
               label: "Edit",
               icon: "edit",
-              link: {
-                path: "/pools/:name/edit?slots=:slots&description=:description",
-                params: {
-                  name: "name",
-                  slots: "slots",
-                  description: "description",
-                },
+              dialog: {
+                title: "Edit pool {name}",
+                content: poolEditor,
               },
             },
             {
@@ -361,64 +334,6 @@ export const poolsPage = definePage({
               },
             },
           ],
-        }),
-      ],
-    }),
-});
-
-export const createPoolPage = definePage({
-  path: "/pools/new",
-  render: () =>
-    Stack({
-      gap: "md",
-      content: [
-        PageHeader({
-          title: "Add pool",
-          description:
-            "Create a concurrency pool in the connected Airflow instance.",
-          actions: Button({ label: "Back to pools", link: "/pools" }),
-        }),
-        Form({
-          schema: createPoolInput,
-          fields: [
-            TextInput({ name: "name", label: "Pool name" }),
-            TextInput({ name: "slots", label: "Slots" }),
-            TextInput({ name: "description", label: "Description" }),
-          ],
-          onSubmit: createPool,
-          submitLabel: "Create pool",
-        }),
-      ],
-    }),
-});
-
-export const editPoolPage = definePage({
-  path: "/pools/:name/edit",
-  render: ({ params, query }) =>
-    Stack({
-      gap: "md",
-      content: [
-        PageHeader({
-          title: `Edit pool ${params.name}`,
-          actions: Button({ label: "Back to pools", link: "/pools" }),
-        }),
-        Form({
-          schema: createPoolInput,
-          fields: [
-            TextInput({ name: "name", label: "Pool name", value: params.name }),
-            TextInput({
-              name: "slots",
-              label: "Slots",
-              value: query.get("slots") ?? "",
-            }),
-            TextInput({
-              name: "description",
-              label: "Description",
-              value: query.get("description") ?? "",
-            }),
-          ],
-          onSubmit: updatePool,
-          submitLabel: "Save pool",
         }),
       ],
     }),

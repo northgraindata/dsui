@@ -78,11 +78,69 @@ test("the DAG header asks before pausing", async ({ page }) => {
   expect(await sent(page)).toEqual(["pause-dag"]);
 });
 
-test("a failed submit shows a toast and moves nothing", async ({ page }) => {
-  await open(page, "/services/airflow/connections/new", "error");
-  const form = page.locator(".dsui-page form");
-  const submit = form.getByRole("button", { name: "Create connection" });
-  // Scroll first, so only a layout change can move the form afterwards.
+const modal = (page: Page) => page.getByRole("dialog");
+
+test("creating opens a modal that cannot send an empty form or lose input silently", async ({
+  page,
+}) => {
+  await open(page, "/services/airflow/connections");
+  await page.getByRole("button", { name: "Add connection" }).click();
+  const submit = modal(page).getByRole("button", {
+    name: "Create connection",
+  });
+  await expect(submit).toBeDisabled();
+  await expect(modal(page).getByLabel("Connection ID")).toBeFocused();
+  await page.mouse.click(5, 5);
+  await expect(modal(page)).toBeVisible();
+  await modal(page).getByLabel("Connection ID").fill("warehouse");
+  await expect(submit).toBeEnabled();
+
+  await page.keyboard.press("Escape");
+  await expect(confirmation(page)).toContainText("Discard changes?");
+  await confirmation(page)
+    .getByRole("button", { name: "Keep editing" })
+    .click();
+  await expect(modal(page).getByLabel("Connection ID")).toHaveValue(
+    "warehouse",
+  );
+  await submit.click();
+  await expect(modal(page)).toHaveCount(0);
+  expect(await sent(page)).toEqual(["create-connection"]);
+  await expect(page).toHaveURL(/\/services\/airflow\/connections/);
+});
+
+test("editing fills the form from the row and closes freely when unchanged", async ({
+  page,
+}) => {
+  await open(page, "/services/airflow/pools");
+  const more = page.getByRole("button", { name: /More actions for/ }).first();
+  const name = ((await more.getAttribute("aria-label")) ?? "").replace(
+    "More actions for ",
+    "",
+  );
+  await more.click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  await expect(modal(page)).toContainText(`Edit pool ${name}`);
+  await expect(modal(page).getByLabel("Pool name")).toHaveValue(name);
+  await expect(
+    modal(page).getByRole("button", { name: "Save pool" }),
+  ).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(modal(page)).toHaveCount(0);
+  await expect(confirmation(page)).toHaveCount(0);
+});
+
+test("a failed submit keeps the modal and its input, and moves nothing", async ({
+  page,
+}) => {
+  // The error scenario fails every read, so only the action may fail here.
+  await open(page, "/services/airflow/connections", "error");
+  await page.getByRole("button", { name: "Add connection" }).click();
+  await modal(page).getByLabel("Connection ID").fill("warehouse");
+  const form = modal(page).locator("form");
+  const submit = modal(page).getByRole("button", {
+    name: "Create connection",
+  });
   await submit.scrollIntoViewIfNeeded();
   const before = await form.boundingBox();
   await submit.click();
@@ -91,4 +149,17 @@ test("a failed submit shows a toast and moves nothing", async ({ page }) => {
   );
   await expect(submit).toHaveAttribute("data-state", "error");
   expect(await form.boundingBox()).toEqual(before);
+  await expect(modal(page).getByLabel("Connection ID")).toHaveValue(
+    "warehouse",
+  );
+});
+
+test("ClickHouse creates a database from the header", async ({ page }) => {
+  await open(page, "/services/clickhouse/data");
+  await expect(page.locator(".dsui-page form")).toHaveCount(0);
+  await page.getByRole("button", { name: "Create database" }).click();
+  await modal(page).getByLabel("Database name").fill("staging");
+  await modal(page).getByRole("button", { name: "Create database" }).click();
+  await expect(modal(page)).toHaveCount(0);
+  expect(await sent(page)).toEqual(["create-database"]);
 });

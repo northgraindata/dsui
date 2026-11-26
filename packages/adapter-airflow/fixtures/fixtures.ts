@@ -9,9 +9,6 @@ export default defineFixtures({
     mapIndex: "-1",
     tryNumber: "1",
     assetId: "1",
-    connectionId: "warehouse",
-    key: "environment",
-    name: "default_pool",
   },
   resources: {
     // The pause control's label, action and dialog must agree with each other,

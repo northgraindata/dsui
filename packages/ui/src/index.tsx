@@ -10,6 +10,7 @@ export { Input } from "./components/input";
 export { KeyValueList } from "./components/key-value-list";
 export { keyedRows } from "./components/keyed-rows";
 export { Menu } from "./components/menu";
+export { Modal } from "./components/modal";
 export { Select } from "./components/select";
 export { Status } from "./components/status";
 export type {
@@ -25,6 +26,7 @@ export type {
   ConfirmDialogProps,
   MenuItem,
   MenuProps,
+  ModalProps,
   Notify,
   NotifyOptions,
   SelectOption,

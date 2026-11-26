@@ -1,13 +1,16 @@
 import { Button as UiButton } from "@northgraindata/dsui-ui";
+import { useState } from "react";
 import type { ActionReference } from "../../action";
 import type { PageNode } from "../nodes";
 import type { ButtonProps } from "../primitives/button";
 import type { ComponentProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
+import { SpecDialog } from "./spec-dialog";
 import { resolveLink } from "./table";
 import { type Confirmation, useAction } from "./use-action";
 
-export function Button({ client, node, context }: ComponentProps) {
+export function Button({ client, node, context, renderNode }: ComponentProps) {
+  const [open, setOpen] = useState(false);
   const { run, pending, failed, dialog } = useAction();
   const props = readProps(node);
   if (!props) return null;
@@ -35,6 +38,10 @@ export function Button({ client, node, context }: ComponentProps) {
     return undefined;
   };
   const press = () => {
+    if (props.dialog) {
+      setOpen(true);
+      return;
+    }
     if (props.overlay) {
       client.openOverlay?.(props.overlay);
       return;
@@ -91,6 +98,15 @@ export function Button({ client, node, context }: ComponentProps) {
         ) : null}
       </UiButton>
       {dialog}
+      {open && props.dialog ? (
+        <SpecDialog
+          spec={props.dialog}
+          values={context ?? {}}
+          onClose={() => setOpen(false)}
+          client={client}
+          renderNode={renderNode}
+        />
+      ) : null}
     </>
   );
 }

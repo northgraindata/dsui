@@ -11,6 +11,7 @@ import {
   performRowAction,
   resolveLink,
 } from "./row-action";
+import { SpecDialog } from "./spec-dialog";
 import { useAction } from "./use-action";
 import { usePropState } from "./use-prop-state";
 
@@ -18,7 +19,7 @@ type Row = Record<string, unknown>;
 type Client = ComponentProps["client"];
 
 /** Browser implementation of the SDK list: one readable row per record. */
-export function List({ client, node }: ComponentProps) {
+export function List({ client, node, renderNode }: ComponentProps) {
   const props = componentProps<ListProps>(node);
   const { rows, error, reload } = useRows(client, props);
   const [search, setSearch] = useState("");
@@ -41,6 +42,7 @@ export function List({ client, node }: ComponentProps) {
     <ListRow
       key={rowKey(row, props.item, index)}
       client={client}
+      renderNode={renderNode}
       row={row}
       props={props}
       onDone={reload}
@@ -226,11 +228,13 @@ function matchingRows(
 
 function ListRow({
   client,
+  renderNode,
   row,
   props,
   onDone,
 }: {
   client: Client;
+  renderNode: ComponentProps["renderNode"];
   row: Row;
   props: ListProps;
   onDone: () => void;
@@ -240,7 +244,12 @@ function ListRow({
   const href = props.rowLink
     ? resolveLink(props.rowLink.path, props.rowLink.params, row)
     : null;
+  const [form, setForm] = useState<TableRowAction>();
   const run = (spec: TableRowAction) => {
+    if (spec.dialog) {
+      setForm(spec);
+      return;
+    }
     const name = text(row[item.title]);
     runAction({
       id: `action:${spec.label}:${name}`,
@@ -276,6 +285,18 @@ function ListRow({
         onRun={run}
       />
       {dialog}
+      {form?.dialog ? (
+        <SpecDialog
+          spec={form.dialog}
+          values={row}
+          onClose={() => {
+            setForm(undefined);
+            onDone();
+          }}
+          client={client}
+          renderNode={renderNode}
+        />
+      ) : null}
     </li>
   );
 }
@@ -342,7 +363,7 @@ function RowActions({
               disabled={
                 busy ||
                 isRowActionDisabled(row, spec.disabledWhen) ||
-                (!spec.action && !spec.link)
+                (!spec.action && !spec.link && !spec.dialog)
               }
               onClick={() => onRun(spec)}
             >

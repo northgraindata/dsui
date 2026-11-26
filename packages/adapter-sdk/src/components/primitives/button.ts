@@ -1,6 +1,7 @@
 import type { ActionTarget } from "../../action";
 import { defineComponent } from "../define";
 import type { FieldReference } from "./collection";
+import type { DialogSpec } from "./dialog";
 import type { TableRowLink } from "./table";
 
 export interface ButtonProps {
@@ -23,6 +24,8 @@ export interface ButtonProps {
       }
     | FieldReference;
   variant?: "primary" | "secondary" | "danger" | "list-item";
+  /** Pressing the button opens this modal. */
+  dialog?: DialogSpec;
 }
 
 export interface ButtonNode {

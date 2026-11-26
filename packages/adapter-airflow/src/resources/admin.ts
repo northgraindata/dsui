@@ -1,4 +1,4 @@
-import { defineResource } from "@northgraindata/dsui-adapter-sdk";
+import { defineResource, poll } from "@northgraindata/dsui-adapter-sdk";
 import type { AirflowContext } from "../context.js";
 
 export const connections = defineResource({
@@ -13,6 +13,8 @@ export const connections = defineResource({
         address: [connection.login, host].filter(Boolean).join("@"),
       };
     }),
+  // Watched, so the list also refreshes after a change made in a modal.
+  refresh: poll("30s"),
 });
 
 export const variables = defineResource({
@@ -22,6 +24,8 @@ export const variables = defineResource({
       ...variable,
       encryptedLabel: variable.isEncrypted ? "Encrypted" : "",
     })),
+  // Watched, so the list also refreshes after a change made in a modal.
+  refresh: poll("30s"),
 });
 
 export const pools = defineResource({
@@ -33,6 +37,8 @@ export const pools = defineResource({
       openTone: pool.openSlots > 0 ? "healthy" : "warning",
       usageLabel: `${pool.runningSlots} running · ${pool.queuedSlots} queued`,
     })),
+  // Watched, so the list also refreshes after a change made in a modal.
+  refresh: poll("30s"),
 });
 
 export const users = defineResource({

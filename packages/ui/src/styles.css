@@ -344,6 +344,70 @@
   margin: 5px 4px;
   background: var(--color-border);
 }
+.dsui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: color-mix(in srgb, var(--color-overlay) 80%, transparent);
+}
+.dsui-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 801;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 24px 80px var(--color-shadow-strong);
+}
+.dsui-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 0;
+}
+.dsui-modal-title {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dsui-modal-description {
+  margin: 6px 0 0;
+  color: var(--color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.dsui-modal-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-secondary);
+  cursor: pointer;
+}
+.dsui-modal-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.dsui-modal-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px 20px;
+}
 .dsui-confirm-overlay {
   position: fixed;
   inset: 0;

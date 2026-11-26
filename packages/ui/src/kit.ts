@@ -72,6 +72,16 @@ export type ConfirmDialogProps = {
   onConfirm: () => unknown;
 };
 
+export type ModalProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description?: string;
+  /** Defaults to false, so typed input is not lost by a stray click. */
+  closeOnOutsideClick?: boolean;
+  children: ReactNode;
+};
+
 export type NotifyOptions = {
   /** Calls with the same id update one toast. */
   id?: string;
@@ -91,6 +101,7 @@ export type UiKit = {
   readonly Tooltip: ComponentType<TooltipProps>;
   readonly Menu: ComponentType<MenuProps>;
   readonly ConfirmDialog: ComponentType<ConfirmDialogProps>;
+  readonly Modal: ComponentType<ModalProps>;
   /** Shared with the host, so extension toasts join the same stack. */
   readonly notify: Notify;
 };

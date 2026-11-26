@@ -2,6 +2,7 @@ import type { AnyActionDefinition } from "../../action";
 import type { DataSource } from "../../resource";
 import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
+import type { DialogSpec } from "./dialog";
 
 export interface TableColumn {
   id: string;
@@ -17,6 +18,8 @@ export interface TableRowLink {
 
 export interface TableRowAction {
   label: string;
+  /** Opens a modal with the row as context, such as an edit form. */
+  dialog?: DialogSpec;
   icon?: string;
   variant?: "primary" | "secondary" | "danger";
   action?: AnyActionDefinition | string;
