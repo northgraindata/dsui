@@ -24,6 +24,12 @@ html[data-design="new"] .adapter-main > :not(.ax-embedded-main) {
 /* The narrow rail keeps only the artwork. */
 .app-chrome[data-sidebar="collapsed"] .ax-embedded-nav :is(p, span, b),
 .app-chrome[data-sidebar="collapsed"] .ax-embedded-nav .ax-sub,
-.app-chrome[data-sidebar="collapsed"] .ax-embedded-nav nav > div:last-child {
+.app-chrome[data-sidebar="collapsed"]
+  .ax-embedded-nav
+  :is(.s3-switch, .s3-transfers),
+.app-chrome[data-sidebar="collapsed"]
+  .ax-embedded-nav
+  nav
+  > div:last-child:not(.s3-open-bucket) {
   display: none;
 }

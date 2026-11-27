@@ -1,5 +1,6 @@
 import { Dialog, Tooltip } from "@northgraindata/dsui-ui";
 import { useState } from "react";
+import { useTip } from "../shared/tip";
 import { ActivityLog } from "./activity";
 import { AssetRef } from "./assets";
 import { Code } from "./code";
@@ -28,7 +29,6 @@ import {
   Tabs,
 } from "./parts";
 import { RunGrid } from "./run-grid";
-import { useTip } from "./tip";
 
 type Pick = { run: Run; task: string };
 

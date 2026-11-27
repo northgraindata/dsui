@@ -1,6 +1,7 @@
 /** Runs across, tasks down, as in Airflow's grid. */
 import { useState } from "react";
 import { TASK_STATES } from "../../../../../packages/adapter-airflow/src/states";
+import { useTip } from "../shared/tip";
 import {
   hasTiming,
   hms,
@@ -12,7 +13,6 @@ import {
 import { Glyph } from "./icons";
 import { Pill, stateLabel } from "./parts";
 import { RunTip } from "./run-tip";
-import { useTip } from "./tip";
 
 /** A start time is printed on every this many columns, counted from the newest. */
 const LABEL_EVERY = 13;

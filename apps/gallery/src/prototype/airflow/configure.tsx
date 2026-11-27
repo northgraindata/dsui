@@ -9,6 +9,15 @@ import {
 } from "@northgraindata/dsui-ui";
 import { Fragment, type ReactNode, useState } from "react";
 import {
+  Choice,
+  Empty,
+  Search,
+  Toolbar,
+  unique,
+  usePages,
+  useRemembered,
+} from "../shared/list";
+import {
   ConnectionMark,
   connectionTypeName,
   connectionTypeOptions,
@@ -21,15 +30,6 @@ import {
   variables,
 } from "./data";
 import { Glyph } from "./icons";
-import {
-  Choice,
-  Empty,
-  Search,
-  Toolbar,
-  unique,
-  usePages,
-  useRemembered,
-} from "./list";
 import { Act, Header, IconButton, Panel } from "./parts";
 
 function Field({

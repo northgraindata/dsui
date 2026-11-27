@@ -2,7 +2,7 @@
 import { Button, Select } from "@northgraindata/dsui-ui";
 import type { SelectOption } from "@northgraindata/dsui-ui/kit";
 import { type ReactNode, useEffect, useState } from "react";
-import { Glyph } from "./icons";
+import { Glyph } from "./glyphs";
 
 const memory = new Map<string, unknown>();
 

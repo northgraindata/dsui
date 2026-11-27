@@ -5,32 +5,9 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { setNavigator } from "../prototype/airflow/parts";
-import { Page, SideNav } from "../prototype/airflow/views";
+import { setNavigator } from "../prototype/shared/ui";
+import { type Redesigned, redesignFor } from "./redesigns";
 import "./embedded.css";
-
-const PREFIX = "/services/airflow";
-
-export const hasRedesign = (pathname: string) =>
-  pathname === PREFIX || pathname.startsWith(`${PREFIX}/`);
-
-/** The current page that is closest to a redesigned one. */
-function currentPageFor(path: string): string {
-  const [pathname = "/"] = path.split("?");
-  if (pathname === "/runs") return "/dags";
-  if (pathname === "/activity") return "/event-logs";
-  return pathname;
-}
-
-function redesignedPageFor(pathname: string): string {
-  const path = pathname.slice(PREFIX.length) || "/";
-  if (path === "/event-logs") return "/activity";
-  const [, section, id, ...rest] = path.split("/");
-  // A run or a task opens over its DAG in the redesign.
-  if (section === "dags" && id && rest.length) return `/dags/${id}`;
-  if (section === "users") return "/";
-  return path;
-}
 
 /** An element of ours at the end of a shell element, once that one exists. */
 function useHost(selector: string, className: string): HTMLElement | null {
@@ -55,6 +32,21 @@ function useHost(selector: string, className: string): HTMLElement | null {
 }
 
 export function Redesign({ pathname }: { pathname: string }) {
+  const design = redesignFor(pathname);
+  // A different service starts a fresh view with its own state.
+  return design ? (
+    <Shown key={design.prefix} design={design} pathname={pathname} />
+  ) : null;
+}
+
+function Shown({ design, pathname }: { design: Redesigned; pathname: string }) {
+  const {
+    prefix: PREFIX,
+    Page,
+    SideNav,
+    currentPageFor,
+    redesignedPageFor,
+  } = design;
   const [path, setPath] = useState(() => redesignedPageFor(pathname));
   const nav = useHost(".adapter-sidebar", "ax-app ax-sidebar ax-embedded-nav");
   const content = useHost(".adapter-main", "ax-app ax-embedded-main");
@@ -69,7 +61,7 @@ export function Redesign({ pathname }: { pathname: string }) {
         ? current
         : redesignedPageFor(pathname),
     );
-  }, [pathname]);
+  }, [pathname, PREFIX, currentPageFor, redesignedPageFor]);
 
   useEffect(() => {
     document.documentElement.dataset.design = "new";
@@ -85,7 +77,7 @@ export function Redesign({ pathname }: { pathname: string }) {
     return () => {
       delete document.documentElement.dataset.design;
     };
-  }, []);
+  }, [PREFIX, currentPageFor]);
 
   return (
     <>

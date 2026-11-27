@@ -313,6 +313,11 @@
 .ax-panel-body {
   padding: 14px 16px 16px;
 }
+/* A table under a titled panel starts clear of the title. */
+.ax-panel-head + div > .ax-table:first-child {
+  margin-top: 13px;
+  border-top: 1px solid var(--color-border);
+}
 .ax-split {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);

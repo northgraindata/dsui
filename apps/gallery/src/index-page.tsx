@@ -51,8 +51,11 @@ function AdapterPages({ adapter }: { adapter: ManifestAdapter }) {
       <h2>
         <AdapterLogo adapter={adapter} />
         {adapter.name}
-        {adapter.id === "airflow" ? (
-          <a className="gallery-redesign" href="/services/airflow?design=new">
+        {adapter.id === "airflow" || adapter.id === "s3" ? (
+          <a
+            className="gallery-redesign"
+            href={`/services/${adapter.id}?design=new`}
+          >
             old / new design
           </a>
         ) : null}

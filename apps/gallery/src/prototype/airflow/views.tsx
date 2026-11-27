@@ -1,4 +1,4 @@
-import "./styles.css";
+import "../shared/base.css";
 import { Activity } from "./activity";
 import { AssetPage, Assets } from "./assets";
 import { Connections, Pools, Variables } from "./configure";

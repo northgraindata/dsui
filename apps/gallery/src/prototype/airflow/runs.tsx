@@ -1,12 +1,4 @@
 import {
-  ago,
-  minutesText,
-  runStream,
-  type State,
-  type StreamRun,
-  stamp,
-} from "./data";
-import {
   Choice,
   Empty,
   Search,
@@ -14,7 +6,15 @@ import {
   Toolbar,
   usePages,
   useRemembered,
-} from "./list";
+} from "../shared/list";
+import {
+  ago,
+  minutesText,
+  runStream,
+  type State,
+  type StreamRun,
+  stamp,
+} from "./data";
 import { Act, go, Header, Panel, Pill } from "./parts";
 
 /** Airflow's `run_type` values. */

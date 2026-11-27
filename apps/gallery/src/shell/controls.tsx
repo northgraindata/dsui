@@ -5,7 +5,8 @@ import { loadManifest, type ManifestAdapter } from "../data";
 import { Toolbar } from "../toolbar";
 import { pageOnlyUrl, resolveUrl } from "../urls";
 import { DesignSwitch, FailureSwitch, useDesign } from "./design-switch";
-import { hasRedesign, Redesign } from "./embedded";
+import { Redesign } from "./embedded";
+import { redesignFor } from "./redesigns";
 
 /** Where "without shell" leads from the application path on screen. */
 function pageOnlyTarget(
@@ -39,7 +40,7 @@ function Controls({ scenario }: { scenario: Scenario }) {
   const target = pageOnlyTarget(adapters, current, scenario);
   const [design, setDesign] = useDesign();
   const pathname = current.split("?")[0] ?? "";
-  const redesign = hasRedesign(pathname);
+  const redesign = Boolean(redesignFor(pathname));
   return (
     <>
       {redesign && design === "new" ? <Redesign pathname={pathname} /> : null}
@@ -55,7 +56,11 @@ function Controls({ scenario }: { scenario: Scenario }) {
         {redesign ? (
           <DesignSwitch design={design} onChange={setDesign} />
         ) : null}
-        {redesign && design === "new" ? <FailureSwitch /> : null}
+        {redesign &&
+        design === "new" &&
+        pathname.startsWith("/services/airflow") ? (
+          <FailureSwitch />
+        ) : null}
         {target ? <a href={target}>Without shell</a> : null}
       </Toolbar>
     </>

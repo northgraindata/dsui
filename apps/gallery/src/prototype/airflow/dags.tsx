@@ -1,14 +1,5 @@
 import { Tooltip } from "@northgraindata/dsui-ui";
 import {
-  type Dag,
-  dags,
-  isFailing,
-  isRunning,
-  minutesText,
-  type State,
-  stamp,
-} from "./data";
-import {
   Choice,
   Empty,
   Search,
@@ -17,7 +8,16 @@ import {
   unique,
   usePages,
   useRemembered,
-} from "./list";
+} from "../shared/list";
+import {
+  type Dag,
+  dags,
+  isFailing,
+  isRunning,
+  minutesText,
+  type State,
+  stamp,
+} from "./data";
 import { Act, go, Header, Panel, stateLabel } from "./parts";
 import { RunStrip } from "./run-strip";
 import { Tags } from "./tags";

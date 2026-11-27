@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { ago, clock, dayLabel, eventLog, type LogEvent } from "./data";
 import {
   Choice,
   Empty,
@@ -9,7 +8,8 @@ import {
   unique,
   usePages,
   useRemembered,
-} from "./list";
+} from "../shared/list";
+import { ago, clock, dayLabel, eventLog, type LogEvent } from "./data";
 import { go, Header, Panel } from "./parts";
 
 const ranges: Record<string, number> = {

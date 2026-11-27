@@ -1,5 +1,3 @@
-import { type Asset, assets, dags, eventsOf, stamp } from "./data";
-import { Art, Glyph, type GlyphName } from "./icons";
 import {
   Choice,
   Empty,
@@ -8,7 +6,9 @@ import {
   unique,
   usePages,
   useRemembered,
-} from "./list";
+} from "../shared/list";
+import { type Asset, assets, dags, eventsOf, stamp } from "./data";
+import { Art, Glyph, type GlyphName } from "./icons";
 import { Dot, go, Header, Panel } from "./parts";
 
 /** Airflow stores only a URI, so its scheme is what tells the system. */

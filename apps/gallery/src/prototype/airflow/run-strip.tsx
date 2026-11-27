@@ -1,7 +1,7 @@
+import { useTip } from "../shared/tip";
 import { type Dag, historyOf, hms, stampSeconds } from "./data";
 import { stateLabel } from "./parts";
 import { RunTip } from "./run-tip";
-import { useTip } from "./tip";
 
 const SHOWN = 14;
 
