@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM oven/bun:1.3.12 AS build
+FROM oven/bun:1.3.12@sha256:8956c7667fa17beb6e3c664115e66bdacfe502da5d99603626e74c197bdef160 AS build
 WORKDIR /src
 ARG DSUI_VERSION=0.1.0
 ARG DSUI_WEB_BASE_PATH=/
@@ -26,7 +26,7 @@ RUN mkdir -p /out/data /out/runtime/plugins && \
   bun -e "import { prepareSdk } from './packages/server/src/adapters/sdk.ts'; import { sdkVersions } from './scripts/release-packages.ts'; await prepareSdk('packages', '/app/sdk'); await Bun.write('/out/sdk-versions.json', JSON.stringify(await sdkVersions()));" && \
   bun packages/server/src/image-dependencies.ts collect /src /out/image-dependencies.json
 
-FROM oven/bun:1.3.12
+FROM oven/bun:1.3.12@sha256:8956c7667fa17beb6e3c664115e66bdacfe502da5d99603626e74c197bdef160
 WORKDIR /app
 ARG DSUI_WEB_BASE_PATH=/
 ENV PIPX_BIN_DIR=/usr/local/bin \
