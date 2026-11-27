@@ -21,27 +21,27 @@ export function HighlightedSqlInput({
   let offset = 0;
   return (
     <div
-      className="highlighted-sql-input"
+      className="dsui-highlighted-sql-input"
       style={{
         fontSize: preferences.editorFontSize,
         tabSize: preferences.editorTabSize,
       }}
       data-wrap={preferences.editorWordWrap}
     >
-      <div className="sql-line-numbers" ref={numbers} aria-hidden="true">
+      <div className="dsui-sql-line-numbers" ref={numbers} aria-hidden="true">
         {Array.from({ length: value.split("\n").length }, (_, index) => (
           // Line numbers are positional by definition and have no component state.
           // biome-ignore lint/suspicious/noArrayIndexKey: line number is the stable identity
           <div key={`line-${index + 1}`}>{index + 1}</div>
         ))}
       </div>
-      <pre ref={highlight} className="sql-highlight" aria-hidden="true">
+      <pre ref={highlight} className="dsui-sql-highlight" aria-hidden="true">
         <code>
           {sqlTokens(value).map((token) => {
             const key = offset;
             offset += token.text.length;
             return (
-              <span key={key} className={`sql-token-${token.kind}`}>
+              <span key={key} className={`dsui-sql-token-${token.kind}`}>
                 {token.text}
               </span>
             );
@@ -51,7 +51,7 @@ export function HighlightedSqlInput({
       </pre>
       <textarea
         ref={inputRef}
-        className="sql-editor-fallback"
+        className="dsui-sql-editor-fallback"
         aria-label="SQL query"
         value={value}
         placeholder={placeholder}

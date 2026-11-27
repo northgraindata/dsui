@@ -1,26 +1,32 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Surface } from "./surface";
 
 export function KeyValueList({
   title,
   values,
+  formatLabel = (key) => key,
+  formatEntry = formatValue,
 }: {
   title?: string;
   values: Record<string, unknown>;
+  formatLabel?: (key: string) => string;
+  formatEntry?: (value: unknown) => ReactNode;
 }) {
   return (
-    <Surface className="key-value-panel p-4">
+    <Surface className="dsui-key-value-panel p-4">
       {title ? (
         <h2 className="m-0 mb-3 text-[13px] font-medium text-primary">
           {title}
         </h2>
       ) : null}
-      <dl className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-5 gap-y-2 text-[12px]">
+      <dl className="grid grid-cols-[minmax(min(8rem,40%),max-content)_minmax(0,1fr)] gap-x-5 gap-y-2 text-[12px]">
         {Object.entries(values).map(([key, value]) => (
           <Fragment key={key}>
-            <dt className="text-secondary">{key}</dt>
-            <dd className="m-0 break-words text-primary">
-              {formatValue(value)}
+            <dt className="min-w-0 text-secondary [overflow-wrap:anywhere]">
+              {formatLabel(key)}
+            </dt>
+            <dd className="m-0 min-w-0 text-primary [overflow-wrap:anywhere]">
+              {formatEntry(value)}
             </dd>
           </Fragment>
         ))}

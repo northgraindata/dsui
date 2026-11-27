@@ -2,6 +2,47 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { packageSdk, sdkPackages } from "./release-packages";
 
+const STYLED_COMPONENTS = [
+  "card",
+  "code-block",
+  "columns",
+  "flex",
+  "gauge",
+  "grid",
+  "meter",
+  "page-header",
+  "query-workspace",
+  "resource-tree",
+  "section",
+  "select",
+  "tooltip",
+  "menu",
+  "confirm",
+  "split",
+  "stack",
+  "table",
+];
+
+/**
+ * External hosts only get the package's stylesheet, so every builtin must be
+ * styled by it, and no `@import` may follow a rule (CSS would ignore it).
+ */
+async function assertStylesShip(sourceRoot: string): Promise<void> {
+  const entry = await readFile(join(sourceRoot, "styles.css"), "utf8");
+  const statements = entry.replaceAll(/\/\*[\s\S]*?\*\//g, "");
+  const firstRule = statements.indexOf("{");
+  if (firstRule >= 0 && statements.lastIndexOf("@import") > firstRule)
+    throw new Error("Adapter SDK stylesheet has an @import after a rule");
+  let css = entry;
+  for (const [, path] of entry.matchAll(/@import "(\.[^"]+)";/g))
+    css += await readFile(join(sourceRoot, path ?? ""), "utf8");
+  const unstyled = STYLED_COMPONENTS.filter(
+    (name) => !new RegExp(`\\.dsui-${name}(?![\\w])`).test(css),
+  );
+  if (unstyled.length)
+    throw new Error(`Adapter SDK package lacks styles for: ${unstyled}`);
+}
+
 /** Exercise packed packages outside the workspace, with registry-style resolution. */
 const root = resolve(import.meta.dir, "..");
 const smoke = join(root, "dist", "sdk-smoke");
@@ -28,6 +69,10 @@ for (const directory of selected) {
     );
     if (!embeddedUi.includes("./components/button"))
       throw new Error("Adapter SDK package is missing embedded UI sources");
+    await assertStylesShip(join(target, "src"));
+    const sdkIndex = await readFile(join(target, "src", "index.ts"), "utf8");
+    if (sdkIndex.includes("@northgraindata/dsui-ui"))
+      throw new Error("Adapter SDK index imports the private UI package");
     if (adapterUi.includes("@northgraindata/dsui-ui"))
       throw new Error(
         "Adapter SDK package contains an unresolved private UI import",

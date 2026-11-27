@@ -1,3 +1,18 @@
+@import "./styles/graph.css";
+@import "./styles/layout.css";
+@import "./styles/page-header.css";
+@import "./styles/code-block.css";
+@import "./styles/data-table.css";
+@import "./styles/card.css";
+@import "./styles/query-editor.css";
+@import "./styles/result-grid.css";
+@import "./styles/sections.css";
+@import "./styles/query-states.css";
+@import "./styles/split-pane.css";
+@import "./styles/resource-tree.css";
+@import "./styles/sql-highlight.css";
+@import "./styles/gauge.css";
+@import "./styles/long-content.css";
 @import "./table-explorer.css";
 @import "./list.css";
 @import "./table-filter.css";
@@ -257,7 +272,7 @@
   color: var(--color-secondary);
   text-align: right;
 }
-@media (max-width: 640px) {
+@container dsui-page (max-width: 560px) {
   .notebook-catalog-page {
     padding: 16px;
   }
@@ -311,7 +326,7 @@ textarea.notebook-description-input {
   background: var(--color-canvas);
   padding: 5px 7px;
 }
-@media (max-width: 760px) {
+@container dsui-page (max-width: 600px) {
   .notebook-workspace {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -364,7 +379,7 @@ textarea.notebook-description-input {
   margin-top: 6px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  box-shadow: 0 12px 30px #0008;
+  box-shadow: 0 12px 30px var(--color-shadow-soft);
 }
 .notebook-add-menu button,
 .notebook-block-menu-popover button {
@@ -379,7 +394,7 @@ textarea.notebook-description-input {
 }
 .notebook-add-menu button:hover,
 .notebook-block-menu-popover button:hover {
-  background: #142942;
+  background: var(--color-control-hover);
   color: var(--color-primary);
 }
 .notebook-add-menu button:disabled,
@@ -389,7 +404,7 @@ textarea.notebook-description-input {
 }
 .notebook-delete-action {
   border-top: 1px solid var(--color-border) !important;
-  color: #f08d8d !important;
+  color: var(--color-danger-soft) !important;
 }
 .notebook-add-block .notebook-add-menu {
   top: auto;
@@ -458,7 +473,7 @@ textarea.notebook-description-input {
   margin-left: 18px;
 }
 .notebook-markdown:hover {
-  background: #0d1c2d;
+  background: var(--color-control);
   cursor: text;
 }
 .notebook-markdown-content h1,
@@ -487,7 +502,7 @@ textarea.notebook-description-input {
 }
 .notebook-markdown-content blockquote {
   margin: 8px 0;
-  border-left: 2px solid #2b9ed8;
+  border-left: 2px solid var(--color-info);
   padding-left: 12px;
   color: var(--color-secondary);
 }
@@ -496,7 +511,7 @@ textarea.notebook-description-input {
 }
 .notebook-markdown-content input[type="checkbox"] {
   margin: 0 7px 0 0;
-  accent-color: #35a8e6;
+  accent-color: var(--color-info);
   vertical-align: -1px;
 }
 .notebook-markdown-content hr {
@@ -525,7 +540,7 @@ textarea.notebook-description-input {
 }
 .notebook-markdown-table th {
   color: var(--color-primary);
-  background: #102136;
+  background: var(--color-control);
   font-weight: 600;
 }
 .notebook-markdown-table td {
@@ -533,26 +548,26 @@ textarea.notebook-description-input {
 }
 .notebook-alert {
   margin: 10px 0;
-  border-left: 3px solid #35a8e6;
+  border-left: 3px solid var(--color-info);
   padding: 9px 12px;
-  background: #10243a;
+  background: var(--color-control-hover);
   color: var(--color-secondary);
 }
 .notebook-alert strong {
   display: block;
   margin-bottom: 3px;
-  color: #73c9f4;
+  color: var(--color-text-info);
   font-size: 11px;
   letter-spacing: 0.06em;
 }
 .notebook-alert-warning,
 .notebook-alert-caution {
-  border-color: #e5b85b;
-  background: #2c2617;
+  border-color: var(--color-warning);
+  background: var(--color-warning-surface);
 }
 .notebook-alert-warning strong,
 .notebook-alert-caution strong {
-  color: #f0ca78;
+  color: var(--color-syntax-number);
 }
 .notebook-markdown-content pre {
   overflow: auto;
@@ -565,8 +580,8 @@ textarea.notebook-description-input {
 }
 .notebook-markdown-content code {
   padding: 1px 4px;
-  background: #11243a;
-  color: #8fd7ff;
+  background: var(--color-control-hover);
+  color: var(--color-text-info);
   font: 0.92em var(--font-mono);
 }
 .notebook-markdown-content pre code {
@@ -575,7 +590,7 @@ textarea.notebook-description-input {
   color: var(--color-secondary);
 }
 .notebook-markdown-content a {
-  color: #56b9ed;
+  color: var(--color-info);
 }
 .notebook-markdown-editor {
   display: block;
@@ -611,10 +626,10 @@ textarea.notebook-description-input {
   min-height: 26px;
   padding: 0 9px;
 }
-.notebook-code-block .sql-editor-wrap {
+.notebook-code-block .dsui-sql-editor-wrap {
   min-height: 130px;
 }
-.notebook-code-block .query-results {
+.notebook-code-block .dsui-query-results {
   margin-top: 0;
   border-top: 1px solid var(--color-border);
 }
@@ -651,7 +666,7 @@ textarea.notebook-description-input {
   color: var(--color-secondary);
   font-size: 11px;
 }
-.query-database-picker .dsui-option-select {
+.query-database-picker .dsui-select {
   min-width: 180px;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -664,17 +679,17 @@ textarea.notebook-description-input {
 /* User preferences are shared across every adapter using these components. */
 html[data-density="compact"] .dsui-data-table td,
 html[data-density="compact"] .dsui-data-table th,
-html[data-density="compact"] .data-table td,
-html[data-density="compact"] .data-table th {
+html[data-density="compact"] .dsui-table td,
+html[data-density="compact"] .dsui-table th {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-.highlighted-sql-input
-  :is(.sql-editor-fallback, .sql-highlight, .sql-line-numbers) {
+.dsui-highlighted-sql-input
+  :is(.dsui-sql-editor-fallback, .dsui-sql-highlight, .dsui-sql-line-numbers) {
   font-size: inherit;
   tab-size: inherit;
 }
-.highlighted-sql-input[data-wrap="true"] .sql-highlight {
+.dsui-highlighted-sql-input[data-wrap="true"] .dsui-sql-highlight {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

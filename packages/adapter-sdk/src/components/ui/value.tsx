@@ -5,7 +5,8 @@ import { type ComponentProps, componentProps } from "../runtime";
 
 export function Value({ client, node, context }: ComponentProps) {
   const props = componentProps<ValueProps>(node);
-  const [value, setValue] = useState<unknown>();
+  // Boxed, so a loaded result without the field differs from not loaded yet.
+  const [loaded, setLoaded] = useState<{ value: unknown }>();
   const [error, setError] = useState<string>();
   useEffect(() => {
     if (!props?.source) return;
@@ -15,7 +16,9 @@ export function Value({ client, node, context }: ComponentProps) {
       .then((result) => {
         if (!active) return;
         if (result && typeof result === "object" && !Array.isArray(result))
-          setValue((result as Record<string, unknown>)[props.field]);
+          setLoaded({
+            value: (result as Record<string, unknown>)[props.field],
+          });
         else setError("Could not load value");
       })
       .catch(
@@ -48,13 +51,15 @@ export function Value({ client, node, context }: ComponentProps) {
         {error}
       </span>
     );
-  if (value === undefined)
+  if (!loaded)
     return (
       <Surface className="p-0 text-[12px] text-secondary" aria-busy="true">
         Loading…
       </Surface>
     );
-  return <span>{formatValue(value, props.format)}</span>;
+  return (
+    <span>{formatValue(loaded.value ?? props.fallback, props.format)}</span>
+  );
 }
 
 export default Value;

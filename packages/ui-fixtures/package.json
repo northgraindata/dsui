@@ -1,0 +1,21 @@
+{
+  "name": "@northgraindata/dsui-ui-fixtures",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./routes": "./src/routes.ts"
+  },
+  "scripts": {
+    "build:fixtures": "bun src/build.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "typescript": "^5.9.2",
+    "zod": "^3.24.2",
+    "zod-to-json-schema": "^3.24.1"
+  }
+}

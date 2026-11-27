@@ -1,22 +1,29 @@
-import { useMemo } from "react";
 import type { DeclarativePageRendererProps } from "../types/renderer-types";
 import { PageNodeRenderer } from "./page-node-renderer";
 
 export function DeclarativePageRenderer({
   client,
   nodes,
+  layout = "page",
 }: DeclarativePageRendererProps) {
-  const content = useMemo(
-    () =>
-      nodes.map((node) => (
+  return (
+    <div
+      className={
+        layout === "page"
+          ? "dsui-page grid gap-component"
+          : "grid gap-component"
+      }
+    >
+      {nodes.map((node, index) => (
         <PageNodeRenderer
-          key={JSON.stringify(node)}
+          // Declared nodes keep their place. A key derived from content would
+          // remount the subtree, and drop its state, on any prop change.
+          // biome-ignore lint/suspicious/noArrayIndexKey: static declared order
+          key={`${index}:${node.kind}`}
           client={client}
           node={node}
         />
-      )),
-    [client, nodes],
+      ))}
+    </div>
   );
-
-  return <div className="grid gap-4">{content}</div>;
 }

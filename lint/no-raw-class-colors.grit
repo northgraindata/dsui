@@ -1,0 +1,5 @@
+JsxAttribute() as $attribute where {
+  $attribute <: r"(?s)className=.*",
+  $attribute <: r"(?s).*\[#[0-9a-fA-F]{3,8}\].*",
+  register_diagnostic(span=$attribute, message="Use a color token utility such as text-secondary instead of a raw color.", severity="error")
+}

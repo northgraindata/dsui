@@ -2,13 +2,18 @@ import { KeyValueList, Surface } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
 import type { KeyValueProps } from "../primitives/key-value";
 import { type ComponentProps, componentProps } from "../runtime";
+import { formatTimestamp, humanizeKey } from "./format-value";
+import { useDisplayPreferences } from "./preferences";
+import { usePropState } from "./use-prop-state";
 
 export function KeyValue({ client, node, context }: ComponentProps) {
   const props = componentProps<KeyValueProps>(node);
-  const [data, setData] = useState<Record<string, unknown> | undefined>(
-    props?.data ? { ...props.data } : undefined,
+  const [data, setData] = usePropState(
+    props?.data as Record<string, unknown> | undefined,
   );
   const [error, setError] = useState<string>();
+  const [loaded, setLoaded] = useState(false);
+  const preferences = useDisplayPreferences();
   useEffect(() => {
     if (!props?.source) return;
     let active = true;
@@ -16,12 +21,9 @@ export function KeyValue({ client, node, context }: ComponentProps) {
     client
       .executeResource(props.source)
       .then((result) => {
-        if (
-          active &&
-          result &&
-          typeof result === "object" &&
-          !Array.isArray(result)
-        )
+        if (!active) return;
+        setLoaded(true);
+        if (result && typeof result === "object" && !Array.isArray(result))
           setData(result as Record<string, unknown>);
       })
       .catch((cause: unknown) => {
@@ -47,10 +49,15 @@ export function KeyValue({ client, node, context }: ComponentProps) {
       ? (contextual as Record<string, unknown>)
       : data;
   return displayed ? (
-    <KeyValueList title={props.title} values={displayed} />
+    <KeyValueList
+      title={props.title}
+      values={displayed}
+      formatLabel={humanizeKey}
+      formatEntry={(value) => formatTimestamp(value, preferences)}
+    />
   ) : (
     <Surface className="p-4 text-[12px] text-secondary">
-      Loading details…
+      {loaded ? "No details available." : "Loading details…"}
     </Surface>
   );
 }

@@ -1,0 +1,66 @@
+.dsui-highlighted-sql-input {
+  position: relative;
+  height: 198px;
+  background: var(--color-surface);
+}
+.dsui-sql-highlight,
+.dsui-highlighted-sql-input .dsui-sql-editor-fallback {
+  position: absolute;
+  inset: 0 0 0 54px;
+  width: calc(100% - 54px);
+  height: 100%;
+  margin: 0;
+  border: 0;
+  padding: 8px 10px;
+  font: 13px / 20px var(--font-mono);
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+  tab-size: 2;
+  white-space: pre;
+}
+.dsui-sql-highlight {
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--color-text-bright);
+}
+.dsui-highlighted-sql-input .dsui-sql-editor-fallback {
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--color-primary);
+  resize: none;
+}
+.dsui-highlighted-sql-input .dsui-sql-editor-fallback::placeholder {
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  opacity: 1;
+}
+.dsui-highlighted-sql-input .dsui-sql-editor-fallback::selection {
+  background: color-mix(in srgb, var(--color-accent-dim) 50%, transparent);
+  color: transparent;
+}
+.dsui-sql-line-numbers {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 44px;
+  padding: 8px 6px;
+  text-align: right;
+  font: 12px / 20px var(--font-mono);
+  color: var(--color-text-faint);
+  overflow: hidden;
+}
+.dsui-sql-token-keyword {
+  color: var(--color-syntax-keyword);
+}
+.dsui-sql-token-function {
+  color: var(--color-warning);
+}
+.dsui-sql-token-string {
+  color: var(--color-syntax-number);
+}
+.dsui-sql-token-number {
+  color: var(--color-syntax-string);
+}
+.dsui-sql-token-comment {
+  color: var(--color-text-faint);
+}

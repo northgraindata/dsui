@@ -50,6 +50,7 @@ export function PluginShellActions() {
       {results.map((item) => (
         <PluginErrorBoundary key={`${item.pluginId}/${item.slotId}`}>
           <DeclarativePageRenderer
+            layout="inline"
             nodes={item.nodes}
             client={pluginRendererClient(item.pluginId, (path) =>
               window.location.assign(
@@ -91,6 +92,7 @@ export function PluginSlot({
           ) : (
             <PluginErrorBoundary>
               <DeclarativePageRenderer
+                layout="inline"
                 nodes={item.nodes}
                 client={pluginRendererClient(item.pluginId, (path) =>
                   window.location.assign(

@@ -1,26 +1,45 @@
+import { Tooltip } from "@northgraindata/dsui-ui";
 import { useEffect, useMemo, useState } from "react";
 import type { ListItem, ListProps } from "../primitives/list";
 import type { TableRowAction } from "../primitives/table";
 import { type ComponentProps, componentProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
 import { ActionMenu, FilterMenu, type Selection } from "./list-menus";
+import { PagedToolbar, Pager, usePagedSource } from "./paged";
 import {
   isRowActionDisabled,
   matchesWhen,
   performRowAction,
   resolveLink,
 } from "./row-action";
+import { SpecDialog } from "./spec-dialog";
+import { useAction } from "./use-action";
+import { usePropState } from "./use-prop-state";
 
 type Row = Record<string, unknown>;
 type Client = ComponentProps["client"];
 
 /** Browser implementation of the SDK list: one readable row per record. */
-export function List({ client, node }: ComponentProps) {
+export function List({ client, node, renderNode }: ComponentProps) {
   const props = componentProps<ListProps>(node);
-  const { rows, error, reload } = useRows(client, props);
+  const paged = usePagedSource(
+    client,
+    props?.paged ? props.source : undefined,
+    props?.paged,
+  );
+  const all = useRows(client, props?.paged ? undefined : props);
+  const rows = props?.paged ? paged.page?.items : all.rows;
+  const error = props?.paged
+    ? paged.page
+      ? undefined
+      : paged.error
+    : all.error;
+  const reload = props?.paged ? paged.reload : all.reload;
   const [search, setSearch] = useState("");
   const [selection, setSelection] = useState<Selection>({});
-  const [limit, setLimit] = useState(props?.pageSize);
+  const [limit, setLimit] = usePropState(
+    props?.paged ? undefined : props?.pageSize,
+  );
 
   const visible = useMemo(
     () =>
@@ -38,6 +57,7 @@ export function List({ client, node }: ComponentProps) {
     <ListRow
       key={rowKey(row, props.item, index)}
       client={client}
+      renderNode={renderNode}
       row={row}
       props={props}
       onDone={reload}
@@ -45,8 +65,9 @@ export function List({ client, node }: ComponentProps) {
   ));
 
   return (
-    <div className="dsui-list">
-      {props.searchable || props.filters?.length ? (
+    <div className="dsui-list" aria-busy={props.paged && paged.loading}>
+      {props.paged ? <PagedToolbar paging={props.paged} paged={paged} /> : null}
+      {!props.paged && (props.searchable || props.filters?.length) ? (
         <Toolbar
           props={props}
           noun={noun}
@@ -63,11 +84,13 @@ export function List({ client, node }: ComponentProps) {
         <ul className="dsui-list-items">{items}</ul>
       ) : (
         <p className="dsui-list-empty">
-          {rows.length
+          {rows.length || paged.narrowed
             ? `No ${noun}s match.`
             : (props.emptyMessage ?? "Nothing here yet.")}
         </p>
       )}
+      {props.paged && paged.error ? <p role="alert">{paged.error}</p> : null}
+      {props.paged ? <Pager paged={paged} /> : null}
       {shown.length < visible.length ? (
         <button
           type="button"
@@ -138,7 +161,7 @@ function Toolbar({
 }
 
 function useRows(client: Client, props: ListProps | undefined) {
-  const [data, setData] = useState<unknown>(props?.data);
+  const [data, setData] = usePropState<unknown>(props?.data);
   const [error, setError] = useState<string>();
   const [refresh, setRefresh] = useState(0);
   const source = props?.source;
@@ -223,34 +246,37 @@ function matchingRows(
 
 function ListRow({
   client,
+  renderNode,
   row,
   props,
   onDone,
 }: {
   client: Client;
+  renderNode: ComponentProps["renderNode"];
   row: Row;
   props: ListProps;
   onDone: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
+  const { run: runAction, pending: busy, dialog } = useAction();
   const { item } = props;
   const href = props.rowLink
     ? resolveLink(props.rowLink.path, props.rowLink.params, row)
     : null;
+  const [form, setForm] = useState<TableRowAction>();
   const run = (spec: TableRowAction) => {
-    if (
-      spec.confirmation &&
-      !window.confirm(
-        `${spec.confirmation.title}\n\n${spec.confirmation.description}`,
-      )
-    )
+    if (spec.dialog) {
+      setForm(spec);
       return;
-    setBusy(true);
-    setError(undefined);
-    void performRowAction(client, spec, row, onDone)
-      .then(setError)
-      .finally(() => setBusy(false));
+    }
+    const name = text(row[item.title]);
+    runAction({
+      id: `action:${spec.label}:${name}`,
+      label: spec.label,
+      confirmation: spec.confirmation,
+      values: row,
+      destructive: spec.variant === "danger",
+      perform: () => performRowAction(client, spec, row, onDone),
+    });
   };
 
   return (
@@ -261,11 +287,11 @@ function ListRow({
           className="dsui-list-main"
           onClick={() => client.navigate(href)}
         >
-          <ItemText row={row} item={item} error={error} />
+          <ItemText row={row} item={item} />
         </button>
       ) : (
         <div className="dsui-list-main">
-          <ItemText row={row} item={item} error={error} />
+          <ItemText row={row} item={item} />
         </div>
       )}
       {item.status ? <Status row={row} status={item.status} /> : null}
@@ -276,19 +302,24 @@ function ListRow({
         busy={busy}
         onRun={run}
       />
+      {dialog}
+      {form?.dialog ? (
+        <SpecDialog
+          spec={form.dialog}
+          values={row}
+          onClose={() => {
+            setForm(undefined);
+            onDone();
+          }}
+          client={client}
+          renderNode={renderNode}
+        />
+      ) : null}
     </li>
   );
 }
 
-function ItemText({
-  row,
-  item,
-  error,
-}: {
-  row: Row;
-  item: ListItem;
-  error: string | undefined;
-}) {
+function ItemText({ row, item }: { row: Row; item: ListItem }) {
   const badge = item.badge ? text(row[item.badge]) : "";
   const secondary = [item.description, ...(item.meta ?? [])]
     .map((field) => (field ? text(row[field]) : ""))
@@ -308,11 +339,6 @@ function ItemText({
         </span>
         {secondary ? (
           <span className="dsui-list-description">{secondary}</span>
-        ) : null}
-        {error ? (
-          <span className="dsui-list-error" role="alert">
-            {error}
-          </span>
         ) : null}
       </span>
     </>
@@ -347,21 +373,21 @@ function RowActions({
     <span className="dsui-list-actions">
       {inline.map((spec) =>
         matchesWhen(row, spec.when) ? (
-          <button
-            key={spec.label}
-            type="button"
-            className="dsui-list-action"
-            title={spec.label}
-            aria-label={`${spec.label} ${title}`}
-            disabled={
-              busy ||
-              isRowActionDisabled(row, spec.disabledWhen) ||
-              (!spec.action && !spec.link)
-            }
-            onClick={() => onRun(spec)}
-          >
-            <WorkbenchIcon name={spec.icon ?? "play"} size={16} />
-          </button>
+          <Tooltip key={spec.label} label={spec.label}>
+            <button
+              type="button"
+              className="dsui-list-action"
+              aria-label={`${spec.label} ${title}`}
+              disabled={
+                busy ||
+                isRowActionDisabled(row, spec.disabledWhen) ||
+                (!spec.action && !spec.link && !spec.dialog)
+              }
+              onClick={() => onRun(spec)}
+            >
+              <WorkbenchIcon name={spec.icon ?? "play"} size={16} />
+            </button>
+          </Tooltip>
         ) : (
           <span key={spec.label} className="dsui-list-action-slot" />
         ),

@@ -9,7 +9,7 @@ export function TextInput({ node }: ComponentProps) {
     <Input
       aria-label={props.label ?? props.name}
       type={props.secret ? "password" : "text"}
-      defaultValue={props.value}
+      defaultValue={typeof props.value === "string" ? props.value : undefined}
       placeholder={props.placeholder}
     />
   );

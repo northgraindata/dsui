@@ -1,10 +1,10 @@
 .s3-workspace {
-  --s3-line: var(--color-border, #222932);
-  --s3-panel: var(--color-surface, #11151a);
-  --s3-muted: var(--color-text-secondary, #a1a9b4);
+  --s3-line: var(--color-border);
+  --s3-panel: var(--color-surface);
+  --s3-muted: var(--color-secondary);
   display: grid;
   gap: 18px;
-  color: var(--color-text-primary, #f4f6f8);
+  color: var(--color-primary);
   font-size: 12px;
   min-width: 0;
 }
@@ -39,7 +39,7 @@
 .s3-dialog button {
   border: 1px solid var(--s3-line);
   border-radius: 6px;
-  background: var(--color-background, #0d1014);
+  background: var(--color-background);
   color: inherit;
   min-height: 34px;
   padding: 7px 11px;
@@ -47,22 +47,22 @@
 }
 .s3-workspace button:hover,
 .s3-dialog button:hover {
-  border-color: #58749b;
-  background: #162030;
+  border-color: var(--color-control-border-strong);
+  background: var(--color-control);
 }
 .s3-workspace button:disabled {
   opacity: 0.4;
   cursor: default;
 }
 .s3-workspace :focus-visible {
-  outline: 2px solid #6b8aff;
+  outline: 2px solid var(--color-focus);
   outline-offset: 3px;
 }
 .s3-workspace .s3-primary,
 .s3-dialog .s3-primary {
-  background: #1769ed;
-  border-color: #287afd;
-  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-foreground);
 }
 .s3-browser {
   min-width: 0;
@@ -85,7 +85,7 @@
 }
 .s3-bucket-card strong {
   display: block;
-  color: var(--color-text-primary, #f4f6f8);
+  color: var(--color-primary);
   font-size: 14px;
   font-weight: 600;
 }
@@ -101,10 +101,10 @@
   height: 38px;
   flex: 0 0 38px;
   place-items: center;
-  border: 1px solid #294261;
+  border: 1px solid var(--color-control-border);
   border-radius: 7px;
-  background: #14243a;
-  color: #71aaff;
+  background: var(--color-control-hover);
+  color: var(--color-text-link);
 }
 .s3-bucket-icon svg {
   width: 20px;
@@ -142,7 +142,7 @@
 }
 .s3-breadcrumb button {
   border: 0;
-  color: #71aaff;
+  color: var(--color-text-link);
   padding: 0;
   min-height: 24px;
   background: none;
@@ -160,7 +160,7 @@
 .s3-search input {
   flex: 1;
   min-width: 0;
-  background: #0d141f;
+  background: var(--color-surface);
   color: inherit;
   border: 1px solid var(--s3-line);
   border-radius: 6px;
@@ -179,8 +179,8 @@
 }
 .s3-workspace th {
   font-weight: 500;
-  background: #101b2b;
-  color: #b9cce7;
+  background: var(--color-inset);
+  color: var(--color-secondary);
   text-align: left;
 }
 .s3-workspace th,
@@ -205,10 +205,10 @@
   text-align: left;
 }
 .s3-workspace .s3-object-name svg {
-  color: #7faeff;
+  color: var(--color-text-link);
 }
 .s3-workspace td:has(.s3-file-type-folder) .s3-object-name svg {
-  color: #e2ae5b;
+  color: var(--color-warning);
 }
 .s3-workspace .s3-object-name {
   max-width: 340px;
@@ -216,23 +216,23 @@
   text-overflow: ellipsis;
 }
 .s3-workspace tbody tr:hover {
-  background: #142033;
+  background: var(--color-control);
 }
 .s3-file-type {
   display: inline-block;
   min-width: 44px;
-  border: 1px solid #34465f;
+  border: 1px solid var(--color-border-strong);
   border-radius: 4px;
-  background: #172235;
-  color: #b9cce7;
+  background: var(--color-control);
+  color: var(--color-secondary);
   padding: 3px 6px;
   font-size: 10px;
   text-align: center;
 }
 .s3-file-type-folder {
-  border-color: #5a4b2d;
-  background: #282219;
-  color: #e2ae5b;
+  border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
 }
 .s3-row-menu-trigger {
   display: grid;
@@ -252,7 +252,7 @@
 .s3-row-menu-trigger:hover,
 .s3-row-menu-trigger[aria-expanded="true"] {
   border-color: var(--s3-line);
-  background: #162030;
+  background: var(--color-control);
 }
 .s3-row-menu {
   position: fixed;
@@ -261,7 +261,7 @@
   padding: 4px;
   border: 1px solid var(--s3-line);
   border-radius: 6px;
-  background: #151a20;
+  background: var(--color-background);
   box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
 }
 .s3-row-menu button {
@@ -283,10 +283,10 @@
 }
 .s3-badge {
   display: inline-block;
-  border: 1px solid #2b5048;
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
   border-radius: 12px;
-  background: #142c28;
-  color: #8fd7b6;
+  background: var(--color-success-surface);
+  color: var(--color-syntax-success);
   padding: 3px 7px;
   font-size: 10px;
   margin: 2px;
@@ -323,11 +323,11 @@
   margin: 16px 0 10px;
 }
 .s3-inspector-tabs button[aria-pressed="true"] {
-  background: #152b49;
-  border-color: #4178b5;
+  background: var(--color-control-hover);
+  border-color: var(--color-control-border-strong);
 }
 .s3-workspace pre {
-  background: #0b121d;
+  background: var(--color-surface);
   border: 1px solid var(--s3-line);
   padding: 12px;
   border-radius: 6px;
@@ -388,9 +388,10 @@
   color: var(--s3-muted);
 }
 .s3-error {
-  color: #f5a4a4;
-  background: #351d24;
-  border: 1px solid #653742;
+  color: var(--color-danger-soft);
+  background: color-mix(in srgb, var(--color-unavailable) 18%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--color-unavailable) 40%, transparent);
   border-radius: 6px;
   padding: 12px;
   overflow-wrap: anywhere;
@@ -402,10 +403,10 @@
   width: min(520px, calc(100vw - 32px));
   max-height: 85vh;
   overflow: auto;
-  border: 1px solid #334154;
+  border: 1px solid var(--color-border-strong);
   border-radius: 10px;
-  background: #111823;
-  color: #eef4ff;
+  background: var(--color-surface);
+  color: var(--color-primary);
   padding: 24px;
 }
 .s3-dialog::backdrop {
@@ -428,7 +429,7 @@
 }
 .s3-dialog p,
 .s3-dialog small {
-  color: #acbcd2;
+  color: var(--color-secondary);
   line-height: 1.6;
 }
 .s3-dialog label {
@@ -440,9 +441,9 @@
 .s3-dialog textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #334154;
+  border: 1px solid var(--color-border-strong);
   border-radius: 6px;
-  background: #0d141f;
+  background: var(--color-surface);
   color: inherit;
 }
 .s3-dialog ul {
@@ -458,12 +459,12 @@
   gap: 12px;
 }
 .s3-link-result a {
-  color: #87b7ff;
+  color: var(--color-text-link);
 }
 .s3-dialog button:disabled {
   opacity: 0.5;
 }
-@media (max-width: 650px) {
+@container dsui-page (max-width: 590px) {
   .s3-browser-header {
     align-items: stretch;
     flex-wrap: wrap;
@@ -481,4 +482,9 @@
   .s3-search {
     width: 100%;
   }
+}
+/* Bucket names have no natural break points. */
+.s3-bucket-card > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

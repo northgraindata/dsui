@@ -9,6 +9,8 @@ export interface ComponentClient {
   watchResource?(
     reference: ResourceReference,
     listener: (value: unknown) => void,
+    /** Called when a read fails; the last value stays on screen. */
+    onError?: (cause: unknown) => void,
   ): () => void;
   executeAction(
     reference: ActionReference,

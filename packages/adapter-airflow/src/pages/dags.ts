@@ -22,6 +22,7 @@ import {
   unpauseDag,
 } from "../actions/dags.js";
 import { DependencyGraph } from "../components/dependency-graph.js";
+import { confirmations } from "../confirmations.js";
 import { dagDetails, dagSource, dags, dagTasks } from "../resources/dags.js";
 import {
   dagOverview,
@@ -39,6 +40,7 @@ export const dagActions = [
     variant: "primary" as const,
     action: triggerDag,
     input: { dagId: "dagId" },
+    confirmation: confirmations.trigger,
     successLink: {
       path: "/dags/:dagId?tab=graph&runId=:dagRunId",
       params: { dagId: "dagId", dagRunId: "dagRunId" },
@@ -49,6 +51,7 @@ export const dagActions = [
     icon: "pause",
     action: pauseDag,
     input: { dagId: "dagId" },
+    confirmation: confirmations.pause,
     when: { field: "isPaused", equals: false },
   },
   {
@@ -56,6 +59,7 @@ export const dagActions = [
     icon: "play",
     action: unpauseDag,
     input: { dagId: "dagId" },
+    confirmation: confirmations.unpause,
     when: { field: "isPaused", equals: true },
   },
 ];
@@ -68,21 +72,21 @@ export const dagListPage = definePage({
       description: "Monitor schedules and start or pause workflows.",
     }),
     List({
-      source: dags(),
+      source: dags({}),
       noun: "DAG",
-      searchable: true,
-      pageSize: 25,
-      filters: [
-        {
-          field: "status",
-          label: "Status",
-          options: [
-            { label: "Active", value: "active" },
-            { label: "Paused", value: "paused" },
-          ],
-        },
-        { field: "owners", label: "Owner" },
-      ],
+      paged: {
+        search: "Search by DAG ID",
+        filters: [
+          {
+            param: "status",
+            label: "All DAGs",
+            options: [
+              { label: "Active", value: "active" },
+              { label: "Paused", value: "paused" },
+            ],
+          },
+        ],
+      },
       item: {
         icon: "network",
         title: "name",
@@ -103,6 +107,7 @@ export const dagListPage = definePage({
 
 function metricCards() {
   return Grid({
+    minColumnWidth: "sm",
     content: [
       Card({
         variant: "metric",
@@ -160,9 +165,22 @@ function runsList(dagId: string, recent: boolean) {
   return List({
     source: recent ? recentDagRuns({ dagId }) : dagRuns({ dagId }),
     noun: "run",
-    searchable: !recent,
-    pageSize: recent ? undefined : 25,
-    filters: recent ? undefined : [{ field: "stateLabel", label: "State" }],
+    paged: recent
+      ? undefined
+      : {
+          filters: [
+            {
+              param: "state",
+              label: "All states",
+              options: [
+                { label: "Running", value: "running" },
+                { label: "Failed", value: "failed" },
+                { label: "Queued", value: "queued" },
+                { label: "Success", value: "success" },
+              ],
+            },
+          ],
+        },
     item: {
       icon: "history",
       title: "displayRunId",
@@ -184,10 +202,10 @@ function runsList(dagId: string, recent: boolean) {
         input: { dagId: "dagId", dagRunId: "dagRunId" },
         when: { field: "state", equals: "running" },
         confirmation: {
-          title: "Terminate DAG run?",
+          title: "Terminate run {dagRunId}?",
           description:
             "This marks the running DAG run as failed. Running tasks may take a moment to stop.",
-          confirmLabel: "Terminate",
+          confirmLabel: "Terminate run",
         },
       },
     ],
@@ -210,20 +228,18 @@ function detailHeader(dagId: string) {
       Badge({ label: { field: "owners" }, tone: "info" }),
     ],
     actions: [
+      // Only the action that applies to the DAG's current state is offered.
       Button({
-        label: "Ⅱ",
+        label: { field: "pauseToggle.label" },
         variant: "secondary",
-        action: pauseDag({ dagId }),
+        action: { field: "pauseToggle.action" },
+        confirmation: { field: "pauseToggle.confirmation" },
       }),
       Button({
-        label: "↻",
-        variant: "secondary",
-        action: unpauseDag({ dagId }),
-      }),
-      Button({
-        label: "▷",
+        label: "Trigger",
         variant: "primary",
         action: triggerDag({ dagId, conf: {} }),
+        confirmation: confirmations.trigger,
         successLink: {
           path: "/dags/:dagId?tab=graph&runId=:dagRunId",
           params: { dagId: "dagId", dagRunId: "dagRunId" },

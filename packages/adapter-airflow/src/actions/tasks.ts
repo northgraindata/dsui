@@ -17,7 +17,8 @@ type Ctx = AirflowContext & ActionRuntimeContext;
 
 function invalidateTask(ctx: Ctx, input: TaskInstanceRef) {
   const runInput = { dagId: input.dagId, dagRunId: input.dagRunId };
-  ctx.invalidate(dagRuns, { dagId: input.dagId });
+  // Every page of this DAG's runs may have changed.
+  ctx.invalidate(dagRuns);
   ctx.invalidate(dagRunDetails, runInput);
   ctx.invalidate(taskInstances, runInput);
   ctx.invalidate(taskInstanceDetails, input);

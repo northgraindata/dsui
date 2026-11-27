@@ -28,7 +28,7 @@ export default function Icon({ node, context }: ComponentProps) {
   if (!name) return null;
   const size = props?.size ?? 16;
   return (
-    <span className="table-cell-icon">
+    <span className="dsui-table-cell-icon">
       {/^(https?:)?\/\//i.test(name) ? (
         <img src={name} alt="" width={size} height={size} />
       ) : (

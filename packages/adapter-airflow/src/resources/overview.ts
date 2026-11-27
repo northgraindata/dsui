@@ -25,10 +25,17 @@ export const overview = defineResource({
   },
 });
 
+/** The overview shows a few DAGs; each one costs a request for its runs. */
+const OVERVIEW_DAGS = 10;
+
 export const overviewDags = defineResource({
   id: "overview-dags",
   query: async (_, ctx: AirflowContext) => {
-    const dags = await ctx.client.listDags();
+    const { items: dags } = await ctx.client.listDagPage({
+      limit: OVERVIEW_DAGS,
+      offset: 0,
+      search: "",
+    });
     return Promise.all(
       dags.map(async (dag) => {
         const latestRun = (await ctx.client.listDagRuns(dag.dagId))[0];

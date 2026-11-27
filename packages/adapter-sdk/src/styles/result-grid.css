@@ -1,0 +1,76 @@
+.dsui-table-scroll {
+  overflow: auto;
+  min-width: 0;
+  max-height: 65dvh;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+}
+.dsui-table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+.dsui-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  min-width: 140px;
+  height: 58px;
+  background: linear-gradient(
+    135deg,
+    var(--color-surface),
+    var(--color-surface-raised)
+  );
+  font-weight: 500;
+}
+.dsui-table th > div {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 16px;
+}
+.dsui-table th svg {
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+.dsui-table th span {
+  font-size: 11px;
+  color: var(--color-secondary);
+  letter-spacing: 0.15px;
+}
+.dsui-table th small {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-muted);
+  font: 10px / 1.4 var(--font-mono);
+}
+.dsui-table td {
+  height: 31px;
+  padding: 6px 16px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-primary);
+  font: 11.5px / 18px var(--font-mono);
+  white-space: nowrap;
+}
+.dsui-table td:last-child,
+.dsui-table th:last-child {
+  border-right: 0;
+}
+.dsui-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.dsui-table tbody tr:hover {
+  background: var(--color-surface-raised);
+}
+.dsui-table-null {
+  color: var(--color-muted);
+  font-style: italic;
+}
+.dsui-table-virtual-spacer td {
+  height: 0;
+  padding: 0;
+  border: 0;
+}

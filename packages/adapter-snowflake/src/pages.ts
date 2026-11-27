@@ -69,6 +69,7 @@ export const overviewPage = definePage({
   path: "/",
   render: () => [
     Grid({
+      minColumnWidth: "sm",
       content: [
         Card({
           variant: "metric",

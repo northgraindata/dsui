@@ -26,7 +26,6 @@ export function PageNodeRenderer({
         context={context}
         renderNode={(nextClient, child, childContext = context) => (
           <PageNodeRenderer
-            key={JSON.stringify(child)}
             client={nextClient}
             node={child}
             context={childContext}
@@ -49,7 +48,6 @@ export function PageNodeRenderer({
       context={context}
       renderNode={(nextClient, child, childContext = context) => (
         <PageNodeRenderer
-          key={JSON.stringify(child)}
           client={nextClient}
           node={child}
           context={childContext}

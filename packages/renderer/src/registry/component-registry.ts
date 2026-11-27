@@ -1,4 +1,5 @@
 import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
+import { builtinComponents } from "@northgraindata/dsui-adapter-sdk/components/ui/registry";
 import type { ComponentType, ReactNode } from "react";
 import { Chart } from "../components/chart";
 import type { RendererClient } from "../types/renderer-types";
@@ -22,26 +23,15 @@ type ComponentEntry = {
 
 const components = new Map<string, ComponentEntry>();
 
-const sdkComponents = import.meta.glob(
-  "../../../adapter-sdk/src/components/ui/**/*.tsx",
-  { eager: true },
-) as Record<string, { default?: ComponentType<ComponentProps> }>;
-
 const localAdapterComponents = import.meta.glob(
   "../../../adapter-*/src/components/*.tsx",
   { eager: true },
 ) as Record<string, { default?: ComponentType<ComponentProps> }>;
 
-for (const [path, module] of Object.entries(sdkComponents)) {
-  if (!module.default) continue;
-  const file = path
-    .split("/")
-    .at(-1)
-    ?.replace(/\.tsx$/, "");
-  if (file && file !== "index") {
-    components.set(file, { type: "sync", component: module.default });
-    components.set(`./ui/${file}`, { type: "sync", component: module.default });
-  }
+for (const [id, component] of Object.entries(builtinComponents)) {
+  components.set(id, { type: "sync", component });
+  // SDK browser references declare their path as `./ui/<id>`.
+  components.set(`./ui/${id}`, { type: "sync", component });
 }
 
 for (const [path, module] of Object.entries(localAdapterComponents)) {
@@ -65,9 +55,7 @@ for (const [path, module] of Object.entries(localAdapterComponents)) {
   });
 }
 
-// The chart is a built-in rather than a glob match: it depends on a charting
-// library, so it is registered by name instead of discovered from the SDK's
-// component directory.
+// The chart lives here because it depends on a charting library.
 components.set("./ui/chart", { type: "sync", component: Chart });
 components.set("chart", { type: "sync", component: Chart });
 

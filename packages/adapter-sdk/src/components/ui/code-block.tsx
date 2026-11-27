@@ -15,7 +15,7 @@ export function CodeBlock({ node, context }: ComponentProps) {
   const value = resolve(props.value, dataContext) ?? "";
   const language = resolve(props.language, dataContext) ?? "text";
   return (
-    <div className="resource-code-block" data-dsui-overlay-target="code.block">
+    <div className="dsui-code-block" data-dsui-overlay-target="code.block">
       <h3>{label}</h3>
       <div>
         <pre>
@@ -39,7 +39,7 @@ export function CodeBlock({ node, context }: ComponentProps) {
   );
 }
 
-function highlightCode(value: string, language: string): ReactNode {
+export function highlightCode(value: string, language: string): ReactNode {
   if (language !== "python") return value;
   const pattern =
     /(#.*$|'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|@[A-Za-z_][\w.]*|\b(?:and|as|assert|async|await|break|case|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|match|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b|\b(?:True|False|None)\b|\b\d+(?:\.\d+)?\b)/gm;
@@ -62,7 +62,7 @@ function highlightCode(value: string, language: string): ReactNode {
               ? "number"
               : "keyword";
     tokens.push(
-      <span className={`resource-code-${kind}`} key={`${start}-${index++}`}>
+      <span className={`dsui-code-${kind}`} key={`${start}-${index++}`}>
         {token}
       </span>,
     );

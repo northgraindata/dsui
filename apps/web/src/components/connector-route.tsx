@@ -1,4 +1,4 @@
-import { Button, Input, OptionSelect } from "@northgraindata/dsui-ui";
+import { Button, Input, Select } from "@northgraindata/dsui-ui";
 import { useCallback, useEffect, useState } from "react";
 import {
   type Connector,
@@ -119,7 +119,7 @@ export function ConnectorRoute({
             </p>
           )}
           {usable.length > 0 && !created && (
-            <OptionSelect
+            <Select
               id="connection-agent"
               value={connectorId}
               placeholder="Choose an agent"

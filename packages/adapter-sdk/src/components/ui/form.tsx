@@ -2,18 +2,21 @@ import {
   Button,
   Field,
   Input,
-  OptionSelect,
+  notify,
+  Select,
   Surface,
 } from "@northgraindata/dsui-ui";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useContext, useEffect, useState } from "react";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
+import { FormHostContext } from "./spec-dialog";
+import { useAction } from "./use-action";
 
 type FormField = {
   kind: string;
   props: {
     name: string;
     label?: string;
-    value?: string | null;
+    value?: unknown;
     placeholder?: string;
     secret?: boolean;
     options?: readonly { label: string; value: string }[];
@@ -37,9 +40,7 @@ function readFieldProps(value: unknown): FormField["props"] | null {
   return {
     name: value.name,
     ...(typeof value.label === "string" ? { label: value.label } : {}),
-    ...(typeof value.value === "string" || value.value === null
-      ? { value: value.value }
-      : {}),
+    ...(value.value === undefined ? {} : { value: value.value }),
     ...(typeof value.placeholder === "string"
       ? { placeholder: value.placeholder }
       : {}),
@@ -59,36 +60,76 @@ function formField(node: unknown): FormField | null {
   return { kind: component, props };
 }
 
-export default function ActionForm({ client, node }: RegistryViewProps) {
+/** A field's value, read from the record in context when it is a reference. */
+function initialValue(
+  value: unknown,
+  context: Record<string, unknown> | undefined,
+): string | undefined {
+  if (typeof value === "string") return value;
+  if (!isRecord(value) || typeof value.field !== "string") return undefined;
+  const found = context?.[value.field];
+  return found === undefined || found === null || found === ""
+    ? undefined
+    : String(found);
+}
+
+export default function ActionForm({
+  client,
+  node,
+  context,
+}: RegistryViewProps) {
   const rawFields: unknown[] =
     node.kind === "form" ? [...node.props.fields] : [];
   const fields: FormField[] = rawFields
     .map(formField)
     .filter((field): field is FormField => field !== null);
-  const [values, setValues] = useState<Record<string, string>>(() =>
+  const [initial] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       fields.flatMap((field) => {
-        const value = field.props.value;
-        return value == null ? [] : [[field.props.name, value]];
+        const value = initialValue(field.props.value, context);
+        return value === undefined ? [] : [[field.props.name, value]];
       }),
     ),
   );
-  const [message, setMessage] = useState<string>();
-  if (node.kind !== "form") return null;
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const result = await client.executeAction({
-      ...node.props.action,
-      input: values,
-    });
-    setMessage(
-      result.status === "success"
-        ? "Action completed."
-        : (result.message ?? "Action failed"),
+  const [values, setValues] = useState(initial);
+  const host = useContext(FormHostContext);
+  // A form with fields has nothing to send until something differs.
+  const changed =
+    fields.length === 0 ||
+    fields.some(
+      (field) =>
+        (values[field.props.name] ?? "") !== (initial[field.props.name] ?? ""),
     );
+  useEffect(() => {
+    host?.setDirty(changed && fields.length > 0);
+  });
+  const { run, pending, failed, dialog } = useAction();
+  if (node.kind !== "form") return null;
+  const label = node.props.submitLabel ?? "Submit";
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    run({
+      id: `form:${node.props.action.actionId}`,
+      label,
+      perform: async () => {
+        const result = await client.executeAction({
+          ...node.props.action,
+          input: values,
+        });
+        if (result.status !== "success")
+          return result.message ?? "Action failed";
+        // In a dialog the list behind it shows the result. On a page the
+        // form often shows no effect of its own.
+        if (host) {
+          host.setDirty(false);
+          host.done();
+        } else notify.success(`${label}: done`);
+        return undefined;
+      },
+    });
   };
   return (
-    <Surface className="p-4">
+    <Surface className={host ? "border-0 bg-transparent p-0" : "p-4"}>
       <form className="grid gap-3" onSubmit={submit}>
         {fields.map((field) => (
           <Field
@@ -96,9 +137,9 @@ export default function ActionForm({ client, node }: RegistryViewProps) {
             label={field.props.label ?? field.props.name}
           >
             {field.kind === "select" ? (
-              <OptionSelect
+              <Select
                 name={field.props.name}
-                value={values[field.props.name] ?? field.props.value ?? ""}
+                value={values[field.props.name] ?? ""}
                 onValueChange={(value) =>
                   setValues({
                     ...values,
@@ -112,7 +153,7 @@ export default function ActionForm({ client, node }: RegistryViewProps) {
               <Input
                 name={field.props.name}
                 type={field.props.secret ? "password" : "text"}
-                value={values[field.props.name] ?? field.props.value ?? ""}
+                value={values[field.props.name] ?? ""}
                 placeholder={field.props.placeholder}
                 onChange={(event) =>
                   setValues({
@@ -124,15 +165,26 @@ export default function ActionForm({ client, node }: RegistryViewProps) {
             )}
           </Field>
         ))}
-        <div>
-          <Button type="submit">{node.props.submitLabel ?? "Submit"}</Button>
+        <div
+          className="flex justify-end gap-2 data-[page=true]:justify-start"
+          data-page={!host}
+        >
+          {host ? (
+            <Button type="button" variant="secondary" onClick={host.cancel}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button
+            type="submit"
+            disabled={pending || !changed}
+            aria-busy={pending}
+            data-state={failed ? "error" : undefined}
+          >
+            {label}
+          </Button>
         </div>
-        {message ? (
-          <p role="status" className="m-0 text-[12px] text-secondary">
-            {message}
-          </p>
-        ) : null}
       </form>
+      {dialog}
     </Surface>
   );
 }

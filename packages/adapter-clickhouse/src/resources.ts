@@ -33,6 +33,8 @@ export const databases = defineResource({
         },
       )
     ).rows,
+  // Watched, so the table also refreshes after a change made in a modal.
+  refresh: poll("30s"),
 });
 export const relations = defineResource({
   id: "relations",

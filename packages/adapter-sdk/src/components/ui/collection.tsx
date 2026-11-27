@@ -3,7 +3,7 @@ import { Surface } from "@northgraindata/dsui-ui";
 import { useEffect, useState } from "react";
 import type { CollectionNode } from "../primitives/collection";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
-import { keyedItems } from "./keyed-items";
+import { keyedRows, positioned } from "./keys";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -31,32 +31,43 @@ function CollectionContent({
   const [error, setError] = useState<string>();
   useEffect(() => {
     let active = true;
-    const resultPromise = node.props.source
-      ? client.executeResource(node.props.source)
+    const receive = (result: unknown) => {
+      if (!active) return;
+      if (result === undefined || result === null) setRows([]);
+      else if (Array.isArray(result))
+        setRows(
+          result.map((item) => (isRecord(item) ? item : { value: item })),
+        );
+      else {
+        setError("Could not load collection");
+        return;
+      }
+      setError(undefined);
+    };
+    const fail = (cause: unknown) => {
+      if (active)
+        setError(
+          cause instanceof Error ? cause.message : "Could not load collection",
+        );
+    };
+    const source = node.props.source;
+    // A polled source is watched, so its rows also refresh after an action.
+    if (source?.refresh?.kind === "poll" && client.watchResource) {
+      const unsubscribe = client.watchResource(source, receive, fail);
+      return () => {
+        active = false;
+        unsubscribe();
+      };
+    }
+    const resultPromise = source
+      ? client.executeResource(source)
       : Promise.resolve(resolve(context, node.props.field));
-    resultPromise
-      .then((result) => {
-        if (!active) return;
-        if (result === undefined || result === null) setRows([]);
-        else if (Array.isArray(result))
-          setRows(
-            result.map((item) => (isRecord(item) ? item : { value: item })),
-          );
-        else setError("Could not load collection");
-      })
-      .catch((cause) => {
-        if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Could not load collection",
-          );
-      });
+    resultPromise.then(receive).catch(fail);
     return () => {
       active = false;
     };
   }, [client, context, node.props.field, node.props.source]);
-  if (error)
+  if (error && !rows)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
         {error}
@@ -70,13 +81,10 @@ function CollectionContent({
     );
   if (!rows.length) return null;
   return (
-    <div className="layout-collection">
-      {keyedItems(rows).map(({ item: row, key: rowKey }) =>
-        keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
-          <div
-            className="layout-collection-item"
-            key={JSON.stringify([rowKey, key])}
-          >
+    <div className="dsui-collection">
+      {keyedRows(rows).map(({ item: row, key: rowKey }) =>
+        positioned(nodes(node.props.content)).map(({ item: child, key }) => (
+          <div className="dsui-collection-item" key={`${rowKey}/${key}`}>
             {renderNode(client, child, row)}
           </div>
         )),

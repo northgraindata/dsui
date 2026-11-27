@@ -1,5 +1,6 @@
 import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
+import type { LayoutGap } from "./stack";
 
 export interface ColumnsColumn {
   weight?: number;
@@ -8,6 +9,8 @@ export interface ColumnsColumn {
 
 export interface ColumnsProps {
   columns: readonly ColumnsColumn[];
+  /** Space between columns, and between the items inside each column. */
+  gap?: LayoutGap;
 }
 
 export interface ColumnsNode {

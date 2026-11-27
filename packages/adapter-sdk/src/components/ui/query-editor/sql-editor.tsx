@@ -220,10 +220,10 @@ export function SqlEditor({
       />
     );
   return (
-    <div className="sql-editor-wrap">
-      <div className="sql-editor" ref={element} />
+    <div className="dsui-sql-editor-wrap">
+      <div className="dsui-sql-editor" ref={element} />
       {placeholder && !value && (
-        <div className="sql-placeholder" aria-hidden="true">
+        <div className="dsui-sql-placeholder" aria-hidden="true">
           {placeholder}
         </div>
       )}

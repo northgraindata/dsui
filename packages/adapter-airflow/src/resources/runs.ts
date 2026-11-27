@@ -1,4 +1,10 @@
-import { defineResource, poll, z } from "@northgraindata/dsui-adapter-sdk";
+import {
+  defineResource,
+  pageInput,
+  poll,
+  z,
+} from "@northgraindata/dsui-adapter-sdk";
+import { confirmations } from "../confirmations.js";
 import type {
   AirflowContext,
   DagDetails,
@@ -6,6 +12,7 @@ import type {
   DagTask,
   TaskInstance,
 } from "../context.js";
+import { stateName, stateTone } from "../states.js";
 import { dagInput } from "./dags.js";
 import { formatRunTimestamp } from "./format.js";
 
@@ -26,38 +33,20 @@ export const taskTryInput = taskInstanceInput.extend({
 
 export const dagRuns = defineResource({
   id: "dag-runs",
-  input: dagInput,
-  query: async ({ dagId }, ctx: AirflowContext) =>
-    (await ctx.client.listDagRuns(dagId)).map(formatDagRunForTable),
+  input: pageInput.extend({
+    dagId: z.string().min(1),
+    state: z.enum(["", "queued", "running", "success", "failed"]).default(""),
+  }),
+  query: async ({ dagId, ...query }, ctx: AirflowContext) => {
+    const { items, total } = await ctx.client.listDagRunPage(dagId, query);
+    return { total, items: items.map(formatDagRunForTable) };
+  },
   refresh: poll("5s"),
 });
 
-export function runStateTone(state: string) {
-  switch (state.toLowerCase()) {
-    case "success":
-      return "healthy";
-    case "failed":
-    case "upstream_failed":
-      return "unavailable";
-    case "running":
-    case "queued":
-    case "scheduled":
-      return "info";
-    case "up_for_retry":
-    case "up_for_reschedule":
-    case "deferred":
-      return "warning";
-    default:
-      return "muted";
-  }
-}
+export const runStateTone = stateTone;
 
-/** Airflow states such as `upstream_failed`, as "Upstream failed". */
-export function stateLabel(state: string | null | undefined) {
-  if (!state || state === "none") return "Not run";
-  const words = state.replaceAll("_", " ").toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
+export const stateLabel = stateName;
 
 export function formatRunDuration(run: Pick<DagRun, "startDate" | "endDate">) {
   const start = Date.parse(run.startDate);
@@ -94,6 +83,16 @@ function displayRunId(run: DagRun) {
   return `${type} · ${formatRunTimestamp(run.runAfter || run.logicalDate)}`;
 }
 
+/** The one pause control that applies to a DAG in its current state. */
+export function pauseToggle(dagId: string, isPaused: boolean) {
+  const label: "Pause" | "Unpause" = isPaused ? "Unpause" : "Pause";
+  const actionId: "pause-dag" | "unpause-dag" = isPaused
+    ? "unpause-dag"
+    : "pause-dag";
+  const confirmation = isPaused ? confirmations.unpause : confirmations.pause;
+  return { label, action: { actionId, input: { dagId } }, confirmation };
+}
+
 export function buildDagOverview(dag: DagDetails, runs: readonly DagRun[]) {
   const states = runs.map((run) => run.state.toLowerCase());
   return {
@@ -105,6 +104,7 @@ export function buildDagOverview(dag: DagDetails, runs: readonly DagRun[]) {
     failedRuns: states.filter((state) => state === "failed").length,
     runningRuns: states.filter((state) => state === "running").length,
     lastRunDuration: runs[0] ? formatRunDuration(runs[0]) : "—",
+    pauseToggle: pauseToggle(dag.dagId, dag.isPaused),
   };
 }
 

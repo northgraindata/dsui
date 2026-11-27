@@ -1,0 +1,21 @@
+@keyframes dependency-graph-running-border {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+.dependency-graph__running-border {
+  animation: dependency-graph-running-border 1.1s linear infinite;
+}
+
+.dependency-graph__node--running {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent),
+    0 8px 22px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dependency-graph__running-border {
+    animation: none;
+  }
+}

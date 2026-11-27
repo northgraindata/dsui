@@ -1,0 +1,35 @@
+/* Hosts exist only while the redesign is shown; the current pages hide. */
+html[data-design="new"] .adapter-pages,
+html[data-design="new"] .adapter-main > :not(.ax-embedded-main) {
+  display: none !important;
+}
+
+.ax-embedded-main {
+  min-height: 100%;
+  background: radial-gradient(
+    900px 340px at 75% -80px,
+    color-mix(in srgb, var(--color-accent) 17%, transparent),
+    transparent
+  );
+}
+
+.ax-sidebar.ax-embedded-nav {
+  flex: 1;
+  min-height: 0;
+  padding: 0 10px 16px;
+  border: 0;
+  background: none;
+}
+
+/* The narrow rail keeps only the artwork. */
+.app-chrome[data-sidebar="collapsed"] .ax-embedded-nav :is(p, span, b),
+.app-chrome[data-sidebar="collapsed"] .ax-embedded-nav .ax-sub,
+.app-chrome[data-sidebar="collapsed"]
+  .ax-embedded-nav
+  :is(.s3-switch, .s3-transfers),
+.app-chrome[data-sidebar="collapsed"]
+  .ax-embedded-nav
+  nav
+  > div:last-child:not(.s3-open-bucket) {
+  display: none;
+}

@@ -90,6 +90,34 @@ export function createComponents(React: typeof import("react")) {
 }
 ```
 
+DSUI also passes React DOM and its shared controls. Take controls from this third argument, and import only their types. A control you import would bring a second copy of React into your bundle, and React fails when a page has two.
+
+```ts
+import type { UiKit } from "@northgraindata/dsui-adapter-sdk";
+
+export function createComponents(
+  React: typeof import("react"),
+  _ReactDOM: unknown,
+  ui: UiKit,
+) {
+  return {
+    "my-adapter/engine": () =>
+      React.createElement(ui.Select, {
+        ariaLabel: "Engine",
+        options: [{ value: "duckdb", label: "DuckDB" }],
+      }),
+  };
+}
+```
+
+`ui` holds these controls:
+
+- **`Select`**: a picker. Its `variant` is `"default"` or `"ghost"`, and its `size` is `"default"` or `"small"`.
+- **`Tooltip`**: names what an icon means, on hover and keyboard focus.
+- **`Menu`**: secondary actions. It lists destructive items last.
+- **`ConfirmDialog`**: asks before an action with consequences.
+- **`notify`**: shows a toast. An error toast stays until you dismiss it.
+
 Point to the entry from `package.json`:
 
 ```json

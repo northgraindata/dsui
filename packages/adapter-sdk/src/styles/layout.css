@@ -1,0 +1,130 @@
+/*
+ * Layout contract: containers own the space between their children, components
+ * own their padding, and nothing sets an outer margin.
+ */
+
+/* The root of a rendered page is the container page content responds to. */
+.dsui-page {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  container: dsui-page / inline-size;
+}
+.dsui-stack,
+.dsui-grid {
+  display: grid;
+  min-width: 0;
+}
+.dsui-flex {
+  display: flex;
+  min-width: 0;
+}
+.dsui-item {
+  min-width: 0;
+}
+.dsui-stack[data-gap="none"],
+.dsui-grid[data-gap="none"],
+.dsui-flex[data-gap="none"],
+.dsui-columns[data-gap="none"],
+.dsui-column[data-gap="none"] {
+  --dsui-gap: 0px;
+  gap: var(--dsui-gap);
+}
+.dsui-stack[data-gap="sm"],
+.dsui-grid[data-gap="sm"],
+.dsui-flex[data-gap="sm"],
+.dsui-columns[data-gap="sm"],
+.dsui-column[data-gap="sm"] {
+  --dsui-gap: var(--spacing-inline);
+  gap: var(--dsui-gap);
+}
+.dsui-stack[data-gap="md"],
+.dsui-grid[data-gap="md"],
+.dsui-flex[data-gap="md"],
+.dsui-columns[data-gap="md"],
+.dsui-column[data-gap="md"] {
+  --dsui-gap: var(--spacing-component);
+  gap: var(--dsui-gap);
+}
+.dsui-stack[data-gap="lg"],
+.dsui-grid[data-gap="lg"],
+.dsui-flex[data-gap="lg"],
+.dsui-columns[data-gap="lg"],
+.dsui-column[data-gap="lg"] {
+  --dsui-gap: var(--spacing-section);
+  gap: var(--dsui-gap);
+}
+.dsui-grid {
+  --dsui-min-column: 18rem;
+  grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, var(--dsui-min-column)), 1fr)
+    );
+}
+.dsui-grid[data-min-column="sm"] {
+  --dsui-min-column: 150px;
+}
+/*
+ * A column count is an upper bound: each track takes an equal share until that
+ * share drops below the minimum width, then the grid wraps.
+ */
+.dsui-grid[data-columns] {
+  grid-template-columns: repeat(
+      auto-fill,
+      minmax(
+        max(
+          min(100%, var(--dsui-min-column)),
+          calc(
+            (100% - (var(--dsui-grid-columns) - 1) * var(--dsui-gap)) /
+            var(--dsui-grid-columns)
+          )
+        ),
+        1fr
+      )
+    );
+}
+.dsui-collection {
+  display: grid;
+  gap: var(--spacing-compact);
+}
+.dsui-collection-item {
+  min-width: 0;
+}
+.dsui-transparent {
+  display: contents;
+}
+.dsui-transparent > .dsui-collection {
+  display: contents;
+}
+.dsui-flex[data-direction="column"] {
+  flex-direction: column;
+}
+.dsui-flex[data-direction="row"] {
+  flex-direction: row;
+}
+.dsui-flex[data-align="start"] {
+  align-items: flex-start;
+}
+.dsui-flex[data-align="center"] {
+  align-items: center;
+}
+.dsui-flex[data-align="end"] {
+  align-items: flex-end;
+}
+.dsui-flex[data-align="stretch"] {
+  align-items: stretch;
+}
+.dsui-flex[data-justify="start"] {
+  justify-content: flex-start;
+}
+.dsui-flex[data-justify="center"] {
+  justify-content: center;
+}
+.dsui-flex[data-justify="end"] {
+  justify-content: flex-end;
+}
+.dsui-flex[data-justify="between"] {
+  justify-content: space-between;
+}
+.dsui-flex[data-wrap="true"] {
+  flex-wrap: wrap;
+}

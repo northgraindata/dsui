@@ -16,6 +16,7 @@ export const overviewPage = definePage({
   path: "/",
   render: () => [
     Grid({
+      minColumnWidth: "sm",
       columns: 4,
       content: [
         Card({
@@ -71,7 +72,6 @@ export const overviewPage = definePage({
             content: List({
               source: overviewDags(),
               noun: "DAG",
-              searchable: true,
               item: {
                 icon: "network",
                 title: "name",

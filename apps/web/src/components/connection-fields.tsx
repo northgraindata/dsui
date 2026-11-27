@@ -1,4 +1,4 @@
-import { Input, OptionSelect, SuggestInput } from "@northgraindata/dsui-ui";
+import { Input, Select, SuggestInput } from "@northgraindata/dsui-ui";
 import { useId } from "react";
 import type { Field, SecretProvider, SecretReference } from "../api";
 import { Icon } from "./icon";
@@ -70,7 +70,7 @@ function ReferenceInput({
   return (
     <>
       {providers.length > 1 && (
-        <OptionSelect
+        <Select
           id={`${id}-provider`}
           ariaLabel="Secret manager"
           value={reference.provider}
@@ -212,7 +212,7 @@ export function ConnectionFields({
         {referenceInput ?? (
           <>
             {field.type === "select" ? (
-              <OptionSelect
+              <Select
                 id={id}
                 value={values[field.key] ?? ""}
                 required={field.required}

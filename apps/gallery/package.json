@@ -1,0 +1,32 @@
+{
+  "name": "@northgraindata/dsui-gallery",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "gallery": "vite",
+    "preview:gallery": "vite build && vite preview",
+    "test:ui": "playwright test",
+    "test": "bun test src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@northgraindata/dsui-adapter-sdk": "workspace:*",
+    "@northgraindata/dsui-core": "workspace:*",
+    "@northgraindata/dsui-renderer": "workspace:*",
+    "@northgraindata/dsui-ui": "workspace:*",
+    "@northgraindata/dsui-ui-fixtures": "workspace:*",
+    "@tailwindcss/vite": "^4.1.13",
+    "@vitejs/plugin-react": "^5.0.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.2"
+  }
+}

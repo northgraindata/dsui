@@ -30,14 +30,14 @@ export function QueryResults({
   return (
     <section
       ref={container}
-      className="query-results"
+      className="dsui-query-results"
       data-dsui-overlay-target="query.results"
       aria-label="Query results"
       aria-busy={running}
     >
-      <header className="results-toolbar">
+      <header className="dsui-results-toolbar">
         <div
-          className="result-view-tabs"
+          className="dsui-result-view-tabs"
           role="tablist"
           aria-label="Result view"
         >
@@ -55,7 +55,7 @@ export function QueryResults({
             </button>
           ))}
         </div>
-        <span className="query-status" role="status">
+        <span className="dsui-query-status" role="status">
           {running
             ? "Running…"
             : error
@@ -67,7 +67,7 @@ export function QueryResults({
         </span>
         <Button
           variant="secondary"
-          className="export-query"
+          className="dsui-export-query"
           onClick={exportCsv}
           disabled={!result || !!error || running}
         >
@@ -91,18 +91,18 @@ export function QueryResults({
         </Button>
       </header>
       {displayError && (
-        <p className="query-error" role="alert">
+        <p className="dsui-query-error" role="alert">
           {displayError}
         </p>
       )}
       {error && (
-        <p className="query-error" role="alert">
+        <p className="dsui-query-error" role="alert">
           {error}
         </p>
       )}
       {tab === "chart" ? (
         <div
-          className="query-empty"
+          className="dsui-query-empty"
           id="query-chart-panel"
           role="tabpanel"
           aria-labelledby="query-chart-tab"
@@ -116,16 +116,16 @@ export function QueryResults({
         </div>
       ) : (
         <div
-          className="query-result-body"
+          className="dsui-query-result-body"
           id="query-results-panel"
           role="tabpanel"
           aria-labelledby="query-results-tab"
         >
-          <div className="query-table-scroll">
+          <div className="dsui-query-table-scroll">
             {result && !error ? (
               <DataTable columns={result.columns} rows={result.rows} />
             ) : (
-              <div className="query-empty">
+              <div className="dsui-query-empty">
                 <WorkbenchIcon name="play" size={28} />
                 <h2>{error ? "Review your query" : "Ready when you are"}</h2>
                 <p>
@@ -137,7 +137,7 @@ export function QueryResults({
               </div>
             )}
             {result && !error && !result.rows.length && (
-              <p className="query-empty-message">
+              <p className="dsui-query-empty-message">
                 {result.rowsChanged !== undefined
                   ? `${result.rowsChanged} rows changed.`
                   : "Query completed. No rows returned."}

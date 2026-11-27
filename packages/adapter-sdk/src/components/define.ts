@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { PageNode } from "./nodes";
+import { serializeNodes } from "./serialize";
 
 /** Props for a browser component reference. */
 export interface ComponentReferenceProps {
@@ -35,8 +36,21 @@ function browserProps(value: unknown): unknown {
       ...("input" in record ? { input: browserProps(record.input) } : {}),
     };
   return Object.fromEntries(
-    Object.entries(record).map(([key, item]) => [key, browserProps(item)]),
+    Object.entries(record).map(([key, item]) => [
+      key,
+      // A dialog holds page nodes, which need the page protocol.
+      key === "dialog" && item && typeof item === "object"
+        ? dialogProps(item as Record<string, unknown>)
+        : browserProps(item),
+    ]),
   );
+}
+
+function dialogProps(spec: Record<string, unknown>): unknown {
+  return {
+    ...spec,
+    content: serializeNodes(spec.content as PageNode | readonly PageNode[]),
+  };
 }
 
 /**

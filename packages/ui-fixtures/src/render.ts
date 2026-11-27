@@ -1,0 +1,136 @@
+import {
+  type AdapterDefinition,
+  type PageNode,
+  serializeNodes,
+} from "@northgraindata/dsui-adapter-sdk";
+// The runtime is not public SDK API; fixtures reuse it so pages see real stores.
+import { createPageScope, StoreRegistry } from "../../adapter-sdk/src/runtime";
+import type { AdapterFixtures } from "./types";
+
+type AnyAdapter = Pick<
+  AdapterDefinition<unknown, unknown>,
+  "metadata" | "pages" | "resources" | "stores"
+>;
+
+export function pageSlug(path: string): string {
+  return path === "/"
+    ? "index"
+    : path.slice(1).replaceAll(":", "_").replaceAll("/", "~");
+}
+
+/** The concrete URL a fixture page stands for inside the application. */
+export function pageHref(path: string, fixtures: AdapterFixtures): string {
+  const params = pageParams(path, fixtures);
+  const concrete = path.replace(/:([A-Za-z0-9_]+)/g, (_, name: string) =>
+    encodeURIComponent(params[name] ?? ""),
+  );
+  const query = fixtures.queries?.[path];
+  return query ? `${concrete}?${query}` : concrete;
+}
+
+function pageParams(
+  path: string,
+  fixtures: AdapterFixtures,
+): Record<string, string> {
+  return Object.fromEntries(
+    [...path.matchAll(/:([A-Za-z0-9_]+)/g)].map((match) => {
+      const name = match[1] ?? "";
+      return [name, fixtures.params?.[name] ?? `sample_${name}`];
+    }),
+  );
+}
+
+/** Renders one adapter page exactly as the server does, without a connection. */
+export async function renderPage(
+  adapter: AnyAdapter,
+  path: string,
+  fixtures: AdapterFixtures,
+  /** Renders a particular URL instead of the fixture's default one. */
+  location?: { params: Record<string, string>; query: string },
+): Promise<readonly PageNode[]> {
+  const page = adapter.pages.find((candidate) => candidate.path === path);
+  if (!page) throw new Error(`Unknown page ${path}`);
+  const registry = new StoreRegistry(adapter);
+  const scope = createPageScope(
+    registry,
+    page,
+    location?.params ?? pageParams(path, fixtures),
+    new URLSearchParams(location?.query ?? fixtures.queries?.[path] ?? ""),
+  );
+  try {
+    await registry.ready();
+    await scope.ready();
+    return serializeNodes(scope.render());
+  } finally {
+    scope.dispose();
+    registry.dispose();
+  }
+}
+
+/** Row keys a node reads: its table columns, or the single field it shows. */
+function requestedKeys(record: Record<string, unknown>): string[] {
+  const columns = Array.isArray(record.columns)
+    ? (record.columns as { id?: unknown }[]).map((column) => column.id)
+    : [];
+  return [...columns, record.field].filter(
+    (key): key is string => typeof key === "string",
+  );
+}
+
+/**
+ * Collects the column ids that pages ask each resource for, so rows without a
+ * declared shape still fill the columns on screen.
+ */
+export function collectColumns(
+  value: unknown,
+  into: Map<string, Set<string>>,
+): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectColumns(item, into);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  const source = record.source as { resourceId?: unknown } | undefined;
+  if (typeof source?.resourceId === "string") {
+    const wanted = requestedKeys(record);
+    if (wanted.length) {
+      const columns = into.get(source.resourceId) ?? new Set<string>();
+      for (const key of wanted) columns.add(key);
+      into.set(source.resourceId, columns);
+    }
+  }
+  for (const item of Object.values(record)) collectColumns(item, into);
+}
+
+function containsPageHeader(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(containsPageHeader);
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  if (record.kind === "page-header") return true;
+  return Object.values(record).some(containsPageHeader);
+}
+
+/**
+ * Detail pages repeat themselves once per row of a collection that wraps their
+ * header. Those resources describe one object, so they must never return more.
+ */
+export function collectSingletons(value: unknown, into: Set<string>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectSingletons(item, into);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const node = value as {
+    kind?: unknown;
+    props?: { source?: { resourceId?: unknown }; content?: unknown };
+  };
+  const resourceId = node.props?.source?.resourceId;
+  if (
+    node.kind === "collection" &&
+    typeof resourceId === "string" &&
+    containsPageHeader(node.props?.content)
+  )
+    into.add(resourceId);
+  for (const item of Object.values(value)) collectSingletons(item, into);
+}

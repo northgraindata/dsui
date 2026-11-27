@@ -1,0 +1,44 @@
+.dsui-code-block h3 {
+  margin: 0 0 8px;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+.dsui-code-block > div {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-canvas);
+}
+.dsui-code-block pre {
+  margin: 0;
+  overflow: auto;
+  padding: 12px;
+  color: var(--color-secondary);
+  font: 11px / 1.7 var(--font-mono);
+  white-space: pre-wrap;
+}
+.dsui-code-keyword {
+  color: var(--color-syntax-type);
+}
+.dsui-code-string {
+  color: var(--color-syntax-decorator);
+}
+.dsui-code-comment {
+  color: var(--color-muted);
+}
+.dsui-code-number,
+.dsui-code-constant {
+  color: var(--color-syntax-constant);
+}
+.dsui-code-decorator {
+  color: var(--color-syntax-success);
+}
+.dsui-code-block button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.dsui-code-block + .dsui-code-block {
+  margin-top: 12px;
+}

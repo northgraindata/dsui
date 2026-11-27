@@ -3,7 +3,7 @@ import { Surface } from "@northgraindata/dsui-ui";
 import { Fragment, useEffect, useState } from "react";
 import type { ResourceNode } from "../primitives/resource";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
-import { keyedItems } from "./keyed-items";
+import { positioned } from "./keys";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -37,27 +37,29 @@ function ResourceContent({
         setError(undefined);
       } else setError("Could not load resource");
     };
+    const fail = (cause: unknown) => {
+      if (active)
+        setError(
+          cause instanceof Error ? cause.message : "Could not load resource",
+        );
+    };
     if (node.props.source.refresh?.kind === "poll" && client.watchResource) {
-      const unsubscribe = client.watchResource(node.props.source, receive);
+      const unsubscribe = client.watchResource(
+        node.props.source,
+        receive,
+        fail,
+      );
       return () => {
         active = false;
         unsubscribe();
       };
     }
-    client
-      .executeResource(node.props.source)
-      .then(receive)
-      .catch((cause) => {
-        if (active)
-          setError(
-            cause instanceof Error ? cause.message : "Could not load resource",
-          );
-      });
+    client.executeResource(node.props.source).then(receive).catch(fail);
     return () => {
       active = false;
     };
   }, [client, node.props.source]);
-  if (error)
+  if (error && !data)
     return (
       <Surface className="p-4 text-[12px] text-unavailable" role="alert">
         {error}
@@ -71,7 +73,7 @@ function ResourceContent({
     );
   return (
     <>
-      {keyedItems(nodes(node.props.content)).map(({ item: child, key }) => (
+      {positioned(nodes(node.props.content)).map(({ item: child, key }) => (
         <Fragment key={key}>{renderNode(client, child, data)}</Fragment>
       ))}
     </>

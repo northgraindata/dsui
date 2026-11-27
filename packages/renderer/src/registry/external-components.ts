@@ -1,3 +1,4 @@
+import { type UiKit, uiKit } from "@northgraindata/dsui-ui";
 import type { ComponentType } from "react";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
@@ -9,6 +10,7 @@ type ComponentBundle = {
   createComponents?: (
     react: typeof React,
     reactDOM: typeof ReactDOM,
+    ui: UiKit,
   ) => Record<string, ComponentType<ComponentProps>>;
 };
 
@@ -36,7 +38,7 @@ export function loadExternalComponent(
   return bundle
     .then((module) => {
       const components = module.createComponents
-        ? module.createComponents(React, ReactDOM)
+        ? module.createComponents(React, ReactDOM, uiKit)
         : (module.default ?? module.components);
       if (components) return components[componentId] ?? null;
       const legacy = Object.getOwnPropertyDescriptor(

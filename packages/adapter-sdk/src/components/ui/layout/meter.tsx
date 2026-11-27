@@ -146,15 +146,15 @@ export function Meter({
       ? formatValue(total)
       : `${formatValue(legendTotal)} / ${formatValue(total)}`;
   return (
-    <div className="ov-meter">
-      <div className="ov-meter-head">
+    <div className="dsui-meter">
+      <div className="dsui-meter-head">
         <span>{header}</span>
       </div>
-      <div className="ov-meter-bar" aria-hidden="true">
+      <div className="dsui-meter-bar" aria-hidden="true">
         {displayed.segments.map((segment) => (
           <span
             key={segment.label}
-            className="ov-meter-seg"
+            className="dsui-meter-seg"
             data-tone={segment.tone ?? "info"}
             style={{
               width: `${total > 0 ? (segment.value / total) * 100 : 0}%`,
@@ -162,24 +162,26 @@ export function Meter({
           />
         ))}
       </div>
-      <ul className="ov-meter-legend">
+      <ul className="dsui-meter-legend">
         {legend.map((segment) => (
           <li key={segment.label}>
             <span
-              className="ov-meter-dot"
+              className="dsui-meter-dot"
               data-tone={segment.tone ?? "info"}
               aria-hidden="true"
             />
-            <span className="ov-meter-label">{segment.label}</span>
-            <span className="ov-meter-value">{formatValue(segment.value)}</span>
-            <span className="ov-meter-pct">
+            <span className="dsui-meter-label">{segment.label}</span>
+            <span className="dsui-meter-value">
+              {formatValue(segment.value)}
+            </span>
+            <span className="dsui-meter-pct">
               {total > 0 ? Math.round((segment.value / total) * 100) : 0}%
             </span>
           </li>
         ))}
       </ul>
       {displayed.footer ? (
-        <p className="ov-meter-foot">{displayed.footer}</p>
+        <p className="dsui-meter-foot">{displayed.footer}</p>
       ) : null}
     </div>
   );

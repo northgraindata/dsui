@@ -4,6 +4,7 @@ import type {
   TableRowLink,
 } from "@northgraindata/dsui-adapter-sdk";
 import { resolveLink } from "@northgraindata/dsui-adapter-sdk/components/ui/table";
+import { usePropState } from "@northgraindata/dsui-adapter-sdk/components/ui/use-prop-state";
 import { cn, Surface } from "@northgraindata/dsui-ui";
 import {
   Fragment,
@@ -85,8 +86,8 @@ const CANVAS_GRID = {
 type Size = GraphSize;
 type Offset = GraphOffset;
 
-function plural(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+function plural(count: number, noun: string, many = `${noun}s`) {
+  return `${count} ${count === 1 ? noun : many}`;
 }
 
 /**
@@ -717,7 +718,7 @@ function GraphBoard({
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-raised px-4 py-2">
         <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted">
           {plural(layout.nodes.length, "node")} ·{" "}
-          {plural(layout.edges.length, "dependency")}
+          {plural(layout.edges.length, "dependency", "dependencies")}
         </span>
         {stateSummary.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -917,7 +918,7 @@ function DependencyGraphContent({
     idField: "id",
     dependsOnField: "dependsOn",
   };
-  const [data, setData] = useState<unknown>(props.data);
+  const [data, setData] = usePropState<unknown>(props.data);
   const [error, setError] = useState<string>();
   const cachedLayoutRef = useRef<{
     topologyKey: string;

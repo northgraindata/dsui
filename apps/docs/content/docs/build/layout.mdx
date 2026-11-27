@@ -1,0 +1,55 @@
+---
+title: Lay out adapter pages
+description: Layout containers own the space between components, and pages respond to their own width. Follow these rules so a page works full screen and in a split workspace.
+contentType: conceptual
+---
+
+Layout containers own the space between components, and pages respond to their own width. Follow these rules so a page works full screen and in a split workspace.
+
+## Who owns spacing
+
+Each part of a page controls one kind of space:
+
+- **Containers**: `Stack`, `Flex`, `Grid`, and `Columns` set the gaps between their children.
+- **Components**: a card or section sets its own padding.
+- **Children**: a child never changes the gap that its container declares.
+
+All containers accept the same `gap` values. `sm` is 8 px, `md` is 16 px, `lg` is 24 px, and `none` removes the gap. `md` is the default.
+
+`PageHeader` is the one exception. It keeps a bottom margin that separates it from the page body.
+
+## Data-binding components
+
+`Collection` and `Resource` fetch data and repeat or fill their content. A layout container ignores their wrapper, so the items they render become direct layout items.
+
+This grid places 1 card per database, with the grid's own gap between cards:
+
+```ts
+Grid({
+  columns: 2,
+  content: Collection({
+    source: databaseCards(),
+    content: Card({ title: { field: "name" } }),
+  }),
+});
+```
+
+## Responsive behavior
+
+A page measures its own container, not the browser window. A split workspace halves the width of each page while the window stays the same size.
+
+The built-in components adapt without any settings:
+
+- `Grid` wraps when a column would get narrower than `minColumnWidth`.
+- `Columns` stacks in containers narrower than 720 px.
+- `SplitPane` stacks in containers narrower than 600 px and shows a button that opens its sidebar.
+
+Set `minColumnWidth: "sm"` on a grid of metric tiles. The default suits panels and gives metric tiles too few columns.
+
+## Long values
+
+Names, paths, and error messages can be longer than their container. Built-in text wraps, badges truncate, and tables scroll inside their own box. The page itself never scrolls sideways.
+
+## Custom components
+
+An external adapter's browser bundle can't ship CSS, because DSUI excludes `.css` imports from the bundle. Compose built-in components, which arrive styled. If you build a [custom component](/docs/build/custom-components), use inline styles with the `--color-*` variables.

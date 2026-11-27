@@ -5,6 +5,7 @@
     "building-blocks",
     "custom-components",
     "components",
+    "layout",
     "compatibility"
   ]
 }

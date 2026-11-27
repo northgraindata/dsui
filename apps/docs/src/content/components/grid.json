@@ -1,16 +1,19 @@
 {
   "name": "Grid",
-  "description": "CSS grid with 1-6 columns.",
+  "description": "Wrapping grid of equal-width columns.",
   "props": {
     "content": {
       "description": "Child nodes"
     },
     "columns": {
-      "description": "Number of grid columns",
-      "default": "1"
+      "description": "Most columns to show, from 1 to 6. The grid uses fewer when they would get narrower than `minColumnWidth`."
     },
     "gap": {
-      "description": "Spacing between items",
+      "description": "Spacing between items: `none`, `sm` (8 px), `md` (16 px), or `lg` (24 px).",
+      "default": "\"md\""
+    },
+    "minColumnWidth": {
+      "description": "Narrowest column before the grid wraps. Use `\"sm\"` (150 px) for metric tiles and `\"md\"` (288 px) for panels.",
       "default": "\"md\""
     }
   },

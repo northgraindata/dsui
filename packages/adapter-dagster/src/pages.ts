@@ -190,6 +190,7 @@ export const overviewPage = definePage({
   path: "/",
   render: () => [
     Grid({
+      minColumnWidth: "sm",
       columns: 4,
       content: [
         metric("layers", "Assets", "totalAssets"),

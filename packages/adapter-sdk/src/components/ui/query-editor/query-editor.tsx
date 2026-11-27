@@ -1,8 +1,9 @@
-import { OptionSelect } from "@northgraindata/dsui-ui";
+import { Select } from "@northgraindata/dsui-ui";
 import { useEffect, useRef, useState } from "react";
 import type { QueryEditorProps } from "../../primitives/query-editor";
 import { type ComponentProps, componentProps } from "../../runtime";
 import { ResourceTree } from "../resource-tree";
+import { usePropState } from "../use-prop-state";
 import { identifierInsertion, qualifiedSqlName } from "./query-explorer";
 import { QueryToolbar } from "./query-toolbar";
 import { QueryResults } from "./results";
@@ -33,7 +34,9 @@ function QueryEditorContent({
 }) {
   const baseAction = actionReference(props.action);
   const [databases, setDatabases] = useState<{ name: string }[]>([]);
-  const [database, setDatabase] = useState(props.database?.initialValue ?? "");
+  const [database, setDatabase] = usePropState(
+    props.database?.initialValue ?? "",
+  );
   useEffect(() => {
     if (!props.database) return;
     let active = true;
@@ -88,7 +91,7 @@ function QueryEditorContent({
     : undefined;
   return (
     <section
-      className={`query-workspace ${explorerNode ? "query-workspace--with-explorer" : ""}`}
+      className={`dsui-query-workspace ${explorerNode ? "query-workspace--with-explorer" : ""}`}
       aria-label="Query workspace"
     >
       {explorerNode && (
@@ -115,13 +118,13 @@ function QueryEditorContent({
       )}
       <div className="query-workspace-main">
         <div
-          className="query-editor-panel"
+          className="dsui-query-editor-panel"
           data-dsui-overlay-target="query.editor"
         >
           {props.database ? (
             <div className="query-database-picker">
               <span>{props.database.label ?? "Database"}</span>
-              <OptionSelect
+              <Select
                 ariaLabel={props.database.label ?? "Database"}
                 value={database}
                 placeholder="Configured database"

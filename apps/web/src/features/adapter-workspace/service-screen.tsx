@@ -192,7 +192,7 @@ export function ServiceScreen({
                   reference.input,
                 )
               ).data,
-            watchResource: (reference, listener) => {
+            watchResource: (reference, listener, onError) => {
               let active = true;
               let running = false;
               // Only resources that declare `poll` refresh on a timer; the rest
@@ -214,6 +214,8 @@ export function ServiceScreen({
                       )
                     ).data,
                   );
+                } catch (cause) {
+                  onError?.(cause);
                 } finally {
                   running = false;
                 }

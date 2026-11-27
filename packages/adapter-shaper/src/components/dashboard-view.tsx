@@ -383,9 +383,15 @@ export default function ShaperDashboardView({
   };
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr)",
+        gap: 16,
+      }}
+    >
       <header style={headerStyle}>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
           <button
             type="button"
             style={backStyle}
@@ -475,7 +481,7 @@ export default function ShaperDashboardView({
       {view?.sections.map((section, at) => (
         // Sections have no ids; the order is the layout.
         // biome-ignore lint/suspicious/noArrayIndexKey: see above
-        <section key={at} style={{ display: "grid", gap: 10 }}>
+        <section key={at} style={sectionStyle}>
           {section.title ? (
             <h3 style={sectionHeading}>{section.title}</h3>
           ) : null}
@@ -488,6 +494,8 @@ export default function ShaperDashboardView({
                 key={key}
                 style={{
                   ...cardStyle,
+                  minWidth: 0,
+                  overflow: "auto",
                   alignSelf: "start",
                   gridColumn: wide(block) ? "1 / -1" : undefined,
                 }}
@@ -508,6 +516,13 @@ const toolbarStyle = {
   flexWrap: "wrap",
   alignItems: "flex-end",
   gap: 10,
+} as const;
+/* Titles and values are data: they wrap instead of widening the dashboard. */
+const sectionStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr)",
+  gap: 10,
+  overflowWrap: "anywhere",
 } as const;
 const gridStyle = {
   display: "grid",

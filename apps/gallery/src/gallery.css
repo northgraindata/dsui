@@ -1,0 +1,56 @@
+.gallery-frame {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The product's split workspace sits beside the collapsed navigation rail. */
+.gallery-split {
+  display: flex;
+  height: 100dvh;
+  padding-left: 64px;
+}
+
+.gallery-split .adapter-pane-grid > * {
+  min-width: 0;
+  overflow: auto;
+}
+
+.gallery-index {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.gallery-index li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gallery-index code {
+  min-width: 340px;
+}
+
+.gallery-index a {
+  color: var(--color-accent-hover);
+}
+
+.gallery-index h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gallery-logo {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  object-fit: contain;
+}
+
+.gallery-redesign {
+  margin-left: 10px;
+  color: var(--color-accent-hover);
+  font-size: 12px;
+  font-weight: 400;
+}

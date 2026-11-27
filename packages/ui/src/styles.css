@@ -1,7 +1,11 @@
 @import "tailwindcss";
 @source "./";
 
-@theme {
+/*
+ * `static` emits every token even when no utility uses it: component
+ * stylesheets outside this compilation read them with var().
+ */
+@theme static {
   /* Shared with the site's navy / electric-blue visual language. */
   --color-canvas: #040813;
   --color-background: #060b16;
@@ -23,6 +27,43 @@
   --color-danger-foreground: #fecdd3;
   --color-unknown: #8491aa;
   --color-overlay: #02050d;
+  /* Controls, text steps, data accents and syntax highlighting. */
+  --color-control: #0d1b2f;
+  --color-control-hover: #142942;
+  --color-control-active: #17365c;
+  --color-inset: #0a1729;
+  --color-control-border: #29496e;
+  --color-control-border-strong: #315f9b;
+  --color-focus: #3b82e8;
+  --color-text-bright: #dceaff;
+  --color-text-soft: #bed2f5;
+  --color-text-subtle: #93a9ca;
+  --color-text-faint: #6c83a7;
+  --color-text-link: #74abff;
+  --color-text-info: #8fd7ff;
+  --color-info: #35a8e6;
+  --color-success: #0fe39a;
+  --color-success-surface: #05342f;
+  --color-warning-surface: #33280f;
+  --color-danger-soft: #f08d8d;
+  --color-syntax-keyword: #3294ff;
+  --color-syntax-type: #31bcff;
+  --color-syntax-string: #a3b989;
+  --color-syntax-number: #dbca69;
+  --color-syntax-constant: #c99cff;
+  --color-syntax-decorator: #eae583;
+  --color-syntax-success: #70d6b2;
+  --color-action: #245df6;
+  --color-action-strong: #164aff;
+  --color-selected: #15295a;
+  --color-shadow-soft: #00000088;
+  --color-shadow-strong: #000000bb;
+  /* Spacing between and inside components. */
+  --spacing-inline: 8px;
+  --spacing-component: 16px;
+  --spacing-section: 24px;
+  --spacing-compact: 12px;
+  --spacing-card: 16px;
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -78,139 +119,354 @@
   }
 }
 
-/* Keep picker rules unlayered so plugin styles cannot override its menu. */
-.dsui-option-select {
+/*
+ * The select is styled outside Tailwind's layers on purpose: extension
+ * stylesheets are unlayered, so a rule such as `.some-form button` would beat
+ * any utility class. A new look is a new `data-variant` here.
+ */
+.dsui-select {
   position: relative;
   min-width: 0;
 }
-.dsui-option-select .dsui-option-select-trigger {
+.dsui-select .dsui-select-trigger {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 36px;
+  min-height: 34px;
   margin: 0;
-  padding: 6px 9px;
-  border: 1px solid #29496e;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
-  background: #101e34;
-  color: #dceaff;
+  background: var(--color-surface);
+  color: var(--color-primary);
   font-size: 12px;
   text-align: left;
 }
-.dsui-option-select .dsui-option-select-trigger:hover:not(:disabled),
-.dsui-option-select .dsui-option-select-trigger[aria-expanded="true"] {
-  border-color: #428af0;
-  background: #15305a;
+.dsui-select .dsui-select-trigger:hover:not(:disabled),
+.dsui-select .dsui-select-trigger[data-state="open"] {
+  border-color: var(--color-focus);
 }
-.dsui-option-select-trigger:disabled {
+.dsui-select-trigger:disabled {
   opacity: 0.5;
 }
-.dsui-option-select-trigger-label {
+.dsui-select-trigger-label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dsui-option-select-trigger > svg:last-child {
+.dsui-select-trigger > svg:last-child {
   flex: none;
   width: 15px;
   height: 15px;
-  color: #8fafda;
+  color: var(--color-text-subtle);
 }
-.dsui-option-select-icon {
+.dsui-select-icon {
   display: grid;
   flex: none;
   place-items: center;
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: #17345b;
-  color: #d9ebff;
+  background: var(--color-control-active);
+  color: var(--color-text-bright);
 }
-.dsui-option-select-icon img,
-.dsui-option-select-icon svg {
+.dsui-select-icon img,
+.dsui-select-icon svg {
   width: 17px;
   height: 17px;
   object-fit: contain;
 }
-.dsui-option-select-native {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-.dsui-option-select-menu:popover-open {
-  position: fixed;
+.dsui-select-menu {
   z-index: 1000;
   box-sizing: border-box;
-  inset: auto;
-  margin: 0;
-  overflow-y: auto;
-  padding: 7px;
-  border: 1px solid #2c496e;
-  border-radius: 10px;
-  background: linear-gradient(145deg, #101f36, #081321);
-  color: #dceaff;
-  box-shadow: 0 16px 48px #000b;
-  scrollbar-width: thin;
+  /* As wide as its longest option, so names are not cut off. */
+  width: max-content;
+  min-width: max(var(--radix-select-trigger-width), 168px);
+  max-width: min(360px, var(--radix-select-content-available-width));
+  max-height: var(--radix-select-content-available-height);
+  overflow: hidden;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 9px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 12px 32px var(--color-shadow-soft);
 }
-.dsui-option-select-menu .dsui-option-select-option {
+/* Only options with a second line need a wide menu. */
+.dsui-select-menu:has(.dsui-select-copy small) {
+  width: max(
+    var(--radix-select-trigger-width),
+    min(300px, var(--radix-select-content-available-width))
+  );
+}
+.dsui-select-menu .dsui-select-option {
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
   min-width: 0;
   margin: 0;
-  padding: 9px 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
   background: transparent;
-  color: #e8f2ff;
-  text-align: left;
+  color: var(--color-secondary);
 }
-.dsui-option-select-option + .dsui-option-select-option {
-  margin-top: 3px;
+.dsui-select-option + .dsui-select-option {
+  margin-top: 1px;
 }
-.dsui-option-select-menu .dsui-option-select-option:hover:not(:disabled),
-.dsui-option-select-menu .dsui-option-select-option:focus-visible {
-  border-color: #315f9b;
-  background: #142b4b;
+.dsui-select-menu .dsui-select-option[data-highlighted] {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
 }
-.dsui-option-select-menu .dsui-option-select-option[aria-selected="true"] {
-  border-color: #2c71d1;
-  background: linear-gradient(115deg, #173d78, #102b52);
+.dsui-select-menu .dsui-select-option[data-state="checked"] {
+  color: var(--color-primary);
 }
-.dsui-option-select-option:disabled {
+.dsui-select-option[data-disabled] {
   opacity: 0.45;
 }
-.dsui-option-select-copy {
+.dsui-select-copy {
   min-width: 0;
   flex: 1;
 }
-.dsui-option-select-copy strong,
-.dsui-option-select-copy small {
+.dsui-select-copy strong,
+.dsui-select-copy small {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dsui-option-select-copy strong {
+.dsui-select-copy strong {
   font-size: 12px;
+  font-weight: 500;
+}
+/* A title above a description needs the weight to lead it. */
+.dsui-select-copy:has(small) strong {
   font-weight: 600;
 }
-.dsui-option-select-copy small {
+.dsui-select-copy small {
   margin-top: 2px;
-  color: #92a9c8;
+  color: var(--color-text-subtle);
   font-size: 10px;
 }
-.dsui-option-select-check {
+.dsui-select-check {
   width: 16px;
   height: 16px;
   flex: none;
-  color: #83beff;
+  color: var(--color-text-link);
+}
+
+.dsui-select .dsui-select-trigger[data-variant="ghost"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-secondary);
+}
+.dsui-select .dsui-select-trigger[data-variant="ghost"]:hover:not(:disabled),
+.dsui-select .dsui-select-trigger[data-variant="ghost"][data-state="open"] {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.dsui-select .dsui-select-trigger[data-size="small"] {
+  min-height: 28px;
+  padding-block: 3px;
+  font-size: 11px;
+}
+
+/* Overlays are unlayered for the same reason as the select. */
+/* A modal disables pointer events outside itself; toasts must stay usable. */
+[data-sonner-toaster],
+[data-sonner-toast] {
+  pointer-events: auto;
+}
+.dsui-tooltip {
+  z-index: 1000;
+  max-width: 280px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-control-border);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 8px 24px var(--color-shadow-soft);
+  color: var(--color-text-bright);
+  font-size: 11px;
+  line-height: 16px;
+}
+.dsui-menu {
+  z-index: 1000;
+  box-sizing: border-box;
+  min-width: 168px;
+  padding: 5px;
+  border: 1px solid var(--color-control-border);
+  border-radius: 10px;
+  background: var(--color-surface-raised);
+  box-shadow: 0 16px 48px var(--color-shadow-strong);
+}
+.dsui-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 32px;
+  padding: 0 9px;
+  border-radius: 6px;
+  color: var(--color-primary);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+.dsui-menu-item[data-highlighted] {
+  background: var(--color-control-hover);
+}
+.dsui-menu-item[data-tone="danger"] {
+  color: var(--color-danger-foreground);
+}
+.dsui-menu-item[data-tone="danger"][data-highlighted] {
+  background: color-mix(in srgb, var(--color-unavailable) 18%, transparent);
+}
+.dsui-menu-item[data-disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+.dsui-menu-icon {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+}
+.dsui-menu-separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--color-border);
+}
+.dsui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: color-mix(in srgb, var(--color-overlay) 80%, transparent);
+}
+.dsui-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 801;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 24px 80px var(--color-shadow-strong);
+}
+.dsui-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 0;
+}
+.dsui-modal-title {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dsui-modal-description {
+  margin: 6px 0 0;
+  color: var(--color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.dsui-modal-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-secondary);
+  cursor: pointer;
+}
+.dsui-modal-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-primary);
+}
+.dsui-modal-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px 20px;
+}
+.dsui-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: color-mix(in srgb, var(--color-overlay) 80%, transparent);
+}
+.dsui-confirm {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 901;
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 20px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 24px 80px var(--color-shadow-strong);
+}
+.dsui-confirm-title {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dsui-confirm-description {
+  margin: 8px 0 0;
+  color: var(--color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.dsui-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+/* The label keeps its space while a spinner covers it, so nothing moves. */
+.dsui-confirm-action[data-pending="true"] {
+  position: relative;
+  -webkit-text-fill-color: transparent;
+}
+.dsui-confirm-action[data-pending="true"]::after {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-accent-foreground);
+  border-right-color: transparent;
+  border-radius: 50%;
+  content: "";
+  animation: dsui-spin 0.7s linear infinite;
+}
+@keyframes dsui-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @layer components {
@@ -253,11 +509,15 @@
   margin: 0;
   overflow-y: auto;
   padding: 6px;
-  border: 1px solid #2c496e;
+  border: 1px solid var(--color-control-border);
   border-radius: 10px;
-  background: linear-gradient(145deg, #101f36, #081321);
-  color: #dceaff;
-  box-shadow: 0 16px 48px #000b;
+  background: linear-gradient(
+    145deg,
+    var(--color-control),
+    var(--color-surface-raised)
+  );
+  color: var(--color-text-bright);
+  box-shadow: 0 16px 48px var(--color-shadow-strong);
   scrollbar-width: thin;
 }
 .dsui-suggest-option {
@@ -273,8 +533,8 @@
 }
 .dsui-suggest-option:hover,
 .dsui-suggest-option[aria-selected="true"] {
-  border-color: #315f9b;
-  background: #142b4b;
+  border-color: var(--color-control-border-strong);
+  background: var(--color-control-hover);
 }
 .dsui-suggest-option strong,
 .dsui-suggest-option small {
@@ -284,17 +544,17 @@
   white-space: nowrap;
 }
 .dsui-suggest-option strong {
-  color: #e8f2ff;
+  color: var(--color-primary);
   font-size: 12px;
   font-weight: 600;
 }
 .dsui-suggest-option small {
   margin-top: 2px;
-  color: #92a9c8;
+  color: var(--color-text-subtle);
   font-size: 10px;
 }
 .dsui-suggest-status {
   padding: 8px;
-  color: #92a9c8;
+  color: var(--color-text-subtle);
   font-size: 11px;
 }

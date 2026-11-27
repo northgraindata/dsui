@@ -1,6 +1,6 @@
 import type { ComponentProps as RegistryViewProps } from "../runtime";
 import { WorkbenchIcon } from "./icons";
-import { keyedItems } from "./keyed-items";
+import { positioned } from "./keys";
 
 /** Page header: title with optional description. */
 export default function PageHeader({
@@ -21,12 +21,12 @@ export default function PageHeader({
     : undefined;
   return (
     <header
-      className="page-header"
+      className="dsui-page-header"
       data-variant={node.props.variant ?? "default"}
     >
-      <div className="page-header-main">
+      <div className="dsui-page-header-main">
         {icon ? <WorkbenchIcon name={icon} size={28} /> : null}
-        <div className="page-header-copy">
+        <div className="dsui-page-header-copy">
           <h1 className="m-0 text-[17px] font-semibold text-primary">
             {title}
           </h1>
@@ -34,8 +34,8 @@ export default function PageHeader({
             <p className="mt-1 text-[12px] text-secondary">{description}</p>
           ) : null}
           {node.props.tags ? (
-            <div className="page-header-tags">
-              {keyedItems(nodes(node.props.tags)).map(
+            <div className="dsui-page-header-tags">
+              {positioned(nodes(node.props.tags)).map(
                 ({ item: child, key }) => (
                   <span key={key}>{renderNode(client, child, context)}</span>
                 ),
@@ -48,8 +48,8 @@ export default function PageHeader({
         <span data-tone={badge.tone ?? "info"}>{badge.label}</span>
       ) : null}
       {node.props.actions ? (
-        <div className="page-header-actions">
-          {keyedItems(nodes(node.props.actions)).map(({ item: child, key }) => (
+        <div className="dsui-page-header-actions">
+          {positioned(nodes(node.props.actions)).map(({ item: child, key }) => (
             <span key={key}>{renderNode(client, child, context)}</span>
           ))}
         </div>

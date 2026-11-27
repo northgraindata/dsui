@@ -1,0 +1,152 @@
+.dsui-data-table-shell {
+  border-radius: 9px;
+  border-color: var(--color-border);
+  background: transparent;
+}
+.dsui-data-table {
+  min-width: 0;
+  color: var(--color-secondary);
+}
+.dsui-data-table th {
+  height: 37px;
+  padding: 0 15px;
+  background: color-mix(in srgb, var(--color-inset) 36%, transparent);
+  color: var(--color-text-soft);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+}
+.dsui-data-table th:first-child {
+  width: 18%;
+}
+.dsui-data-table th:nth-child(2) {
+  width: 20%;
+}
+.dsui-data-table th:nth-child(3) {
+  width: 11.5%;
+}
+.dsui-data-table th:nth-child(4) {
+  width: 12%;
+}
+.dsui-data-table th:nth-child(5) {
+  width: 11%;
+}
+.dsui-data-table td {
+  height: 55.5px;
+  padding: 5px 15px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-secondary);
+  font-size: 12px;
+  vertical-align: middle;
+}
+.dsui-data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-control) 60%, transparent);
+}
+.dsui-data-table-menu-trigger {
+  position: relative;
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.dsui-data-table-menu-trigger:hover,
+.dsui-data-table-menu-trigger[aria-expanded="true"] {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
+  color: var(--color-primary);
+}
+.dsui-data-table-menu-popover {
+  position: fixed;
+  z-index: 10;
+  display: grid;
+  width: 136px;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 24px var(--color-shadow-soft);
+}
+.dsui-data-table-cell-link {
+  display: block;
+  width: 100%;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.dsui-data-table-cell-link:hover {
+  color: var(--color-syntax-type);
+}
+.dsui-data-table .dsui-flex {
+  gap: 20px;
+}
+.dsui-data-table .dsui-flex > div:last-child {
+  min-width: 0;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dsui-table-cell-icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  align-items: center;
+  justify-content: center;
+  margin-left: -3px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: linear-gradient(
+    130deg,
+    var(--color-control),
+    var(--color-surface-raised)
+  );
+  color: var(--color-text-soft);
+}
+.dsui-table-cell-icon img {
+  object-fit: contain;
+}
+.dsui-table-cell-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--color-control-hover);
+  color: var(--color-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.dsui-table-cell-badge[data-tone="healthy"] {
+  background: color-mix(in srgb, var(--color-success-surface) 53%, transparent);
+  color: var(--color-success);
+}
+.dsui-table-cell-badge[data-tone="warning"] {
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
+}
+.dsui-table-cell-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-secondary);
+  white-space: nowrap;
+}
+.dsui-table-cell-status i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-text-faint);
+}
+.dsui-table-cell-status[data-tone="healthy"] {
+  color: var(--color-success);
+}
+.dsui-table-cell-status[data-tone="healthy"] i {
+  background: var(--color-success);
+}

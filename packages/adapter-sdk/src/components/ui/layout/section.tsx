@@ -1,29 +1,19 @@
-import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
-import type { ReactNode } from "react";
-import type { ComponentClient } from "../../runtime";
-
-type RenderNode = (
-  client: ComponentClient,
-  node: PageNode,
-  context?: Record<string, unknown>,
-) => ReactNode;
+import { Fragment } from "react";
+import type { ComponentProps as RegistryViewProps } from "../../runtime";
+import { positioned } from "../keys";
+import { asNodes } from "./layout-items";
 
 export function Section({
   client,
   node,
   renderNode,
-}: {
-  client: ComponentClient;
-  node: PageNode;
-  renderNode: RenderNode;
-}) {
-  const content = Array.isArray(node.props.content)
-    ? node.props.content
-    : [node.props.content];
+  context,
+}: RegistryViewProps) {
+  if (node.kind !== "section") return null;
   const link = node.props.link;
   return (
-    <section className="ov-section">
-      <header className="ov-section-header">
+    <section className="dsui-section">
+      <header className="dsui-section-header">
         <div>
           <h2>{node.props.title}</h2>
           {node.props.description ? <p>{node.props.description}</p> : null}
@@ -31,7 +21,7 @@ export function Section({
         {link ? (
           <button
             type="button"
-            className="ov-section-link"
+            className="dsui-section-link"
             onClick={() => client.navigate(link.path)}
           >
             {link.label}
@@ -39,7 +29,9 @@ export function Section({
           </button>
         ) : null}
       </header>
-      {content.map((child: any) => renderNode(client, child))}
+      {positioned(asNodes(node.props.content)).map(({ item, key }) => (
+        <Fragment key={key}>{renderNode(client, item, context)}</Fragment>
+      ))}
     </section>
   );
 }

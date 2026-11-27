@@ -2,10 +2,18 @@ import { defineComponent } from "../define";
 import type { PageNode } from "../nodes";
 import type { LayoutGap } from "./stack";
 
+export type GridColumnWidth = "sm" | "md";
+
 export interface GridProps {
   content: PageNode | readonly PageNode[];
+  /** Most columns to show. Fewer are used when they would get too narrow. */
   columns?: number;
   gap?: LayoutGap;
+  /**
+   * Narrowest an automatic column may get before the grid wraps: `"sm"` suits
+   * metric tiles, `"md"` (default) suits panels. Ignored with `columns`.
+   */
+  minColumnWidth?: GridColumnWidth;
 }
 
 export interface GridNode {

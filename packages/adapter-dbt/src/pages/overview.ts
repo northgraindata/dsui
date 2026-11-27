@@ -18,6 +18,7 @@ export const overviewPage = definePage({
   path: "/",
   render: () => [
     Grid({
+      minColumnWidth: "sm",
       columns: 5,
       content: [
         Card({

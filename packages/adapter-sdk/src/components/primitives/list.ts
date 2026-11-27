@@ -1,5 +1,6 @@
 import type { DataSource } from "../../resource";
 import { defineComponent } from "../define";
+import type { ServerPagination } from "./paging";
 import type { TableRowAction, TableRowLink } from "./table";
 
 /**
@@ -53,6 +54,11 @@ export interface ListProps {
   /** Singular noun for the count and search placeholder, e.g. `"job"`. */
   noun?: string;
   filters?: readonly ListFilter[];
+  /**
+   * Fetches one page at a time. Use it for lists that grow without limit.
+   * `searchable`, `filters` and `pageSize` then do not apply.
+   */
+  paged?: ServerPagination;
   /** Rows shown before a "Show more" button; all rows when omitted. */
   pageSize?: number;
   emptyMessage?: string;

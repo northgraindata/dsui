@@ -1420,6 +1420,8 @@ export function AssetGraphView({
   if (!props) return null;
   return (
     <AssetGraphContent
+      // A different source is a different graph: view state must not carry over.
+      // biome-ignore lint/plugin: keyed by the resource reference, not by data
       key={JSON.stringify(props.source ?? null)}
       client={client}
       props={props}

@@ -39,6 +39,9 @@ bun run build
 checks; `format:check` runs formatting alone. Build remains separate. Use
 `bun run format` to apply formatting, then inspect the diff for unrelated edits.
 
+UI changes also need the rendered check. `bun run test:ui` renders every adapter page with fixture data and checks its layout, and `bun run gallery:dev` serves the same pages for inspection.
+See the [UI review skill](.agents/skills/dsui-ui-review/SKILL.md).
+
 During iteration, use the affected package's scripts. For example:
 
 ```sh

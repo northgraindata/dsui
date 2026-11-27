@@ -1,6 +1,8 @@
 import type { PageNode, TabsItem } from "@northgraindata/dsui-adapter-sdk";
-import { useState } from "react";
+import { Fragment } from "react";
 import type { ComponentProps as RegistryViewProps } from "../runtime";
+import { positioned } from "./keys";
+import { usePropState } from "./use-prop-state";
 
 export default function Tabs({
   client,
@@ -8,7 +10,8 @@ export default function Tabs({
   renderNode,
   context,
 }: RegistryViewProps) {
-  const [selected, setSelected] = useState(
+  // Linked tabs are chosen by the route, which arrives as a new default.
+  const [selected, setSelected] = usePropState<number>(
     node.kind === "tabs" ? (node.props.defaultIndex ?? 0) : 0,
   );
   if (node.kind !== "tabs") return null;
@@ -20,7 +23,7 @@ export default function Tabs({
     : [];
   return (
     <div
-      className="workspace-tabs"
+      className="dsui-workspace-tabs"
       data-variant={node.props.variant ?? "default"}
     >
       <div role="tablist" className="mb-4 flex gap-1 border-b border-border">
@@ -40,8 +43,14 @@ export default function Tabs({
           </button>
         ))}
       </div>
-      <div className="grid gap-4">
-        {content.map((child: PageNode) => renderNode(client, child, context))}
+      {/* Keyed by tab so panels never inherit each other's state. */}
+      <div
+        className="grid grid-cols-[minmax(0,1fr)] gap-component"
+        key={selected}
+      >
+        {positioned(content).map(({ item: child, key }) => (
+          <Fragment key={key}>{renderNode(client, child, context)}</Fragment>
+        ))}
       </div>
     </div>
   );

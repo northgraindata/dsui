@@ -27,10 +27,10 @@ export function QueryTabs({
     [onClose],
   );
   return (
-    <div className="query-document-tabs">
+    <div className="dsui-query-document-tabs">
       {tabs.map((item) => (
         <div
-          className="query-document-tab"
+          className="dsui-query-document-tab"
           data-active={item.id === activeId}
           key={item.id}
         >
@@ -53,7 +53,7 @@ export function QueryTabs({
       ))}
       <button
         type="button"
-        className="query-add-tab"
+        className="dsui-query-add-tab"
         aria-label="New query"
         disabled={tabs.length >= 8}
         title={tabs.length >= 8 ? "Maximum of 8 open queries" : "New query"}

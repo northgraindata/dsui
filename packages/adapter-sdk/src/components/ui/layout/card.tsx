@@ -2,7 +2,7 @@ import type { PageNode } from "@northgraindata/dsui-adapter-sdk";
 import { resolveLink } from "@northgraindata/dsui-adapter-sdk/components/ui/table";
 import type { ComponentProps as RegistryViewProps } from "../../runtime";
 import { WorkbenchIcon } from "../icons";
-import { keyedItems } from "../keyed-items";
+import { positioned } from "../keys";
 
 function nodes(value: PageNode | readonly PageNode[]): readonly PageNode[] {
   return "kind" in value ? [value] : value;
@@ -23,41 +23,41 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
   if (node.props.variant === "metric") {
     return (
       <section
-        className="layout-card"
+        className="dsui-card"
         data-variant="metric"
         data-icon={icon ?? undefined}
       >
         {icon ? (
-          <span className="layout-card-icon">
+          <span className="dsui-card-icon">
             <WorkbenchIcon name={icon} size={20} />
           </span>
         ) : null}
-        <div className="layout-card-metric">
-          <strong className="layout-card-value">
-            {keyedItems(content).map(({ item: child, key }) => (
+        <div className="dsui-card-metric">
+          <strong className="dsui-card-value">
+            {positioned(content).map(({ item: child, key }) => (
               <span key={key}>{renderNode(client, child, context)}</span>
             ))}
           </strong>
-          {title ? <small className="layout-card-label">{title}</small> : null}
+          {title ? <small className="dsui-card-label">{title}</small> : null}
         </div>
       </section>
     );
   }
   if (node.props.variant === "interactive") {
     return (
-      <article className="layout-card" data-variant="interactive">
-        <div className="layout-card-interactive-heading">
+      <article className="dsui-card" data-variant="interactive">
+        <div className="dsui-card-interactive-heading">
           {icon && (
-            <span className="layout-card-icon">
+            <span className="dsui-card-icon">
               <WorkbenchIcon name={icon} size={20} />
             </span>
           )}
-          <div className="layout-card-interactive-body">
+          <div className="dsui-card-interactive-body">
             {title &&
               (href ? (
                 <button
                   type="button"
-                  className="layout-card-title"
+                  className="dsui-card-title"
                   onClick={() => client.navigate(href)}
                 >
                   {title}
@@ -68,20 +68,20 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
             {description && <p>{description}</p>}
           </div>
           {badge && (
-            <span className="layout-card-badge ov-badge" data-tone={badgeTone}>
+            <span className="dsui-card-badge dsui-badge" data-tone={badgeTone}>
               {badge}
             </span>
           )}
         </div>
         {content.length > 0 && (
-          <div className="layout-card-content">
-            {keyedItems(content).map(({ item: child, key }) => (
+          <div className="dsui-card-content">
+            {positioned(content).map(({ item: child, key }) => (
               <div key={key}>{renderNode(client, child, context)}</div>
             ))}
           </div>
         )}
         {href && (
-          <span className="layout-card-chevron" aria-hidden="true">
+          <span className="dsui-card-chevron" aria-hidden="true">
             <WorkbenchIcon name="chevron" size={14} />
           </span>
         )}
@@ -90,16 +90,16 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
   }
   return (
     <section
-      className="layout-card"
+      className="dsui-card"
       data-variant={node.props.variant ?? "default"}
     >
       {icon && (
-        <span className="layout-card-icon">
+        <span className="dsui-card-icon">
           <WorkbenchIcon name={icon} size={20} />
         </span>
       )}
       {(title || description || badge) && (
-        <header className="layout-card-header">
+        <header className="dsui-card-header">
           {title &&
             (href ? (
               <button type="button" onClick={() => client.navigate(href)}>
@@ -110,14 +110,14 @@ export function Card({ client, node, renderNode, context }: RegistryViewProps) {
             ))}
           {description && <p>{description}</p>}
           {badge && (
-            <span className="layout-card-badge" data-tone={badgeTone}>
+            <span className="dsui-card-badge" data-tone={badgeTone}>
               {badge}
             </span>
           )}
         </header>
       )}
-      <div className="layout-card-content">
-        {keyedItems(content).map(({ item: child, key }) => (
+      <div className="dsui-card-content">
+        {positioned(content).map(({ item: child, key }) => (
           <div key={key}>{renderNode(client, child, context)}</div>
         ))}
       </div>

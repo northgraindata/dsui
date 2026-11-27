@@ -16,11 +16,9 @@ export const assetListPage = definePage({
       description: "Browse Airflow 3 assets or Airflow 2 datasets.",
     }),
     List({
-      source: assets(),
+      source: assets({}),
+      paged: { search: "Search assets" },
       noun: "asset",
-      searchable: true,
-      pageSize: 25,
-      filters: [{ field: "group", label: "Group" }],
       item: {
         icon: "layers",
         title: "name",
@@ -55,9 +53,9 @@ export const assetDetailPage = definePage({
             label: "Events",
             content: Table({
               source: assetEvents(input),
-              pageSize: 25,
+              paged: {},
               columns: [
-                { id: "timestamp", label: "Timestamp" },
+                { id: "timestamp", label: "Timestamp", format: "datetime" },
                 { id: "sourceDagId", label: "Source DAG" },
                 { id: "sourceTaskId", label: "Source task" },
                 { id: "sourceRunId", label: "Source run" },

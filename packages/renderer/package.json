@@ -5,7 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/styles.css"
+    "./app.css": "./src/app.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
