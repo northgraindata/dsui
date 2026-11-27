@@ -2,6 +2,7 @@ import { Button } from "@northgraindata/dsui-ui";
 import { useState } from "react";
 import { Glyph } from "../shared/glyphs";
 import { Search, Segments } from "../shared/list";
+import { highlight, Source } from "../shared/source";
 import {
   archiveFiles,
   code,
@@ -18,7 +19,7 @@ import {
 } from "./content";
 import { bytes, type Entry, nameOf } from "./data";
 import { FileIcon, fileType } from "./filetypes";
-import { highlight, Markdown, Source } from "./text";
+import { Markdown } from "./text";
 
 const PREVIEW_LIMIT = 256 * 1024;
 

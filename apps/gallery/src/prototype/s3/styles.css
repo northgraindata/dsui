@@ -436,16 +436,6 @@
 .s3-stats b {
   font-size: 13px;
 }
-.s3-source {
-  flex: 1;
-  max-height: none;
-  min-height: 120px;
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-}
-.s3-source pre {
-  padding-block: 10px;
-}
 .ax-log.s3-fill {
   flex: 1;
   min-height: 160px;

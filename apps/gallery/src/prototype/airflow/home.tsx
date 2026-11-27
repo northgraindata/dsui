@@ -1,5 +1,9 @@
-import { Button } from "@northgraindata/dsui-ui";
-import { useState } from "react";
+import {
+  Calm,
+  FAILURES_SHOWN,
+  FailingNow,
+  type Failure,
+} from "../shared/failures";
 import {
   ago,
   clock,
@@ -41,129 +45,67 @@ const hours = Array.from({ length: 24 }, (_, index) => {
 
 /** The most failures to list before sending the reader to the filtered list. */
 const SHOWN = 5;
-/** Failures are tall, so fewer fit before the rest of the page. */
-const FAILURES_SHOWN = 3;
 
-function FailureRow({
-  dag,
-  open,
-  onToggle,
-}: {
-  dag: Dag;
-  open: boolean;
-  onToggle: () => void;
-}) {
+function failureCard(dag: Dag): Failure {
   const failure = failureOf(dag);
-  const streak = failStreak(dag);
-  // The line that explains most is the last one before Airflow's exit notice.
-  const cause = failure.log.at(-2) ?? "";
-  return (
-    <article>
-      <div className="ax-failure-line">
-        <button
-          type="button"
-          className="ax-failure-main"
-          aria-expanded={open}
-          onClick={onToggle}
-        >
-          <Glyph name={open ? "down" : "right"} size={14} />
-          <span>
-            <span className="ax-failure-title">
-              <strong>{dag.id}</strong>
-              {streak > 1 ? <b>{streak} in a row</b> : null}
-            </span>
-            <code>{cause}</code>
-            <small>
-              task <em>{dag.failedTask}</em> · {failure.operator} · try{" "}
-              {failure.tries} of {failure.maxTries} · {stamp(dag.lastRun)}
-            </small>
-          </span>
-        </button>
-        <RunStrip dag={dag} />
-        <span className="ax-row-actions">
-          <IconButton
-            icon="external"
-            label={`Open ${dag.id}`}
-            onClick={() => go(`/dags/${dag.id}`)}
-          />
-          <Act
-            iconOnly
-            icon="retry"
-            label="Retry"
-            title={`Retry the failed tasks of ${dag.id}?`}
-            description="Clears only the failed task instances of the latest run, so Airflow runs them again."
-          />
-        </span>
-      </div>
-      {open ? (
-        <pre className="ax-log">
-          {failure.log.map((line) => (
-            <span
-              key={line}
-              data-error={line === cause || /ERROR|FAIL |Error/.test(line)}
-            >
-              {line}
-            </span>
-          ))}
-        </pre>
-      ) : null}
-    </article>
-  );
+  return {
+    id: dag.id,
+    title: dag.id,
+    streak: failStreak(dag),
+    // The line that explains most is the last one before Airflow's exit notice.
+    cause: failure.log.at(-2) ?? "",
+    detail: (
+      <>
+        task <em>{dag.failedTask}</em> · {failure.operator} · try{" "}
+        {failure.tries} of {failure.maxTries} · {stamp(dag.lastRun)}
+      </>
+    ),
+    strip: <RunStrip dag={dag} />,
+    actions: (
+      <>
+        <IconButton
+          icon="external"
+          label={`Open ${dag.id}`}
+          onClick={() => go(`/dags/${dag.id}`)}
+        />
+        <Act
+          iconOnly
+          icon="retry"
+          label="Retry"
+          title={`Retry the failed tasks of ${dag.id}?`}
+          description="Clears only the failed task instances of the latest run, so Airflow runs them again."
+        />
+      </>
+    ),
+    log: failure.log,
+  };
 }
 
 function Failures({ failing }: { failing: Dag[] }) {
-  const [open, setOpen] = useState("");
   if (!failing.length) {
     const recent = runStream.find((run) => run.state === "failed");
     return (
-      <section className="ax-calm">
-        <span className="ax-calm-icon">
-          <Glyph name="check" size={22} />
-        </span>
-        <div>
-          <h2>No DAG is failing</h2>
-          <p>
-            The latest run of all {dags.filter((dag) => !dag.paused).length}{" "}
-            active DAGs succeeded or is still running.
-          </p>
-          {recent ? (
-            <small>
-              Most recent failed run: {recent.dag}, {stamp(recent.started)}.
-              That DAG's latest run is fine.
-            </small>
-          ) : null}
-        </div>
-        <Button variant="secondary" onClick={() => go("/runs")}>
-          See past runs
-        </Button>
-      </section>
+      <Calm
+        title="No DAG is failing"
+        text={`The latest run of all ${dags.filter((dag) => !dag.paused).length} active DAGs succeeded or is still running.`}
+        note={
+          recent
+            ? `Most recent failed run: ${recent.dag}, ${stamp(recent.started)}. That DAG's latest run is fine.`
+            : undefined
+        }
+        action={{ label: "See past runs", path: "/runs" }}
+      />
     );
   }
   return (
-    <section className="ax-failures">
-      <header>
-        <h2>Failing now</h2>
-        <b>{failing.length}</b>
-        <span className="ax-grow" />
-        {failing.length > FAILURES_SHOWN ? (
-          <button
-            type="button"
-            className="ax-link"
-            onClick={() => go("/dags?latest=failed")}
-          >
-            Show all {failing.length} failing DAGs
-          </button>
-        ) : null}
-      </header>
-      {failing.slice(0, FAILURES_SHOWN).map((dag) => (
-        <FailureRow
-          key={dag.id}
-          dag={dag}
-          open={open === dag.id}
-          onToggle={() => setOpen(open === dag.id ? "" : dag.id)}
-        />
-      ))}
-    </section>
+    <FailingNow
+      total={failing.length}
+      failures={failing.slice(0, FAILURES_SHOWN).map(failureCard)}
+      all={{
+        label: `Show all ${failing.length} failing DAGs`,
+        path: "/dags?latest=failed",
+      }}
+    />
   );
 }
 

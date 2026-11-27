@@ -11,6 +11,7 @@ import {
   usePages,
   useRemembered,
 } from "../shared/list";
+import { Source } from "../shared/source";
 import { Act, go, Header, IconButton, Panel } from "../shared/ui";
 import { Art } from "./art";
 import {
@@ -25,7 +26,6 @@ import {
 import { FileIcon } from "./filetypes";
 import { copyText } from "./inspector";
 import { folderPath } from "./pathbar";
-import { Source } from "./text";
 
 const art = (name: Parameters<typeof Art>[0]["name"]) => (
   <Art name={name} size={52} />
