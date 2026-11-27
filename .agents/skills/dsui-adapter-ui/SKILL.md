@@ -25,6 +25,7 @@ Open it before you design anything.
 - Hover every dense mark and open every select: nothing is cut off, covered or unlabeled.
 - Check it with no failures, with many, and with an empty list.
 - Check a long list, a record's way back to it, and a narrow window.
+- Read every line of text: remove what only describes how the page works inside (R46).
 - Take a screenshot of each page and look at it. A test can pass while a card has lost its styles.
 
 ## Find what exists first

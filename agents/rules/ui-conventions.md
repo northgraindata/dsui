@@ -379,6 +379,15 @@ A code view is one frame with line numbers and syntax coloring.
 Its top bar gives the facts about the file, such as its path and when it was last parsed, and a copy button.
 Enforced by: a shared code component. Planned.
 
+### R46. Only what the reader can use
+
+Text on screen helps the reader decide or act.
+It does not describe how the data was fetched or built, such as which part of a file the reader parsed, who decompressed it or which link serves it.
+Say what is missing in the reader's terms, such as "First 100 rows", and say what changes a result, such as a search that covers only part of a file.
+Do not add a label whose only job is to hold an explanation in a tooltip.
+List keyboard shortcuts in one readable place behind a keyboard button and the `?` key.
+Enforced by: review.
+
 ## Known gaps
 
 - A toast raised while a native `<dialog>` is open, such as the connection dialog, is drawn under it. Moving that dialog to the Radix modal fixes it.
@@ -404,3 +413,4 @@ Reviewing a page may show that a rule is wrong, missing or too strict.
 | 2026-11-26 | R22 | Radix accepted for primitives with hard behaviour; extensions receive them as `ui`. |
 | 2026-11-27 | R27-R45 | Added from the maintainer's feedback on the Airflow redesign, which is now the reference design. Added by the agent at the maintainer's invitation, so each rule still awaits their reading. |
 | 2026-11-27 | R18, R19, R25 | Clarified generated labels, stored database content and the space of hidden controls. |
+| 2026-11-27 | R46 | Added at the maintainer's request after the S3 prototype showed notes about how files were read. |
