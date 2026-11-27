@@ -51,7 +51,7 @@ function AdapterPages({ adapter }: { adapter: ManifestAdapter }) {
       <h2>
         <AdapterLogo adapter={adapter} />
         {adapter.name}
-        {adapter.id === "airflow" || adapter.id === "s3" ? (
+        {["airflow", "dagster", "s3"].includes(adapter.id) ? (
           <a
             className="gallery-redesign"
             href={`/services/${adapter.id}?design=new`}

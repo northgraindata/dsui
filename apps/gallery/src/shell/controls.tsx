@@ -58,7 +58,7 @@ function Controls({ scenario }: { scenario: Scenario }) {
         ) : null}
         {redesign &&
         design === "new" &&
-        pathname.startsWith("/services/airflow") ? (
+        /^\/services\/(airflow|dagster)(\/|$)/.test(pathname) ? (
           <FailureSwitch />
         ) : null}
         {target ? <a href={target}>Without shell</a> : null}

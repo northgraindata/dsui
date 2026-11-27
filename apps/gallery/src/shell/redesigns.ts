@@ -1,6 +1,7 @@
 /** The services that have a redesign to compare with their current pages. */
 import type { ComponentType } from "react";
 import * as airflow from "../prototype/airflow/views";
+import * as dagster from "../prototype/dagster/views";
 import * as s3 from "../prototype/s3/views";
 
 export interface Redesigned {
@@ -34,6 +35,19 @@ const redesigns: Redesigned[] = [
       if (section === "users") return "/";
       return path;
     },
+  },
+  {
+    prefix: "/services/dagster",
+    Page: dagster.Page,
+    SideNav: dagster.SideNav,
+    // The current adapter's ids differ, so only the section carries over.
+    currentPageFor: (path) => {
+      const section = pathOf(path).split("/")[1] ?? "";
+      if (section === "backfills") return "/runs";
+      return section === "deployment" ? "/" : `/${section}`;
+    },
+    redesignedPageFor: (pathname) =>
+      pathname.slice("/services/dagster".length) || "/",
   },
   {
     prefix: "/services/s3",
