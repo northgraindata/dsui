@@ -108,4 +108,5 @@ test("the DAG header pauses only through a named, state-matched button", async (
   await openApp(page, "/services/airflow/dags/daily_revenue", 1440);
   const actions = page.locator(".dsui-page-header-actions button");
   await expect(actions).toHaveText([/^(Pause|Unpause)$/, "Trigger"]);
+  expect(problems).toEqual([]);
 });
