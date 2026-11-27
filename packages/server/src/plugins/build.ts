@@ -119,6 +119,13 @@ export async function buildPlugin(
   const browserBundlePath = join(sourceDir, "dist", "components.mjs");
   if (options.offline) {
     await readFile(bundlePath);
+    const manifest: PluginManifest = JSON.parse(
+      await readFile(join(sourceDir, "package.json"), "utf8"),
+    );
+    if (manifest.dsui?.browser) {
+      await readFile(browserBundlePath);
+      return { bundlePath, buildDir, browserBundlePath };
+    }
     return { bundlePath, buildDir };
   }
 

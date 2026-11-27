@@ -261,6 +261,19 @@
         "react": "^19.1.1",
       },
     },
+    "packages/plugin-dex": {
+      "name": "@northgraindata/dsui-plugin-dex",
+      "version": "0.1.0",
+      "dependencies": {
+        "@northgraindata/dsui-plugin-sdk": "workspace:*",
+        "@northgraindata/dsui-ui": "workspace:*",
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
+        "@types/react": "^19.1.0",
+        "react": "^19.1.1",
+      },
+    },
     "packages/plugin-health": {
       "name": "@northgraindata/dsui-plugin-health",
       "version": "0.1.0",
@@ -366,6 +379,7 @@
       },
       "devDependencies": {
         "@northgraindata/dsui-plugin-code-repository": "workspace:*",
+        "@northgraindata/dsui-plugin-dex": "workspace:*",
         "@northgraindata/dsui-plugin-example": "workspace:*",
         "@northgraindata/dsui-plugin-health": "workspace:*",
         "@northgraindata/dsui-plugin-monitoring": "workspace:*",
@@ -885,6 +899,8 @@
     "@northgraindata/dsui-plugin-ai-agent": ["@northgraindata/dsui-plugin-ai-agent@workspace:packages/plugin-ai-agent"],
 
     "@northgraindata/dsui-plugin-code-repository": ["@northgraindata/dsui-plugin-code-repository@workspace:packages/plugin-code-repository"],
+
+    "@northgraindata/dsui-plugin-dex": ["@northgraindata/dsui-plugin-dex@workspace:packages/plugin-dex"],
 
     "@northgraindata/dsui-plugin-example": ["@northgraindata/dsui-plugin-example@workspace:examples/example-plugin"],
 

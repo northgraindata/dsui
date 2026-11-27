@@ -39,6 +39,7 @@
     "@northgraindata/dsui-plugin-status-pages": "workspace:*"
   },
   "devDependencies": {
+    "@northgraindata/dsui-plugin-dex": "workspace:*",
     "@northgraindata/dsui-plugin-example": "workspace:*",
     "@northgraindata/dsui-plugin-health": "workspace:*",
     "@northgraindata/dsui-plugin-monitoring": "workspace:*",

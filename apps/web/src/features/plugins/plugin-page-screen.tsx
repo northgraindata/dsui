@@ -6,7 +6,12 @@ import {
 import { DeclarativePageRenderer } from "@northgraindata/dsui-renderer";
 import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { currentPrincipal, getPluginCatalog, getPluginPage } from "../../api";
+import {
+  ApiError,
+  currentPrincipal,
+  getPluginCatalog,
+  getPluginPage,
+} from "../../api";
 import {
   PageHeading,
   pageClass,
@@ -23,16 +28,23 @@ export function PluginPageScreen() {
   });
   const [page, setPage] = useState<PluginCatalog["pages"][number]>();
   const [document, setDocument] = useState<PageDocument>();
-  const [error, setError] = useState<string>();
+  const [backPage, setBackPage] = useState<{ pageId: string; label: string }>();
+  const [error, setError] = useState<{ message: string; status?: number }>();
 
   useEffect(() => {
     let active = true;
     setPage(undefined);
     setDocument(undefined);
     setError(undefined);
+    setBackPage(undefined);
     getPluginCatalog()
       .then(async (catalog) => {
         if (!active) return;
+        setBackPage(
+          catalog.navigation.find(
+            (item) => item.pluginId === pluginId && item.area === "primary",
+          ),
+        );
         const found = resolvePluginPage(
           catalog.pages.filter((candidate) => candidate.pluginId === pluginId),
           pageId,
@@ -52,7 +64,10 @@ export function PluginPageScreen() {
             });
             return;
           }
-          setError("Plugin page not found or plugin is disabled.");
+          setError({
+            message: "Plugin page not found or plugin is disabled.",
+            status: 404,
+          });
           return;
         }
         setPage(found);
@@ -62,21 +77,42 @@ export function PluginPageScreen() {
       })
       .catch((cause: unknown) => {
         if (!active) return;
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Could not load plugin page.",
-        );
+        setError({
+          message:
+            cause instanceof Error
+              ? cause.message
+              : "Could not load plugin page.",
+          ...(cause instanceof ApiError ? { status: cause.status } : {}),
+        });
       });
     return () => {
       active = false;
     };
   }, [pageId, pluginId, navigate]);
 
+  if (error?.status === 404 && backPage && backPage.pageId !== pageId)
+    return (
+      <div className={pageClass}>
+        <PageHeading title="Plugin page unavailable" detail={error.message} />
+        <button
+          type="button"
+          className="text-accent"
+          onClick={() =>
+            navigate({
+              to: "/plugins/$pluginId/$",
+              params: { pluginId, _splat: backPage.pageId },
+            })
+          }
+        >
+          Back to {backPage.label}
+        </button>
+      </div>
+    );
+
   if (error)
     return (
       <div className={pageClass}>
-        <UnavailableState detail={error} />
+        <UnavailableState detail={error.message} />
       </div>
     );
 

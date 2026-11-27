@@ -714,6 +714,8 @@ export interface PluginRegistry<TConfig = unknown> {
 }
 
 export interface PluginCapabilities {
+  /** Effective installation time zone for background work. */
+  readonly installationTimeZone?: () => string;
   readonly diagnostics?: { read(): Promise<DiagnosticSnapshot> };
   readonly access: {
     /** Identity of the authenticated request; absent in background work. */
@@ -917,6 +919,7 @@ export function definePlugin<TConfig>(
         logger: host.logger,
         access: host.access ?? { require: async () => unavailableCapability() },
         diagnostics: host.diagnostics,
+        installationTimeZone: host.installationTimeZone,
         jobs: host.jobs ?? { enqueue: async () => unavailableCapability() },
         events: {
           read: async (options) => {
@@ -1040,6 +1043,7 @@ export function definePlugin<TConfig>(
                       stores: context.stores,
                       access: context.access,
                       diagnostics: context.diagnostics,
+                      installationTimeZone: context.installationTimeZone,
                       jobs: context.jobs,
                       events: context.events,
                       signal: runContext.signal,

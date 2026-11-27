@@ -11,9 +11,9 @@ import type { DsuiDatabase } from "../db/database";
 import { readSettings, writeSettings } from "../db/settings";
 import type { PluginRuntime } from "../plugins/runtime";
 import {
-  installationDefaults,
   installationSettingsSchema,
   preferenceDefaults,
+  readInstallationSettings,
   userPreferencesSchema,
 } from "../settings";
 import { DSUI_VERSION } from "../version";
@@ -39,13 +39,7 @@ export function registerSettingsRoutes(
   const snapshot = async (
     principal: Parameters<PluginRuntime["authorize"]>[0],
   ): Promise<SettingsSnapshot> => {
-    const installation = readSettings(
-      db,
-      "installation",
-      "",
-      installationSettingsSchema,
-      installationDefaults,
-    );
+    const installation = readInstallationSettings(db);
     const preferences = readSettings(
       db,
       "preferences",
@@ -117,13 +111,7 @@ export function registerSettingsRoutes(
         );
     }
     if (scope === "installation") {
-      const stored = readSettings(
-        db,
-        "installation",
-        "",
-        installationSettingsSchema,
-        installationDefaults,
-      ).value;
+      const stored = readInstallationSettings(db).value;
       const managed = (await snapshot(principal)).managed;
       valueToWrite = {
         ...parsed.data,

@@ -165,7 +165,10 @@ export type PluginHostCapabilities = {
   audit?(actor: string, action: string, target: string): void;
   capabilities?(
     pluginId: string,
-  ): Pick<PluginCapabilities, "jobs" | "events" | "diagnostics">;
+  ): Pick<
+    PluginCapabilities,
+    "jobs" | "events" | "diagnostics" | "installationTimeZone"
+  >;
 };
 
 function resolveInstalledBundle(specifier: string): string {
@@ -397,6 +400,8 @@ function sortDependencies(
   return sorted;
 }
 
+export class PluginBrowserBundleMissing extends Error {}
+
 export class PluginRuntime {
   private readonly readiness = new Map<string, PluginReadiness>();
   private readonly active = new Map<string, ActivePlugin>();
@@ -597,11 +602,18 @@ export class PluginRuntime {
             },
           },
         });
-        const browserPath =
-          built?.browserBundlePath ??
-          ("browserBundle" in source && source.browserBundle
-            ? resolveInstalledBundle(source.browserBundle)
-            : undefined);
+        let browserPath = built?.browserBundlePath;
+        if (!browserPath && "browserBundle" in source && source.browserBundle) {
+          try {
+            const path = resolveInstalledBundle(source.browserBundle);
+            if (existsSync(path)) browserPath = path;
+            else pluginLogger(id).warn("Configured browser bundle is missing");
+          } catch {
+            pluginLogger(id).warn(
+              "Could not resolve the configured browser bundle",
+            );
+          }
+        }
         requests.push({
           id,
           definition,
@@ -1102,7 +1114,9 @@ export class PluginRuntime {
           props.component.startsWith(`${pluginId}/`)
         ) {
           if (!browserPath)
-            throw new Error("Plugin custom component has no browser bundle");
+            throw new PluginBrowserBundleMissing(
+              "Plugin custom component has no browser bundle",
+            );
           return {
             ...record,
             props: {

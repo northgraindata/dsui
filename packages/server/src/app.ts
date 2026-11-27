@@ -57,6 +57,7 @@ import { registerSettingsRoutes } from "./routes/settings";
 import { registerSystemRoutes } from "./routes/system.js";
 import { SecretResolver } from "./secrets/resolver.js";
 import { SecretSuggestions } from "./secrets/suggestions.js";
+import { readInstallationSettings } from "./settings";
 import { createErrorCounter } from "./telemetry/errors";
 
 export type Runtime = ReturnType<typeof createRuntime>;
@@ -496,6 +497,14 @@ export function createRuntime(options: CreateRuntimeOptions = {}) {
       plugins: () => pluginRuntime.pluginCapabilities(),
       audit: (actor, action, target) => database.audit(actor, action, target),
       capabilities: (pluginId) => ({
+        installationTimeZone: () => {
+          const timeZone =
+            config.settings?.timeZone ??
+            readInstallationSettings(database.sqlite).value.timeZone;
+          return timeZone === "browser"
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : timeZone;
+        },
         diagnostics: {
           read: async () => {
             if (!(await pluginRuntime.canAccessGlobalEvents()))

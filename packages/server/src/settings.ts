@@ -3,6 +3,7 @@ import {
   preferenceDefaults,
 } from "@northgraindata/dsui-core";
 import { z } from "zod";
+import { readSettings } from "./db/settings";
 
 export const timeZoneSchema = z
   .string()
@@ -34,3 +35,15 @@ export const userPreferencesSchema = z
   })
   .strict();
 export { installationDefaults, preferenceDefaults };
+
+export function readInstallationSettings(
+  database: Parameters<typeof readSettings>[0],
+) {
+  return readSettings(
+    database,
+    "installation",
+    "",
+    installationSettingsSchema,
+    installationDefaults,
+  );
+}

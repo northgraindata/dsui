@@ -7,7 +7,7 @@ import {
 import type { Hono } from "hono";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
-import type { PluginRuntime } from "./runtime.js";
+import { PluginBrowserBundleMissing, type PluginRuntime } from "./runtime.js";
 
 function publicPluginFailure(
   error: unknown,
@@ -264,13 +264,21 @@ export function registerPluginRoutes(
       if (!page) return context.json({ message: "Plugin page not found" }, 404);
       return context.json(page);
     } catch (error) {
-      // The browser only learns "could not be rendered", which names no cause.
-      // Logged so a broken page is diagnosable from the server side.
-      console.error("Plugin page render failed", error);
-      return context.json(
-        { message: "Plugin page could not be rendered" },
-        500,
+      if (error instanceof PluginBrowserBundleMissing)
+        return context.json(
+          {
+            message:
+              "Plugin browser bundle is missing. Build the plugin and configure its browserBundle, or load it from source.",
+          },
+          503,
+        );
+      const failure = publicPluginFailure(
+        error,
+        "Plugin page could not be rendered",
       );
+      if (failure.status === 500)
+        console.error("Plugin page render failed", error);
+      return context.json({ message: failure.message }, failure.status);
     }
   });
 
