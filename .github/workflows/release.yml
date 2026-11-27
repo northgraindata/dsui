@@ -25,13 +25,13 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Check out full history
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.12
 
@@ -69,7 +69,7 @@ jobs:
         run: DSUI_VERSION="${RELEASE_TAG#v}" bun run package:npm
 
       - name: Set up Node for npm packing verification
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
@@ -80,7 +80,7 @@ jobs:
         run: |
           npm pack ./dist/npm --ignore-scripts --json --pack-destination dist > "$RUNNER_TEMP/npm-pack.json"
           mv "dist/$(jq -r '.[0].filename' "$RUNNER_TEMP/npm-pack.json")" dist/product.tgz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: product-npm
           path: dist/product.tgz
@@ -98,13 +98,13 @@ jobs:
       id-token: write
     steps:
       - name: Check out full history
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           ref: ${{ inputs.release_tag || github.ref }}
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.12
 
@@ -127,11 +127,11 @@ jobs:
 
       - name: Set up Docker Buildx
         if: github.event_name == 'push'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Log in to GitHub Container Registry
         if: github.event_name == 'push'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -147,7 +147,7 @@ jobs:
       - name: Generate image tags and labels
         if: github.event_name == 'push'
         id: metadata
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ghcr.io/northgraindata/dsui
           tags: |
@@ -157,7 +157,7 @@ jobs:
 
       - name: Build and publish multi-architecture image
         if: github.event_name == 'push'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -169,13 +169,13 @@ jobs:
           cache-from: type=gha,scope=product
           cache-to: type=gha,scope=product,mode=max
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: product-npm
           path: dist
 
       - name: Configure npm registry
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 

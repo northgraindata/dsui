@@ -1,0 +1,48 @@
+# OpenSSF Scorecard for the whole repository: app, adapters, plugins, SDKs, docs
+# and the container image. Results are published to scorecard.dev, which only
+# accepts them from a workflow limited to these actions and permissions:
+# https://github.com/ossf/scorecard-action#workflow-restrictions
+name: Scorecard
+
+on:
+  # Refreshes the Branch-Protection check.
+  branch_protection_rule:
+  schedule:
+    - cron: "17 6 * * 1"
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      security-events: write # Upload SARIF to code scanning.
+      id-token: write # Sign the results published to api.scorecard.dev.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@23f22cd43608bae7a1f1fa2603d7314dee9538a5 # v2.6.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+          fail_on_publish_error: true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+      - uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+        with:
+          sarif_file: results.sarif

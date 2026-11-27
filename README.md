@@ -2,11 +2,13 @@
 
 [Website](https://dsui.northgraindata.com) · [Live Demo](https://dsui.northgraindata.com/demo) · [Documentation](https://dsui.northgraindata.com/docs) · [Discord](https://discord.gg/6vgtDbVggc)
 
+If you are interested in closer collaboration, please email [joachim@northgraindata.com](mailto:joachim@northgraindata.com).
+
 # The AI-native control plane for your data stack.
 
 Connect your data tools and manage them from one place. Explore your infrastructure, run operations, and work across services with AI that understands your stack.
 
-![CI](https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg)![Release](https://img.shields.io/github/v/release/northgraindata/dsui?include_prereleases)![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)![Container](https://img.shields.io/badge/ghcr.io-dsui-536edb)
+![CI](https://github.com/northgraindata/dsui/actions/workflows/ci.yml/badge.svg)![Release](https://img.shields.io/github/v/release/northgraindata/dsui?include_prereleases)![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)![Container](https://img.shields.io/badge/ghcr.io-dsui-536edb)[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/northgraindata/dsui/badge)](https://scorecard.dev/viewer/?uri=github.com/northgraindata/dsui)
 
 ![DSUI workspace overview showing connected data and infrastructure services](./assets/readme/product.png)
 
